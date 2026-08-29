@@ -61,14 +61,14 @@ Tính năng lõi có tên là **Permission-Aware Citation**: hỏi đáp có tr�
 - **FR-02** (M) Trích xuất sự thật n-ngôi từ văn bản tiếng Việt kỹ thuật theo lược đồ 8 vai (chủ thể, triệu chứng, nguyên nhân, điều kiện, hành động khắc phục, nguồn, thời điểm, người phụ trách). LLM bị buộc xuất JSON đúng lược đồ; bản ghi sai lược đồ bị loại (ADR-006).
 - **FR-03** (M) Lưu hypergraph dạng đồ thị hai phía: hyperedge là node mang thuộc tính, nối tới entity thành viên bằng cạnh có nhãn vai. Không phân rã quan hệ n-ngôi thành các cạnh nhị phân. Nhãn vai trên cạnh là phần mở rộng của khóa luận so với upstream (upstream lưu cạnh không nhãn).
 - **FR-04** (M) Quan hệ nhị phân là trường hợp suy biến của cùng cơ chế (hyperedge chỉ điền 2 vai), không cần đường xử lý riêng.
-- **FR-05** (M) Mỗi hyperedge khi dựng được gắn metadata phân quyền (scope, độ nhạy theo loại nội dung) và provenance nguồn (`source_id`). Thuộc tính phân quyền thu về một khóa lọc duy nhất, là hàm thuần của thuộc tính dữ liệu, phục vụ pre-filter (NFR-06).
+- **FR-05** (M) Mỗi hyperedge khi dựng được gắn metadata phân quyền (scope, độ nhạy theo loại nội dung) và provenance nguồn (`source_id`). Thuộc tính phân quyền thu về một khóa lọc duy nhất, là hàm thuần của thuộc tính dữ liệu, phục vụ pre-filter (NFR-06). Khóa lọc phủ cả 3 namespace vector (hyperedges, entities, chunks): chunk mang ACL của tài liệu nguồn trực tiếp; entity dẫn xuất từ nhiều nguồn nhận mức theo quy tắc FR-11 (mức hạn chế nhất). Phân quyền chỉ trên hyperedge mà bỏ hở entity/chunk là tự tạo đúng lỗ hổng đi vòng mà khóa luận tố cáo ở ACL mức tài liệu.
 - **FR-06** (M) ACL đồng bộ sang payload của vector store để pre-filter được. Trường phân quyền phải được khai báo trước khi nạp dữ liệu. Có test đồng bộ hai nơi (vector store và graph store) chạy trong CI (NFR-03); đây là điểm dễ sinh lỗi nhất của kiến trúc.
 - **FR-31** (M) Hai bộ dữ liệu, mỗi bộ cho một loại chứng minh (ADR-008): tài liệu thật đã khử nhạy cảm chứng minh trích xuất n-ngôi tiếng Việt (ĐG6); corpus dựng có chủ đích ~40 tài liệu chứng minh rò rỉ/ACL. Khử nhạy cảm bằng công cụ của công ty với bí danh nhất quán trên mọi tài liệu (App01 → SRV-A); bảng ánh xạ bí danh giữ riêng, không nộp kèm khóa luận.
 - **FR-32** (S) Chuẩn hóa thực thể khi trích xuất: dùng CMDB làm từ điển thực thể chuẩn để gộp bí danh (App01, app01.company.vn); bảng thuật ngữ nội bộ đưa vào prompt trích xuất; bảng bí danh do LLM đề xuất, người xác nhận.
 
 ### 2.2 Truy hồi có phân quyền (lõi đóng góp)
 
-- **FR-07** (M) Pre-filter tại tầng vector: bộ lọc quyền áp dụng ngay trong quá trình tìm kiếm, dữ liệu không đủ quyền không bao giờ được tính điểm tương đồng (chốt 2, brief §6). Post-filter không được dùng thay cho pre-filter; cho phép thêm một bước post-check xác nhận lại quyền trên tập đã truy hồi làm phòng vệ chiều sâu chống lệch ACL giữa hai nơi lưu.
+- **FR-07** (M) Pre-filter tại tầng vector, áp trên cả 3 collection (hyperedges, entities, chunks): bộ lọc quyền áp dụng ngay trong quá trình tìm kiếm, dữ liệu không đủ quyền không bao giờ được tính điểm tương đồng (chốt 2, brief §6). Post-filter không được dùng thay cho pre-filter; cho phép thêm một bước post-check xác nhận lại quyền trên tập đã truy hồi làm phòng vệ chiều sâu chống lệch ACL giữa hai nơi lưu.
 - **FR-08** (M) Mọi đường truy hồi (vector và duyệt graph) đi qua một điểm chèn quyền duy nhất ở tầng ứng dụng; truy vấn graph được tiêm điều kiện lọc quyền.
 - **FR-09** (M) Bảng chính sách dạng dữ liệu cấu hình, gồm hai tầng: (a) nhóm quyền × loại nội dung → mức tiết lộ mặc định L0/L1/L2; (b) vai slot → che/hiện ở mức L1. Hoán đổi bảng chính sách không sửa code (chốt 3, brief §6). Không lưu cứng mức tiết lộ lên hyperedge.
 - **FR-10** (M) Ở mức L1, hệ che đúng đỉnh mang vai nhạy cảm theo chính sách và giữ các đỉnh còn lại. Chính sách mặc định phủ đủ 8 vai: triệu chứng, điều kiện, thời điểm công khai; nguyên nhân, nguồn, chủ thể hạ tầng, hành động khắc phục nhạy cảm (thường chứa lệnh và ngữ cảnh hạ tầng); người phụ trách hiện ở mức vai/nhóm, không hiện tên cá nhân. Admin chỉ chỉnh ngoại lệ.
@@ -78,17 +78,17 @@ Tính năng lõi có tên là **Permission-Aware Citation**: hỏi đáp có tr�
 ### 2.3 Hỏi đáp và trích dẫn
 
 - **FR-13** (M) Hỏi đáp tiếng Việt, mỗi câu trả lời kèm danh sách trích dẫn nguồn.
-- **FR-14** (M) Permission-Aware Citation: danh sách trích dẫn co giãn theo quyền người hỏi. Sự thật L1 hiện dạng placeholder "còn một phần bị hạn chế, liên hệ [nhóm chịu trách nhiệm]"; placeholder luôn hiện ở mức vai/nhóm (ví dụ DevOps), không hiện tên cá nhân, kể cả khi slot người phụ trách bị che. Sự thật L0 không xuất hiện trong ngữ cảnh, trong danh sách trích dẫn lẫn trong số đếm kết quả; điều này kiểm tất định ở tầng truy hồi.
+- **FR-14** (M) Permission-Aware Citation: danh sách trích dẫn co giãn theo quyền người hỏi. Sự thật L1 hiện dạng placeholder "còn một phần bị hạn chế, liên hệ [nhóm chịu trách nhiệm]"; placeholder luôn hiện ở mức vai/nhóm (ví dụ DevOps), không hiện tên cá nhân, kể cả khi slot người phụ trách bị che. Một sự thật được hiện placeholder (L1) hay vô hình hẳn (L0) do bảng chính sách quyết theo quy tắc ĐG2 - bản thân placeholder cũng là quyết định chính sách, không phải mặc định. Sự thật L0 không xuất hiện trong ngữ cảnh, trong danh sách trích dẫn lẫn trong số đếm kết quả; điều này kiểm tất định ở tầng truy hồi.
 - **FR-15** (M) Phần nội dung bị che ở mức L1 hiển thị thành vùng bôi đen trong câu trả lời, người dùng thấy rõ mình đang bị che cái gì ở vị trí nào. Vùng bôi đen chỉ là cách hiển thị phần đã bị che từ tầng truy hồi (FR-12), không phải cơ chế che.
-- **FR-16** (M) Khi ngữ cảnh truy hồi không chứa đáp án, hệ từ chối trả lời thay vì bịa. Đo bằng nhóm N7 trong Đo 2 (tiêu chí "không bịa"), không thuộc phạm vi assert tất định của Đo 1 vì đây là hành vi đầu ra LLM.
+- **FR-16** (M) Khi ngữ cảnh truy hồi không chứa đáp án, hệ từ chối trả lời thay vì bịa. Đo bằng nhóm N7 trong Đo 2 (tiêu chí "không bịa"), không thuộc phạm vi assert tất định của Đo 1 vì đây là hành vi đầu ra LLM. Thông điệp từ chối do không có đáp án và sự im lặng do L0 phải không phân biệt được từ phía người dùng; nếu phân biệt được thì đó là kênh suy luận phụ để dò vùng bị chặn.
 - **FR-33** (S) Nhãn tin cậy 5 tầng tô màu cho nguồn trích dẫn. Định nghĩa cụ thể 5 tầng chưa có trong tài liệu nguồn, chốt ở bước UX (câu hỏi mở, mục 6.2).
 
 ### 2.4 Danh tính, quản trị và giao diện
 
 - **FR-17** (M) Đăng nhập bằng JWT với vai trò gắn tài khoản. Admin tạo tài khoản, không có đăng ký công khai, không làm luồng quên mật khẩu/email/2FA. Tài khoản demo và vai khởi tạo bằng cấu hình seed, không phụ thuộc màn quản lý người dùng (FR-24).
-- **FR-18** (M) Nút "xem như" đổi vai ngay trong phiên (impersonation, không đăng xuất) và chế độ so sánh 2 cột cùng câu hỏi giữa 2 vai.
+- **FR-18** (M) Nút "xem như" đổi vai ngay trong phiên (impersonation, không đăng xuất) và chế độ so sánh 2 cột cùng câu hỏi giữa 2 vai. Phiên "xem như" đi qua đúng đường kiểm quyền như phiên đăng nhập thật, chỉ khác cách phát hành token; demo vì thế chứng minh cơ chế thật, không phải đường tắt trình diễn.
 - **FR-19** (M tối thiểu / S mở rộng) Panel hypergraph (Cytoscape.js): phần tối thiểu phục vụ demo nhịp 1 là MUST - hover một trích dẫn làm sáng hyperedge tương ứng, vẽ đúng cấu trúc hai phía đang lưu; phần khám phá đồ thị mở rộng là SHOULD.
-- **FR-20** (M tối thiểu / S mở rộng) Break-glass: luồng cơ bản xin - owner duyệt - tự hết hạn phục vụ demo nhịp 4 là MUST; phần mở rộng (chọn thời hạn linh hoạt, đính kèm ngữ cảnh) là SHOULD. Phạm vi cấp là vùng lân cận hyperedge: các hyperedge cách hyperedge bị chặn tối đa k bước trên đồ thị hai phía (k chốt ở bước kiến trúc). Có ô lý do; mọi lần cấp đều được ghi nhật ký để hậu kiểm. Không có tự động cấp: mọi truy cập khẩn cấp phải được owner xác nhận trước khi mở. Phương án "tự cấp trước, hậu kiểm sau" chỉ bàn trong chương Thảo luận, không cài đặt.
+- **FR-20** (M tối thiểu / S mở rộng) Break-glass: luồng cơ bản xin - owner duyệt - tự hết hạn phục vụ demo nhịp 4 là MUST; phần mở rộng (chọn thời hạn linh hoạt, đính kèm ngữ cảnh) là SHOULD. Phạm vi cấp là vùng lân cận hyperedge: các hyperedge cách hyperedge bị chặn tối đa k bước trên đồ thị hai phía (k chốt ở bước kiến trúc). Có ô lý do; mọi lần cấp đều được ghi nhật ký để hậu kiểm. Duyệt qua màn chờ của owner; thông báo đẩy (email, chat) ngoài phạm vi khóa luận. Không có tự động cấp: mọi truy cập khẩn cấp phải được owner xác nhận trước khi mở. Phương án "tự cấp trước, hậu kiểm sau" chỉ bàn trong chương Thảo luận, không cài đặt.
 - **FR-21** (M tối thiểu / S mở rộng) Màn kiểm thử bảo mật: chạy bộ test red-team trước hội đồng, hiển thị PASS/FAIL theo kịch bản là MUST; phần chỉnh ngoại lệ trực tiếp trên màn là SHOULD.
 - **FR-22** (S) Màn cấu hình chính sách: bảng nhóm quyền × loại nội dung → mức tiết lộ mặc định, admin chỉnh ngoại lệ. Đây là nơi chứng minh chính sách là dữ liệu cấu hình.
 - **FR-23** (M phần ghi / C màn hiển thị) Việc ghi sự kiện vào nhật ký (ai hỏi, chạm hyperedge nào, bị chặn ở mức nào, break-glass cấp cho ai) là MUST vì hậu kiểm của FR-20 và bằng chứng Đo 1 cần nó. Màn hiển thị nhật ký kiểm toán là COULD, cắt được nếu thiếu thời gian.
@@ -100,7 +100,7 @@ Tính năng lõi có tên là **Permission-Aware Citation**: hỏi đáp có tr�
 
 - **FR-27** (M) Bộ unit test bảo mật assert trực tiếp trên ngữ cảnh truy hồi (không trên câu trả lời LLM), chạy trong CI, viết trước khi cài đặt cơ chế (chốt 1, brief §6; ADR-007).
 - **FR-28** (M) Hệ chạy được 3 cấu hình đo (tắt phân quyền / nhị phân / L0-L1-L2) chỉ bằng thay bảng chính sách, không sửa code, không dựng hệ thứ hai. Baseline nhị phân là policy ép L1 xuống L0.
-- **FR-29** (M) Chế độ demo offline: cache toàn bộ truy vấn của kịch bản demo, chạy không cần mạng; kèm video demo dự phòng quay sẵn.
+- **FR-29** (M) Demo chạy live là mặc định; cache offline là fallback khi mạng hỏng, thu sẵn toàn bộ truy vấn của kịch bản demo. Câu demo chọn từ danh sách cố định, không gõ tự do (tránh trượt cache vì lệch một ký tự); chuẩn bị 5-10 câu "mồi" cho hội đồng chọn khi họ muốn tự thử. Kèm video demo dự phòng quay sẵn.
 - **FR-30** (M) Đo chi phí LLM thực tế trên 3-5 tài liệu tại T1 để ngoại suy toàn corpus trước khi chốt cấu hình trích xuất.
 
 ### 2.6 Sản phẩm quá trình (deliverable khóa luận, không phải tính năng hệ thống)
@@ -164,13 +164,13 @@ Connector thật tới Confluence/Jira/Git (thay bằng import thư mục; câu 
 
 ## 5. Tiêu chí thành công
 
-Khung phương pháp luận là chứng minh tính khả thi (existence proof), không phải benchmark cạnh tranh: không so đọ hiệu năng với hệ khác. Bằng chứng lõi là phản ví dụ, dựng một ca trong đó mọi tài liệu nguồn đều được phân quyền hoàn toàn đúng nhưng hệ không phân quyền hyperedge vẫn rò rỉ qua phép ghép 2-hop; một phản ví dụ là đủ giá trị khoa học. Tuyên bố giữ hẹp: "trong phạm vi tri thức sự cố IT nội bộ", không nói "hypergraph tốt hơn" chung chung.
+Khung phương pháp luận là chứng minh tính khả thi (existence proof), không phải benchmark cạnh tranh: không so đọ hiệu năng với hệ khác. Bằng chứng lõi là phản ví dụ, dựng một ca trong đó mọi tài liệu nguồn đều được phân quyền hoàn toàn đúng nhưng hệ không phân quyền hyperedge vẫn rò rỉ qua phép ghép 2-hop; một phản ví dụ là đủ giá trị khoa học. Tuyên bố giữ hẹp: "trong phạm vi tri thức sự cố IT nội bộ", không nói "hypergraph tốt hơn" chung chung. Phòng thủ trước câu "corpus tự dựng để hệ mình thắng": phản ví dụ chứng minh lỗ hổng của hệ KHÔNG phân quyền hyperedge, không phải điểm mạnh của hệ mình; tính đại diện của tình huống được neo bằng Composition-Risk Ratio đo trên 50 bản ghi thật (mục 5.4).
 
 Ba phép đo chạy ở T7 trên bộ câu hỏi 7 nhóm ~52 câu (N1 tra cứu đơn 6 · N2 tổng hợp đa nguồn 8 · N3 phụ thuộc điều kiện 12 · N4 ca tương tự 5 · N5 chạm quyền 10 · N6 phụ thuộc thời gian 5 · N7 không có đáp án 6). Ba nhóm then chốt: N3 chứng minh giá trị n-ngôi, N5 chứng minh ACL, N7 đo bịa đặt. Ví dụ xuyên suốt cả ba phép đo: sự cố App01 ngày 12/08.
 
 ### 5.1 Đo 1 - Bảo mật (tất định)
 
-Unit test khẳng định trên ngữ cảnh truy hồi, chạy trong CI, gồm bốn lớp assert áp cho cả đường vector lẫn đường duyệt graph: (a) không chứa hyperedge L0 với vai đang hỏi; (b) không chứa nội dung các slot L1 đã bị che, kiểm theo danh sách slot bị che do tầng truy hồi xuất ra (không so khớp chuỗi thuần để tránh dương tính giả); (c) đổi vai rồi hỏi lại cùng câu, ngữ cảnh thu hẹp ngay ở truy vấn kế tiếp (NFR-09); (d) ca đa nguồn khác quyền: hyperedge dẫn xuất tôn trọng mức hạn chế nhất của các nguồn (FR-11). Đối chứng là chính hệ thống khi tắt cơ chế phân quyền; cấu hình tắt này dùng chung với cấu hình (1) của Đo 3. Kết quả kỳ vọng: 100% test pass; một test fail là lỗi chặn phát hành.
+Unit test khẳng định trên ngữ cảnh truy hồi, chạy trong CI, gồm bốn lớp assert áp cho mọi đường truy hồi (cả 3 collection vector lẫn duyệt graph): (a) không chứa hyperedge L0 với vai đang hỏi; (b) không chứa nội dung các slot L1 đã bị che, kiểm theo danh sách slot bị che do tầng truy hồi xuất ra (không so khớp chuỗi thuần để tránh dương tính giả); (c) đổi vai rồi hỏi lại cùng câu, ngữ cảnh thu hẹp ngay ở truy vấn kế tiếp (NFR-09); (d) ca đa nguồn khác quyền: hyperedge dẫn xuất tôn trọng mức hạn chế nhất của các nguồn (FR-11). Đối chứng là chính hệ thống khi tắt cơ chế phân quyền; cấu hình tắt này dùng chung với cấu hình (1) của Đo 3. Kết quả kỳ vọng: 100% test pass; một test fail là lỗi chặn phát hành.
 
 ### 5.2 Đo 2 - Chất lượng câu trả lời
 
@@ -178,7 +178,7 @@ Bộ vàng 30 câu (tập con gán nhãn tay của bộ 52 câu), chấm bằng 
 
 ### 5.3 Đo 3 - Cái giá của an toàn
 
-Recall của Đo 3 là recall truy hồi tất định, tính trên nhãn truy hồi vàng (mục 2.6): tỷ lệ hyperedge kỳ vọng xuất hiện trong ngữ cảnh truy hồi, tính theo từng vai người hỏi; không đo qua LLM. So 3 cấu hình trên cùng hệ thống, chỉ đổi bảng chính sách (một biến duy nhất): (1) tắt phân quyền, cho trần recall; (2) nhị phân thấy/không, tức policy ép L1 xuống L0, là baseline; (3) L0/L1/L2. Phát biểu cần chứng minh: recall(3) lớn hơn recall(2) trên các nhóm N3 và N5, báo cáo con số kèm khoảng tin cậy bootstrap; không đặt ngưỡng tuyệt đối (đã chốt đổi framing), sức thuyết phục nằm ở đồ thị "hai đường một khoảng cách" trong khi cả (2) và (3) đều pass Đo 1.
+Recall của Đo 3 là recall truy hồi tất định, tính trên nhãn truy hồi vàng (mục 2.6): tỷ lệ hyperedge kỳ vọng xuất hiện trong ngữ cảnh truy hồi, tính theo từng vai người hỏi; không đo qua LLM. So 3 cấu hình trên cùng hệ thống, chỉ đổi bảng chính sách (một biến duy nhất): (1) tắt phân quyền, chính nó cũng là một bảng chính sách (mọi vai → L2), cho trần recall; (2) nhị phân thấy/không, tức policy ép L1 xuống L0, là baseline; (3) L0/L1/L2. Phát biểu cần chứng minh: recall(3) lớn hơn recall(2) trên các nhóm N3 và N5, báo cáo con số kèm khoảng tin cậy bootstrap; không đặt ngưỡng tuyệt đối (đã chốt đổi framing), sức thuyết phục nằm ở đồ thị "hai đường một khoảng cách" trong khi cả (2) và (3) đều pass Đo 1.
 
 ### 5.4 Kiểm chứng giả định nền (T1)
 
@@ -188,6 +188,7 @@ Recall của Đo 3 là recall truy hồi tất định, tính trên nhãn truy h
 
 - Đo 3 chính là counter-metric của Đo 1: an toàn tuyệt đối mà recall sụp thì cơ chế vô dụng.
 - Rò rỉ metadata của L1 là cái giá được thừa nhận có kiểm soát; đường cong recall so với mức rò rỉ vào chương Thảo luận.
+- Kênh suy luận phụ qua sự khác biệt thông điệp: từ chối vì không có đáp án và im lặng vì L0 phải giống hệt nhau (FR-16).
 - Chi phí LLM lũy kế hiển thị công khai (FR-25) để chứng minh tính khả thi kinh tế.
 
 ### 5.6 Mốc nghiệm thu
@@ -215,6 +216,7 @@ Recall của Đo 3 là recall truy hồi tất định, tính trên nhãn truy h
 | R8 | Chi phí API vượt dự toán | Thấp | Đo cost T1 trên 3-5 tài liệu (FR-30); DeepSeek dựng một domain cỡ paper chỉ ~0,3-0,8 USD |
 | R9 | Giả định nền "sự cố IT chủ yếu n-ngôi" chưa kiểm chứng | Trung bình | Đếm 50 bản ghi thật ở T1 (5.4); thế thủ đã dựng sẵn, Composition-Risk Ratio là con số chống lưng |
 | R10 | Upstream không phải production-track: không release/tag, không PyPI, không Docker, push cuối 05/2026, đội một lab | Trung bình | Ghim commit cụ thể, vendor vào repo khóa luận, tự viết Dockerfile. Đây là lựa chọn có ý thức vì hypergraph là giá trị cốt lõi của đóng góp; chỉ xét lại LightRAG nếu M1 trượt vì upstream chứ không vì thiết kế |
+| R11 | Lịch cá nhân (ốm, việc công ty) hoặc máy chủ demo hỏng đúng ngày bảo vệ | Thấp | M3 đóng băng sớm + thứ tự cắt định sẵn ở T5-T6 hấp thụ trượt lịch; toàn stack chạy được bằng docker-compose trên laptop làm phương án demo dự phòng, cộng video quay sẵn (FR-29) |
 
 ### 6.2 Câu hỏi mở (chương Thảo luận, không phải việc phải giải)
 
@@ -228,8 +230,8 @@ Recall của Đo 3 là recall truy hồi tất định, tính trên nhãn truy h
 
 | Tuần | Trọng tâm | Mốc |
 |---|---|---|
-| T1 | Dồn toàn lực cho rủi ro tích hợp (R3): adapter Qdrant/Neo4j (trước khi port: đọc lại seam storage, đối chiếu donor v1.1.1 với main, xác minh `full_scan_threshold`) + POC phân quyền xuyên suốt trên dữ liệu dựng tay với lược đồ vai tối giản 2-3 vai (10-20 tài liệu, 2 nhóm quyền); phác 2 hướng spike R1 (nửa ngày); đo cost; bản 1 trang gửi GVHD | M1 (hẹp: một truy vấn, hai tài khoản, hai kết quả, trên dữ liệu dựng tay) |
-| T2 | Lược đồ 8 vai đầy đủ, prompt trích xuất tiếng Việt, bộ vàng 30 câu + nhãn truy hồi vàng, corpus ~40 tài liệu; đo 3 chỉ số n-ngôi + CT-03 trên 50 bản ghi; phần chính spike R1; viết chương 1-2 | |
+| T1 | Dồn toàn lực cho rủi ro tích hợp (R3): adapter Qdrant/Neo4j (trước khi port: đọc lại seam storage, đối chiếu donor v1.1.1 với main, xác minh `full_scan_threshold`) + POC phân quyền xuyên suốt trên dữ liệu dựng tay TIẾNG VIỆT với lược đồ vai tối giản 2-3 vai (10-20 tài liệu, 2 nhóm quyền) - chạy tiếng Việt ngay từ POC để lộ sớm rủi ro tokenization/trích xuất; kiểm số tổ hợp khóa lọc từ bản đồ ACL corpus (phải ở mức chục, không phải trăm); phác 2 hướng spike R1 (nửa ngày); đo cost; bản 1 trang gửi GVHD | M1 (hẹp: một truy vấn, hai tài khoản, hai kết quả, trên dữ liệu dựng tay) |
+| T2 | Lược đồ 8 vai đầy đủ, prompt trích xuất tiếng Việt, bộ vàng 30 câu + nhãn truy hồi vàng, corpus ~40 tài liệu; đo 3 chỉ số n-ngôi + CT-03 trên 50 bản ghi; phần chính spike R1; viết chương 1-2. Chốt cứng: phương pháp luận (existence proof, 3 phép đo) phải được GVHD xác nhận chậm nhất cuối T2; sau đó phản hồi GVHD chỉ correct-course phần trình bày, không đổi khung đo | |
 | T3 | Lõi đóng góp: bảng chính sách L0/L1/L2, ca đa nguồn khác quyền (chốt kết quả spike R1), test bảo mật viết trước; viết chương 3 | |
 | T4 | Backend hoàn chỉnh, Permission-Aware Citation, chạy Đo 3 lần đầu; xong chương 3 | M2 |
 | T5-T6 | UI theo đường demo, bộ 52 câu, Đo 2; màn đăng nhập và quản lý người dùng (FR-17, FR-24) đóng khung 2-3 ngày. Nếu kẹt, cắt theo thứ tự định sẵn: FR-33 nhãn tin cậy → so sánh 2 cột của FR-18 → FR-22 → phần mở rộng FR-19 (giữ hover tối thiểu) | M3 |
