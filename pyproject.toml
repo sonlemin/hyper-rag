@@ -24,6 +24,9 @@ dependencies = [
     "pydantic>=2",
     "qdrant-client>=1.12",
     "fastapi>=0.115",
+    # Bang chinh sach la file YAML (AD-6). Khai tuong minh: truoc do pyyaml chi
+    # la dep bac cau qua transformers, go transformers la loader chet theo.
+    "pyyaml>=6",
     "uvicorn>=0.30",
 ]
 
