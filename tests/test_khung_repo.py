@@ -28,6 +28,21 @@ def test_import_vendor_hypergraphrag():
     assert QueryParam is not None
 
 
+def _major_minor(raw: str) -> tuple[int, int]:
+    """Lấy (major, minor) từ chuỗi phiên bản, chịu được pre-release kiểu 1.13.0rc1."""
+    parts = []
+    for piece in raw.split(".")[:2]:
+        digits = ""
+        for ch in piece:
+            if not ch.isdigit():
+                break
+            digits += ch
+        parts.append(int(digits) if digits else 0)
+    while len(parts) < 2:
+        parts.append(0)
+    return (parts[0], parts[1])
+
+
 def test_ep_phien_ban_dependency():
     """Chốt pitfall spike 29/08: qdrant-client >=1.12 và pydantic >=2."""
     from importlib.metadata import version
@@ -35,9 +50,8 @@ def test_ep_phien_ban_dependency():
     import pydantic
 
     qdrant_raw = version("qdrant-client")
-    qdrant_ver = tuple(int(p) for p in qdrant_raw.split(".")[:2])
-    assert qdrant_ver >= (1, 12), f"qdrant-client {qdrant_raw} < 1.12"
-    assert pydantic.VERSION.startswith("2."), f"pydantic {pydantic.VERSION} < 2"
+    assert _major_minor(qdrant_raw) >= (1, 12), f"qdrant-client {qdrant_raw} < 1.12"
+    assert _major_minor(pydantic.VERSION)[0] >= 2, f"pydantic {pydantic.VERSION} < 2"
 
 
 def test_api_health():

@@ -34,9 +34,14 @@ def nap_key_tu_env() -> None:
     env_file = REPO_ROOT / ".env"
     if env_file.exists():
         for line in env_file.read_text().splitlines():
-            if line.startswith("OPENAI_API_KEY=") and len(line.split("=", 1)[1].strip()) > 0:
-                os.environ.setdefault("OPENAI_API_KEY", line.split("=", 1)[1].strip())
-                break
+            line = line.strip()
+            if line.startswith("export "):
+                line = line[len("export "):].lstrip()
+            if line.startswith("OPENAI_API_KEY="):
+                value = line.split("=", 1)[1].strip().strip("'\"")
+                if value:
+                    os.environ.setdefault("OPENAI_API_KEY", value)
+                    break
     if not os.environ.get("OPENAI_API_KEY"):
         print(
             "LOI: thieu bien OPENAI_API_KEY (khai trong .env goc repo hoac export truoc khi chay)",
