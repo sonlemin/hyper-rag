@@ -76,7 +76,7 @@
 #   nếu chạy repair thì chép lại khối chú thích từ git history.
 
 generated: 08-31-2026 21:50
-last_updated: 08-31-2026 23:35
+last_updated: 08-31-2026 23:45
 project: hyper_graph_rag
 project_key: NOKEY
 tracking_system: file-system
@@ -85,7 +85,7 @@ development_status:
   # Epic 1 - TEST: chạy TD trước khi vào epic (kế hoạch test bảo mật toàn hệ);
   # AT test-first cho 1-2 đến 1-6 (bộ test Đo 1 nền là đặc tả); RV+TR trước cổng M1 tại 1-7.
   epic-1: in-progress
-  1-1-dựng-stack-docker-và-chạy-truy-vấn-đầu-tiên-qua-engine-upstr: review  # sau story này chốt lệnh `uv run pytest`; chạy CI tối giản (pytest mỗi commit)
+  1-1-dựng-stack-docker-và-chạy-truy-vấn-đầu-tiên-qua-engine-upstr: done  # sau story này chốt lệnh `uv run pytest`; chạy CI tối giản (pytest mỗi commit)
   1-2-ngữ-cảnh-quyền-fail-closed-và-chính-sách-dạng-dữ-liệu: backlog  # AT: test fail-closed + nạp YAML chính sách viết trước khi code (FR-27)
   1-3-adapter-qdrant-với-pre-filter-theo-khóa: backlog  # AT: test pre-filter tầng vector viết trước; assert trên ngữ cảnh truy hồi
   1-4-adapter-neo4j-với-where-injection-và-cấu-trúc-hai-phía: backlog  # AT: test WHERE-injection và hai phía hyperedge viết trước
