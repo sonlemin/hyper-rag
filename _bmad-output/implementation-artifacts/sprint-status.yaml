@@ -1,0 +1,140 @@
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created, ready for development
+#   - in-progress: Developer actively working on implementation
+#   - review: Implementation complete, ready for review
+#   - done: Story completed
+
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+
+# Action Item Status:
+#   - open: Committed during a retrospective, not yet addressed
+#   - in-progress: Actively being worked on
+#   - done: Completed
+
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when its first story starts (via build's sprint sync)
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates the next story after the previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+# - Retrospective appends its action items to action_items; the status view surfaces open ones
+generated: 08-31-2026 21:50
+last_updated: 08-31-2026 21:50
+project: hyper_graph_rag
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+development_status:
+  epic-1: backlog
+  1-1-dựng-stack-docker-và-chạy-truy-vấn-đầu-tiên-qua-engine-upstr: backlog
+  1-2-ngữ-cảnh-quyền-fail-closed-và-chính-sách-dạng-dữ-liệu: backlog
+  1-3-adapter-qdrant-với-pre-filter-theo-khóa: backlog
+  1-4-adapter-neo4j-với-where-injection-và-cấu-trúc-hai-phía: backlog
+  1-5-adapter-kv-và-tắt-cache-llm: backlog
+  1-6-tầng-che-dùng-chung-theo-chính-sách-slot: backlog
+  1-7-cổng-m1-hai-tài-khoản-hai-kết-quả-kèm-bộ-test-bảo-mật-nền: backlog
+  epic-1-retrospective: optional
+
+  epic-2: backlog
+  2-1-trả-nợ-sàn-t1-hợp-nhất-khóa-đa-nguồn-và-đối-chiếu-hai-kho: backlog
+  2-2-wrapper-llm-embedding-đếm-chi-phí-qua-audit-port: backlog
+  2-3-import-thư-mục-và-pipeline-ingest-tuần-tự: backlog
+  2-4-trích-xuất-fact-8-vai-slot-tiếng-việt: backlog
+  2-5-bộ-vàng-trích-xuất: backlog
+  2-6-vòng-lặp-precision-và-điểm-quyết-r2: backlog
+  2-7-màn-nạp-tài-liệu-web-tối-giản: backlog
+  2-8-corpus-dựng-40-tài-liệu: backlog
+  2-9-bộ-câu-hỏi-52-câu-bộ-vàng-30-câu-và-nhãn-truy-hồi-vàng: backlog
+  2-10-khảo-sát-50-bản-ghi-thật-và-thí-nghiệm-ct-03: backlog
+  2-11-không-gian-real-và-ingest-dữ-liệu-thật-khử-nhạy-cảm: backlog
+  2-12-chuẩn-hóa-thực-thể-khi-trích-xuất: backlog
+  epic-2-retrospective: optional
+
+  epic-3: backlog
+  3-1-xác-thực-jwt-backend-và-seed-tài-khoản: backlog
+  3-2-bảng-chính-sách-đầy-đủ-validator-đơn-điệu-và-4-cấu-hình-đo: backlog
+  3-3-endpoint-hỏi-đáp-với-envelope-thống-nhất: backlog
+  3-4-permission-aware-citation: backlog
+  3-5-từ-chối-hai-tầng-không-phân-biệt-được: backlog
+  3-6-audit-hai-tầng-đầy-đủ: backlog
+  3-7-endpoint-đồ-thị-theo-quyền: backlog
+  3-8-cổng-m2-demo-toàn-cơ-chế-bằng-curl: backlog
+  epic-3-retrospective: optional
+
+  epic-4: backlog
+  4-1-khung-web-hệ-token-thiết-kế-và-khung-app: backlog
+  4-2-màn-đăng-nhập-và-vòng-đời-phiên: backlog
+  4-3-chat-console-và-các-trạng-thái-lượt: backlog
+  4-4-cite-row-slab-bôi-đen-và-dòng-hạn-chế-l1: backlog
+  4-5-xem-như-api-đổi-vai-và-ui: backlog
+  4-6-drawer-đồ-thị-kiểu-paper-với-hover-trích-dẫn: backlog
+  4-7-đường-demo-ba-nhịp-đầu-chạy-thật: backlog
+  4-8-khám-phá-đồ-thị-mở-rộng-should-cắt-được: backlog
+  epic-4-retrospective: optional
+
+  epic-5: backlog
+  5-1-api-xin-break-glass: backlog
+  5-2-vùng-cấp-hai-pha-duyệt-và-cấp-chủ-động: backlog
+  5-3-đường-truy-vấn-phụ-theo-grant-và-vòng-đời-hết-hạn: backlog
+  5-4-ui-phía-người-xin: backlog
+  5-5-ui-hàng-chờ-owner: backlog
+  5-6-nhịp-4-demo-end-to-end: backlog
+  epic-5-retrospective: optional
+
+  epic-6: backlog
+  6-1-package-red-team-dùng-chung-ci-và-màn-live: backlog
+  6-2-rt-06-kịch-bản-đo-oracle-embedding: backlog
+  6-3-màn-kiểm-thử-bảo-mật: backlog
+  6-4-cache-offline-và-journal-audit: backlog
+  6-5-toggle-live-offline-và-demo-offline-trọn-4-nhịp: backlog
+  epic-6-retrospective: optional
+
+  epic-7: backlog
+  7-1-bộ-đo-1-đầy-đủ-sáu-lớp: backlog
+  7-2-snapshot-đo-và-khôi-phục-tất-định: backlog
+  7-3-harness-đo-3-recall-tất-định-bốn-cấu-hình: backlog
+  7-4-harness-đo-2-judge-chéo-model-và-vòng-so-sánh-chunk: backlog
+  7-5-chạy-chính-thức-t7-và-báo-cáo-chương-4: backlog
+  epic-7-retrospective: optional
+
+  epic-8: backlog
+  8-1-màn-cấu-hình-chính-sách: backlog
+  8-2-so-sánh-2-cột: backlog
+  8-3-màn-nhật-ký-kiểm-toán: backlog
+  8-4-quản-lý-người-dùng-tối-giản: backlog
+  8-5-màn-tình-trạng-hệ-thống: backlog
+  8-6-nhãn-tin-cậy-5-tầng: backlog
+  epic-8-retrospective: optional
+
+# Concern còn treo từ cổng readiness 31/08/2026 (2 mâu thuẫn 3.2 và 8.4 đã vá trong epics.md)
+action_items:
+  - epic: 3
+    action: "Story 3.8 (cổng M2) cần 5.1-5.3 xong trước; khi tới Epic 3 chen backend break-glass trước 3.8"
+    owner: "sonlm"
+    status: open
+  - epic: 3
+    action: "Chốt wording template từ chối FR-16 (EXPERIENCE.md Open Question 2) trong Story 3.5, ghi ADR 5 dòng"
+    owner: "sonlm"
+    status: open
+  - epic: 2
+    action: "Kết quả spike R1 đa nguồn (SPINE Deferred) chưa có story sở hữu; ghi nhận trong Story 2.1 hoặc chấp nhận mức sàn bảo thủ"
+    owner: "sonlm"
+    status: open
+  - epic: 7
+    action: "Rubric Đo 2 chốt với GVHD cuối T2 (Story 7.4 phụ thuộc); lên lịch gửi GVHD trước khi hết Epic 2, có fallback R12"
+    owner: "sonlm"
+    status: open
+  - epic: 4
+    action: "Cập nhật EXPERIENCE.md Open Questions 4 và 7 (toggle demo/admin, poll 5 giây) cho khớp AD-10/AD-14 đã chốt"
+    owner: "sonlm"
+    status: open
