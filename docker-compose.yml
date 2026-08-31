@@ -76,6 +76,10 @@ services:
       POSTGRES_DB: "${POSTGRES_DB:?thieu POSTGRES_DB trong .env.server/.env.laptop}"
       OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
       DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-}"
+    # Quyet dinh pho cong (chot 31/08/2026): 8000 publish cong khai co chu dich cho demo;
+    # tu Epic 3 moi endpoint du lieu bat buoc JWT. DB va ollama khong bao gio publish.
+    # Luu y: cong do Docker publish di vong qua UFW (iptables chain DOCKER), khong dua vao UFW;
+    # muon siet them sau khi co web thi doi sang "127.0.0.1:8000:8000" + reverse proxy mot moi.
     ports:
       - "8000:8000"
     depends_on:
@@ -95,7 +99,7 @@ services:
 
   # Profile local-llm: chi khai bao, khong bat mac dinh, khong pull model o story 1.1.
   ollama:
-    image: "ollama/ollama:${OLLAMA_TAG:-latest}"
+    image: "ollama/ollama:${OLLAMA_TAG:-0.33.2}"
     profiles: ["local-llm"]
     volumes:
       - ollama_data:/root/.ollama
