@@ -34,6 +34,35 @@
 # Mã skill: TD=bmad-testarch-test-design, TF=bmad-testarch-framework, CI=bmad-testarch-ci,
 #   AT=bmad-testarch-atdd, TA=bmad-testarch-automate, RV=bmad-testarch-test-review,
 #   NR=bmad-testarch-nfr, TR=bmad-testarch-trace, QA=bmad-qa-generate-e2e-tests
+#
+# CÁCH CHẠY 10 SKILL TEST CHO SẢN PHẨM NÀY (mỗi skill một context window mới):
+#   1. TD `bmad-testarch-test-design` - gõ "lets design test plan". Chạy 2 lần: trước Epic 1
+#      (đầu vào PRD + SPINE, ra test plan bảo mật/backend theo rủi ro rò tri thức) và trước
+#      Epic 4 (kế hoạch E2E UI). Ghi vào _bmad-output/test-artifacts/.
+#   2. AT `bmad-testarch-atdd` - gõ "lets write acceptance tests" kèm story key. Quan trọng
+#      nhất, khớp FR-27: test viết trước, là đặc tả, code chỉ làm test xanh. Bắt buộc cho
+#      story cơ chế bảo mật: 1-2..1-6, 2-1, 3-1/3-2/3-4/3-5/3-7, 5-1..5-3, 6-2, 8-1.
+#      Khi chạy nhắc 3 chốt brief §6: assert trên ngữ cảnh truy hồi (không trên câu trả lời
+#      LLM), pre-filter tầng vector, assert mã lỗi trên trường `code`.
+#   3. CI `bmad-testarch-ci` - gõ "lets setup CI pipeline". Tối giản sau 1-1 (khi có
+#      pyproject.toml, chốt `uv run pytest`), hoàn thiện ở 6-1 (red-team làm quality gate).
+#   4. TF `bmad-testarch-framework` - gõ "lets setup test framework", chọn Playwright.
+#      Chỉ cho Next.js, chạy tại 4-1. Không dùng cho Python (pytest do 1-1 tự dựng).
+#   5. QA `bmad-qa-generate-e2e-tests` - gõ "create qa automated tests for [feature]".
+#      Sau khi story xong: endpoint Epic 3, các màn Epic 4/5/8, demo offline 6-5.
+#      Không dùng để review code hay validate story.
+#   6. TA `bmad-testarch-automate` - gõ "lets expand test coverage". Cho phần không phải
+#      cơ chế bảo mật: 2-2, 2-3, 3-6, 7-2...
+#   7. RV `bmad-testarch-test-review` - gõ "lets review tests" (chấm 0-100). Trước mỗi cổng
+#      M1 (1-7), M2 (3-8), T7 (7-5), thêm cuối Epic 5.
+#   8. TR `bmad-testarch-trace` - gõ "lets create traceability matrix". Cùng nhịp RV tại
+#      3 cổng, đối chiếu test với FR Coverage Map trong epics.md; bộ vàng 2-9 là đầu vào
+#      cho lần chạy ở Epic 7.
+#   9. NR `bmad-testarch-nfr` - gõ "audit NFR evidence". Chỉ chạy khi đã có evidence,
+#      gom về 7-5 làm nguyên liệu chương 4; kết quả đo 2-6, 2-10 là bằng chứng đầu vào.
+#  10. TMT `bmad-teach-me-testing` - gõ "lets learn testing". Tùy chọn, 7 buổi học nền tảng,
+#      không nằm trong luồng story.
+#
 # Nguyên tắc chung cho sản phẩm này:
 #   - AT (red-phase, test viết trước) là bắt buộc cho mọi story cơ chế bảo mật theo FR-27:
 #     test là đặc tả, assert trên ngữ cảnh truy hồi chứ không trên câu trả lời LLM (chốt brief §6).
