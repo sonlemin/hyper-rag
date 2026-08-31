@@ -28,6 +28,24 @@
 # - Developer typically creates the next story after the previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
+
+# CHÚ THÍCH TEST SKILL (toàn sản phẩm):
+# =====================================
+# Mã skill: TD=bmad-testarch-test-design, TF=bmad-testarch-framework, CI=bmad-testarch-ci,
+#   AT=bmad-testarch-atdd, TA=bmad-testarch-automate, RV=bmad-testarch-test-review,
+#   NR=bmad-testarch-nfr, TR=bmad-testarch-trace, QA=bmad-qa-generate-e2e-tests
+# Nguyên tắc chung cho sản phẩm này:
+#   - AT (red-phase, test viết trước) là bắt buộc cho mọi story cơ chế bảo mật theo FR-27:
+#     test là đặc tả, assert trên ngữ cảnh truy hồi chứ không trên câu trả lời LLM (chốt brief §6).
+#   - TD chạy 2 lần: trước Epic 1 (kế hoạch test bảo mật/backend) và trước Epic 4 (kế hoạch E2E UI).
+#   - TF chỉ dùng khởi tạo Playwright cho Next.js (Epic 4); pytest do story 1-1 tự dựng qua uv.
+#   - CI chạy tối giản sau 1-1 (pytest xanh mỗi commit), hoàn thiện ở 6-1 (gắn red-team vào pipeline).
+#   - RV + TR chạy trước mỗi cổng: M1 (1-7), M2 (3-8), chạy chính thức T7 (7-5).
+#   - NR gom bằng chứng NFR ở Epic 7, khi đã có evidence từ Epic 1-6.
+#   - Mỗi skill chạy trong một context window mới.
+# Lưu ý: lệnh "validate/fix sprint status" có thể sinh lại file này và làm mất chú thích;
+#   nếu chạy repair thì chép lại khối chú thích từ git history.
+
 generated: 08-31-2026 21:50
 last_updated: 08-31-2026 21:50
 project: hyper_graph_rag
@@ -35,85 +53,101 @@ project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 development_status:
+  # Epic 1 - TEST: chạy TD trước khi vào epic (kế hoạch test bảo mật toàn hệ);
+  # AT test-first cho 1-2 đến 1-6 (bộ test Đo 1 nền là đặc tả); RV+TR trước cổng M1 tại 1-7.
   epic-1: backlog
-  1-1-dựng-stack-docker-và-chạy-truy-vấn-đầu-tiên-qua-engine-upstr: backlog
-  1-2-ngữ-cảnh-quyền-fail-closed-và-chính-sách-dạng-dữ-liệu: backlog
-  1-3-adapter-qdrant-với-pre-filter-theo-khóa: backlog
-  1-4-adapter-neo4j-với-where-injection-và-cấu-trúc-hai-phía: backlog
-  1-5-adapter-kv-và-tắt-cache-llm: backlog
-  1-6-tầng-che-dùng-chung-theo-chính-sách-slot: backlog
-  1-7-cổng-m1-hai-tài-khoản-hai-kết-quả-kèm-bộ-test-bảo-mật-nền: backlog
+  1-1-dựng-stack-docker-và-chạy-truy-vấn-đầu-tiên-qua-engine-upstr: backlog  # sau story này chốt lệnh `uv run pytest`; chạy CI tối giản (pytest mỗi commit)
+  1-2-ngữ-cảnh-quyền-fail-closed-và-chính-sách-dạng-dữ-liệu: backlog  # AT: test fail-closed + nạp YAML chính sách viết trước khi code (FR-27)
+  1-3-adapter-qdrant-với-pre-filter-theo-khóa: backlog  # AT: test pre-filter tầng vector viết trước; assert trên ngữ cảnh truy hồi
+  1-4-adapter-neo4j-với-where-injection-và-cấu-trúc-hai-phía: backlog  # AT: test WHERE-injection và hai phía hyperedge viết trước
+  1-5-adapter-kv-và-tắt-cache-llm: backlog  # AT: test cache LLM đã tắt + KV không rò theo quyền viết trước
+  1-6-tầng-che-dùng-chung-theo-chính-sách-slot: backlog  # AT: test che theo 8 vai slot viết trước; slot là danh mục một nơi trong core/
+  1-7-cổng-m1-hai-tài-khoản-hai-kết-quả-kèm-bộ-test-bảo-mật-nền: backlog  # TR: ma trận test Đo 1 nền <-> FR bảo mật; RV: audit chất lượng test trước cổng M1
   epic-1-retrospective: optional
 
+  # Epic 2 - TEST: AT cho story bảo mật (2-1); TA mở rộng coverage pipeline ingest;
+  # bộ vàng 2-5 và 2-9 tự thân là bộ test, không cần skill sinh test riêng.
   epic-2: backlog
-  2-1-trả-nợ-sàn-t1-hợp-nhất-khóa-đa-nguồn-và-đối-chiếu-hai-kho: backlog
-  2-2-wrapper-llm-embedding-đếm-chi-phí-qua-audit-port: backlog
-  2-3-import-thư-mục-và-pipeline-ingest-tuần-tự: backlog
-  2-4-trích-xuất-fact-8-vai-slot-tiếng-việt: backlog
-  2-5-bộ-vàng-trích-xuất: backlog
-  2-6-vòng-lặp-precision-và-điểm-quyết-r2: backlog
-  2-7-màn-nạp-tài-liệu-web-tối-giản: backlog
-  2-8-corpus-dựng-40-tài-liệu: backlog
-  2-9-bộ-câu-hỏi-52-câu-bộ-vàng-30-câu-và-nhãn-truy-hồi-vàng: backlog
-  2-10-khảo-sát-50-bản-ghi-thật-và-thí-nghiệm-ct-03: backlog
-  2-11-không-gian-real-và-ingest-dữ-liệu-thật-khử-nhạy-cảm: backlog
-  2-12-chuẩn-hóa-thực-thể-khi-trích-xuất: backlog
+  2-1-trả-nợ-sàn-t1-hợp-nhất-khóa-đa-nguồn-và-đối-chiếu-hai-kho: backlog  # AT: test hợp nhất khóa đa nguồn + đối chiếu hai kho viết trước (story bảo mật)
+  2-2-wrapper-llm-embedding-đếm-chi-phí-qua-audit-port: backlog  # TA: unit test đếm chi phí, mock LLM, không gọi API thật
+  2-3-import-thư-mục-và-pipeline-ingest-tuần-tự: backlog  # TA: test pipeline tuần tự (idempotent, chạy lại giữa chừng)
+  2-4-trích-xuất-fact-8-vai-slot-tiếng-việt: backlog  # AT: chốt tiêu chí chấm trích xuất trước khi tinh chỉnh prompt
+  2-5-bộ-vàng-trích-xuất: backlog  # bộ vàng chính là red-phase spec cho 2-4/2-6; không cần skill riêng
+  2-6-vòng-lặp-precision-và-điểm-quyết-r2: backlog  # đo bằng bộ vàng 2-5; ghi kết quả làm bằng chứng cho NR ở Epic 7
+  2-7-màn-nạp-tài-liệu-web-tối-giản: backlog  # QA: E2E màn nạp, làm sau khi TF dựng Playwright ở Epic 4 (hoặc dồn về 4-x)
+  2-8-corpus-dựng-40-tài-liệu: backlog  # dữ liệu đo, không cần test skill
+  2-9-bộ-câu-hỏi-52-câu-bộ-vàng-30-câu-và-nhãn-truy-hồi-vàng: backlog  # dữ liệu vàng cho Đo 2/Đo 3; là đầu vào TR ở Epic 7
+  2-10-khảo-sát-50-bản-ghi-thật-và-thí-nghiệm-ct-03: backlog  # thí nghiệm, lưu kết quả làm bằng chứng NR
+  2-11-không-gian-real-và-ingest-dữ-liệu-thật-khử-nhạy-cảm: backlog  # TA: test ACL đúng khoang real; kiểm tra khử nhạy cảm trước ingest
+  2-12-chuẩn-hóa-thực-thể-khi-trích-xuất: backlog  # TA: test chuẩn hóa + cập nhật bộ vàng 2-5 tương ứng
   epic-2-retrospective: optional
 
+  # Epic 3 - TEST: AT cho mọi story cơ chế (3-1, 3-2, 3-4, 3-5, 3-7); QA sinh test API
+  # cho endpoint đã xong; RV+TR trước cổng M2 tại 3-8. Test assert trên mã lỗi `code`.
   epic-3: backlog
-  3-1-xác-thực-jwt-backend-và-seed-tài-khoản: backlog
-  3-2-bảng-chính-sách-đầy-đủ-validator-đơn-điệu-và-4-cấu-hình-đo: backlog
-  3-3-endpoint-hỏi-đáp-với-envelope-thống-nhất: backlog
-  3-4-permission-aware-citation: backlog
-  3-5-từ-chối-hai-tầng-không-phân-biệt-được: backlog
-  3-6-audit-hai-tầng-đầy-đủ: backlog
-  3-7-endpoint-đồ-thị-theo-quyền: backlog
-  3-8-cổng-m2-demo-toàn-cơ-chế-bằng-curl: backlog
+  3-1-xác-thực-jwt-backend-và-seed-tài-khoản: backlog  # AT: test JWT hết hạn/sai chữ ký/thiếu token viết trước; QA: test API auth
+  3-2-bảng-chính-sách-đầy-đủ-validator-đơn-điệu-và-4-cấu-hình-đo: backlog  # AT: test validator đơn điệu + nạp 4 cấu hình đo viết trước (đổi YAML không sửa code)
+  3-3-endpoint-hỏi-đáp-với-envelope-thống-nhất: backlog  # QA: test API envelope {error:{code,message}}, assert trên code
+  3-4-permission-aware-citation: backlog  # AT: test citation theo quyền viết trước; assert trên ngữ cảnh truy hồi
+  3-5-từ-chối-hai-tầng-không-phân-biệt-được: backlog  # AT: test hai tầng từ chối không phân biệt được viết trước; kèm chốt wording FR-16 (action item)
+  3-6-audit-hai-tầng-đầy-đủ: backlog  # TA: test audit ghi đủ hai tầng, đúng UTC ISO-8601
+  3-7-endpoint-đồ-thị-theo-quyền: backlog  # AT: test đồ thị lọc theo quyền viết trước (không rò node/edge ngoài quyền)
+  3-8-cổng-m2-demo-toàn-cơ-chế-bằng-curl: backlog  # TR: ma trận test <-> FR toàn cơ chế; RV: audit test trước cổng M2
   epic-3-retrospective: optional
 
+  # Epic 4 - TEST: chạy TD lần 2 (kế hoạch E2E UI) rồi TF dựng Playwright cho Next.js
+  # trước/cùng 4-1; sau đó QA sinh E2E cho từng màn đã xong.
   epic-4: backlog
-  4-1-khung-web-hệ-token-thiết-kế-và-khung-app: backlog
-  4-2-màn-đăng-nhập-và-vòng-đời-phiên: backlog
-  4-3-chat-console-và-các-trạng-thái-lượt: backlog
-  4-4-cite-row-slab-bôi-đen-và-dòng-hạn-chế-l1: backlog
-  4-5-xem-như-api-đổi-vai-và-ui: backlog
-  4-6-drawer-đồ-thị-kiểu-paper-với-hover-trích-dẫn: backlog
-  4-7-đường-demo-ba-nhịp-đầu-chạy-thật: backlog
-  4-8-khám-phá-đồ-thị-mở-rộng-should-cắt-được: backlog
+  4-1-khung-web-hệ-token-thiết-kế-và-khung-app: backlog  # TF: khởi tạo Playwright tại đây; smoke test khung app
+  4-2-màn-đăng-nhập-và-vòng-đời-phiên: backlog  # QA: E2E đăng nhập, hết phiên, đăng xuất
+  4-3-chat-console-và-các-trạng-thái-lượt: backlog  # QA: E2E các trạng thái lượt (đang trả lời, lỗi, rỗng)
+  4-4-cite-row-slab-bôi-đen-và-dòng-hạn-chế-l1: backlog  # QA: E2E cite-row và slab che theo L0/L1/L2, so với hai tài khoản
+  4-5-xem-như-api-đổi-vai-và-ui: backlog  # QA: E2E xem-như, so khớp kết quả UI với gọi API trực tiếp
+  4-6-drawer-đồ-thị-kiểu-paper-với-hover-trích-dẫn: backlog  # QA: E2E smoke drawer (hover khó automate, chỉ kiểm mở/đóng và dữ liệu theo quyền)
+  4-7-đường-demo-ba-nhịp-đầu-chạy-thật: backlog  # QA: E2E happy path chính = đường demo 3 nhịp, chạy trong CI
+  4-8-khám-phá-đồ-thị-mở-rộng-should-cắt-được: backlog  # SHOULD cắt được; nếu làm thì chỉ smoke test
   epic-4-retrospective: optional
 
+  # Epic 5 - TEST: break-glass là cơ chế bảo mật, AT test-first cho 5-1 đến 5-3;
+  # QA E2E cho UI 5-4/5-5 và trọn luồng 5-6.
   epic-5: backlog
-  5-1-api-xin-break-glass: backlog
-  5-2-vùng-cấp-hai-pha-duyệt-và-cấp-chủ-động: backlog
-  5-3-đường-truy-vấn-phụ-theo-grant-và-vòng-đời-hết-hạn: backlog
-  5-4-ui-phía-người-xin: backlog
-  5-5-ui-hàng-chờ-owner: backlog
-  5-6-nhịp-4-demo-end-to-end: backlog
+  5-1-api-xin-break-glass: backlog  # AT: test API xin quyền viết trước (fail-closed khi thiếu/sai grant)
+  5-2-vùng-cấp-hai-pha-duyệt-và-cấp-chủ-động: backlog  # AT: test hai pha duyệt/cấp chủ động viết trước (không nhảy pha)
+  5-3-đường-truy-vấn-phụ-theo-grant-và-vòng-đời-hết-hạn: backlog  # AT: test grant hết hạn thì truy vấn phụ mất hiệu lực, viết trước
+  5-4-ui-phía-người-xin: backlog  # QA: E2E luồng xin quyền phía người dùng
+  5-5-ui-hàng-chờ-owner: backlog  # QA: E2E hàng chờ duyệt phía owner
+  5-6-nhịp-4-demo-end-to-end: backlog  # QA: E2E trọn nhịp 4 (xin -> duyệt -> hỏi -> hết hạn); RV audit test cuối epic
   epic-5-retrospective: optional
 
+  # Epic 6 - TEST: epic này tự thân là hạ tầng test bảo mật; CI hoàn thiện pipeline tại 6-1
+  # (red-team + pytest + E2E chạy mỗi commit).
   epic-6: backlog
-  6-1-package-red-team-dùng-chung-ci-và-màn-live: backlog
-  6-2-rt-06-kịch-bản-đo-oracle-embedding: backlog
-  6-3-màn-kiểm-thử-bảo-mật: backlog
-  6-4-cache-offline-và-journal-audit: backlog
-  6-5-toggle-live-offline-và-demo-offline-trọn-4-nhịp: backlog
+  6-1-package-red-team-dùng-chung-ci-và-màn-live: backlog  # CI: gắn package red-team vào pipeline làm quality gate; redteam/ dùng chung với api/
+  6-2-rt-06-kịch-bản-đo-oracle-embedding: backlog  # AT: định nghĩa oracle (thế nào là rò) trước khi viết kịch bản RT-06
+  6-3-màn-kiểm-thử-bảo-mật: backlog  # QA: E2E màn kiểm thử (chạy kịch bản, hiện kết quả)
+  6-4-cache-offline-và-journal-audit: backlog  # TA: test cache offline trả đúng bản ghi và journal không thiếu dòng
+  6-5-toggle-live-offline-và-demo-offline-trọn-4-nhịp: backlog  # QA: E2E demo offline trọn 4 nhịp, chạy được khi không có mạng/LLM
   epic-6-retrospective: optional
 
+  # Epic 7 - TEST: điểm hội tụ của NR (gom bằng chứng NFR), TR (ma trận cuối) và RV
+  # (audit toàn bộ test) trước lần chạy chính thức T7.
   epic-7: backlog
-  7-1-bộ-đo-1-đầy-đủ-sáu-lớp: backlog
-  7-2-snapshot-đo-và-khôi-phục-tất-định: backlog
-  7-3-harness-đo-3-recall-tất-định-bốn-cấu-hình: backlog
-  7-4-harness-đo-2-judge-chéo-model-và-vòng-so-sánh-chunk: backlog
-  7-5-chạy-chính-thức-t7-và-báo-cáo-chương-4: backlog
+  7-1-bộ-đo-1-đầy-đủ-sáu-lớp: backlog  # TR: ma trận Đo 1 sáu lớp <-> FR bảo mật; RV: audit chất lượng sáu lớp
+  7-2-snapshot-đo-và-khôi-phục-tất-định: backlog  # TA: test khôi phục tất định (restore 2 lần ra cùng trạng thái)
+  7-3-harness-đo-3-recall-tất-định-bốn-cấu-hình: backlog  # harness chính là test; RV soát tính tất định; baseline nhị phân = policy L1->L0
+  7-4-harness-đo-2-judge-chéo-model-và-vòng-so-sánh-chunk: backlog  # cần rubric chốt với GVHD trước (action item Epic 7); fallback R12
+  7-5-chạy-chính-thức-t7-và-báo-cáo-chương-4: backlog  # NR: audit bằng chứng NFR toàn hệ; TR: gate cuối trước khi viết chương 4
   epic-7-retrospective: optional
 
+  # Epic 8 - TEST: SHOULD/COULD sau M2, mức test nhẹ; QA E2E cho màn nào làm,
+  # riêng 8-1 đụng chính sách nên giữ chuẩn AT.
   epic-8: backlog
-  8-1-màn-cấu-hình-chính-sách: backlog
-  8-2-so-sánh-2-cột: backlog
-  8-3-màn-nhật-ký-kiểm-toán: backlog
-  8-4-quản-lý-người-dùng-tối-giản: backlog
-  8-5-màn-tình-trạng-hệ-thống: backlog
-  8-6-nhãn-tin-cậy-5-tầng: backlog
+  8-1-màn-cấu-hình-chính-sách: backlog  # AT: test đổi bảng chính sách qua UI không sửa code, validator chặn cấu hình sai
+  8-2-so-sánh-2-cột: backlog  # QA: E2E so sánh 2 cột giữa hai vai/cấu hình
+  8-3-màn-nhật-ký-kiểm-toán: backlog  # QA: E2E màn audit (lọc, phân trang)
+  8-4-quản-lý-người-dùng-tối-giản: backlog  # QA: E2E CRUD người dùng tối giản
+  8-5-màn-tình-trạng-hệ-thống: backlog  # smoke test là đủ
+  8-6-nhãn-tin-cậy-5-tầng: backlog  # TA: unit test xếp nhãn 5 tầng + E2E hiển thị
   epic-8-retrospective: optional
 
 # Concern còn treo từ cổng readiness 31/08/2026 (2 mâu thuẫn 3.2 và 8.4 đã vá trong epics.md)
