@@ -1,0 +1,33 @@
+# Bảng chính sách tối giản của story 1.2 (FR-09, AD-6).
+# Hai tầng: (a) vai người dùng × loại nội dung -> mức tiết lộ L0/L1/L2;
+# (b) vai slot bị che khi mức là L1. Đổi bảng là đổi cấu hình, không sửa code.
+#
+# Neo vào ví dụ xuyên suốt App01 (PRD addendum): runbook công khai so với
+# báo cáo sự cố hạn chế. Schema không hard-code enum vai hay enum loại nội
+# dung: thêm vai chỉ là thêm một khối dưới `roles`.
+#
+# scopes        - các scope tài liệu mà vai chạm tới (thành phần trái của khóa lọc).
+#                 devops chạm cả tri thức nội bộ lẫn hồ sơ khách hàng A; tech_support
+#                 không chạm scope khách hàng, đó là biên cách ly của RT-01.
+# disclosure    - loại nội dung -> mức tiết lộ
+# masked_slots  - loại nội dung -> danh sách vai slot phải che (không phải tập phẳng).
+#                 Slot `owner` không khai ở đây: nó luôn được tổng quát hóa về mức
+#                 vai/nhóm tại tầng che, kể cả ở L2 (AD-9).
+version: 1
+roles:
+  devops:
+    scopes: [noi_bo, khach_hang_a]
+    disclosure:
+      runbook: L2
+      bao_cao_su_co: L2
+      bi_mat_ha_tang: L1
+    masked_slots:
+      bi_mat_ha_tang: [source, remediation]
+  tech_support:
+    scopes: [noi_bo]
+    disclosure:
+      runbook: L2
+      bao_cao_su_co: L1
+      bi_mat_ha_tang: L0
+    masked_slots:
+      bao_cao_su_co: [cause, source, remediation]

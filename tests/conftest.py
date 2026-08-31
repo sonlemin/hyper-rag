@@ -27,3 +27,25 @@ def workspace_dir(tmp_path, session_prefix):
     d = tmp_path / session_prefix
     d.mkdir()
     return d
+
+
+@pytest.fixture(autouse=True)
+def ngu_canh_quyen_sach():
+    """Xóa contextvar quyền trước và sau mỗi test.
+
+    Test fail-closed khẳng định "chưa ai set thì raise". Không có fixture này,
+    một test rò ngữ cảnh ra ngoài phạm vi của nó sẽ làm khẳng định đó đúng hay
+    sai tùy thứ tự chạy - đúng kiểu test bảo mật xanh vì lý do sai.
+
+    Chạm vào `_CURRENT` là cố ý: `core/` không phơi hàm xóa ngữ cảnh, và cũng
+    không nên phơi, vì ngoài test không có ai cần nó.
+    """
+    from core.permission import _CURRENT
+
+    def xoa():
+        token = _CURRENT.set(None)
+        _CURRENT.reset(token)
+
+    xoa()
+    yield
+    xoa()

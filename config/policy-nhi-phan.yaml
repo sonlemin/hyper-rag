@@ -1,0 +1,20 @@
+# Baseline nhị phân của Đo 3 (brief §6 chốt 3, FR-28): chính sách `L1 -> L0`.
+# Cùng schema, cùng hai vai, chỉ đổi cột mức; không còn hàng nào ở L1 nên
+# `masked_slots` rỗng. Trỏ loader sang file này là đổi cấu hình, không sửa code:
+# `allowed_keys` và `policy_version` đổi theo.
+version: 1
+roles:
+  devops:
+    scopes: [noi_bo, khach_hang_a]
+    disclosure:
+      runbook: L2
+      bao_cao_su_co: L2
+      bi_mat_ha_tang: L0
+    masked_slots: {}
+  tech_support:
+    scopes: [noi_bo]
+    disclosure:
+      runbook: L2
+      bao_cao_su_co: L0
+      bi_mat_ha_tang: L0
+    masked_slots: {}
