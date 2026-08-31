@@ -1,0 +1,117 @@
+# Mot compose duy nhat cho moi moi truong (AD-11), khac nhau chi bang .env.
+# Chay tren may chu (khong chay tren may dev):
+#   docker compose --env-file .env --env-file .env.server up -d --build
+# Tren laptop duong lui (R11):
+#   docker compose --env-file .env --env-file .env.laptop up -d --build
+# Kiem tra bien truoc khi len:
+#   docker compose --env-file .env --env-file .env.server config --quiet
+# Moi gia tri moi truong lay tu .env (secret) va .env.server/.env.laptop (tham so),
+# khong hard-code. Chi cong 8000 (api) mo ra ngoai; 7474/7687/6333/5432/11434 chi
+# trong network noi bo cua compose. Profile local-llm (ollama) khong bat mac dinh.
+
+name: hyper-rag-copilot
+
+services:
+  neo4j:
+    image: neo4j:5.26.30-community
+    environment:
+      NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD:?thieu NEO4J_PASSWORD trong .env}"
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_server_memory_heap_initial__size: "${NEO4J_HEAP_INITIAL:?thieu NEO4J_HEAP_INITIAL trong .env.server/.env.laptop}"
+      NEO4J_server_memory_heap_max__size: "${NEO4J_HEAP_MAX:?thieu NEO4J_HEAP_MAX trong .env.server/.env.laptop}"
+      NEO4J_server_memory_pagecache_size: "${NEO4J_PAGECACHE:?thieu NEO4J_PAGECACHE trong .env.server/.env.laptop}"
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:v1.19.0
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      # image qdrant khong co curl/wget; kiem TCP bang bash /dev/tcp
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:18.6
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER:?thieu POSTGRES_USER trong .env.server/.env.laptop}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?thieu POSTGRES_PASSWORD trong .env}"
+      POSTGRES_DB: "${POSTGRES_DB:?thieu POSTGRES_DB trong .env.server/.env.laptop}"
+    volumes:
+      # image postgres 18+ doi mount point ve /var/lib/postgresql (khong con .../data)
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    environment:
+      NEO4J_URI: "bolt://neo4j:7687"
+      NEO4J_USERNAME: "neo4j"
+      NEO4J_PASSWORD: "${NEO4J_PASSWORD:?thieu NEO4J_PASSWORD trong .env}"
+      QDRANT_URL: "http://qdrant:6333"
+      POSTGRES_HOST: "postgres"
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_DB: "${POSTGRES_DB}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-}"
+    ports:
+      - "8000:8000"
+    depends_on:
+      neo4j:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=3).status == 200 else 1)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  # Profile local-llm: chi khai bao, khong bat mac dinh, khong pull model o story 1.1.
+  ollama:
+    image: "ollama/ollama:${OLLAMA_TAG:-latest}"
+    profiles: ["local-llm"]
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  neo4j_data:
+    name: hyper_rag_neo4j_data
+  qdrant_data:
+    name: hyper_rag_qdrant_data
+  postgres_data:
+    name: hyper_rag_postgres_data
+  ollama_data:
+    name: hyper_rag_ollama_data

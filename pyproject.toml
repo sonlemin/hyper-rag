@@ -1,0 +1,55 @@
+[project]
+name = "hyper-rag-copilot"
+version = "0.1.0"
+description = "AI Copilot hoi-dap tieng Viet tren kho tri thuc IT noi bo, phan quyen o muc hyperedge (fork HyperGraphRAG)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    # Nhom 1: goi ma vendor/hypergraphrag import ngay luc `import hypergraphrag`
+    # (llm.py cua upstream import torch/transformers/aioboto3/ollama o top-level).
+    # Khai chon loc, khong copy nguyen requirements.txt upstream (bo milvus, oracle, mongo, graspologic...).
+    "aioboto3>=13",
+    "aiohttp>=3.9",
+    "nano-vectordb>=0.0.4",
+    "networkx>=3.2",
+    "numpy>=1.26",
+    "ollama>=0.3",
+    "openai>=1.40",
+    "tenacity>=8.2",
+    "tiktoken>=0.7",
+    "tqdm>=4.66",
+    "torch==2.3.0",       # upstream ghim 2.3.0; ban CPU qua index pytorch-cpu (xem [tool.uv.sources])
+    "transformers>=4.40",
+    # Nhom 2: stack du an (spine: bang Stack). Ep qdrant-client>=1.12 va pydantic>=2
+    # de tranh pitfall spike 29/08 (pydantic v1 keo qdrant-client ve 1.0.1).
+    "pydantic>=2",
+    "qdrant-client>=1.12",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "httpx>=0.27",        # TestClient cho api trong tests/
+]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Cai editable cac package cua Structural Seed; vendor/hypergraphrag import duoc
+# duoi ten `hypergraphrag` ma khong sua file nao trong vendor/.
+[tool.hatch.build.targets.wheel]
+packages = ["core", "adapters", "api", "redteam", "vendor/hypergraphrag"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

@@ -1,0 +1,5 @@
+Quy trình cấp quyền truy cập kho mã nguồn nội bộ.
+Nhân viên mới thuộc phòng Kỹ thuật được cấp tài khoản GitLab và quyền đọc kho mã nguồn sau khi trưởng phòng Kỹ thuật phê duyệt.
+Quyền ghi vào nhánh chính (main) chỉ cấp cho kỹ sư từ cấp Senior trở lên, do Giám đốc Kỹ thuật (CTO) phê duyệt.
+Yêu cầu cấp quyền gửi qua hệ thống Jira, gắn nhãn "access-request", thời hạn xử lý 2 ngày làm việc.
+Tài khoản không hoạt động 90 ngày sẽ bị khóa tự động và phải xin cấp lại từ đầu.

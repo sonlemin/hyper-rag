@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Hook CI: sau moi commit, dong bo repo len test server va chay pytest tai do.
+# Cai bang scripts/setup-hooks.sh. Bo qua mot lan: SKIP_CI=1 git commit ...
+if [ "${SKIP_CI:-0}" = "1" ]; then
+    echo "[ci] SKIP_CI=1, bo qua"
+    exit 0
+fi
+"$(git rev-parse --show-toplevel)/scripts/ci-remote.sh"
+# post-commit khong the huy commit; ket qua FAIL chi hien thi va ghi log tren server.
+exit 0

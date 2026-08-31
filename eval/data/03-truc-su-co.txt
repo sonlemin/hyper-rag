@@ -1,0 +1,5 @@
+Quy trình trực và xử lý sự cố máy chủ sản xuất.
+Lịch trực sự cố xoay vòng theo tuần giữa các kỹ sư vận hành, công bố trên lịch chung của phòng Kỹ thuật vào thứ Sáu tuần trước.
+Sự cố mức nghiêm trọng (P1, dịch vụ ngừng hoàn toàn) phải được báo cho người trực trong 15 phút và mở cầu xử lý trong 30 phút.
+Người trực được quyền khởi động lại dịch vụ trên máy chủ sản xuất mà không cần phê duyệt, nhưng phải ghi lại thao tác vào nhật ký sự cố trong vòng 24 giờ.
+Việc thay đổi cấu hình hạ tầng trong lúc xử lý sự cố phải có hai người xác nhận, một người thao tác và một người soát lại.

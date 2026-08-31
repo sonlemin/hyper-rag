@@ -1,0 +1,5 @@
+Quy định về VPN và mật khẩu nội bộ.
+Tài khoản VPN do phòng IT cấp trong vòng 1 ngày làm việc, yêu cầu gửi qua hệ thống Jira kèm xác nhận của quản lý trực tiếp.
+Mật khẩu VPN hết hạn sau 90 ngày và phải đổi qua cổng self-service tại địa chỉ nội bộ portal.it.local.
+Khi nhập sai mật khẩu 5 lần liên tiếp, tài khoản VPN bị khóa 30 phút; muốn mở khóa sớm phải gọi hotline IT số máy lẻ 1088.
+Nhân viên nghỉ việc bị thu hồi VPN ngay trong ngày làm việc cuối cùng, do phòng IT thực hiện theo danh sách từ phòng Nhân sự.

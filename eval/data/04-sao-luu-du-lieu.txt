@@ -1,0 +1,5 @@
+Chính sách sao lưu và khôi phục dữ liệu nội bộ.
+Cơ sở dữ liệu sản xuất được sao lưu tự động mỗi ngày lúc 2 giờ sáng, bản sao lưu giữ 30 ngày trên hệ thống lưu trữ riêng.
+Bản sao lưu tuần (chạy sáng Chủ nhật) giữ 6 tháng, phục vụ yêu cầu đối chiếu số liệu của phòng Kế toán.
+Yêu cầu khôi phục dữ liệu phải do trưởng bộ phận sở hữu dữ liệu gửi qua Jira, phòng IT thực hiện và phản hồi trong 4 giờ làm việc.
+Mỗi quý phòng IT diễn tập khôi phục một bản sao lưu ngẫu nhiên để kiểm chứng bản sao lưu dùng được thật.
