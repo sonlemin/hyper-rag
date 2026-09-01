@@ -108,3 +108,20 @@ class LLMGia:
         self.prompts.clear()
         self.prompts_sinh_cau_tra_loi.clear()
         self.kwargs.clear()
+
+
+class MaHoaOffline:
+    """Bộ đếm token thay `tiktoken`, dùng qua fixture `ma_hoa_offline`.
+
+    Lý do và phạm vi áp dụng nằm ở docstring của fixture trong
+    `tests/conftest.py`. Ở đây chỉ là phép đếm: byte UTF-8, tất định, không
+    mạng.
+    """
+
+    @staticmethod
+    def encode(noi_dung: str) -> list[int]:
+        return list(noi_dung.encode("utf-8"))
+
+    @staticmethod
+    def decode(tokens: list[int]) -> str:
+        return bytes(tokens).decode("utf-8", errors="ignore")

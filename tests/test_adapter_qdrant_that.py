@@ -26,7 +26,6 @@ import pytest
 from qdrant_client import models
 
 from adapters.ingest_labels import ingest_label
-from adapters.policy_loader import load_policy
 from adapters.qdrant import (
     FILTER_MAX_CONDITIONS,
     GLOBAL_M,
@@ -35,12 +34,18 @@ from adapters.qdrant import (
     QdrantVectorDBStorage,
 )
 from core.keys import FILTER_KEY_FIELD
-from core.permission import use_context, user_context
+from core.permission import use_context
 from core.system_context import system_context
 from tests.fixtures import oracle
 from tests.fixtures.du_lieu_dung_tay import HYPEREDGES
-from tests.gia_lap_qdrant import QdrantGhiLai, embedding_gia, khoa_trong_filter
-from tests.test_adapter_qdrant import CAU_HOI, lo_upsert
+from tests.gia_lap_qdrant import (
+    SO_CHIEU,
+    QdrantGhiLai,
+    embedding_gia,
+    khoa_trong_filter,
+)
+from tests.ho_tro_qdrant import CAU_HOI, lo_upsert
+from tests.ngu_canh import vai
 
 pytestmark = pytest.mark.qdrant
 
@@ -55,16 +60,6 @@ def khong_gian(session_prefix):
             pytest.fail("QDRANT_REQUIRED được đặt nhưng thiếu QDRANT_URL")
         pytest.skip("thiếu QDRANT_URL: bỏ qua test cần container")
     return f"{session_prefix}_that"
-
-
-@pytest.fixture()
-def policy():
-    return load_policy(oracle.POLICY_TOI_GIAN)
-
-
-@pytest.fixture()
-def bang():
-    return oracle.doc_bang_chinh_sach(oracle.POLICY_TOI_GIAN)
 
 
 def dung_adapter(client, namespace="hyperedges"):
@@ -172,14 +167,7 @@ def test_hai_vai_hai_ket_qua_tren_qdrant_that(khong_gian, policy, bang):
         async with kho_that(khong_gian, policy) as (client, adapter, _):
             for ten_vai in ("devops", "tech_support"):
                 client.xoa_nhat_ky()
-                with use_context(
-                    user_context(
-                        policy=policy,
-                        role=ten_vai,
-                        space=khong_gian,
-                        real_account=f"{ten_vai}01",
-                    )
-                ):
+                with use_context(vai(policy, ten_vai, khong_gian)):
                     ket_qua = await adapter.query(CAU_HOI, top_k=10)
                 goi = client.loi_goi_cuoi("query_points")
                 thu[ten_vai] = (
@@ -221,7 +209,7 @@ def test_filter_hai_dieu_kien_bi_server_tu_choi(khong_gian, policy):
             with pytest.raises(Exception) as loi:
                 await client.query_points(
                     collection_name=ten,
-                    query=[1.0] * 8,
+                    query=[1.0] * SO_CHIEU,
                     query_filter=hai_dieu_kien,
                     limit=1,
                 )

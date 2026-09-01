@@ -38,13 +38,13 @@ from adapters.neo4j import (
     LABEL_HYPEREDGE,
     Neo4jACLGraphStorage,
 )
-from adapters.policy_loader import load_policy
 from core.keys import FILTER_KEY_FIELD
-from core.permission import use_context, user_context
+from core.permission import use_context
 from core.system_context import system_context
 from tests.fixtures import oracle
 from tests.fixtures.du_lieu_dung_tay import HYPEREDGES, THEO_ID
-from tests.test_adapter_neo4j import id_hyperedge, nap_hyperedge
+from tests.ho_tro_neo4j import id_hyperedge, nap_hyperedge
+from tests.ngu_canh import vai
 
 pytestmark = pytest.mark.neo4j
 
@@ -65,16 +65,6 @@ def khong_gian(session_prefix):
             )
         pytest.skip("thiếu NEO4J_URI/NEO4J_PASSWORD: bỏ qua test cần container")
     return f"{session_prefix}_that"
-
-
-@pytest.fixture()
-def policy():
-    return load_policy(oracle.POLICY_TOI_GIAN)
-
-
-@pytest.fixture()
-def bang():
-    return oracle.doc_bang_chinh_sach(oracle.POLICY_TOI_GIAN)
 
 
 @asynccontextmanager
@@ -167,13 +157,7 @@ def test_hai_vai_hai_ket_qua_tren_neo4j_that(khong_gian, policy, bang):
         thay = {}
         async with kho_that(khong_gian, policy) as (_, adapter):
             for ten_vai in ("devops", "tech_support"):
-                ctx = user_context(
-                    policy=policy,
-                    role=ten_vai,
-                    space=khong_gian,
-                    real_account=f"{ten_vai}01",
-                )
-                with use_context(ctx):
+                with use_context(vai(policy, ten_vai, khong_gian)):
                     thay[ten_vai] = [
                         he["id"]
                         for he in HYPEREDGES
@@ -192,13 +176,7 @@ def test_degree_va_has_co_theo_quyen_tren_neo4j_that(khong_gian, policy):
 
     async def chay():
         async with kho_that(khong_gian, policy) as (_, adapter):
-            ctx = user_context(
-                policy=policy,
-                role="tech_support",
-                space=khong_gian,
-                real_account="ts01",
-            )
-            with use_context(ctx):
+            with use_context(vai(policy, "tech_support", khong_gian)):
                 return {
                     "bac_he01": await adapter.node_degree(
                         id_hyperedge(THEO_ID["HE-01"])
@@ -250,13 +228,7 @@ def test_khoa_quyen_cua_canh_bi_loc_tren_neo4j_that(khong_gian, policy):
                         THEO_ID["HE-01"]["slots"]["condition"],
                         {"weight": 1.0, "slot": "condition"},
                     )
-            ctx = user_context(
-                policy=policy,
-                role="tech_support",
-                space=khong_gian,
-                real_account="ts01",
-            )
-            with use_context(ctx):
+            with use_context(vai(policy, "tech_support", khong_gian)):
                 return {
                     "cap": await adapter.get_node_edges(
                         id_hyperedge(THEO_ID["HE-01"])

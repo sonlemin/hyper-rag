@@ -14,6 +14,7 @@ import inspect
 
 import pytest
 
+from core.ids import SPACE_MAX_LEN
 from core.permission import (
     PermissionContext,
     PermissionContextMissing,
@@ -38,14 +39,6 @@ TAM_TRUONG = (
     "grant_ids",
     "policy_version",
 )
-
-
-@pytest.fixture()
-def policy():
-    """Bảng chính sách tối giản đã nạp; loader nằm ở adapters/ theo AD-1."""
-    from adapters.policy_loader import load_policy
-
-    return load_policy(oracle.POLICY_TOI_GIAN)
 
 
 def test_thieu_ngu_canh_thi_raise():
@@ -284,7 +277,21 @@ def test_space_hop_le_thi_qua(policy, space):
 
 @pytest.mark.parametrize(
     "space",
-    ["", "  ", " synth", "synth ", "1synth", "_synth", "synth-b", "synth.b", "a b", "x" * 65],
+    [
+        "",
+        "  ",
+        " synth",
+        "synth ",
+        "1synth",
+        "_synth",
+        "synth-b",
+        "synth.b",
+        "a b",
+        # Dài hơn giới hạn đúng một ký tự. Suy từ hằng của `core/` chứ không
+        # viết 65: nới `SPACE_MAX_LEN` mà ca biên không đi theo là test này
+        # lặng lẽ ngừng kiểm đúng thứ nó sinh ra để kiểm.
+        "x" * (SPACE_MAX_LEN + 1),
+    ],
 )
 def test_space_hong_thi_tu_choi_o_ca_hai_factory(policy, space):
     """`space` đi thẳng vào tên collection Qdrant và nhãn Neo4j (story 1.4).
