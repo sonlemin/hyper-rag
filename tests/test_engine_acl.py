@@ -19,7 +19,6 @@ from dataclasses import asdict, fields
 from pathlib import Path
 
 import pytest
-import yaml
 from hypergraphrag import HyperGraphRAG
 from hypergraphrag.base import QueryParam
 from neo4j import AsyncDriver
@@ -40,10 +39,9 @@ from core.system_context import system_context
 from tests.gia_lap_llm import LLMGia
 from tests.gia_lap_neo4j import Neo4jGhiLai
 from tests.gia_lap_qdrant import QdrantGhiLai, embedding_gia
+from tests.ho_tro_compose import doc_compose
 from tests.ho_tro_m1 import CAU_HOI, cong_m1, dung_engine
 from tests.nap_kho import kiem_fixture
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # Hai giá trị nhận biết được, chỉ dùng cho ca kiểm secret-không-ra-log. Không
 # phải secret thật và không giống một secret thật: chuỗi trong bộ test là thứ
@@ -515,20 +513,9 @@ def test_bien_moi_truong_phu_het_khoa_cau_hinh_kho():
     assert set(BIEN_MOI_TRUONG) <= ten_field
 
 
-def _compose() -> dict:
-    """`docker-compose.yml` đã parse.
-
-    Parse chứ không tìm chuỗi: một dòng bị comment lại vẫn qua được phép tìm
-    chuỗi, và khi đó test khẳng định một hợp đồng triển khai không còn tồn tại.
-    """
-    return yaml.safe_load(
-        (REPO_ROOT / "docker-compose.yml").read_text(encoding="utf-8")
-    )
-
-
 def test_compose_khai_du_bien_moi_truong_engine_doc():
     """Mỗi biến mà engine đọc phải có nguồn trong `docker-compose.yml`."""
-    api = _compose()["services"]["api"]
+    api = doc_compose()["services"]["api"]
     thieu = [ten for ten in BIEN_MOI_TRUONG.values() if ten not in api["environment"]]
     assert not thieu, f"biến {thieu} chưa có nguồn trong docker-compose.yml"
 
@@ -541,7 +528,7 @@ def test_thu_muc_lam_viec_nam_tren_volume_co_khai():
     một mất mát im lặng mà `docker compose config --quiet` không thấy, và phép
     tìm chuỗi trong compose cũng không thấy.
     """
-    compose = _compose()
+    compose = doc_compose()
     api = compose["services"]["api"]
     thu_muc = api["environment"]["HYPER_RAG_WORKING_DIR"]
     mounts = {
