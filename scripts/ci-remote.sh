@@ -62,6 +62,20 @@ if ! docker compose --env-file .env --env-file .env.server config --quiet; then
     st=FAIL
 elif ! uv run pytest; then
     st=FAIL
+else
+    # Bo test danh marker `neo4j` can container that (story 1.4): chi may chu
+    # nay co Neo4j cua compose. Chay o day de "Cypher hop le" duoc CI giu xanh,
+    # khong phai mot lan chay tay. NEO4J_REQUIRED bien "bo qua" thanh "do":
+    # thieu bien moi truong ma van xanh la mot ket qua noi doi.
+    NEO4J_IP="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' hyper-rag-copilot-neo4j-1 2>/dev/null)"
+    if [ -z "$NEO4J_IP" ]; then
+        echo "[ci] khong thay container neo4j dang chay, bo qua bo marker neo4j"
+    else
+        set -a; . ./.env; set +a
+        if ! NEO4J_REQUIRED=1 NEO4J_URI="bolt://$NEO4J_IP:7687" uv run pytest -m neo4j; then
+            st=FAIL
+        fi
+    fi
 fi
 line="$(date -u +%Y-%m-%dT%H:%M:%SZ) $COMMIT $st$DIRTY"
 echo "$line" >> "$HOME/ci-logs/ci.log"

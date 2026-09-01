@@ -38,6 +38,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-2-ngu-canh-quyen-fail-closed-va-chinh-sach-dang-du-lieu.md`
   summary: Test phản chiếu cho các method đọc ngoài danh sách đóng (`node_degree`, `edge_degree`, `has_node`, `has_edge`) - hiện chỉ được giải thích trong comment.
   evidence: AD-9 giao test phản chiếu phủ cả 3 adapter cho story 1.7, nhưng cách xử lý riêng của 4 method này chưa có gì ghim, story 1.3-1.5 dễ bỏ quên.
+  tien_do: 2026-09-01 - story 1.4 ghim hành vi của cả 4 method trên adapter graph (`tests/test_adapter_neo4j.py`: degree co theo quyền, `has_*` trả False ngoài quyền), kèm bản chạy trên Neo4j thật. Phần còn treo là test *phản chiếu* phủ cả 3 adapter, chỉ viết được khi adapter KV của story 1.5 tồn tại; địa chỉ vẫn là story 1.7.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-3-adapter-qdrant-voi-pre-filter-theo-khoa.md`
   summary: Gọi `QdrantVectorDBStorage.initialize()` ở bước khởi động engine (story 1.7), và tiêm một `AsyncQdrantClient` dùng chung cho cả ba namespace vector.
@@ -101,3 +102,35 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-3-adapter-qdrant-voi-pre-filter-theo-khoa.md`
   summary: Epic 5 (break-glass) sẽ bị `filter_max_conditions=1` của strict mode chặn nếu đường truy vấn phụ cần lọc theo cả khóa quyền lẫn grant.
   evidence: Đã kiểm trên Qdrant thật ngày 2026-09-01: filter hai điều kiện bị từ chối 400 kể cả khi cả hai đều đặt trên field đã có index. Đây là hàng rào cố ý cho NFR-06, nhưng story 5.3 (đường truy vấn phụ theo grant) phải quyết tường minh là nới `filter_max_conditions` hay gộp grant vào chính khóa quyền. Gộp vào khóa giữ được luật một field và là hướng nên xét trước.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-4-adapter-neo4j-voi-where-injection-va-cau-truc-hai-phia.md`
+  summary: Cạnh graph chưa có nguồn cấp vai slot: `upsert_edge` chấp nhận cạnh thiếu `slot`, chờ prompt trích xuất 8 vai của story 2.4.
+  evidence: `_merge_edges_then_upsert` của upstream chỉ gửi `weight` và `source_id`. Cấm cạnh thiếu vai ngay bây giờ là chặn chính đường e2e của cổng M1, nên story 1.4 chỉ kiểm vai khi có khai. Hệ quả cần story 2.4 quyết tường minh: sau khi trích xuất gắn đủ 8 vai thì cạnh thiếu `slot` có thành lỗi không, và tầng che xử thế nào với cạnh chưa có vai. `test_canh_khong_khai_vai_van_ghi_duoc` ghim hiện trạng làm mốc so sánh.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-4-adapter-neo4j-voi-where-injection-va-cau-truc-hai-phia.md`
+  summary: Năm khóa cấu hình `neo4j_uri`, `neo4j_username`, `neo4j_password`, `neo4j_health_retries`, `neo4j_health_delay` chưa có nơi nào sinh ra; gọi `initialize()` lúc khởi động và đóng driver lúc tắt cũng chưa có chỗ.
+  evidence: Cùng hình dạng với khoản nợ của adapter Qdrant. Ba khóa chỉ xuất hiện trong chính `adapters/neo4j.py`; biến `NEO4J_URI/USERNAME/PASSWORD` mới chỉ có trong env của service `api` (`docker-compose.yml:66-70`), chưa subclass `HyperGraphRAG` nào đưa chúng vào `asdict(self)`. `Neo4jACLGraphStorage.close()` đã có (và cố ý không đóng driver được tiêm từ ngoài) nhưng chưa ai gọi. Tất cả thuộc bước dựng engine story 1.7.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-4-adapter-neo4j-voi-where-injection-va-cau-truc-hai-phia.md`
+  summary: Khóa của node entity trong graph cũng là last-write-wins như point Qdrant; hai kho lệch nhau khi một entity xuất hiện ở nhiều tài liệu khác scope.
+  evidence: `upsert_node` ghi `filter_key` từ nhãn ingest đang mở, nên entity nạp lần sau đè khóa của lần trước - cùng cơ chế và cùng khoản nợ "hợp nhất khóa đa nguồn" của story 2.1. Story 1.4 để nguyên và dùng chính hành vi này trong `test_node_degree_co_theo_quyen` (nạp HE-01 sau cùng để khóa của `App01` là runbook), nên story 2.1 đổi luật hợp nhất thì phải sửa cả setup của test đó.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-4-adapter-neo4j-voi-where-injection-va-cau-truc-hai-phia.md`
+  summary: Cả hai adapter cho phép ghi dưới ngữ cảnh vai người dùng, không chỉ dưới ngữ cảnh hệ thống của ingest.
+  evidence: `upsert_node`/`upsert_edge` (graph) và `upsert` (vector) chỉ đòi có ngữ cảnh cộng nhãn ingest đang mở; một ngữ cảnh vai cũng qua được, và khi đó `space` lấy theo ngữ cảnh đó. AD-3 nói ingest chạy dưới ngữ cảnh hệ thống tường minh, nhưng chưa chỗ nào ép. Chốt một luật cho *cả hai* adapter cùng lúc (thêm cửa `bypass_filter` ở đường ghi, hoặc quyết định tường minh là không thêm) thuộc story 2.3 khi pipeline ingest thật ra đời; sửa lệch một adapter là tạo ra hai luật.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-4-adapter-neo4j-voi-where-injection-va-cau-truc-hai-phia.md`
+  summary: Cạnh graph định danh theo cặp (hyperedge, entity), chưa tính vai slot; một entity điền hai vai của cùng một hyperedge thì vai ghi sau đè vai ghi trước.
+  evidence: `MERGE (a)-[r:SLOT]->(b)` không mang `slot` trong pattern. Đưa `slot` vào khóa MERGE sẽ tách thành nhiều cạnh cho cùng một cặp, và như vậy `node_degree` đếm khác ngữ nghĩa của `NetworkXStorage` upstream - một quyết định phải cân cùng lúc với lúc trích xuất thật sự gắn đủ 8 vai (story 2.4), không phải sửa lẻ ở adapter.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-4-adapter-neo4j-voi-where-injection-va-cau-truc-hai-phia.md`
+  summary: Không có ràng buộc duy nhất trên `id` trong một `space`: cùng một id ghi một lần dưới vai hyperedge và một lần dưới vai entity sẽ thành hai node.
+  evidence: `MERGE (n:{space}:{nhan} {id: $id})` khóa theo *cả* nhãn, nên hai nhãn khác nhau là hai node. Khi đó `get_node` (LIMIT 1) trả node nào là không xác định và `node_degree` gộp cạnh của cả hai. Neo4j Community có `CREATE CONSTRAINT ... REQUIRE n.id IS UNIQUE`, nhưng spec story 1.4 chốt "không index/constraint ngoài một index đủ cho đường lọc", nên việc thêm ràng buộc (và quyết định nó nên nổ hay nên gộp) thuộc bước dựng engine story 1.7.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-4-adapter-neo4j-voi-where-injection-va-cau-truc-hai-phia.md`
+  summary: `delete_node` của `BaseGraphStorage` chưa override nên dội `NotImplementedError` trần của upstream, không có mã lỗi của dự án.
+  evidence: `vendor/hypergraphrag/hypergraphrag.py:530` có gọi `delete_node`. Story 1.4 cố ý không làm đường xóa (Never của spec) vì chưa story nào cần, nhưng khi Epic 2 nạp lại corpus thì xóa theo `space` sẽ cần một đường có kiểm quyền và có mã lỗi ổn định.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-4-adapter-neo4j-voi-where-injection-va-cau-truc-hai-phia.md`
+  summary: Adapter graph dùng session autocommit cho từng câu, không dùng transaction có quản lý, không truyền `database=`, và health-check chỉ chạy một lần cho mỗi instance.
+  evidence: `_chay` mở `driver.session()` rồi `session.run` cho mỗi câu, nên không có retry của driver cho lỗi thoáng qua (`TransientError`, đổi leader). Neo4j Community chỉ có một database nên `database=` chưa cần, nhưng nó là mặc định ngầm. Neo4j restart giữa phiên thì `_da_san_sang` vẫn True và mọi lời gọi sau đó dội lỗi driver thô. Ba thứ này cùng thuộc vòng đời kết nối của story 1.7.

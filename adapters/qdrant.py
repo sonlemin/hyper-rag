@@ -32,6 +32,9 @@ from hypergraphrag.base import BaseVectorStorage
 from qdrant_client import AsyncQdrantClient, models
 
 from adapters.ingest_labels import current_ingest_key
+# Hợp đồng che dùng chung với adapter Neo4j (story 1.4): một luật, một chỗ.
+# Tên vẫn nhập được từ `adapters.qdrant` để nơi gọi cũ không phải sửa.
+from adapters.mask_contract import MaskContractViolated
 from core.ids import point_id
 from core.keys import FILTER_KEY_FIELD
 from core.masking import mask
@@ -92,19 +95,6 @@ class PointFilterKeyMissing(RuntimeError):
     """
 
     code = "POINT_FILTER_KEY_MISSING"
-
-
-class MaskContractViolated(RuntimeError):
-    """Tầng che trả về một giá trị rỗng thay cho một bản ghi.
-
-    Hợp đồng của `mask` (AD-9) là biến đổi bản ghi tại chỗ, không phải loại nó
-    khỏi kết quả. Story 1.6 viết ruột thật; nếu nó muốn giấu hẳn một mục thì
-    `query` phải lọc mục đó ra khỏi list, vì `None` lọt vào list sẽ nổ tận
-    `operate.py:944` ở `r["hyperedge_name"]` - xa chỗ gây ra vài tầng. Cửa này
-    biến lỗi đó thành một thông điệp gọi đúng tên hợp đồng bị vi phạm.
-    """
-
-    code = "MASK_CONTRACT_VIOLATED"
 
 
 @dataclass
