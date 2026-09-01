@@ -207,6 +207,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-6-tang-che-dung-chung-theo-chinh-sach-slot.md`
   summary: Slot `owner` mới bị **che**, chưa được **tổng quát hóa**: `[owner:group]` không nói nhóm nào.
   evidence: AD-9, AC story 1.6 và FR-14 đều đòi tổng quát hóa về *mức vai/nhóm*, tức dấu che phải mang tên nhóm phụ trách chứ không phải một chữ `group` trần. Hôm nay chưa có ánh xạ người phụ trách sang nhóm ở bất kỳ đâu trong repo. ARCHITECTURE-SPINE `:214` chốt `users.group_name` dùng chung giá trị với slot `owner`, và ánh xạ nhóm sang tài khoản owner nằm trong seed `config/`. Địa chỉ: story 3.1 (seed tài khoản) - lúc đó dấu che đổi thành tên nhóm thật, `MASK_REASON_OWNER` thành một tra cứu chứ không phải một hằng.
+  resolved: 2026-09-01 - ADR-011 tách tiêu chí làm hai. Epic 1 giữ phần cơ chế (che `owner` ở mọi mức bằng hằng số một nơi trong `core/`), AC story 1.6 sửa theo. Phần đặt tên nhóm thật thành một AC thật của story 3.1 kèm test bắt buộc, không còn là ghi chú trong ledger.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-6-tang-che-dung-chung-theo-chinh-sach-slot.md`
   summary: Điều kiện nền của `grant_ids` ("vai hiện tại còn thấy hyperedge từ L1 trở lên") chưa được cài như một cơ chế nâng quyền.
