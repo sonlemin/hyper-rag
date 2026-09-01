@@ -154,6 +154,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-5-adapter-kv-va-tat-cache-llm.md`
   summary: Chunk id của upstream là md5 nội dung, nên hai tài liệu khác `scope` có đoạn trùng nội dung sinh cùng một id; ngữ nghĩa chỉ-chèn của `upsert` giữ nhãn của lần nạp *đầu*, có thể là nhãn rộng hơn.
   evidence: `compute_mdhash_id(content)` không mang `scope`. Đây là ca ngược của khoản nợ last-write-wins ở đường vector và đường graph (khóa của lần ghi *sau* thắng), nên hai kho có thể lệch nhau ngay trong cùng một đợt nạp. Cùng địa chỉ với "hợp nhất khóa đa nguồn" của story 2.1; story 1.5 chỉ ghim hiện trạng bằng test đặc tả làm mốc so sánh.
+  tien_do: 2026-09-01 - `test_dac_ta_hien_trang_cung_id_hai_nhan_first_write_wins` ghim hiện trạng: nạp `chunk-trung` dưới `noi_bo:runbook` rồi nạp lại dưới `khach_hang_a:bao_cao_su_co` cho ra một bản ghi giữ nhãn *rộng* của lần đầu, và `tech_support` vẫn đọc được nó. Phần còn treo là luật hợp nhất, vẫn ở story 2.1.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-5-adapter-kv-va-tat-cache-llm.md`
   summary: Hai tiến trình cùng ghi một file kho KV thì bản ghi của người ghi trước biến mất; `index_done_callback` ghi đè cả file thay vì hợp nhất với bản trên đĩa.
@@ -162,6 +163,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-5-adapter-kv-va-tat-cache-llm.md`
   summary: `_tra` sao chép bản ghi một tầng trước khi gọi tầng che; ruột che thật của story 1.6 mà biến đổi một giá trị lồng nhau sẽ ghi ngược vào kho trong bộ nhớ.
   evidence: Hôm nay không chạm tới được: bản ghi chunk của upstream chỉ có trường vô hướng (`tokens`, `content`, `full_doc_id`, `chunk_order_index`), và `mask` còn là stub trả nguyên trạng. Nhưng "kết quả đã che rò ngược vào kho" là một mặt fail-open thật, và nó chỉ mở ra đúng lúc story 1.6 viết ruột che - đó cũng là chỗ quyết định sao chép sâu hay chốt rằng tầng che không được biến đổi tại chỗ.
+  tien_do: 2026-09-01 - `test_tripwire_ket_qua_da_che_khong_duoc_ro_nguoc_vao_kho` đánh `xfail(strict=True)`: hôm nay nó đỏ thật (dấu che của `tech_support` nằm lại trong kho, ngữ cảnh hệ thống đọc sau thấy `***`), nên khoản nợ không còn chỉ nằm trong ledger. Story 1.6 chọn xong đường nào thì test xanh và `strict=True` buộc gỡ marker.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-5-adapter-kv-va-tat-cache-llm.md`
   summary: Adapter KV đọc và ghi file bằng `read_text`/`write_text` đồng bộ ngay trong method async.

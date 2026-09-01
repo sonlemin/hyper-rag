@@ -1016,3 +1016,91 @@ def test_hang_cau_hinh_va_danh_muc_namespace():
 def test_hai_method_doc_nam_trong_danh_sach_dong():
     """`get_by_id`/`get_by_ids` trả nội dung nên chúng thuộc danh sách đóng (AD-9)."""
     assert {"get_by_id", "get_by_ids"} <= MASKED_READ_METHODS
+
+
+# --- Hai khoản nợ có địa chỉ, ghim bằng test --------------------------------
+
+
+def test_dac_ta_hien_trang_cung_id_hai_nhan_first_write_wins(
+    workspace_dir, khong_gian, policy
+):
+    """Đặc tả hiện trạng: cùng một id nạp hai lần thì nhãn lần *đầu* thắng.
+
+    Không phải khẳng định hành vi đúng, mà là mốc so sánh cho story 2.1. Id
+    chunk của upstream là md5 của nội dung (`compute_mdhash_id`), không mang
+    `scope`, nên hai tài liệu khác scope có đoạn trùng nội dung sinh cùng một
+    id. Ngữ nghĩa chỉ-chèn của `upsert` khi đó giữ nhãn của lần nạp đầu, và
+    nếu lần đầu là nhãn rộng hơn thì lần nạp sau *không* siết được nó lại.
+
+    Đây là chiều ngược của khoản nợ last-write-wins ở đường vector và đường
+    graph (nhãn của lần ghi sau thắng), nên hai kho lệch nhau ngay trong cùng
+    một đợt nạp. Cả hai chiều trả một lần ở story 2.1; đổi luật hợp nhất là
+    phải sửa cả test này.
+    """
+    rong = filter_key("noi_bo", "runbook")
+    hep = filter_key("khach_hang_a", "bao_cao_su_co")
+
+    async def chay():
+        adapter = dung_adapter(workspace_dir)
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            with ingest_label(scope="noi_bo", content_type="runbook"):
+                await adapter.upsert({"chunk-trung": {"content": "đoạn trùng"}})
+            with ingest_label(scope="khach_hang_a", content_type="bao_cao_su_co"):
+                lan_sau = await adapter.upsert({"chunk-trung": {"content": "đoạn trùng"}})
+            with use_context(ngu_canh_ingest(khong_gian, policy)):
+                trong_kho = await adapter.get_by_id("chunk-trung")
+        with use_context(vai(policy, "tech_support", khong_gian)):
+            vai_hep_doc = await adapter.get_by_id("chunk-trung")
+        return lan_sau, trong_kho, vai_hep_doc
+
+    lan_sau, trong_kho, vai_hep_doc = asyncio.run(chay())
+    assert lan_sau == {}, "lần nạp sau bị bỏ qua, đó chính là hiện trạng cần ghim"
+    assert trong_kho[FILTER_KEY_FIELD] == rong
+    assert trong_kho[FILTER_KEY_FIELD] != hep
+    # Hệ quả nhìn thấy được: vai không chạm scope `khach_hang_a` vẫn đọc được
+    # bản ghi mà lần nạp thứ hai định xếp vào scope đó.
+    assert vai_hep_doc is not None
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "Tripwire cho story 1.6: `_tra` sao chép bản ghi một tầng, nên một"
+        " tầng che biến đổi giá trị lồng nhau tại chỗ sẽ ghi ngược vào kho."
+        " Hôm nay không chạm tới được (bản ghi chunk chỉ có trường vô hướng và"
+        " `mask` còn là stub), nhưng 1.6 viết ruột che thật thì phải chọn:"
+        " sao chép sâu ở đây, hoặc chốt rằng tầng che không được biến đổi tại"
+        " chỗ. Khi đã chọn, test này xanh và `strict=True` buộc gỡ marker."
+    ),
+)
+def test_tripwire_ket_qua_da_che_khong_duoc_ro_nguoc_vao_kho(
+    workspace_dir, khong_gian, policy, monkeypatch
+):
+    """Che một bản ghi cho một vai không được đổi thứ vai khác đọc thấy.
+
+    Kho trong bộ nhớ là bản gốc chưa che, dùng chung cho mọi vai. Nếu tầng che
+    biến đổi tại chỗ một giá trị lồng nhau thì dấu che của vai hẹp nằm lại
+    trong kho, và vai rộng quyền đọc sau đó nhận bản đã bị che - fail-open
+    theo chiều ngược, nhưng vẫn là kết quả sai và vẫn im lặng.
+    """
+
+    def che_bien_doi_tai_cho(ket_qua, context, khoa_hyperedge):
+        ket_qua["meta"]["owner"] = "***"
+        return ket_qua
+
+    async def chay():
+        adapter = dung_adapter(workspace_dir)
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            with ingest_label(scope="noi_bo", content_type="runbook"):
+                await adapter.upsert(
+                    {"chunk-long": {"content": "nội dung", "meta": {"owner": "Minh"}}}
+                )
+        monkeypatch.setattr("adapters.kv.mask", che_bien_doi_tai_cho)
+        with use_context(vai(policy, "tech_support", khong_gian)):
+            await adapter.get_by_id("chunk-long")
+        monkeypatch.undo()
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            return await adapter.get_by_id("chunk-long")
+
+    trong_kho = asyncio.run(chay())
+    assert trong_kho["meta"]["owner"] == "Minh", "dấu che của một vai rò vào kho"
