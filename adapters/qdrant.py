@@ -1,0 +1,411 @@
+"""Adapter Qdrant: điểm chèn quyền duy nhất của đường vector (FR-07, chốt 2).
+
+Hợp đồng với upstream giữ nguyên - `upsert(data: dict[str, dict])` embed từ
+field `content`, `query(query, top_k)` trả list dict có `distance` cộng đủ
+`meta_fields` - nên `HyperGraphRAG` không biết gì về quyền và `vendor/` không
+phải sửa một dòng nào. Toàn bộ phần quyền nằm ở hai chỗ trong file này:
+
+- lúc `upsert`, khóa `{scope}:{content_type}` lấy từ phạm vi nhãn ingest đang
+  mở (`adapters/ingest_labels.py`) và ghi vào payload;
+- lúc `query`, tập khóa lấy từ `context.keys_for(namespace)` và đi cùng search
+  request dưới dạng `match_any` trên đúng một field keyword.
+
+Pre-filter, không post-filter: bộ lọc gửi kèm truy vấn nên dữ liệu ngoài quyền
+không bao giờ được chấm điểm trong HNSW. Không có nhánh nào lọc lại phía Python
+sau khi có kết quả, và không có nhánh nào chạy với filter rỗng - tập khóa rỗng
+là trả `[]` mà không chạm Qdrant.
+
+Adapter không tự suy mức L0/L1/L2 và không đọc bảng chính sách. Ngữ nghĩa mức
+theo namespace (NFR-06) đã nằm trong `core/policy.py`; ở đây chỉ có "hỏi tập
+khóa của namespace này rồi lọc theo nó".
+
+Filter là `match_any` một field, cố ý không AND đa điều kiện: extra HNSW edge
+chỉ dựng cho một field đã có index lúc build, nên lọc nhiều điều kiện là điểm
+mù recall (research qdrant-filterable-hnsw). Cũng vì thế payload index phải
+tạo trước khi nạp dữ liệu, và upsert từ chối chạy khi index chưa có (AD-4).
+"""
+
+import asyncio
+from dataclasses import dataclass
+
+from hypergraphrag.base import BaseVectorStorage
+from qdrant_client import AsyncQdrantClient, models
+
+from adapters.ingest_labels import current_ingest_key
+from core.ids import point_id
+from core.keys import FILTER_KEY_FIELD
+from core.masking import mask
+from core.permission import current_context
+
+# Khóa cấu hình đọc từ `global_config` (upstream truyền `asdict(HyperGraphRAG)`).
+QDRANT_URL_KEY = "qdrant_url"
+QDRANT_API_KEY_KEY = "qdrant_api_key"
+EMBEDDING_BATCH_KEY = "embedding_batch_num"
+COSINE_THRESHOLD_KEY = "cosine_better_than_threshold"
+
+# Id điểm Qdrant phải là UUID hoặc số nguyên, còn id của upstream là chuỗi
+# (`rel-…`, `ent-…`, `chunk-…`). Point id là UUID5 của id gốc, id gốc giữ trong
+# payload dưới field này rồi trả lại nguyên vẹn ở khóa `id` của kết quả - nhờ
+# vậy id join chéo Qdrant và Neo4j vẫn là một (Consistency Conventions).
+UPSTREAM_ID_FIELD = "upstream_id"
+
+# Không bao giờ ghi nội dung vào payload: kho vector không được thành bản sao
+# thứ hai của nội dung chưa che.
+CONTENT_FIELD = "content"
+
+# Số cạnh HNSW dựng riêng cho từng giá trị của field đã có payload index. Đây
+# là thứ biến "có index" thành "pre-filter chạy trong HNSW" thay vì thành một
+# lần duyệt vét cạn có lọc; không đặt nó thì cả AD-4 lẫn `QdrantIndexMissing`
+# đang canh một cơ chế chưa được bật.
+PAYLOAD_M = 16
+# Giữ index toàn cục, cố ý không theo khuyến nghị `m=0` của hướng dẫn tenant
+# Qdrant. Khuyến nghị đó đúng khi *mọi* truy vấn đều mang filter tenant, còn ở
+# đây ngữ cảnh hệ thống đọc thô không filter (AD-3): tắt index toàn cục là
+# biến đường ingest và mọi lần đọc thô thành full scan.
+GLOBAL_M = 16
+# Số điều kiện tối đa một filter được mang, ép ở phía server (PRD addendum).
+# Quy ước trong code cộng helper assert trong test chỉ chặn được đường code
+# hiện tại; hằng này chặn cả những đường chưa viết. Nếu Epic 5 (break-glass)
+# thật sự cần filter hai điều kiện thì phải quay lại nới chỗ này có chủ đích
+# kèm lý do, không nới lén ở một adapter nào đó.
+FILTER_MAX_CONDITIONS = 1
+
+
+class QdrantIndexMissing(RuntimeError):
+    """Ghi dữ liệu khi payload index khóa chưa tồn tại.
+
+    Extra HNSW edge chỉ dựng cho field đã có index lúc build, nên point ghi
+    trước index là một vùng vĩnh viễn nằm ngoài đường lọc nhanh. Từ chối cả lô
+    chứ không tự tạo index rồi ghi tiếp: thứ tự đó mới là thứ phải giữ.
+    """
+
+    code = "QDRANT_INDEX_MISSING"
+
+
+class PointFilterKeyMissing(RuntimeError):
+    """Một point rời kho mà không mang khóa quyền trong payload.
+
+    Chỉ xảy ra khi có ai đó ghi vào collection này không qua adapter, nên đây
+    là hỏng dữ liệu chứ không phải ca vận hành bình thường. Vẫn phải nổ: che
+    một mục bằng khóa rỗng nghĩa là không che gì, đúng kiểu mặc định fail-open
+    mà cả story này dựng ra để chống.
+    """
+
+    code = "POINT_FILTER_KEY_MISSING"
+
+
+class MaskContractViolated(RuntimeError):
+    """Tầng che trả về một giá trị rỗng thay cho một bản ghi.
+
+    Hợp đồng của `mask` (AD-9) là biến đổi bản ghi tại chỗ, không phải loại nó
+    khỏi kết quả. Story 1.6 viết ruột thật; nếu nó muốn giấu hẳn một mục thì
+    `query` phải lọc mục đó ra khỏi list, vì `None` lọt vào list sẽ nổ tận
+    `operate.py:944` ở `r["hyperedge_name"]` - xa chỗ gây ra vài tầng. Cửa này
+    biến lỗi đó thành một thông điệp gọi đúng tên hợp đồng bị vi phạm.
+    """
+
+    code = "MASK_CONTRACT_VIOLATED"
+
+
+@dataclass
+class QdrantVectorDBStorage(BaseVectorStorage):
+    """`BaseVectorStorage` của upstream, ruột là Qdrant có pre-filter theo khóa."""
+
+    # Giữ tên và giá trị mặc định của upstream để `cosine_better_than_threshold`
+    # trong `global_config` vẫn có tác dụng như với NanoVectorDB.
+    cosine_better_than_threshold: float = 0.2
+    # Client tiêm sẵn, tùy chọn. Tiêm vào thì ba namespace vector dùng chung
+    # một kết nối; không tiêm thì mỗi instance tự mở kết nối riêng từ
+    # `qdrant_url` và không ai đóng chúng lại - vòng đời kết nối chốt ở story
+    # 1.7 cùng lúc với chỗ gọi `initialize()`. Đây cũng là chỗ bộ test cắm
+    # client local mode có ghi nhật ký vào.
+    qdrant_client: AsyncQdrantClient | None = None
+
+    def __post_init__(self):
+        cau_hinh = self.global_config or {}
+        self._client = self.qdrant_client or self._dung_client(cau_hinh)
+        self._max_batch_size = self._kich_thuoc_lo(cau_hinh)
+        self.cosine_better_than_threshold = cau_hinh.get(
+            COSINE_THRESHOLD_KEY, self.cosine_better_than_threshold
+        )
+
+    @staticmethod
+    def _kich_thuoc_lo(cau_hinh) -> int:
+        """Kích thước lô embedding, kiểm ngay lúc dựng adapter.
+
+        `range(0, n, 0)` nổ bằng `ValueError` giữa đường ghi, cách nơi gây ra
+        nó vài tầng. Cấu hình sai phải hỏng lúc dựng, chỗ người sửa cấu hình
+        còn đang nhìn vào cấu hình.
+        """
+        gia_tri = cau_hinh.get(EMBEDDING_BATCH_KEY, 32)
+        try:
+            n = int(gia_tri)
+        except (TypeError, ValueError):
+            raise ValueError(
+                f"{EMBEDDING_BATCH_KEY} = {gia_tri!r} không phải số nguyên"
+            ) from None
+        if n < 1:
+            raise ValueError(f"{EMBEDDING_BATCH_KEY} phải >= 1, nhận được {n}")
+        return n
+
+    @staticmethod
+    def _dung_client(cau_hinh) -> AsyncQdrantClient:
+        """Client từ `global_config`; async toàn tuyến, không trộn driver sync."""
+        url = cau_hinh.get(QDRANT_URL_KEY)
+        if not url:
+            raise ValueError(
+                f"thiếu {QDRANT_URL_KEY!r} trong global_config và không có client"
+                " nào được tiêm vào: adapter Qdrant không có gì để nối tới"
+            )
+        return AsyncQdrantClient(
+            url=url,
+            api_key=cau_hinh.get(QDRANT_API_KEY_KEY),
+            # Tắt thăm dò phiên bản: nó chạy một HTTP call chặn trong một
+            # thread nền ngay lúc dựng client, mà thứ nó kiểm thì đã được ghim
+            # sẵn hai đầu (Qdrant 1.19.0 trong docker-compose, qdrant-client
+            # trong pyproject). Một I/O chặn lén trong `__post_init__` đi ngược
+            # luật async toàn tuyến của dự án.
+            check_compatibility=False,
+        )
+
+    # --- Tên collection và bước khởi tạo ----------------------------------
+
+    def _ten_collection(self, context=None) -> str:
+        """`{space}_{namespace}`, `space` lấy từ ngữ cảnh hiện tại (AD-12).
+
+        Tính theo từng lời gọi chứ không ghim lúc `__post_init__`: `space` là
+        thuộc tính của request, một instance adapter phục vụ nhiều không gian.
+        Thiếu ngữ cảnh là `PermissionContextMissing` dội thẳng lên từ đây.
+        Nơi gọi đã cầm sẵn ngữ cảnh thì truyền vào, để tên collection chỉ có
+        một công thức duy nhất.
+        """
+        return f"{(context or current_context()).space}_{self.namespace}"
+
+    async def initialize(self) -> str:
+        """Tạo collection và payload index khóa trong cùng một bước (AD-4).
+
+        Hai lời gọi liền nhau, không có đường ghi dữ liệu nào chen vào giữa:
+        index phải có mặt trước khi point đầu tiên được nạp. Cả hai đều lặp lại
+        được, nên gọi lại lúc khởi động không hỏng gì.
+
+        Hai tham số của collection chỉ có hiệu lực trên Qdrant thật, local mode
+        nhận rồi bỏ qua: `hnsw_config.payload_m` dựng cạnh HNSW theo khóa quyền,
+        `strict_mode_config` là hàng rào phía server cho cùng luật mà adapter tự
+        giữ. Hiệu lực thật của cả hai là khoản kiểm ở cổng M1.
+        """
+        ten = self._ten_collection()
+        if not await self._client.collection_exists(collection_name=ten):
+            await self._client.create_collection(
+                collection_name=ten,
+                vectors_config=models.VectorParams(
+                    size=self.embedding_func.embedding_dim,
+                    distance=models.Distance.COSINE,
+                ),
+                hnsw_config=models.HnswConfigDiff(payload_m=PAYLOAD_M, m=GLOBAL_M),
+                strict_mode_config=models.StrictModeConfig(
+                    enabled=True,
+                    filter_max_conditions=FILTER_MAX_CONDITIONS,
+                    # Lọc trên field chưa có index là đúng thứ AD-4 cấm; để
+                    # server từ chối thay vì âm thầm duyệt vét cạn.
+                    unindexed_filtering_retrieve=False,
+                    unindexed_filtering_update=False,
+                ),
+            )
+        await self._client.create_payload_index(
+            collection_name=ten,
+            field_name=FILTER_KEY_FIELD,
+            field_schema=models.KeywordIndexParams(
+                type=models.KeywordIndexType.KEYWORD,
+                # Gom dữ liệu cùng một khóa nằm gần nhau trên đĩa: khóa quyền
+                # chính là chiều tenant của kho này.
+                is_tenant=True,
+            ),
+        )
+        return ten
+
+    async def _bat_buoc_co_index(self, ten: str) -> None:
+        """Từ chối ghi khi payload index khóa chưa có hoặc sai kiểu (AD-4).
+
+        Kiểm cả kiểu chứ không chỉ sự có mặt: index `text` tách từ nên
+        `match_any` trượt, và index keyword thiếu `is_tenant` không gom dữ liệu
+        theo khóa. Cả hai đều là index "có" mà cơ chế này hỏng - đúng ca mà
+        cửa đây dựng ra để chặn. `initialize()` luôn tạo keyword + `is_tenant`,
+        nên một index khác kiểu nghĩa là có ai đó tạo tay theo cách khác.
+        """
+        if not await self._client.collection_exists(collection_name=ten):
+            raise QdrantIndexMissing(
+                f"collection {ten!r} chưa tồn tại nên chưa có payload index"
+                f" {FILTER_KEY_FIELD!r}: chạy initialize() trước khi nạp"
+            )
+        thong_tin = await self._client.get_collection(collection_name=ten)
+        mo_ta = (thong_tin.payload_schema or {}).get(FILTER_KEY_FIELD)
+        if mo_ta is None:
+            raise QdrantIndexMissing(
+                f"collection {ten!r} thiếu payload index {FILTER_KEY_FIELD!r}:"
+                " point nạp trước index nằm ngoài đường lọc nhanh vĩnh viễn"
+            )
+        if mo_ta.data_type != models.PayloadSchemaType.KEYWORD:
+            raise QdrantIndexMissing(
+                f"payload index {FILTER_KEY_FIELD!r} của {ten!r} là"
+                f" {mo_ta.data_type!r}, phải là keyword để `match_any` khớp"
+                " nguyên khóa"
+            )
+        tham_so = mo_ta.params
+        # params vắng nghĩa là index tạo bằng kiểu trần, `is_tenant` khi đó là
+        # false theo mặc định của Qdrant - vẫn là sai so với initialize().
+        if not isinstance(tham_so, models.KeywordIndexParams) or not tham_so.is_tenant:
+            raise QdrantIndexMissing(
+                f"payload index {FILTER_KEY_FIELD!r} của {ten!r} không bật"
+                " `is_tenant`: khóa quyền là chiều tenant của kho này"
+            )
+
+    # --- Ghi ---------------------------------------------------------------
+
+    async def upsert(self, data: dict[str, dict]) -> list[str]:
+        """Ghi một lô point, mọi point mang khóa của phạm vi nhãn đang mở.
+
+        Ba cửa phải qua trước khi chạm kho, theo thứ tự từ chung tới riêng:
+        có ngữ cảnh (để biết `space`), có nhãn ingest (để biết khóa), có index
+        (để khóa còn tác dụng). Hỏng cửa nào cũng là từ chối cả lô - ghi được
+        một nửa lô còn tệ hơn không ghi gì, vì nửa kia không ai biết thiếu. Ba
+        cửa kiểm hết trước khi ghi point đầu tiên, nên "từ chối cả lô" vẫn đúng
+        sau khi phần tải lên được chia lô.
+
+        Tải lên chia theo cùng `embedding_batch_num` với phần embedding: một
+        request mang cả nghìn point là một request dễ chạm timeout và khó đọc
+        khi hỏng. Đứt giữa chừng thì lô đã gửi nằm lại, nhưng point id là UUID5
+        của id upstream nên chạy lại chỉ ghi đè đúng chỗ cũ - lặp lại được,
+        không sinh bản sao.
+        """
+        if not data:
+            return []
+        ten = self._ten_collection()
+        khoa = current_ingest_key()
+        await self._bat_buoc_co_index(ten)
+
+        ids_goc = list(data)
+        vectors = await self._embed_theo_lo([v[CONTENT_FIELD] for v in data.values()])
+        if len(vectors) != len(ids_goc):
+            raise RuntimeError(
+                f"embedding trả về {len(vectors)} vector cho {len(ids_goc)} mục:"
+                " không ghép 1-1 được, từ chối cả lô"
+            )
+        diem = [
+            models.PointStruct(
+                id=point_id(id_goc),
+                vector=vectors[i],
+                payload=self._payload(id_goc, data[id_goc], khoa),
+            )
+            for i, id_goc in enumerate(ids_goc)
+        ]
+        n = self._max_batch_size
+        for i in range(0, len(diem), n):
+            await self._client.upsert(
+                collection_name=ten, points=diem[i : i + n], wait=True
+            )
+        return [d.id for d in diem]
+
+    def _payload(self, id_goc: str, gia_tri: dict, khoa: str) -> dict:
+        """Payload một điểm: đúng `meta_fields`, id gốc và khóa quyền.
+
+        `content` bị loại tường minh kể cả khi nó lọt vào `meta_fields`: đó là
+        một dòng chặn, không phải một giả định về cách upstream cấu hình.
+        """
+        payload = {
+            ten: gia_tri[ten]
+            for ten in self.meta_fields
+            if ten != CONTENT_FIELD and ten in gia_tri
+        }
+        payload[UPSTREAM_ID_FIELD] = id_goc
+        payload[FILTER_KEY_FIELD] = khoa
+        return payload
+
+    async def _embed_theo_lo(self, cac_van_ban: list[str]) -> list[list[float]]:
+        """Embed theo lô `embedding_batch_num`, giữ đúng thứ tự đầu vào."""
+        n = self._max_batch_size
+        cac_lo = [cac_van_ban[i : i + n] for i in range(0, len(cac_van_ban), n)]
+        ket_qua = await asyncio.gather(*[self.embedding_func(lo) for lo in cac_lo])
+        return [[float(x) for x in vector] for lo in ket_qua for vector in lo]
+
+    # --- Đọc ---------------------------------------------------------------
+
+    async def query(self, query: str, top_k: int = 5) -> list[dict]:
+        """Tìm kiếm vector có pre-filter theo tập khóa của ngữ cảnh hiện tại.
+
+        Ba nhánh, không có nhánh thứ tư. Ngữ cảnh hệ thống đọc thô (ingest cần
+        thấy hết). Tập khóa rỗng trả `[]` mà không chạm Qdrant - gọi với filter
+        rỗng là mở toang. Còn lại là một `match_any` một field gửi kèm request.
+
+        Che chạy sau khi Qdrant đã cắt theo `limit=top_k`, nên số kết quả thực
+        dụng có thể tụt dưới `top_k` khi tầng che rỗng bớt nội dung. Ở M1 đây
+        là hành vi chấp nhận: bù lại bằng cách xin dư rồi cắt sau là đổi ngữ
+        nghĩa của `top_k` với upstream, việc đó cần một quyết định riêng.
+        """
+        context = current_context()
+        ten = self._ten_collection(context)
+        bo_loc = None
+        if not context.bypass_filter:
+            khoa_duoc_phep = context.keys_for(self.namespace)
+            if not khoa_duoc_phep:
+                return []
+            bo_loc = models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key=FILTER_KEY_FIELD,
+                        # sorted() để hai lần gọi cùng tập khóa ra cùng một
+                        # request, thứ giúp so sánh request giữa các lần chạy.
+                        match=models.MatchAny(any=sorted(khoa_duoc_phep)),
+                    )
+                ]
+            )
+        vector = (await self._embed_theo_lo([query]))[0]
+        try:
+            tra_ve = await self._client.query_points(
+                collection_name=ten,
+                query=vector,
+                query_filter=bo_loc,
+                limit=top_k,
+                with_payload=True,
+                score_threshold=self.cosine_better_than_threshold,
+            )
+        except Exception:
+            # Space mới chưa ai gọi `initialize()` là ca dễ gặp ở M1, và mỗi
+            # driver ném một kiểu lỗi khác nhau cho nó. Đổi thành một mã lỗi
+            # ổn định, chỉ khi đúng là collection vắng mặt; lỗi khác đi tiếp
+            # nguyên trạng. Kiểm ở nhánh lỗi nên đường chạy đúng không tốn
+            # thêm một vòng gọi nào.
+            if not await self._client.collection_exists(collection_name=ten):
+                raise QdrantIndexMissing(
+                    f"collection {ten!r} chưa tồn tại: space này chưa chạy"
+                    " initialize(), chưa có gì để truy hồi"
+                ) from None
+            raise
+        return [self._ban_ghi(diem, context) for diem in tra_ve.points]
+
+    def _ban_ghi(self, diem, context) -> dict:
+        """Một kết quả: hình dạng upstream, đã đi qua tầng che (AD-9).
+
+        Khóa quyền ở lại trong bản ghi vì nó là nhãn của chính mục đó - thứ
+        tầng che tra `masked_slots` theo, và thứ cho phép truy nguyên một mục
+        đã ra khỏi adapter. Ngữ cảnh hệ thống đọc thô nên không che.
+        """
+        payload = dict(diem.payload or {})
+        ban_ghi = {k: v for k, v in payload.items() if k != UPSTREAM_ID_FIELD}
+        ban_ghi["id"] = payload.get(UPSTREAM_ID_FIELD, str(diem.id))
+        ban_ghi["distance"] = diem.score
+        if context.bypass_filter:
+            return ban_ghi
+        khoa = payload.get(FILTER_KEY_FIELD)
+        if not khoa:
+            raise PointFilterKeyMissing(
+                f"point {diem.id!r} không mang {FILTER_KEY_FIELD!r} trong"
+                " payload: không tra được `masked_slots` nên không che được"
+            )
+        da_che = mask(ban_ghi, context, khoa)
+        if not da_che:
+            raise MaskContractViolated(
+                f"tầng che trả {da_che!r} cho point {diem.id!r}: muốn giấu hẳn"
+                " một mục thì `query` phải lọc nó khỏi list, không đưa giá trị"
+                " rỗng vào list kết quả"
+            )
+        return da_che

@@ -5,6 +5,7 @@ adapter tự gỡ theo cách riêng thì id ở Neo4j và ở Qdrant lệch nhau
 NFR-03 (so id join chéo hai kho) mất ý nghĩa. Cả hai adapter gọi hàm ở đây.
 """
 
+import re
 import unicodedata
 import uuid
 
@@ -34,3 +35,33 @@ def normalize_id(raw: str) -> str:
 def point_id(raw: str) -> str:
     """Point id Qdrant = UUID5 từ id đã chuẩn hóa; id gốc giữ trong payload."""
     return str(uuid.uuid5(ID_NAMESPACE, normalize_id(raw)))
+
+
+# Tập ký tự của `space`. Chữ cái mở đầu rồi chữ, số, gạch dưới - đủ cho quy ước
+# hiện có (`synth`, `test_3fa9c1d2_synth`) và an toàn ở cả hai kho: tên
+# collection Qdrant là `{space}_{namespace}`, còn nhãn Neo4j của story 1.4 phải
+# viết được mà không cần dấu nháy ngược. Không cho dấu cách, dấu chấm, gạch
+# ngang: mỗi thứ đó là một ca phải trích dẫn ở đâu đó, và trích dẫn sai một chỗ
+# là truy vấn trỏ nhầm không gian dữ liệu.
+_SPACE_HOP_LE = re.compile(r"[A-Za-z][A-Za-z0-9_]*\Z")
+SPACE_MAX_LEN: int = 64
+
+
+def validate_space(space: str) -> str:
+    """Kiểm `space` trước khi nó thành tên collection và nhãn graph (AD-12).
+
+    Cách ly theo `space` là chiều cách ly dữ liệu của hệ, nên hình dạng của nó
+    là chuyện của `core/`, không phải của từng adapter tự đoán. Trả lại chính
+    chuỗi đó để nơi gọi dùng được trực tiếp; không cắt khoảng trắng, vì một
+    `space` lệch một dấu cách là hai không gian khác nhau chứ không phải một.
+    """
+    if not isinstance(space, str):
+        raise TypeError(f"space phải là chuỗi, nhận được {type(space).__name__}")
+    if len(space) > SPACE_MAX_LEN:
+        raise ValueError(f"space dài quá {SPACE_MAX_LEN} ký tự: {space!r}")
+    if not _SPACE_HOP_LE.match(space):
+        raise ValueError(
+            f"space {space!r} không hợp lệ: bắt đầu bằng chữ cái, sau đó chỉ"
+            " chữ, số và gạch dưới"
+        )
+    return space

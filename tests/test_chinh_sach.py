@@ -372,6 +372,45 @@ def test_khoa_loc_ghep_bang_ban_da_cat_khoang_trang():
     assert filter_key(" noi_bo ", "runbook ") == "noi_bo:runbook"
 
 
+def test_tach_khoa_la_nghich_dao_cua_ghep_khoa():
+    """Vòng tròn: tách rồi ghép lại phải ra đúng chuỗi cũ, trên dữ liệu thật."""
+    from core.keys import filter_key, split_key
+
+    for he in du_lieu_dung_tay.HYPEREDGES:
+        khoa = filter_key(he["scope"], he["content_type"])
+        assert split_key(khoa) == (he["scope"], he["content_type"])
+        assert filter_key(*split_key(khoa)) == khoa
+
+
+def test_tach_khoa_tra_dung_loai_noi_dung_cho_tang_che():
+    """Tầng che nhận khóa hyperedge nhưng tra `masked_slots` theo loại nội dung."""
+    from core.keys import split_key
+
+    assert split_key("noi_bo:bao_cao_su_co") == ("noi_bo", "bao_cao_su_co")
+    assert split_key("khach_hang_a:runbook")[1] == "runbook"
+
+
+@pytest.mark.parametrize(
+    "hong",
+    ["", "noi_bo", ":runbook", "noi_bo:", " noi_bo:runbook", "noi_bo:runbook "],
+)
+def test_tach_khoa_tu_choi_chuoi_khong_phai_khoa(hong):
+    """Chuỗi không do `filter_key` sinh ra thì nổ, không trả về một nửa vô nghĩa."""
+    from core.keys import split_key
+
+    with pytest.raises(ValueError):
+        split_key(hong)
+
+
+@pytest.mark.parametrize("xau", [None, 3, ("noi_bo", "runbook")])
+def test_tach_khoa_tu_choi_sai_kieu(xau):
+    """Cùng luật lỗi với `filter_key`: sai kiểu là `TypeError`."""
+    from core.keys import split_key
+
+    with pytest.raises(TypeError):
+        split_key(xau)
+
+
 def test_chuan_hoa_id_bo_dau_nhay_cua_upstream():
     """Upstream bọc tên node bằng dấu nháy kép; chuẩn hóa một nơi duy nhất."""
     from core.ids import normalize_id

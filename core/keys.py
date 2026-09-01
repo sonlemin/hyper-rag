@@ -10,6 +10,15 @@ Bảng chính sách chỉ ánh xạ vai người hỏi ra *tập* khóa được
 
 KEY_SEPARATOR: str = ":"
 
+# Tên field mang khóa lọc trong payload Qdrant và trên node Neo4j. Sống cạnh
+# hàm dựng khóa vì hai thứ này là một hợp đồng: đổi tên field mà quên đổi chỗ
+# đọc là mọi truy vấn lọc trượt, và filter trượt thì hoặc không ai thấy gì,
+# hoặc ai cũng thấy tất. Một hằng, hai kho đọc chung (story 1.3 và 1.4).
+#
+# Đây cũng là *một* field duy nhất mà filter được phép chạm: `match_any` trên
+# một field keyword, không AND đa điều kiện (FR-07, research về HNSW có lọc).
+FILTER_KEY_FIELD: str = "filter_key"
+
 
 def filter_key(scope: str, content_type: str) -> str:
     """Ghép khóa lọc từ scope và loại nội dung của một tài liệu.
@@ -30,3 +39,26 @@ def filter_key(scope: str, content_type: str) -> str:
             raise ValueError(f"{ten} chứa dấu phân tách {KEY_SEPARATOR!r}: {gon}")
         da_cat.append(gon)
     return da_cat[0] + KEY_SEPARATOR + da_cat[1]
+
+
+def split_key(key: str) -> tuple[str, str]:
+    """Tách khóa lọc ngược lại thành `(scope, content_type)`.
+
+    Tầng che nhận khóa của hyperedge (AD-9) nhưng tra `masked_slots` theo loại
+    nội dung, nên phép tách này có thật và cần đúng một bản. Mỗi nơi tự
+    `split(":")` một kiểu là đúng thứ mà việc gom tên field vào một hằng ở
+    trên định tránh.
+
+    Luật lỗi giống `filter_key`: sai kiểu là `TypeError`, sai dạng là
+    `ValueError`. Kiểm bằng cách dựng lại khóa từ hai nửa vừa tách - nếu chuỗi
+    vào không phải do `filter_key` sinh ra thì nó không khớp, và ta biết ngay
+    thay vì trả về một nửa vô nghĩa.
+    """
+    if not isinstance(key, str):
+        raise TypeError(f"khóa lọc phải là chuỗi, nhận được {type(key).__name__}")
+    scope, dau, content_type = key.partition(KEY_SEPARATOR)
+    if not dau:
+        raise ValueError(f"khóa lọc {key!r} thiếu dấu phân tách {KEY_SEPARATOR!r}")
+    if filter_key(scope, content_type) != key:
+        raise ValueError(f"khóa lọc {key!r} không đúng dạng scope:content_type")
+    return scope, content_type

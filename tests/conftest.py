@@ -15,8 +15,10 @@ import pytest
 def session_prefix() -> str:
     """Prefix duy nhất theo phiên test, ví dụ ``test_3fa9c1d2``.
 
-    Quy ước: tên collection Qdrant = ``{session_prefix}_{space}_{namespace}``,
-    workspace Neo4j và thư mục làm việc cũng mang prefix này.
+    Quy ước: prefix gấp vào trong ``space`` của ngữ cảnh quyền, ví dụ
+    ``test_3fa9c1d2_synth``. Tên collection Qdrant là ``{space}_{namespace}``
+    (AD-12), nên nó thành ``test_3fa9c1d2_synth_hyperedges``. Workspace Neo4j
+    và thư mục làm việc cũng mang prefix theo cùng cách.
     """
     return f"test_{uuid.uuid4().hex[:8]}"
 
@@ -49,3 +51,32 @@ def ngu_canh_quyen_sach():
     xoa()
     yield
     xoa()
+
+
+@pytest.fixture(autouse=True)
+def nhan_ingest_sach():
+    """Canh nhãn ingest không rò ra ngoài phạm vi một test.
+
+    Đối xứng với ``ngu_canh_quyen_sach`` và cùng một lý do: test "chưa mở nhãn
+    thì từ chối ghi" chỉ có nghĩa khi không test nào trước đó bỏ quên một nhãn
+    đang mở, nếu không kết quả phụ thuộc thứ tự chạy.
+
+    Kiểm hai đầu chứ không xóa, vì contextvar không có phép xóa: giữ token để
+    xóa được nghĩa là biến phải ở trạng thái *đã đặt* suốt test, đúng thứ làm
+    hỏng các test fail-closed. Nhãn chỉ mở được qua ``ingest_label`` (một
+    context manager có try/finally), nên rò nhãn là dấu hiệu ai đó chạm thẳng
+    contextvar - đáng nổ to chứ không đáng dọn im lặng.
+    """
+    from adapters.ingest_labels import IngestLabelMissing, current_ingest_key
+
+    def dang_mo():
+        try:
+            return current_ingest_key()
+        except IngestLabelMissing:
+            return None
+
+    ro_ri = dang_mo()
+    assert ro_ri is None, f"một test chạy trước đã để rò nhãn ingest {ro_ri!r}"
+    yield
+    ro_ri = dang_mo()
+    assert ro_ri is None, f"test này thoát khi nhãn ingest {ro_ri!r} còn mở"

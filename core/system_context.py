@@ -17,6 +17,7 @@ và không phân biệt được nguồn lời gọi.
 
 from types import MappingProxyType
 
+from core.ids import validate_space
 from core.permission import _SYSTEM_KIND, PermissionContext
 
 # Không có gì để che khi đọc thô, nhưng trường vẫn phải có mặt để hình dạng
@@ -30,6 +31,7 @@ def system_context(*, space: str, policy_version: str) -> PermissionContext:
     `policy_version` vẫn đi kèm để audit ghi được bản chính sách đang hiệu lực
     tại thời điểm nạp.
     """
+    validate_space(space)
     return PermissionContext(
         kind=_SYSTEM_KIND,
         space=space,

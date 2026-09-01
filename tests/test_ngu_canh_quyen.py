@@ -267,6 +267,46 @@ def test_factory_tu_choi_dinh_danh_rong(policy, truong):
         user_context(**tham_so)
 
 
+# --- Hình dạng của `space` (AD-12) ---------------------------------------
+
+
+@pytest.mark.parametrize("space", ["synth", "test_3fa9c1d2_synth", "khachHangA", "s1"])
+def test_space_hop_le_thi_qua(policy, space):
+    """Quy ước tên đang dùng ở fixture và ở compose phải còn hợp lệ."""
+    assert (
+        user_context(
+            policy=policy, role="devops", space=space, real_account="dev01"
+        ).space
+        == space
+    )
+    assert system_context(space=space, policy_version="v").space == space
+
+
+@pytest.mark.parametrize(
+    "space",
+    ["", "  ", " synth", "synth ", "1synth", "_synth", "synth-b", "synth.b", "a b", "x" * 65],
+)
+def test_space_hong_thi_tu_choi_o_ca_hai_factory(policy, space):
+    """`space` đi thẳng vào tên collection Qdrant và nhãn Neo4j (story 1.4).
+
+    Một ký tự phải trích dẫn ở đâu đó là một chỗ trích dẫn sai làm truy vấn trỏ
+    nhầm không gian dữ liệu, mà cách ly theo space chính là chiều cách ly dữ
+    liệu của hệ. Cả hai cửa dựng ngữ cảnh đều phải chặn, không chỉ cửa người
+    dùng: ingest cũng ghi vào đúng những cái tên đó.
+    """
+    with pytest.raises(ValueError):
+        user_context(policy=policy, role="devops", space=space, real_account="dev01")
+    with pytest.raises(ValueError):
+        system_context(space=space, policy_version="v")
+
+
+@pytest.mark.parametrize("xau", [None, 3, ["synth"]])
+def test_space_sai_kieu_la_type_error(policy, xau):
+    """Sai kiểu là `TypeError`, cùng luật với các hàm thuần khác của core."""
+    with pytest.raises(TypeError):
+        user_context(policy=policy, role="devops", space=xau, real_account="dev01")
+
+
 @pytest.mark.parametrize("xau", [None, "khong-phai-context", 42])
 def test_use_context_tu_choi_vat_la(xau):
     """Quấn nhầm thứ không phải ngữ cảnh quyền là lỗi ngay, không im lặng."""

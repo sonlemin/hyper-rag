@@ -28,6 +28,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Mapping
 
+from core.ids import validate_space
 from core.policy import Policy
 
 KIND_USER = "user"
@@ -179,11 +180,13 @@ def user_context(
     """
     if isinstance(grant_ids, str) or not isinstance(grant_ids, (tuple, list)):
         raise TypeError(f"grant_ids phải là tuple/list id, nhận được {_ten(grant_ids)}")
-    for ten, gia_tri in (("space", space), ("real_account", real_account)):
-        if not isinstance(gia_tri, str):
-            raise TypeError(f"{ten} phải là chuỗi, nhận được {_ten(gia_tri)}")
-        if not gia_tri.strip():
-            raise ValueError(f"{ten} rỗng, ngữ cảnh quyền không định danh được")
+    if not isinstance(real_account, str):
+        raise TypeError(f"real_account phải là chuỗi, nhận được {_ten(real_account)}")
+    if not real_account.strip():
+        raise ValueError("real_account rỗng, ngữ cảnh quyền không định danh được")
+    # `space` đi thẳng vào tên collection Qdrant và nhãn Neo4j, nên nó có luật
+    # riêng chặt hơn "chuỗi không rỗng"; luật đó sống ở `core/ids.py`.
+    validate_space(space)
     hang = policy.role(role)
     return PermissionContext(
         kind=KIND_USER,
