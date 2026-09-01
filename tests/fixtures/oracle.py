@@ -118,3 +118,23 @@ def slot_phai_che(bang: dict, vai: str, hyperedge) -> set[str]:
     if muc == "L1":
         che |= masked_slots_ky_vong(bang, vai).get(hyperedge["content_type"], set())
     return che & set(hyperedge["slots"])
+
+
+def chunk_thay_duoc(bang: dict, vai: str, chunks) -> list[str]:
+    """Id các chunk mà vai đọc được, theo ngưỡng L2 của namespace `chunks`.
+
+    Chunk và tài liệu gốc là văn bản chạy, không tách theo slot được, nên
+    không có mức trung gian: hoặc vai đạt L2 với loại nội dung của nguồn và
+    đọc nguyên văn, hoặc mục vắng mặt hẳn (NFR-06). Đây là chỗ luật đó được
+    tính lại bằng tay, độc lập với `core/policy.py`.
+
+    Trả theo thứ tự fixture để test so được cả tập lẫn thứ tự, giống
+    `hyperedge_thay_duoc`.
+    """
+    duoc_phep = allowed_keys_ky_vong(bang, vai)["chunks"]
+    return [
+        c["id"]
+        for c in chunks
+        if THU_TU_MUC[muc_ky_vong(bang, vai, c["content_type"])] >= THU_TU_MUC["L2"]
+        and khoa_ky_vong(c["scope"], c["content_type"]) in duoc_phep
+    ]

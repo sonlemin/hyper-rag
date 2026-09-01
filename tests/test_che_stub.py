@@ -50,9 +50,21 @@ def test_grant_rong_tra_nguyen_trang():
 
 
 def test_danh_sach_dong_doc_duoc_o_runtime():
-    """Danh sách đóng 4 method phải che, đọc được để adapter phản chiếu."""
+    """Danh sách đóng các method phải che, đọc được để adapter phản chiếu.
+
+    Sáu tên, một cho mỗi đường dữ liệu ra khỏi kho: `query` của đường vector,
+    ba method của đường graph, và hai method đọc chunk của đường KV mà story
+    1.5 thêm vào (`get_by_id`, `get_by_ids`).
+    """
     assert MASKED_READ_METHODS == frozenset(
-        {"query", "get_node", "get_edge", "get_node_edges"}
+        {
+            "query",
+            "get_node",
+            "get_edge",
+            "get_node_edges",
+            "get_by_id",
+            "get_by_ids",
+        }
     )
     assert isinstance(MASKED_READ_METHODS, frozenset)
 

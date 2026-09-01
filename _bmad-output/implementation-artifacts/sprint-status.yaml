@@ -76,7 +76,7 @@
 #   nếu chạy repair thì chép lại khối chú thích từ git history.
 
 generated: 08-31-2026 21:50
-last_updated: 09-01-2026 16:10
+last_updated: 09-01-2026 18:05
 project: hyper_graph_rag
 project_key: NOKEY
 tracking_system: file-system
@@ -89,7 +89,7 @@ development_status:
   1-2-ngữ-cảnh-quyền-fail-closed-và-chính-sách-dạng-dữ-liệu: done  # AT: test fail-closed + nạp YAML chính sách viết trước khi code (FR-27)
   1-3-adapter-qdrant-với-pre-filter-theo-khóa: done  # AT: test pre-filter tầng vector viết trước; assert trên ngữ cảnh truy hồi
   1-4-adapter-neo4j-với-where-injection-và-cấu-trúc-hai-phía: done  # AT: test WHERE-injection và hai phía hyperedge viết trước
-  1-5-adapter-kv-và-tắt-cache-llm: backlog  # AT: test cache LLM đã tắt + KV không rò theo quyền viết trước
+  1-5-adapter-kv-và-tắt-cache-llm: done  # AT: test cache LLM đã tắt + KV không rò theo quyền viết trước
   1-6-tầng-che-dùng-chung-theo-chính-sách-slot: backlog  # AT: test che theo 8 vai slot viết trước; slot là danh mục một nơi trong core/
   1-7-cổng-m1-hai-tài-khoản-hai-kết-quả-kèm-bộ-test-bảo-mật-nền: backlog  # TR: ma trận test Đo 1 nền <-> FR bảo mật; RV: audit chất lượng test trước cổng M1
   epic-1-retrospective: optional

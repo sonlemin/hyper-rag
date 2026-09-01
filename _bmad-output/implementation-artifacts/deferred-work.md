@@ -43,6 +43,7 @@
   resolved: 2026-09-01 - `tests/test_phan_chieu_che.py` quét *mọi* method public của từng adapter (không chỉ method override interface, vì ca nguy hiểm nhất là một method đọc mới toanh) và bắt buộc mỗi cái nằm trong đúng một nhóm: phải che, xử lý riêng kèm lý do, ghi, vòng đời, hoặc ngoài hợp đồng. Thêm nhóm assert rằng method trong danh sách đóng thật sự có đường tới `mask`. Story 1.5 thêm một dòng cho adapter KV.
   evidence: AD-9 giao test phản chiếu phủ cả 3 adapter cho story 1.7, nhưng cách xử lý riêng của 4 method này chưa có gì ghim, story 1.3-1.5 dễ bỏ quên.
   tien_do: 2026-09-01 - story 1.4 ghim hành vi của cả 4 method trên adapter graph (`tests/test_adapter_neo4j.py`: degree co theo quyền, `has_*` trả False ngoài quyền), kèm bản chạy trên Neo4j thật. Phần còn treo là test *phản chiếu* phủ cả 3 adapter, chỉ viết được khi adapter KV của story 1.5 tồn tại; địa chỉ vẫn là story 1.7.
+  resolved: 2026-09-01 - story 1.5 đóng nốt: `JsonACLKVStorage` vào `CAC_ADAPTER` nên test phản chiếu chạy trên đủ ba adapter, và `all_keys`/`filter_keys` của đường KV được khai vào `XU_LY_RIENG` kèm câu nói cơ chế quyền thay thế (lọc theo tập khóa, mục ngoài quyền tính là chưa tồn tại). Không còn phần treo cho story 1.7.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-3-adapter-qdrant-voi-pre-filter-theo-khoa.md`
   summary: Gọi `QdrantVectorDBStorage.initialize()` ở bước khởi động engine (story 1.7), và tiêm một `AsyncQdrantClient` dùng chung cho cả ba namespace vector.
@@ -141,3 +142,27 @@
   summary: Adapter graph dùng session autocommit cho từng câu, không dùng transaction có quản lý, không truyền `database=`, và health-check chỉ chạy một lần cho mỗi instance.
   evidence: `_chay` mở `driver.session()` rồi `session.run` cho mỗi câu, nên không có retry của driver cho lỗi thoáng qua (`TransientError`, đổi leader). Neo4j Community chỉ có một database nên `database=` chưa cần, nhưng nó là mặc định ngầm. Neo4j restart giữa phiên thì `_da_san_sang` vẫn True và mọi lời gọi sau đó dội lỗi driver thô. Ba thứ này cùng thuộc vòng đời kết nối của story 1.7.
   tien_do: 2026-09-01 - phần health-check đã tự mở lại: `_chay` bắt `ServiceUnavailable`, đặt lại cờ sẵn sàng rồi ném tiếp (lời gọi này vẫn hỏng - thử lại ngay tại chỗ là giấu mất một sự cố thật), nên lời gọi sau chờ Neo4j lên thay vì dội lỗi driver thô mãi. Transaction có quản lý và `database=` vẫn treo ở 1.7.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-5-adapter-kv-va-tat-cache-llm.md`
+  summary: Adapter KV chưa có nơi nào đăng ký; `working_dir` và hằng `ENABLE_LLM_CACHE` chưa ai đọc, và chưa có chỗ gọi `index_done_callback()` lúc tắt tiến trình.
+  evidence: Cùng hình dạng với khoản nợ cấu hình của hai adapter kia. `JsonACLKVStorage` chỉ xuất hiện trong chính `adapters/kv.py` và trong test; upstream resolve KV qua cùng registry `_get_storage_class()` mà story 1.5 cố ý không mở. Dữ liệu chỉ xuống đĩa ở `index_done_callback`, nên tiến trình tắt giữa chừng là mất phần chưa flush. Tất cả thuộc bước dựng engine story 1.7.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-5-adapter-kv-va-tat-cache-llm.md`
+  summary: Bằng chứng "cache LLM tắt" hiện đi qua monkeypatch `hypergraphrag.hypergraphrag.JsonKVStorage`, chưa đi qua cơ chế đăng ký thật là override `_get_storage_class()`.
+  evidence: Test hiện tại chứng minh đúng thứ cần chứng minh - lớp hai nổ ngay trong `HyperGraphRAG.__post_init__` khi cờ còn bật - nhưng nó vá một tên module thay vì đi đường mà sản phẩm sẽ đi. Spec 1.5 cấm chạm `_get_storage_class()` vì đó là việc của 1.7; khi 1.7 dựng subclass thật thì cùng assert đó phải chạy lại trên cơ chế thật.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-5-adapter-kv-va-tat-cache-llm.md`
+  summary: Chunk id của upstream là md5 nội dung, nên hai tài liệu khác `scope` có đoạn trùng nội dung sinh cùng một id; ngữ nghĩa chỉ-chèn của `upsert` giữ nhãn của lần nạp *đầu*, có thể là nhãn rộng hơn.
+  evidence: `compute_mdhash_id(content)` không mang `scope`. Đây là ca ngược của khoản nợ last-write-wins ở đường vector và đường graph (khóa của lần ghi *sau* thắng), nên hai kho có thể lệch nhau ngay trong cùng một đợt nạp. Cùng địa chỉ với "hợp nhất khóa đa nguồn" của story 2.1; story 1.5 chỉ ghim hiện trạng bằng test đặc tả làm mốc so sánh.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-5-adapter-kv-va-tat-cache-llm.md`
+  summary: Hai tiến trình cùng ghi một file kho KV thì bản ghi của người ghi trước biến mất; `index_done_callback` ghi đè cả file thay vì hợp nhất với bản trên đĩa.
+  evidence: Mỗi instance giữ `_kho` nạp lười của riêng nó, nên hai instance (hai tiến trình, hoặc engine per-request của đường lùi trong spine) cùng flush một `space` là mất dữ liệu im lặng. Ghi nguyên tử (file tạm rồi `replace`) chặn được ca đứt giữa chừng nhưng không chặn ca hai người ghi. Quyết định (khóa file, hợp nhất trước khi ghi, hay một tiến trình ingest duy nhất) thuộc vòng đời kết nối của story 1.7.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-5-adapter-kv-va-tat-cache-llm.md`
+  summary: `_tra` sao chép bản ghi một tầng trước khi gọi tầng che; ruột che thật của story 1.6 mà biến đổi một giá trị lồng nhau sẽ ghi ngược vào kho trong bộ nhớ.
+  evidence: Hôm nay không chạm tới được: bản ghi chunk của upstream chỉ có trường vô hướng (`tokens`, `content`, `full_doc_id`, `chunk_order_index`), và `mask` còn là stub trả nguyên trạng. Nhưng "kết quả đã che rò ngược vào kho" là một mặt fail-open thật, và nó chỉ mở ra đúng lúc story 1.6 viết ruột che - đó cũng là chỗ quyết định sao chép sâu hay chốt rằng tầng che không được biến đổi tại chỗ.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-5-adapter-kv-va-tat-cache-llm.md`
+  summary: Adapter KV đọc và ghi file bằng `read_text`/`write_text` đồng bộ ngay trong method async.
+  evidence: Kho KV của upstream vốn là file JSON và corpus khóa luận nhỏ (40 tài liệu), nên ở M1 việc này chấp nhận được và đã ghi thành một câu trong docstring. Luật "async toàn tuyến" của AGENTS.md nói về driver kho, nhưng lần `get_by_id` đầu tiên của một truy vấn vẫn nạp cả file và chặn event loop. Đo lại rồi quyết `asyncio.to_thread` hay giữ nguyên khi corpus thật vào kho, Epic 2.

@@ -19,8 +19,8 @@ Quét bằng cách phản chiếu chính lớp adapter, đối chiếu với int
 vậy đổi tên một method bên upstream, hay thêm một method đọc mới bên mình, đều
 bị bắt tại đây.
 
-Adapter KV của story 1.5 thêm đúng một dòng vào `CAC_ADAPTER`; story 1.7 gom
-ba adapter lại ở cổng M1.
+Ba adapter đều nằm trong `CAC_ADAPTER` từ story 1.5; story 1.7 gom chúng lại ở
+cổng M1.
 """
 
 import inspect
@@ -29,6 +29,7 @@ import re
 import pytest
 from hypergraphrag.base import BaseGraphStorage, BaseKVStorage, BaseVectorStorage
 
+from adapters.kv import JsonACLKVStorage
 from adapters.neo4j import Neo4jACLGraphStorage
 from adapters.qdrant import QdrantVectorDBStorage
 from core.masking import MASKED_READ_METHODS
@@ -36,14 +37,33 @@ from core.masking import MASKED_READ_METHODS
 # Method đọc không trả nội dung: che không áp dụng, nhưng quyền thì có. Mỗi
 # dòng nói rõ cơ chế thay thế, để "không che" là một quyết định chứ không phải
 # một chỗ bị quên.
+# Khai theo *từng adapter*, không phải một tập phẳng: lý do miễn luật che của
+# một method chỉ đúng cho cái kho đã nghĩ ra nó. Gộp chung thì thêm `all_keys`
+# cho đường KV cũng lặng lẽ miễn luật cho một `all_keys` mai sau của adapter
+# Qdrant hay Neo4j, và cái đó chưa ai xét.
+XU_LY_RIENG_THEO_ADAPTER = {
+    "QdrantVectorDBStorage": {},
+    "Neo4jACLGraphStorage": {
+        # Số đếm là tín hiệu xếp hạng đi thẳng vào ngữ cảnh trả về; nó co theo
+        # quyền bằng WHERE trên chính biến lân cận, không bằng che.
+        "node_degree": "đếm sau filter, số đếm co theo quyền",
+        "edge_degree": "tổng hai node_degree nên co theo cùng luật",
+        # Trả bool: mục ngoài quyền là `False`, không phải lỗi và không phải True.
+        "has_node": "trả False cho mục ngoài quyền",
+        "has_edge": "trả False cho cạnh ngoài quyền",
+    },
+    "JsonACLKVStorage": {
+        # Hai method này chỉ trả id, không trả nội dung, nên không có gì để
+        # che. Quyền vẫn có mặt dưới dạng luật vắng mặt im lặng, vì trả lời
+        # "có tồn tại không" cũng là một đường rò.
+        "all_keys": "chỉ kể id mà vai đạt L2, mục ngoài quyền vắng mặt",
+        "filter_keys": "mục ngoài quyền tính là chưa tồn tại",
+    },
+}
+
+# Hợp của mọi khai báo, chỉ dùng cho các test nói về ba nhóm nói chung.
 XU_LY_RIENG = {
-    # Số đếm là tín hiệu xếp hạng đi thẳng vào ngữ cảnh trả về; nó co theo
-    # quyền bằng WHERE trên chính biến lân cận, không bằng che.
-    "node_degree",
-    "edge_degree",
-    # Trả bool: mục ngoài quyền là `False`, không phải lỗi và không phải True.
-    "has_node",
-    "has_edge",
+    ten for theo_adapter in XU_LY_RIENG_THEO_ADAPTER.values() for ten in theo_adapter
 }
 
 GHI = {"upsert", "upsert_node", "upsert_edge", "delete_node", "drop"}
@@ -58,7 +78,7 @@ NGOAI_HOP_DONG = {"initialize", "close"}
 CAC_ADAPTER = [
     (QdrantVectorDBStorage, BaseVectorStorage),
     (Neo4jACLGraphStorage, BaseGraphStorage),
-    # story 1.5: (KVStorage của mình, BaseKVStorage)
+    (JsonACLKVStorage, BaseKVStorage),
 ]
 
 MOI_INTERFACE = (BaseVectorStorage, BaseGraphStorage, BaseKVStorage)
@@ -85,13 +105,19 @@ def test_moi_method_public_cua_adapter_deu_duoc_khai(adapter, interface):
     nên một phép quét theo interface sẽ không thấy, trong khi nó vẫn là một
     đường dữ liệu ra khỏi kho.
     """
-    da_khai = MASKED_READ_METHODS | XU_LY_RIENG | GHI | VONG_DOI | NGOAI_HOP_DONG
+    rieng = XU_LY_RIENG_THEO_ADAPTER.get(adapter.__name__)
+    assert rieng is not None, (
+        f"{adapter.__name__} chưa có ô trong XU_LY_RIENG_THEO_ADAPTER: khai một"
+        " ô rỗng nếu adapter này không miễn luật che cho method đọc nào."
+    )
+    da_khai = MASKED_READ_METHODS | set(rieng) | GHI | VONG_DOI | NGOAI_HOP_DONG
     chua_khai = _method_public_cua(adapter) - da_khai
     assert not chua_khai, (
         f"{adapter.__name__} có method public chưa khai vào nhóm nào:"
         f" {sorted(chua_khai)}. Trả nội dung thì thêm vào MASKED_READ_METHODS"
         " (core/masking.py) và cho nó đi qua `mask`; không trả nội dung thì"
-        " thêm vào XU_LY_RIENG kèm một câu nói cơ chế quyền thay thế."
+        " thêm vào ô của chính adapter này trong XU_LY_RIENG_THEO_ADAPTER kèm"
+        " một câu nói cơ chế quyền thay thế."
     )
 
 
@@ -140,6 +166,27 @@ def test_danh_sach_dong_khong_giao_nhau():
     assert not (MASKED_READ_METHODS & XU_LY_RIENG)
     assert not (MASKED_READ_METHODS & GHI)
     assert not (XU_LY_RIENG & GHI)
+
+
+def test_moi_mien_luat_che_deu_co_ly_do_viet_ra():
+    """Mỗi tên trong `XU_LY_RIENG_THEO_ADAPTER` kèm một câu nói cơ chế thay thế.
+
+    "Không che" phải là một quyết định đọc được, không phải một chỗ bị quên.
+    Khai theo từng adapter mà để giá trị rỗng thì luật này mất tác dụng.
+    """
+    thieu = [
+        f"{ten_adapter}.{ten}"
+        for ten_adapter, theo_adapter in XU_LY_RIENG_THEO_ADAPTER.items()
+        for ten, ly_do in theo_adapter.items()
+        if not (ly_do or "").strip()
+    ]
+    assert not thieu, f"miễn luật che mà không nói cơ chế thay thế: {thieu}"
+
+
+def test_moi_adapter_deu_co_o_khai_rieng():
+    """Adapter mới phải khai ô của nó, kể cả khi ô đó rỗng."""
+    for adapter, _ in CAC_ADAPTER:
+        assert adapter.__name__ in XU_LY_RIENG_THEO_ADAPTER
 
 
 def test_moi_ten_trong_nhom_ton_tai_o_upstream():

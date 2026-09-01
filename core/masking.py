@@ -15,11 +15,14 @@ from typing import Any
 from core.permission import PermissionContext
 
 # Danh sách đóng, sống cạnh interface. Method đọc public mới của adapter mà
-# chưa khai vào đây là CI fail (test phản chiếu ở story 1.7). Các method đọc
-# ngoài danh sách được xử lý tường minh chỗ khác: `node_degree`/`edge_degree`
-# co theo filter quyền, `has_node`/`has_edge` trả False cho mục ngoài quyền.
+# chưa khai vào đây là CI fail (`tests/test_phan_chieu_che.py`, chạy trên cả ba
+# adapter). Các method đọc ngoài danh sách được xử lý tường minh chỗ khác, và
+# lý do khai ngay cạnh từng adapter trong test đó: `node_degree`/`edge_degree`
+# co theo filter quyền, `has_node`/`has_edge` trả False cho mục ngoài quyền,
+# `all_keys`/`filter_keys` của đường KV chỉ trả id nên chúng lọc theo tập khóa
+# thay vì che.
 MASKED_READ_METHODS: frozenset[str] = frozenset(
-    {"query", "get_node", "get_edge", "get_node_edges"}
+    {"query", "get_node", "get_edge", "get_node_edges", "get_by_id", "get_by_ids"}
 )
 
 
