@@ -19,7 +19,12 @@ from types import SimpleNamespace
 import pytest
 from qdrant_client import models
 
-from adapters.ingest_labels import IngestLabelMissing, current_ingest_key, ingest_label
+from adapters.ingest_labels import (
+    IngestLabelMissing,
+    IngestOutsideSystemContext,
+    current_ingest_key,
+    ingest_label,
+)
 from adapters.policy_loader import load_policy
 from adapters.qdrant import (
     FILTER_MAX_CONDITIONS,
@@ -1141,5 +1146,25 @@ def test_dac_ta_hien_trang_khoa_da_nguon_last_write_wins(khong_gian, policy):
         )
         assert len(diem) == 1, "cùng id upstream thì cùng point id, không nhân bản"
         assert diem[0].payload[FILTER_KEY_FIELD] == "khach_hang_a:bao_cao_su_co"
+
+    asyncio.run(chay())
+
+
+def test_ghi_duoi_ngu_canh_vai_bi_tu_choi(khong_gian, policy):
+    """Ghi vector chỉ chạy dưới ngữ cảnh hệ thống của ingest (AD-3).
+
+    Cùng một luật với đường graph và cùng một cửa (`ingest_key_for_write`):
+    đường ghi là chỗ duy nhất đặt khóa quyền, nên nó không được mở cho ngữ cảnh
+    vai người dùng.
+    """
+
+    async def chay():
+        client, adapter = await kho_da_nap(khong_gian, policy)
+        with use_context(vai(policy, "devops", khong_gian)):
+            with ingest_label(scope="noi_bo", content_type="runbook"):
+                with pytest.raises(IngestOutsideSystemContext) as loi:
+                    await adapter.upsert(lo_upsert(HYPEREDGES[0]))
+        assert loi.value.code == "INGEST_OUTSIDE_SYSTEM_CONTEXT"
+        assert client.cac_loi_goi("upsert") == []
 
     asyncio.run(chay())

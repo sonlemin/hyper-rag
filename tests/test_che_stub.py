@@ -10,6 +10,8 @@ method nào đổi tên bên `vendor/` là test đỏ ngay, không trôi dạt �
 
 import inspect
 
+import pytest
+
 from hypergraphrag.base import BaseGraphStorage, BaseKVStorage, BaseVectorStorage
 
 from core.masking import MASKED_READ_METHODS, mask
@@ -142,3 +144,39 @@ def test_oracle_va_core_khai_cung_bang_hang():
 
     assert oracle.THU_TU_MUC == dict(LEVEL_ORDER)
     assert oracle.MUC_TOI_THIEU_THEO_NAMESPACE == dict(NAMESPACE_MIN_LEVEL)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "Tripwire cho story 1.6: `mask` còn là stub trả nguyên trạng. Khi 1.6"
+        " viết ruột thật, test này xanh và `strict=True` biến XPASS thành đỏ,"
+        " buộc 1.6 gỡ marker - CI không thể xanh với một hàm che rỗng sau khi"
+        " ba adapter đã gọi nó."
+    ),
+)
+def test_tripwire_ruot_ham_che_phai_thay_that():
+    """Slot phải che của một hyperedge L1 không được còn nguyên văn.
+
+    Không có tripwire thì `mask()` no-op vẫn làm mọi test xanh: adapter chỉ
+    ghim *điểm gọi* và ba tham số, không ghim hành vi. Đó đúng là ca "CI xanh
+    trong khi không che gì".
+
+    Kỳ vọng lấy từ oracle, không lấy từ `core/`, nên nó không tự đúng theo
+    code.
+    """
+    bang = oracle.doc_bang_chinh_sach(oracle.POLICY_TOI_GIAN)
+    he = du_lieu_dung_tay.THEO_ID["HE-02"]
+    ctx = _context("tech_support")
+    khoa = he["scope"] + ":" + he["content_type"]
+
+    da_che = mask(dict(he["slots"]), ctx, khoa)
+    phai_che = oracle.slot_phai_che(bang, "tech_support", he)
+    assert phai_che, "fixture phải có slot cần che, nếu không tripwire vô nghĩa"
+    con_nguyen = [
+        slot for slot in phai_che if da_che.get(slot) == he["slots"][slot]
+    ]
+    assert not con_nguyen, f"slot phải che mà còn nguyên văn: {con_nguyen}"
+    # Phần không phải che thì giữ nguyên: che thừa cũng là sai.
+    for slot in set(he["slots"]) - phai_che:
+        assert da_che[slot] == he["slots"][slot]

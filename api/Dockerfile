@@ -20,6 +20,9 @@ COPY core ./core
 COPY adapters ./adapters
 COPY api ./api
 COPY redteam ./redteam
+# Bang chinh sach la du lieu cau hinh (AD-6), khong phai code, nhung loader doc
+# no luc chay: khong copy thi container khong tim thay `config/policy-*.yaml`.
+COPY config ./config
 RUN uv sync --frozen --no-dev
 
 EXPOSE 8000

@@ -32,7 +32,7 @@ from hypergraphrag.base import BaseGraphStorage
 from neo4j import AsyncDriver, AsyncGraphDatabase
 from neo4j.exceptions import AuthError, ConfigurationError, ServiceUnavailable
 
-from adapters.ingest_labels import current_ingest_key
+from adapters.ingest_labels import ingest_key_for_write
 from adapters.mask_contract import (
     HyperedgeKeyMissing,
     MaskContractViolated,
@@ -278,9 +278,16 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
     async def _chay(self, cypher: str, **tham_so) -> list[dict]:
         """Một chỗ duy nhất gửi Cypher đi, để không có đường đọc thứ hai."""
         await self._dam_bao_san_sang()
-        async with self._driver.session() as phien:
-            ket_qua = await phien.run(cypher, **tham_so)
-            return [dict(dong) async for dong in ket_qua]
+        try:
+            async with self._driver.session() as phien:
+                ket_qua = await phien.run(cypher, **tham_so)
+                return [dict(dong) async for dong in ket_qua]
+        except ServiceUnavailable:
+            # Neo4j rớt giữa phiên: mở lại cửa health-check để lời gọi sau chờ
+            # nó lên thay vì dội lỗi driver thô mãi. Lời gọi này vẫn hỏng - thử
+            # lại ngay ở đây là giấu mất một sự cố thật.
+            self._da_san_sang = False
+            raise
 
     # --- Ghi ---------------------------------------------------------------
 
@@ -311,7 +318,7 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
         """
         context = current_context()
         space = self._nhan_space(context)
-        khoa = current_ingest_key()
+        khoa = ingest_key_for_write()
         nhan = self._nhan_vai(node_data)
         await self._chay(
             f"MERGE (n:`{space}`:`{nhan}` {{{NODE_ID_FIELD}: $id}})\n"
@@ -345,7 +352,7 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
         """
         context = current_context()
         space = self._nhan_space(context)
-        khoa = current_ingest_key()
+        khoa = ingest_key_for_write()
         props = dict(edge_data)
         vai = props.get(SLOT_FIELD)
         if vai is not None and vai not in SLOT_ROLE_SET:

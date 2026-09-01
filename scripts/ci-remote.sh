@@ -63,16 +63,23 @@ if ! docker compose --env-file .env --env-file .env.server config --quiet; then
 elif ! uv run pytest; then
     st=FAIL
 else
-    # Bo test danh marker `neo4j` can container that (story 1.4): chi may chu
-    # nay co Neo4j cua compose. Chay o day de "Cypher hop le" duoc CI giu xanh,
-    # khong phai mot lan chay tay. NEO4J_REQUIRED bien "bo qua" thanh "do":
-    # thieu bien moi truong ma van xanh la mot ket qua noi doi.
-    NEO4J_IP="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' hyper-rag-copilot-neo4j-1 2>/dev/null)"
-    if [ -z "$NEO4J_IP" ]; then
-        echo "[ci] khong thay container neo4j dang chay, bo qua bo marker neo4j"
+    # Bo test can kho that (marker `neo4j` va `qdrant`): chi may chu nay co
+    # container cua compose. Chay o day de nhung thu chi server that tra loi
+    # duoc - Cypher hop le, payload index, hnsw_config, strict mode - duoc CI
+    # giu xanh, khong phai mot lan chay tay. Bien *_REQUIRED bien "bo qua"
+    # thanh "do": thieu bien moi truong ma van xanh la mot ket qua noi doi.
+    ip_container() {
+        docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$1" 2>/dev/null
+    }
+    NEO4J_IP="$(ip_container hyper-rag-copilot-neo4j-1)"
+    QDRANT_IP="$(ip_container hyper-rag-copilot-qdrant-1)"
+    if [ -z "$NEO4J_IP" ] || [ -z "$QDRANT_IP" ]; then
+        echo "[ci] thieu container neo4j/qdrant dang chay, bo qua bo test kho that"
     else
         set -a; . ./.env; set +a
-        if ! NEO4J_REQUIRED=1 NEO4J_URI="bolt://$NEO4J_IP:7687" uv run pytest -m neo4j; then
+        if ! NEO4J_REQUIRED=1 NEO4J_URI="bolt://$NEO4J_IP:7687" \
+             QDRANT_REQUIRED=1 QDRANT_URL="http://$QDRANT_IP:6333" \
+             uv run pytest -m "neo4j or qdrant"; then
             st=FAIL
         fi
     fi

@@ -23,6 +23,23 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 
 from core.keys import filter_key
+from core.permission import current_context
+
+
+class IngestOutsideSystemContext(RuntimeError):
+    """Ghi tri thức dưới ngữ cảnh vai người dùng, không phải ngữ cảnh ingest.
+
+    AD-3 nói ingest chạy dưới ngữ cảnh hệ thống tường minh. Đường ghi là chỗ
+    duy nhất *đặt* khóa quyền, nên nếu một đường truy vấn người dùng ghi được
+    thì chính người hỏi quyết định nhãn quyền của dữ liệu - đúng thứ toàn bộ
+    tầng này dựng ra để chống. `space` cũng lấy theo ngữ cảnh, nên nó còn là
+    một đường ghi chéo không gian.
+
+    Ngoại lệ có đặc tả (đọc thô lúc hợp nhất khóa đa nguồn, story 2.1) vẫn nằm
+    trong ngữ cảnh hệ thống nên không đụng cửa này.
+    """
+
+    code = "INGEST_OUTSIDE_SYSTEM_CONTEXT"
 
 
 class IngestLabelMissing(RuntimeError):
@@ -57,6 +74,25 @@ def ingest_label(*, scope: str, content_type: str):
         yield khoa
     finally:
         _NHAN.reset(token)
+
+
+def ingest_key_for_write() -> str:
+    """Cửa chung của đường ghi: đúng ngữ cảnh, đúng nhãn, rồi mới trả khóa.
+
+    Hai adapter đều đi qua đây trước khi ghi, nên luật "ghi chỉ chạy dưới ngữ
+    cảnh hệ thống" (AD-3) sống một chỗ thay vì hai bản sao dễ lệch. Thiếu ngữ
+    cảnh hoàn toàn thì `current_context()` tự dội `PermissionContextMissing`
+    lên, giữ nguyên luật fail-closed đã có.
+
+    Tách khỏi `current_ingest_key` vì hàm kia chỉ trả lời "nhãn nào đang mở" và
+    có nơi gọi ngoài đường ghi (fixture canh rò nhãn trong `tests/conftest.py`).
+    """
+    if not current_context().bypass_filter:
+        raise IngestOutsideSystemContext(
+            "ghi tri thức phải chạy dưới ngữ cảnh hệ thống của pipeline ingest"
+            " (AD-3), không phải dưới ngữ cảnh vai người dùng"
+        )
+    return current_ingest_key()
 
 
 def current_ingest_key() -> str:

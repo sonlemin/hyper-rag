@@ -59,13 +59,30 @@ class LoiGoi:
 
 @dataclass
 class QdrantGhiLai:
-    """Client Qdrant local mode có ghi nhật ký, cộng sổ payload index riêng."""
+    """Client Qdrant có ghi nhật ký, cộng sổ payload index riêng.
+
+    Mặc định bọc local mode. `noi_toi()` bọc một server thật: khi đó sổ index
+    giả bị tắt, vì server thật tự nuôi `payload_schema` và ghi đè nó bằng sổ
+    giả là biến bộ test thành bộ test của chính lớp bọc này.
+    """
 
     loi_goi: list[LoiGoi] = field(default_factory=list)
     # collection -> field -> schema đã tạo. Sổ này thay cho `payload_schema`
     # của server thật, thứ mà local mode không nuôi.
     _so_index: dict[str, dict[str, Any]] = field(default_factory=dict)
     _that: AsyncQdrantClient = field(default_factory=lambda: AsyncQdrantClient(":memory:"))
+    # Bù `payload_schema` hay không: local mode cần, server thật thì không.
+    bu_payload_schema: bool = True
+
+    @classmethod
+    def noi_toi(cls, url: str, api_key: str | None = None) -> "QdrantGhiLai":
+        """Bọc một Qdrant thật, giữ nguyên nhật ký lời gọi để assert trên request."""
+        return cls(
+            _that=AsyncQdrantClient(
+                url=url, api_key=api_key, check_compatibility=False
+            ),
+            bu_payload_schema=False,
+        )
 
     def __getattr__(self, ten: str):
         """Chuyển tiếp mọi method công khai sang client thật, ghi lại trên đường đi.
@@ -83,7 +100,7 @@ class QdrantGhiLai:
         async def boc(*args, **kwargs):
             loi_goi = LoiGoi(ten=ten, args=args, kwargs=kwargs)
             self.loi_goi.append(loi_goi)
-            if ten == "create_payload_index":
+            if ten == "create_payload_index" and self.bu_payload_schema:
                 with warnings.catch_warnings():
                     # Local mode cảnh báo "payload index không có tác dụng" ở
                     # mỗi lần tạo index. Đúng, và đó chính là lý do lớp bọc này
@@ -98,7 +115,7 @@ class QdrantGhiLai:
                 self._ghi_so_index(loi_goi)
             else:
                 ket_qua = await that(*args, **kwargs)
-            if ten == "get_collection":
+            if ten == "get_collection" and self.bu_payload_schema:
                 ket_qua.payload_schema = dict(
                     self._so_index.get(loi_goi.collection(), {})
                 )

@@ -25,18 +25,22 @@
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-2-ngu-canh-quyen-fail-closed-va-chinh-sach-dang-du-lieu.md`
   summary: Nối `adapters/policy_loader.py` vào runtime API - `api/Dockerfile` chưa COPY `config/`, và chưa có biến môi trường trỏ đường dẫn file policy mặc định.
+  resolved: 2026-09-01 (một phần) - `api/Dockerfile` COPY `config/`; đã build image trên máy chủ và chạy `load_policy("config/policy-toi-gian.yaml")` trong container, trả đúng hai vai và `policy_version`. Phần còn treo là biến môi trường trỏ file policy mặc định: chọn bảng nào là quyết định của Epic 3 (bốn cấu hình đo của story 3.2), không phải của tầng đóng gói.
   evidence: Review story 1.2 chỉ ra loader chạy trong container sẽ không tìm thấy `config/policy-*.yaml`. Story 1.2 cố ý không chạm handler hay endpoint (Never của spec), nhưng Epic 3 dựng ngữ cảnh quyền ở đầu request thì phải có đường nạp policy thật.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-2-ngu-canh-quyen-fail-closed-va-chinh-sach-dang-du-lieu.md`
   summary: Chặn `use_context` lồng nhau đưa ngữ cảnh hệ thống vào giữa một request người dùng.
+  resolved: 2026-09-01 - `use_context` từ chối mở ngữ cảnh hệ thống khi đang ở trong ngữ cảnh vai (`SystemContextNested`, code `SYSTEM_CONTEXT_NESTED`); chiều ngược lại vẫn được vì nó thu hẹp quyền. Diff `core/` đã trình sonlm. Việc từ chối `kind=system` *đến từ ngoài* trên đường truy vấn vẫn thuộc tầng handler Epic 3 - hai lớp khác nhau, không thay thế nhau.
   evidence: `use_context(system_context(...))` lồng trong ngữ cảnh vai hiện không có gì cản, là đường leo quyền im lặng. NFR-10 giao việc từ chối `kind=system` trên đường truy vấn cho tầng handler API, nên chốt ở Epic 3 cùng test tầng handler.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-2-ngu-canh-quyen-fail-closed-va-chinh-sach-dang-du-lieu.md`
   summary: Tripwire buộc story 1.6 phải chạm ruột hàm che, tránh CI xanh trong khi `mask()` vẫn no-op sau khi adapter đã gọi nó.
+  resolved: 2026-09-01 - `test_tripwire_ruot_ham_che_phai_thay_that` trong `tests/test_che_stub.py`, đánh `xfail(strict=True)`: hôm nay nó xfail vì `mask` còn là stub, và khi story 1.6 viết ruột thật nó XPASS - `strict=True` biến XPASS thành đỏ, buộc 1.6 gỡ marker. Kỳ vọng lấy từ oracle nên nó không tự đúng theo code.
   evidence: Từ story 1.3 adapter gọi `mask()` trong đường trả về; stub trả nguyên trạng nên suite vẫn xanh dù không che gì. `test_grant_rong_tra_nguyen_trang` khóa hình dạng chứ không khóa hành vi.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-2-ngu-canh-quyen-fail-closed-va-chinh-sach-dang-du-lieu.md`
   summary: Test phản chiếu cho các method đọc ngoài danh sách đóng (`node_degree`, `edge_degree`, `has_node`, `has_edge`) - hiện chỉ được giải thích trong comment.
+  resolved: 2026-09-01 - `tests/test_phan_chieu_che.py` quét *mọi* method public của từng adapter (không chỉ method override interface, vì ca nguy hiểm nhất là một method đọc mới toanh) và bắt buộc mỗi cái nằm trong đúng một nhóm: phải che, xử lý riêng kèm lý do, ghi, vòng đời, hoặc ngoài hợp đồng. Thêm nhóm assert rằng method trong danh sách đóng thật sự có đường tới `mask`. Story 1.5 thêm một dòng cho adapter KV.
   evidence: AD-9 giao test phản chiếu phủ cả 3 adapter cho story 1.7, nhưng cách xử lý riêng của 4 method này chưa có gì ghim, story 1.3-1.5 dễ bỏ quên.
   tien_do: 2026-09-01 - story 1.4 ghim hành vi của cả 4 method trên adapter graph (`tests/test_adapter_neo4j.py`: degree co theo quyền, `has_*` trả False ngoài quyền), kèm bản chạy trên Neo4j thật. Phần còn treo là test *phản chiếu* phủ cả 3 adapter, chỉ viết được khi adapter KV của story 1.5 tồn tại; địa chỉ vẫn là story 1.7.
 
@@ -46,6 +50,7 @@
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-3-adapter-qdrant-voi-pre-filter-theo-khoa.md`
   summary: Chạy lại đúng cặp assert của `tests/test_adapter_qdrant.py` trên Qdrant thật (container) ở cổng M1 story 1.7.
+  resolved: 2026-09-01 - `tests/test_adapter_qdrant_that.py` (marker `qdrant`) chạy trên Qdrant 1.19.0 của compose: payload index keyword + `is_tenant`, `hnsw_config` m=16/payload_m=16, strict mode bật với `filter_max_conditions=1`, upsert bị từ chối khi chưa `initialize()`, hai vai ra hai tập khóa và hai kết quả đúng oracle, và filter hai điều kiện bị server từ chối. `QdrantGhiLai.noi_toi()` bọc client thật và tắt sổ index giả. Hook CI chạy cả hai bộ marker sau bộ chính.
   evidence: Local mode duyệt vét cạn và bỏ qua payload index, nên nó chứng minh được ngữ nghĩa lọc chứ không chứng minh được pre-filter chạy trong HNSW có index. Lớp bọc `tests/gia_lap_qdrant.py` bù phần `payload_schema` cho nhánh kiểm index; phần còn lại chỉ Qdrant thật mới trả lời được.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-2-ngu-canh-quyen-fail-closed-va-chinh-sach-dang-du-lieu.md`
@@ -117,6 +122,7 @@
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-4-adapter-neo4j-voi-where-injection-va-cau-truc-hai-phia.md`
   summary: Cả hai adapter cho phép ghi dưới ngữ cảnh vai người dùng, không chỉ dưới ngữ cảnh hệ thống của ingest.
+  resolved: 2026-09-01 - `adapters/ingest_labels.ingest_key_for_write()` là cửa chung của cả hai đường ghi: sai ngữ cảnh là `IngestOutsideSystemContext` (code `INGEST_OUTSIDE_SYSTEM_CONTEXT`). `current_ingest_key()` giữ nguyên nghĩa "nhãn nào đang mở" cho fixture canh rò nhãn. Có test ở cả hai adapter.
   evidence: `upsert_node`/`upsert_edge` (graph) và `upsert` (vector) chỉ đòi có ngữ cảnh cộng nhãn ingest đang mở; một ngữ cảnh vai cũng qua được, và khi đó `space` lấy theo ngữ cảnh đó. AD-3 nói ingest chạy dưới ngữ cảnh hệ thống tường minh, nhưng chưa chỗ nào ép. Chốt một luật cho *cả hai* adapter cùng lúc (thêm cửa `bypass_filter` ở đường ghi, hoặc quyết định tường minh là không thêm) thuộc story 2.3 khi pipeline ingest thật ra đời; sửa lệch một adapter là tạo ra hai luật.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-4-adapter-neo4j-voi-where-injection-va-cau-truc-hai-phia.md`
@@ -134,3 +140,4 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-4-adapter-neo4j-voi-where-injection-va-cau-truc-hai-phia.md`
   summary: Adapter graph dùng session autocommit cho từng câu, không dùng transaction có quản lý, không truyền `database=`, và health-check chỉ chạy một lần cho mỗi instance.
   evidence: `_chay` mở `driver.session()` rồi `session.run` cho mỗi câu, nên không có retry của driver cho lỗi thoáng qua (`TransientError`, đổi leader). Neo4j Community chỉ có một database nên `database=` chưa cần, nhưng nó là mặc định ngầm. Neo4j restart giữa phiên thì `_da_san_sang` vẫn True và mọi lời gọi sau đó dội lỗi driver thô. Ba thứ này cùng thuộc vòng đời kết nối của story 1.7.
+  tien_do: 2026-09-01 - phần health-check đã tự mở lại: `_chay` bắt `ServiceUnavailable`, đặt lại cờ sẵn sàng rồi ném tiếp (lời gọi này vẫn hỏng - thử lại ngay tại chỗ là giấu mất một sự cố thật), nên lời gọi sau chờ Neo4j lên thay vì dội lỗi driver thô mãi. Transaction có quản lý và `database=` vẫn treo ở 1.7.

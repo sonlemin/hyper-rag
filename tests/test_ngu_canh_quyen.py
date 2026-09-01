@@ -362,3 +362,42 @@ def test_to_thread_giu_context(policy):
             return await asyncio.to_thread(lambda: current_context().role)
 
     assert asyncio.run(chay()) == "devops"
+
+
+def test_khong_long_ngu_canh_he_thong_vao_giua_request(policy):
+    """`use_context(system_context(...))` lồng trong ngữ cảnh vai bị chặn.
+
+    Đây là đường leo quyền im lặng duy nhất mà hai trạng thái của
+    `PermissionContext` để hở: mọi lời gọi bên trong đọc thô, không filter, mà
+    nhìn từ ngoài vẫn là request của một vai.
+
+    Lớp này khác lớp của NFR-10: tầng handler (Epic 3) từ chối một ngữ cảnh hệ
+    thống *đến từ ngoài*, còn cửa này chặn một ngữ cảnh hệ thống *sinh ra giữa
+    chừng*.
+    """
+    from core.permission import SystemContextNested
+
+    ctx_vai = user_context(
+        policy=policy, role="tech_support", space="synth", real_account="ts01"
+    )
+    ctx_he_thong = system_context(space="synth", policy_version=policy.policy_version)
+    with use_context(ctx_vai):
+        with pytest.raises(SystemContextNested) as loi:
+            with use_context(ctx_he_thong):
+                pass
+        assert loi.value.code == "SYSTEM_CONTEXT_NESTED"
+        # Ngữ cảnh vai không bị lời gọi hỏng đó làm xê dịch.
+        assert current_context() is ctx_vai
+
+
+def test_long_nguoc_lai_thi_duoc(policy):
+    """Vai mở trong ngữ cảnh hệ thống là thu hẹp quyền, không phải leo quyền."""
+    ctx_he_thong = system_context(space="synth", policy_version=policy.policy_version)
+    with use_context(ctx_he_thong):
+        with use_context(
+            user_context(
+                policy=policy, role="devops", space="synth", real_account="dev01"
+            )
+        ):
+            assert current_context().bypass_filter is False
+        assert current_context().bypass_filter is True

@@ -75,6 +75,22 @@ class SystemContextForbidden(RuntimeError):
     code = "SYSTEM_CONTEXT_FORBIDDEN"
 
 
+class SystemContextNested(RuntimeError):
+    """Mở ngữ cảnh hệ thống bên trong một ngữ cảnh vai người dùng.
+
+    `use_context(system_context(...))` lồng giữa một request là một đường leo
+    quyền im lặng: mọi lời gọi bên trong đọc thô, không filter, mà nhìn từ
+    ngoài vẫn là request của một vai. Ingest không bao giờ chạy bên trong một
+    request người dùng, nên ca này không có công dụng hợp lệ nào.
+
+    Đây là lớp canh phía `core/`, khác lớp của NFR-10: tầng handler (Epic 3)
+    từ chối một ngữ cảnh hệ thống *đến từ ngoài*, còn cửa này chặn một ngữ cảnh
+    hệ thống *sinh ra giữa chừng*.
+    """
+
+    code = "SYSTEM_CONTEXT_NESTED"
+
+
 @dataclass(frozen=True)
 class PermissionContext:
     """Ngữ cảnh quyền của một request, phân giải một lần rồi đóng băng.
@@ -154,9 +170,22 @@ def current_context() -> PermissionContext:
 
 @contextmanager
 def use_context(context: PermissionContext):
-    """Quấn một lời gọi (thường là `aquery` của upstream) bằng ngữ cảnh quyền."""
+    """Quấn một lời gọi (thường là `aquery` của upstream) bằng ngữ cảnh quyền.
+
+    Không cho một ngữ cảnh hệ thống mở bên trong ngữ cảnh vai người dùng: đó là
+    đường leo quyền im lặng duy nhất mà hai trạng thái của `PermissionContext`
+    để hở. Chiều ngược lại (vai mở trong ngữ cảnh hệ thống) thì được - nó thu
+    hẹp quyền, và pipeline ingest có thể cần dựng ngữ cảnh vai để kiểm.
+    """
     if not isinstance(context, PermissionContext):
         raise TypeError(f"use_context cần một PermissionContext, nhận được {_ten(context)}")
+    if context.bypass_filter:
+        dang_mo = _CURRENT.get(None)
+        if dang_mo is not None and not dang_mo.bypass_filter:
+            raise SystemContextNested(
+                "không mở được ngữ cảnh hệ thống bên trong ngữ cảnh vai"
+                f" {dang_mo.role!r}: cờ bỏ-filter chỉ dùng cho pipeline ingest"
+            )
     token = _CURRENT.set(context)
     try:
         yield context

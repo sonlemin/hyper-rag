@@ -58,7 +58,8 @@ packages = ["core", "adapters", "api", "redteam", "vendor/hypergraphrag"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q -m 'not neo4j'"
+addopts = "-q -m 'not neo4j and not qdrant'"
 markers = [
     "neo4j: test can Neo4j that (container compose), mac dinh bo qua; chay bang `uv run pytest -m neo4j`",
+    "qdrant: test can Qdrant that (container compose), mac dinh bo qua; chay bang `uv run pytest -m qdrant`",
 ]

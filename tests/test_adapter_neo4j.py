@@ -19,7 +19,11 @@ import asyncio
 
 import pytest
 
-from adapters.ingest_labels import IngestLabelMissing, ingest_label
+from adapters.ingest_labels import (
+    IngestLabelMissing,
+    IngestOutsideSystemContext,
+    ingest_label,
+)
 from adapters.mask_contract import HyperedgeKeyMissing, MaskContractViolated
 from adapters.neo4j import (
     EDGE_TYPE,
@@ -1014,5 +1018,58 @@ def test_close_khong_dong_driver_duoc_tiem(khong_gian, policy):
         assert driver.da_dong is False
         # Cờ sẵn sàng mở lại: instance dùng tiếp phải chờ Neo4j lần nữa.
         assert adapter._da_san_sang is False
+
+    asyncio.run(chay())
+
+
+def test_ghi_duoi_ngu_canh_vai_bi_tu_choi(khong_gian, policy):
+    """Ghi tri thức chỉ chạy dưới ngữ cảnh hệ thống của ingest (AD-3).
+
+    Đường ghi là chỗ duy nhất *đặt* khóa quyền. Nếu một ngữ cảnh vai ghi được
+    thì chính người hỏi quyết định nhãn quyền của dữ liệu, và `space` cũng lấy
+    theo ngữ cảnh đó - thành một đường ghi chéo không gian.
+    """
+
+    async def chay():
+        driver = Neo4jGhiLai()
+        adapter = dung_adapter(driver)
+        with use_context(vai(policy, "devops", khong_gian)):
+            with ingest_label(scope="noi_bo", content_type="runbook"):
+                with pytest.raises(IngestOutsideSystemContext) as loi:
+                    await adapter.upsert_node("rel-X", {"role": "hyperedge"})
+                assert loi.value.code == "INGEST_OUTSIDE_SYSTEM_CONTEXT"
+                with pytest.raises(IngestOutsideSystemContext):
+                    await adapter.upsert_edge("rel-X", "App01", {"weight": 1.0})
+        assert driver.dem_node() == 0 and driver.dem_canh() == 0
+
+    asyncio.run(chay())
+
+
+def test_neo4j_rot_giua_phien_thi_mo_lai_cua_health_check(khong_gian, policy):
+    """Kết nối đứt giữa phiên: lời gọi sau phải chờ lại, không dội lỗi thô mãi."""
+    from neo4j.exceptions import ServiceUnavailable
+
+    class DriverRot(Neo4jGhiLai):
+        def __init__(self):
+            super().__init__()
+            self.no_khi_chay = True
+
+        def session(self, **kw):
+            if self.no_khi_chay:
+                self.no_khi_chay = False
+                raise ServiceUnavailable("giả lập: mất kết nối giữa phiên")
+            return super().session(**kw)
+
+    async def chay():
+        driver = DriverRot()
+        adapter = dung_adapter(driver, neo4j_health_delay=0)
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            with pytest.raises(ServiceUnavailable):
+                await adapter.initialize()
+            assert adapter._da_san_sang is False
+            # Lời gọi sau kiểm kết nối lại rồi chạy tiếp.
+            await adapter.initialize()
+        assert driver.so_lan_kiem_ket_noi == 2
+        assert adapter._da_san_sang is True
 
     asyncio.run(chay())

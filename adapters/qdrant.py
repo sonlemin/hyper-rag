@@ -31,7 +31,7 @@ from dataclasses import dataclass
 from hypergraphrag.base import BaseVectorStorage
 from qdrant_client import AsyncQdrantClient, models
 
-from adapters.ingest_labels import current_ingest_key
+from adapters.ingest_labels import ingest_key_for_write
 # Hợp đồng che dùng chung với adapter Neo4j (story 1.4): một luật, một chỗ.
 # Tên vẫn nhập được từ `adapters.qdrant` để nơi gọi cũ không phải sửa.
 from adapters.mask_contract import MaskContractViolated
@@ -270,7 +270,7 @@ class QdrantVectorDBStorage(BaseVectorStorage):
         if not data:
             return []
         ten = self._ten_collection()
-        khoa = current_ingest_key()
+        khoa = ingest_key_for_write()
         await self._bat_buoc_co_index(ten)
 
         ids_goc = list(data)
