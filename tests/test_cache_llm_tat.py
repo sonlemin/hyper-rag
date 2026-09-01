@@ -51,19 +51,49 @@ def dung_engine(workspace_dir, da_goi, **kwargs) -> HyperGraphRAG:
 # --- Lý do: khóa cache không mang vai ---------------------------------------
 
 
-def test_khoa_cache_khong_mang_vai():
-    """Hai vai, cùng câu hỏi, cùng mode: cùng một ô cache.
+def test_khoa_cache_tinh_tu_dung_hai_thu_khong_thu_nao_mang_vai():
+    """`kg_query` tính khóa cache từ đúng `mode` và câu hỏi (`operate.py:496`).
 
     Đây là lý do phải tắt chứ không phải cấu hình lại: không có chỗ nào trong
-    khóa để nhét vai vào mà không sửa `vendor/`, và `kg_query` tính khóa từ
-    đúng hai thứ này (`operate.py:496`).
+    khóa để nhét vai vào mà không sửa `vendor/`.
+
+    Đọc thẳng lời gọi bằng AST, không so hai lần gọi cùng tham số với nhau:
+    `compute_args_hash` khai là `def compute_args_hash(*args)` nên chữ ký của
+    nó không nói gì, và hai lần gọi cùng tham số thì bằng nhau dù cơ chế quyền
+    đúng hay sai. Thứ quyết định là *danh sách tham số tại chỗ gọi*, và đó là
+    thứ đỏ được: thêm một tham số thứ ba, hay bỏ hẳn lời gọi, đều làm test này
+    đỏ ở chỗ nói đúng nguyên nhân.
     """
-    khoa_devops = compute_args_hash("hybrid", CAU_HOI)
-    khoa_tech_support = compute_args_hash("hybrid", CAU_HOI)
-    assert khoa_devops == khoa_tech_support
-    # Đổi mode hay đổi câu hỏi thì khóa đổi; đổi người hỏi thì không có gì đổi.
-    assert compute_args_hash("naive", CAU_HOI) != khoa_devops
-    assert compute_args_hash("hybrid", CAU_HOI + "?") != khoa_devops
+    import ast
+    import inspect
+
+    from hypergraphrag import operate
+
+    goi = [
+        n
+        for n in ast.walk(ast.parse(inspect.getsource(operate)))
+        if isinstance(n, ast.Call)
+        and getattr(n.func, "id", None) == "compute_args_hash"
+    ]
+    assert goi, "upstream không còn gọi compute_args_hash: đọc lại AD-18"
+    for n in goi:
+        tham_so = [ast.unparse(a) for a in n.args]
+        assert tham_so == ["query_param.mode", "query"], (
+            f"lời gọi ở operate.py:{n.lineno} truyền {tham_so}: đầu vào của"
+            " khóa cache đã đổi, đọc lại AD-18 trước khi bật cache"
+        )
+
+
+def test_khoa_cache_doi_theo_mode_va_cau_hoi():
+    """Đối chứng của test trên: hai thứ đi vào khóa thật sự đổi được khóa.
+
+    Không có ca này thì phép quét AST xanh cả khi `compute_args_hash` trở
+    thành một hàm trả hằng, và lúc đó "hai vai chung một ô cache" vẫn đúng
+    nhưng vì một lý do khác hẳn.
+    """
+    khoa = compute_args_hash("hybrid", CAU_HOI)
+    assert compute_args_hash("naive", CAU_HOI) != khoa
+    assert compute_args_hash("hybrid", CAU_HOI + "?") != khoa
 
 
 def test_hashing_kv_none_thi_khong_co_duong_doc_ghi_cache():
