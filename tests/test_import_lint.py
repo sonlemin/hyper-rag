@@ -121,18 +121,28 @@ def _import_system_context(py: Path, goi_cha: tuple[str, ...]) -> bool:
     return False
 
 
-def _quet_system_context(cho_phep: frozenset[str]) -> list[str]:
-    """Đường dẫn các file với tới context hệ thống mà không nằm trong danh sách trắng."""
+def _quet_system_context(
+    cho_phep: frozenset[str], goc: Path = REPO_ROOT
+) -> list[str]:
+    """Đường dẫn các file với tới context hệ thống mà không nằm trong danh sách trắng.
+
+    `goc` mặc định là gốc repo, tức là thứ luật này canh giữ thật. Nó là tham
+    số để test của chính bộ dò dựng được một cây giả trong `tmp_path`: kiểm
+    nhánh danh sách trắng bằng cách ghi một file vào `core/` thật rồi xóa đi là
+    để lại một file trong thư mục mà AGENTS.md bắt trình diff nếu tiến trình bị
+    giết giữa chừng, và là làm hai test khác của chính file này đỏ giả khi suite
+    chạy song song.
+    """
     vi_pham = []
     for package in GOI_QUET:
-        thu_muc = REPO_ROOT / package
+        thu_muc = goc / package
         if not thu_muc.is_dir():
             continue
         for py in thu_muc.rglob("*.py"):
-            duong_dan = str(py.relative_to(REPO_ROOT))
+            duong_dan = str(py.relative_to(goc))
             if duong_dan == FILE_SYSTEM_CONTEXT or duong_dan in cho_phep:
                 continue
-            if _import_system_context(py, py.relative_to(REPO_ROOT).parts[:-1]):
+            if _import_system_context(py, py.relative_to(goc).parts[:-1]):
                 vi_pham.append(duong_dan)
     return vi_pham
 
@@ -180,16 +190,25 @@ def test_bo_do_khong_bat_nham_file_sach(tmp_path):
     assert _import_system_context(py, ("core",)) is False
 
 
-def test_danh_sach_trang_duoc_bo_qua():
-    """Thêm một dòng vào danh sách trắng là đủ để module ingest hợp lệ."""
-    gia = REPO_ROOT / "core" / "_gia_lap_ingest.py"
-    gia.write_text("from core.system_context import system_context\n", encoding="utf-8")
-    try:
-        duong_dan = str(gia.relative_to(REPO_ROOT))
-        assert duong_dan in _quet_system_context(frozenset())
-        assert duong_dan not in _quet_system_context(frozenset({duong_dan}))
-    finally:
-        gia.unlink()
+def test_danh_sach_trang_duoc_bo_qua(tmp_path):
+    """Thêm một dòng vào danh sách trắng là đủ để module ingest hợp lệ.
+
+    Dựng cây giả trong `tmp_path` chứ không ghi vào `core/` thật. Ghi vào cây mã
+    nguồn thì `finally` không sống sót qua một lần giết tiến trình, và trong lúc
+    file còn nằm đó thì `test_chi_ingest_duoc_import_context_he_thong` quét
+    trúng nó - một lần đỏ giả chỉ xuất hiện khi suite chạy song song, tức là
+    loại lỗi khó tái hiện nhất.
+    """
+    (tmp_path / "core").mkdir()
+    duong_dan = "core/_gia_lap_ingest.py"
+    (tmp_path / duong_dan).write_text(
+        "from core.system_context import system_context\n", encoding="utf-8"
+    )
+
+    # Đúng một vi phạm, không phải "có chứa": cây giả chỉ có một file, nên một
+    # phép quét trả về nhiều hơn thế là bộ dò đang đọc cái gì khác.
+    assert _quet_system_context(frozenset(), goc=tmp_path) == [duong_dan]
+    assert _quet_system_context(frozenset({duong_dan}), goc=tmp_path) == []
 
 
 # Hai luật danh sách trắng quanh PermissionContext. Sentinel lúc chạy trong
