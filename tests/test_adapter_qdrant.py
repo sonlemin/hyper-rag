@@ -1198,3 +1198,39 @@ def test_ghi_duoi_ngu_canh_vai_bi_tu_choi(khong_gian, policy):
         assert client.cac_loi_goi("upsert") == []
 
     asyncio.run(chay())
+
+
+# --- Vòng đời kết nối: `close()` đóng đúng thứ mình mở (story 1.7) ---------
+
+
+def test_close_dong_client_do_chinh_adapter_mo(khong_gian, monkeypatch):
+    """Không tiêm client thì adapter tự mở, và chính nó đóng lại.
+
+    Nhánh này không có đường nào khác chạy vào: cặp test ở
+    `tests/test_cong_m1.py` canh luật sở hữu ở *tầng engine*, nên đổi thân
+    `close()` thành `pass` vẫn làm chúng xanh. Đây là chỗ đo chính thân method.
+    """
+    client = QdrantGhiLai()
+    monkeypatch.setattr(
+        QdrantVectorDBStorage, "_dung_client", staticmethod(lambda cau_hinh: client)
+    )
+    adapter = QdrantVectorDBStorage(
+        namespace="hyperedges",
+        global_config={"qdrant_url": "http://qdrant:6333"},
+        embedding_func=embedding_gia(),
+        meta_fields={"hyperedge_name"},
+    )
+    asyncio.run(adapter.close())
+    assert len(client.cac_loi_goi("close")) == 1
+
+
+def test_close_khong_dong_client_duoc_tiem(khong_gian):
+    """Client tiêm từ ngoài thuộc về người tiêm; đóng hộ là làm hỏng kho khác.
+
+    Engine tiêm **một** client cho cả ba namespace vector, nên một storage đóng
+    hộ là hai namespace còn lại mất kết nối.
+    """
+    client = QdrantGhiLai()
+    adapter = dung_adapter(client, khong_gian)
+    asyncio.run(adapter.close())
+    assert client.cac_loi_goi("close") == []

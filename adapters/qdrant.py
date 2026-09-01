@@ -102,23 +102,41 @@ class PointFilterKeyMissing(RuntimeError):
 class QdrantVectorDBStorage(BaseVectorStorage):
     """`BaseVectorStorage` của upstream, ruột là Qdrant có pre-filter theo khóa."""
 
-    # Giữ tên và giá trị mặc định của upstream để `cosine_better_than_threshold`
-    # trong `global_config` vẫn có tác dụng như với NanoVectorDB.
+    # Giữ tên và giá trị mặc định của upstream. Khóa `cosine_better_than_threshold`
+    # trong `global_config` chỉ *thật sự* có tác dụng từ story 1.7: nó không phải
+    # field của `HyperGraphRAG` (`hypergraphrag.py:108-169`) nên `asdict(self)`
+    # của engine upstream không bao giờ mang nó xuống, và trước đó ngưỡng luôn
+    # đóng cứng ở giá trị mặc định dưới đây. `EngineACL` khai nó thành field nên
+    # nhánh `cau_hinh.get(...)` bên dưới mới có đường chạy vào.
     cosine_better_than_threshold: float = 0.2
-    # Client tiêm sẵn, tùy chọn. Tiêm vào thì ba namespace vector dùng chung
-    # một kết nối; không tiêm thì mỗi instance tự mở kết nối riêng từ
-    # `qdrant_url` và không ai đóng chúng lại - vòng đời kết nối chốt ở story
-    # 1.7 cùng lúc với chỗ gọi `initialize()`. Đây cũng là chỗ bộ test cắm
-    # client local mode có ghi nhật ký vào.
+    # Client tiêm sẵn, tùy chọn. `adapters/engine.py` tiêm một client dùng
+    # chung cho cả ba namespace vector; không tiêm thì mỗi instance tự mở kết
+    # nối riêng từ `qdrant_url`, và khi đó chính nó đóng lại ở `close()`. Đây
+    # cũng là chỗ bộ test cắm client local mode có ghi nhật ký vào.
     qdrant_client: AsyncQdrantClient | None = None
 
     def __post_init__(self):
         cau_hinh = self.global_config or {}
         self._client = self.qdrant_client or self._dung_client(cau_hinh)
+        # Chỉ đóng client do chính adapter mở: engine tiêm một client dùng
+        # chung cho ba namespace, đóng hộ nó là làm hỏng hai namespace kia.
+        # Cùng luật sở hữu với `Neo4jACLGraphStorage`.
+        self._tu_mo_client = self.qdrant_client is None
         self._max_batch_size = self._kich_thuoc_lo(cau_hinh)
         self.cosine_better_than_threshold = cau_hinh.get(
             COSINE_THRESHOLD_KEY, self.cosine_better_than_threshold
         )
+
+    async def close(self) -> None:
+        """Đóng client do chính adapter mở; `adapters/engine.py` gọi lúc tắt.
+
+        Client tiêm từ ngoài thì không đóng: nó là của người tiêm. Với engine
+        của dự án thì mọi instance đều nhận client tiêm sẵn, nên method này là
+        no-op ở đường sản phẩm - và nó vẫn phải tồn tại, vì luật sở hữu sống ở
+        chỗ giữ kết nối chứ không sống ở giả định của nơi gọi.
+        """
+        if self._tu_mo_client:
+            await self._client.close()
 
     @staticmethod
     def _kich_thuoc_lo(cau_hinh) -> int:

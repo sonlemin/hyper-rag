@@ -1,5 +1,19 @@
 """Tầng adapter storage của hyper-rag-copilot.
 
-Được import core/ và vendor/. Adapter Qdrant, Neo4j, KV và engine.py
-(subclass HyperGraphRAG override _get_storage_class) vào từ story 1.3-1.5.
+Được import core/ và vendor/. Chiều import do `tests/test_import_lint.py` canh:
+tầng này không import `api/`, `redteam/`, `web/`, `tests/`.
+
+Nội dung hiện có:
+
+- `qdrant`         adapter vector, pre-filter theo khóa (1.3)
+- `neo4j`          adapter graph, WHERE-injection và cấu trúc hai phía (1.4)
+- `kv`             adapter chunk/tài liệu gốc, ngưỡng L2 và tắt cache LLM (1.5)
+- `ingest_labels`  phạm vi nhãn ingest - khóa quyền của đường ghi (1.3)
+- `mask_contract`  hợp đồng tầng che nhìn từ phía adapter (1.3, 1.4)
+- `policy_loader`  nửa I/O của `core/policy.py` (1.2)
+- `engine`         subclass `HyperGraphRAG`: registry 3 adapter, khóa cấu hình
+                   kho, vòng đời kết nối (1.7)
+- `identity_seed`  nửa I/O của `core/identity.py` (1.7)
+
+Còn thiếu, vào ở các story sau: pipeline ingest (2.3), adapter audit port (3.6).
 """

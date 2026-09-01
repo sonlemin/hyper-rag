@@ -100,6 +100,11 @@ ENTITY_NAMESPACE = "entities"
 HEALTH_RETRIES_MAC_DINH = 30
 HEALTH_DELAY_MAC_DINH = 0.5
 
+# Tài khoản mặc định của Neo4j Community, cũng là giá trị mà `docker-compose.yml`
+# đặt cho `NEO4J_USERNAME`. Một hằng, một chỗ: `adapters/engine.py` nhập lại nó
+# thay vì viết bản thứ hai, cùng luật với hai hằng health-check ở trên.
+NEO4J_USERNAME_MAC_DINH = "neo4j"
+
 
 class Neo4jUnavailable(RuntimeError):
     """Chờ hết hạn mà Neo4j vẫn chưa nhận kết nối.
@@ -212,7 +217,10 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
             )
         return AsyncGraphDatabase.driver(
             uri,
-            auth=(cau_hinh.get(NEO4J_USERNAME_KEY, "neo4j"), mat_khau),
+            auth=(
+                cau_hinh.get(NEO4J_USERNAME_KEY) or NEO4J_USERNAME_MAC_DINH,
+                mat_khau,
+            ),
         )
 
     async def _dam_bao_san_sang(self) -> None:

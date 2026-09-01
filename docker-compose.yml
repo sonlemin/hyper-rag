@@ -66,10 +66,26 @@ services:
       context: .
       dockerfile: api/Dockerfile
     environment:
+      # Sau bien duoi day la nguon cua khoa cau hinh kho ma engine doc
+      # (adapters/engine.py: BIEN_MOI_TRUONG -> field cua EngineACL ->
+      # asdict(self) -> global_config cua adapter).
+      # Doi ten mot bien o day ma quen doi o do co hai hau qua khac nhau:
+      #  - NEO4J_URI, NEO4J_PASSWORD, QDRANT_URL: adapter noi ValueError ngay luc
+      #    dung engine, noi dung ten khoa nao thieu (test ghim dieu do);
+      #  - NEO4J_USERNAME, QDRANT_API_KEY, HYPER_RAG_WORKING_DIR: rot ve mac dinh
+      #    im lang (neo4j / khong api-key / thu muc mac dinh cua upstream), va
+      #    rieng cai cuoi la kho KV di lac cho khong co volume.
       NEO4J_URI: "bolt://neo4j:7687"
       NEO4J_USERNAME: "neo4j"
       NEO4J_PASSWORD: "${NEO4J_PASSWORD:?thieu NEO4J_PASSWORD trong .env}"
       QDRANT_URL: "http://qdrant:6333"
+      # Qdrant trong compose chay khong api-key (khong publish ra ngoai). Bien
+      # rong tinh la chua dat, engine bo qua chu khong day mot chuoi rong xuong.
+      QDRANT_API_KEY: "${QDRANT_API_KEY:-}"
+      # Thu muc lam viec cua HyperGraphRAG: kho KV (text_chunks, full_docs) la
+      # noi *duy nhat* giu khoa quyen cua chunk da nap, nen no phai nam tren
+      # volume chu khong trong lop ghi cua container.
+      HYPER_RAG_WORKING_DIR: "/data/hyper-rag"
       POSTGRES_HOST: "postgres"
       POSTGRES_USER: "${POSTGRES_USER:?thieu POSTGRES_USER trong .env.server/.env.laptop}"
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?thieu POSTGRES_PASSWORD trong .env}"
@@ -82,6 +98,8 @@ services:
     # muon siet them sau khi co web thi doi sang "127.0.0.1:8000:8000" + reverse proxy mot moi.
     ports:
       - "8000:8000"
+    volumes:
+      - api_data:/data
     depends_on:
       neo4j:
         condition: service_healthy
@@ -118,5 +136,8 @@ volumes:
     name: hyper_rag_qdrant_data
   postgres_data:
     name: hyper_rag_postgres_data
+  # Thu muc lam viec cua engine (HYPER_RAG_WORKING_DIR): kho KV JSON nam o day.
+  api_data:
+    name: hyper_rag_api_data
   ollama_data:
     name: hyper_rag_ollama_data

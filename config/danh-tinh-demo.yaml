@@ -1,0 +1,26 @@
+# Seed danh tinh demo cua cong M1 (story 1.7).
+#
+# Toi gian co chu dich: chua JWT, chua mat khau, chua bang `users`. Nhung thu do
+# thuoc Epic 3 (FR-17). Thu M1 can chung minh la ngu canh quyen *phat tu mot
+# danh tinh* chu khong phai tu mot hang viet trong test.
+#
+# tai_khoan   - `real_account` cua ngu canh quyen, thu audit ghi lai (AD-3).
+# vai         - thu quyet dinh tap khoa duoc phep; khong khai quyen o day.
+#               Loader KHONG kiem vai co trong bang chinh sach hay khong: no
+#               khong doc bang chinh sach. Cho kiem la `core.identity.ngu_canh_cua`,
+#               noi hai nguon gap nhau - vai la thi `RoleUnknown` (code
+#               ROLE_UNKNOWN), khong phai mot ngu canh khong thay gi.
+# khong_gian  - khoang du lieu (AD-12). `synth` la khoang du lieu tong hop; bo
+#               test doi truong nay sang mot khoang rieng cho tung phien.
+#
+# Khong co truong nao cho `grant_ids`: duong nang quyen break-glass thuoc Epic 5,
+# va mot truong rong nam san la mot cho de ai do dien vao truoc khi co che kiem
+# no ton tai.
+version: 1
+danh_tinh:
+  - tai_khoan: ts01
+    vai: tech_support
+    khong_gian: synth
+  - tai_khoan: dev01
+    vai: devops
+    khong_gian: synth

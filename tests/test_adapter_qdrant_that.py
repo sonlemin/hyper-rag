@@ -27,7 +27,13 @@ from qdrant_client import models
 
 from adapters.ingest_labels import ingest_label
 from adapters.policy_loader import load_policy
-from adapters.qdrant import QdrantIndexMissing, QdrantVectorDBStorage
+from adapters.qdrant import (
+    FILTER_MAX_CONDITIONS,
+    GLOBAL_M,
+    PAYLOAD_M,
+    QdrantIndexMissing,
+    QdrantVectorDBStorage,
+)
 from core.keys import FILTER_KEY_FIELD
 from core.permission import use_context, user_context
 from core.system_context import system_context
@@ -103,6 +109,11 @@ def test_payload_index_va_hnsw_co_that(khong_gian, policy):
     Local mode nhận rồi bỏ qua cả ba, nên tới đây mới biết `QdrantIndexMissing`
     đang canh một cơ chế thật sự được bật: index keyword có `is_tenant`, cạnh
     HNSW theo khóa (`payload_m`), và hàng rào strict mode.
+
+    Đối chiếu với chính hằng của adapter, không với số viết tay: đây là khoản
+    kiểm mà docstring `initialize()` hẹn ở cổng M1, và nếu ai đó nới `PAYLOAD_M`
+    hay `FILTER_MAX_CONDITIONS` thì test này phải nói rằng server *đã* nhận giá
+    trị mới, chứ không âm thầm so với một con số cũ.
     """
 
     async def chay():
@@ -114,9 +125,23 @@ def test_payload_index_va_hnsw_co_that(khong_gian, policy):
     assert mo_ta.data_type == models.PayloadSchemaType.KEYWORD
     assert mo_ta.params.is_tenant is True
     hnsw = tt.config.hnsw_config
-    assert (hnsw.m, hnsw.payload_m) == (16, 16)
+    assert (hnsw.m, hnsw.payload_m) == (GLOBAL_M, PAYLOAD_M)
     strict = tt.config.strict_mode_config
-    assert strict.enabled is True and strict.filter_max_conditions == 1
+    assert strict.enabled is True
+    assert strict.filter_max_conditions == FILTER_MAX_CONDITIONS
+    # Neo tuyệt đối cạnh phép so với hằng, vì hai phép đó bắt hai chuyện khác
+    # nhau. So với hằng bắt "server không nhận giá trị mới"; neo dưới đây bắt
+    # "ai đó nới chính cái hằng". `filter_max_conditions == 1` là phát biểu của
+    # bất biến AD-4 - một field, không AND đa điều kiện - nên nới nó là đổi một
+    # quyết định kiến trúc, và test phải đỏ để chỗ nới có người đọc lại.
+    # `payload_m > 0` là điều kiện để cạnh HNSW theo khóa quyền tồn tại.
+    assert strict.filter_max_conditions == 1
+    assert hnsw.payload_m > 0 and hnsw.m > 0
+    # Hai cờ này là nửa còn lại của hàng rào: lọc trên field chưa có index đi
+    # vòng qua cả AD-4 lẫn `QdrantIndexMissing` bằng một lần duyệt vét cạn có
+    # lọc, và server phải từ chối thay vì làm hộ.
+    assert strict.unindexed_filtering_retrieve is False
+    assert strict.unindexed_filtering_update is False
 
 
 def test_upsert_tu_choi_khi_chua_initialize_tren_server_that(khong_gian, policy):
