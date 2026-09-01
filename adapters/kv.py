@@ -281,20 +281,28 @@ class JsonACLKVStorage(BaseKVStorage):
         thống đọc thô nên không che; mọi ca còn lại đều đi qua `mask` với khóa
         của chính bản ghi đó, không phải khóa của một mục nào khác.
 
-        Bản sao nông là đủ cho thứ nó bảo vệ: khóa quyền nằm ở tầng ngoài cùng
-        của bản ghi, nên nơi gọi không đổi được nhãn quyền trong kho. Giá trị
-        lồng bên trong là nội dung của chính bản ghi, thứ nơi gọi được phép
-        tiêu thụ.
+        Sao chép **sâu** trước khi che, và đây là đường duy nhất trong ba
+        adapter cần nó: kho KV giữ bản gốc chưa che trong bộ nhớ dùng chung cho
+        mọi vai, còn Qdrant và Neo4j dựng bản ghi mới từ từng dòng driver. Một
+        tầng che biến đổi giá trị lồng nhau tại chỗ sẽ để dấu che của vai hẹp
+        nằm lại trong kho, và vai rộng quyền đọc sau đó nhận bản đã bị che -
+        sai theo chiều ngược, nhưng vẫn sai và vẫn im lặng. `core.masking.mask`
+        là hàm thuần nên hôm nay chuyện đó không xảy ra; bản sao sâu là lớp thứ
+        hai, đứng độc lập với việc ai viết ruột che.
+
+        Bản sao cũng chặn nơi gọi sửa nhãn quyền của bản ghi trong kho.
         """
-        ban_ghi = du_lieu.get(id)
-        if ban_ghi is None:
+        trong_kho = du_lieu.get(id)
+        if trong_kho is None:
             return None
-        ban_ghi = dict(ban_ghi)
         if khoa_duoc_phep is None:
-            return ban_ghi
-        khoa = self._khoa_cua(id, ban_ghi)
+            return deepcopy(trong_kho)
+        khoa = self._khoa_cua(id, trong_kho)
         if khoa not in khoa_duoc_phep:
             return None
+        # Sao chép sau cửa quyền, không trước: bản ghi mà lời gọi này không được
+        # đọc thì không đáng một lần sao chép rồi vứt.
+        ban_ghi = deepcopy(trong_kho)
         return kiem_ket_qua_che(mask(ban_ghi, context, khoa), ban_ghi, f"mục {id!r}")
 
     # --- Đọc ---------------------------------------------------------------

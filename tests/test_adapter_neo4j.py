@@ -40,6 +40,7 @@ from adapters.neo4j import (
 from adapters.policy_loader import load_policy
 from core.ids import normalize_id, point_id
 from core.keys import FILTER_KEY_FIELD, filter_key
+from core.masking import dau_che
 from core.permission import PermissionContextMissing, use_context, user_context
 from core.slots import SLOT_ROLES
 from core.system_context import system_context
@@ -476,6 +477,10 @@ def test_get_node_edges_tra_cap_id(khong_gian, policy):
 
     `operate.py:884-925` đưa thẳng `e[1]` vào `get_edge`/`get_node`, nên hình
     dạng này là hợp đồng chứ không phải lựa chọn.
+
+    HE-01 là runbook, L2 với `tech_support`, nên tên lân cận ra nguyên văn -
+    trừ lân cận điền vào slot `owner`, thứ luôn tổng quát hóa kể cả ở L2
+    (AD-9, story 1.6).
     """
 
     async def chay():
@@ -485,9 +490,274 @@ def test_get_node_edges_tra_cap_id(khong_gian, policy):
             cac_cap = await adapter.get_node_edges(id_hyperedge(he))
         assert all(isinstance(c, tuple) and len(c) == 2 for c in cac_cap)
         assert {c[0] for c in cac_cap} == {id_hyperedge(he)}
-        assert sorted(c[1] for c in cac_cap) == sorted(he["slots"].values())
+        ky_vong = [
+            oracle.dau_che_ky_vong(slot) if slot == "owner" else gia_tri
+            for slot, gia_tri in he["slots"].items()
+        ]
+        assert sorted(c[1] for c in cac_cap) == sorted(ky_vong)
 
     asyncio.run(chay())
+
+
+# --- 1.6-INT-001: tên node lân cận đi qua tầng che -------------------------
+
+
+def test_1_6_int_001_get_node_edges_che_ten_lan_can_cua_slot_bi_che(
+    khong_gian, policy, bang
+):
+    """Tên lân cận điền vào slot đang che bị che như nội dung slot (AD-9).
+
+    Đường rò thật của Epic 1; lý do đầy đủ ở docstring `core/masking.py`. Kỳ
+    vọng lấy từ oracle, nên nó không tự đúng theo code.
+    """
+
+    async def chay():
+        _, adapter = await graph_da_nap(khong_gian, policy)
+        with use_context(vai(policy, "tech_support", khong_gian)):
+            return await adapter.get_node_edges(id_hyperedge(THEO_ID["HE-02"]))
+
+    cac_cap = asyncio.run(chay())
+    he = THEO_ID["HE-02"]
+    phai_che = oracle.slot_phai_che(bang, "tech_support", he)
+    assert phai_che == {"cause", "source", "remediation", "owner"}
+    ky_vong = {
+        oracle.dau_che_ky_vong(slot) if slot in phai_che else normalize_id(gia_tri)
+        for slot, gia_tri in he["slots"].items()
+    }
+    lan_can = {c[1] for c in cac_cap}
+    assert lan_can == ky_vong
+    # Nói thẳng điều cần chứng minh: nguyên văn nguyên nhân không ra khỏi kho.
+    for slot in phai_che:
+        assert he["slots"][slot] not in lan_can, slot
+    # Và phần công khai vẫn ra được, nếu không thì "che" chỉ là "chặn".
+    assert he["slots"]["symptom"] in lan_can
+
+
+def test_1_6_int_001_vai_l2_chi_che_lan_can_cua_owner(khong_gian, policy, bang):
+    """Cùng hyperedge, vai đạt L2: chỉ lân cận `owner` bị tổng quát hóa."""
+
+    async def chay():
+        _, adapter = await graph_da_nap(khong_gian, policy)
+        with use_context(vai(policy, "devops", khong_gian)):
+            return await adapter.get_node_edges(id_hyperedge(THEO_ID["HE-02"]))
+
+    cac_cap = asyncio.run(chay())
+    he = THEO_ID["HE-02"]
+    assert oracle.slot_phai_che(bang, "devops", he) == {"owner"}
+    lan_can = {c[1] for c in cac_cap}
+    assert lan_can == {
+        oracle.dau_che_ky_vong("owner") if slot == "owner" else normalize_id(gia_tri)
+        for slot, gia_tri in he["slots"].items()
+    }
+    assert he["slots"]["cause"] in lan_can
+    assert he["slots"]["owner"] not in lan_can
+
+
+def test_1_6_int_001_goi_tu_phia_entity_khong_che_id_hyperedge(khong_gian, policy):
+    """Lân cận là node hyperedge thì không bị che, dù cạnh mang vai đang che.
+
+    Vai slot mô tả entity *điền vào* hyperedge, nên nó chỉ có nghĩa cho lân cận
+    entity - đúng câu chữ AC story 1.6, "node điền vào slot đang bị che". Node
+    hyperedge không điền vào slot nào.
+
+    Chiều này chạy thật trong sản phẩm: `operate.py:818` và `:887` đều gọi
+    `get_node_edges(dp["entity_name"])` ở local mode. Che id hyperedge ở đây
+    thì `operate.py:900-907` nhận `get_edge(e[0], dấu_che) -> None` rồi loại
+    nguyên dòng đó, tức một fact mà vai *được* thấy ở L1 biến mất khỏi ngữ
+    cảnh - đi ngược FR-12, và đi ngược im lặng.
+    """
+    he = THEO_ID["HE-02"]
+
+    async def chay():
+        _, adapter = await graph_da_nap(khong_gian, policy)
+        with use_context(vai(policy, "tech_support", khong_gian)):
+            return await adapter.get_node_edges(he["slots"]["cause"])
+
+    cac_cap = asyncio.run(chay())
+    # Entity "nguyên nhân" chỉ nối vào đúng hyperedge HE-02 trong fixture.
+    assert [c[1] for c in cac_cap] == [id_hyperedge(he)]
+    assert cac_cap[0][0] == normalize_id(he["slots"]["cause"])
+
+
+def test_1_6_int_001_hai_entity_cung_slot_cho_cung_mot_dau_che(khong_gian, policy):
+    """Dấu che không mang số lượng, nên hai lân cận cùng slot trùng nhau.
+
+    Cố ý (`core/masking.py`): một dấu che có số thứ tự nói ra "có 2 nguyên nhân
+    bị che", mà số lượng cũng là thông tin về nội dung bị che. Cái giá là
+    `operate.py:893` gom `tuple(e)` vào một `set` nên hai cạnh này khử trùng
+    còn một - ghim cả hai vế ở đây để lần sau không ai "sửa" nó thành dấu che
+    có số mà không biết mình đang mua lại đường rò nào.
+    """
+    he = THEO_ID["HE-02"]
+    nguyen_nhan_hai = "sai cấu hình timeout ở tầng cân bằng tải"
+
+    async def chay():
+        driver, adapter = await graph_da_nap(khong_gian, policy)
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            with ingest_label(
+                scope=he["scope"], content_type=he["content_type"]
+            ):
+                await adapter.upsert_node(
+                    nguyen_nhan_hai,
+                    {"role": "entity", "entity_type": "KHAC",
+                     "description": nguyen_nhan_hai, "source_id": he["id"]},
+                )
+                await adapter.upsert_edge(
+                    id_hyperedge(he),
+                    nguyen_nhan_hai,
+                    {"weight": 1.0, "source_id": he["id"], "slot": "cause"},
+                )
+        with use_context(vai(policy, "tech_support", khong_gian)):
+            return await adapter.get_node_edges(id_hyperedge(he))
+
+    cac_cap = asyncio.run(chay())
+    lan_can = [c[1] for c in cac_cap]
+    assert lan_can.count(oracle.dau_che_ky_vong("cause")) == 2
+    assert nguyen_nhan_hai not in lan_can
+    assert he["slots"]["cause"] not in lan_can
+    # Và đây là cái giá, nói thẳng: upstream khử trùng còn một cạnh.
+    assert len({tuple(c) for c in cac_cap}) == len(set(lan_can))
+
+
+def test_moi_lan_can_tra_nguoc_duoc_bang_get_node(khong_gian, policy):
+    """Hợp đồng mà `operate.py` dựa vào: `e[1]` luôn tra ngược được.
+
+    Hai chỗ tiêu thụ lọc `None` trước khi dùng (`operate.py:908`, `:830`),
+    nhưng `_find_most_related_entities_from_relationships` thì không. Từ khi
+    `get_node` nhận ra dấu che ở vị trí id, mọi lân cận trả ra đều tra được -
+    kể cả lân cận đã che. Viết ban đầu làm tripwire `xfail(strict=True)` trỏ
+    sang story 1.7; sonlm yêu cầu trả nợ ngay trong story 1.6 nên nó thành một
+    assert thật.
+    """
+
+    async def chay():
+        _, adapter = await graph_da_nap(khong_gian, policy)
+        with use_context(vai(policy, "tech_support", khong_gian)):
+            cac_cap = await adapter.get_node_edges(id_hyperedge(THEO_ID["HE-02"]))
+            return [(c[1], await adapter.get_node(c[1])) for c in cac_cap]
+
+    tra_nguoc = asyncio.run(chay())
+    khong_tra_duoc = [ten for ten, node in tra_nguoc if node is None]
+    assert not khong_tra_duoc, f"lân cận không tra ngược được: {khong_tra_duoc}"
+
+
+# --- Khoản 38 + 39: bản ghi node khi nội dung không được phép ra ------------
+
+
+def test_khoan_38_get_node_tren_dau_che_tra_node_da_che_chu_khong_None(
+    khong_gian, policy
+):
+    """Dấu che ở vị trí id: `get_node` trả node đã che, đủ hình dạng upstream đọc.
+
+    `operate.py:1036-1039` mang thẳng `e[1]` đi hỏi `get_node` rồi trải
+    `{**n, "entity_name": k, "rank": d}` **không lọc `None`** - khác hai chỗ
+    tiêu thụ kia. Test mô phỏng đúng dòng đó để chứng minh nó không còn nổ.
+    """
+
+    async def chay():
+        _, adapter = await graph_da_nap(khong_gian, policy)
+        with use_context(vai(policy, "tech_support", khong_gian)):
+            return await adapter.get_node(dau_che("cause"))
+
+    node = asyncio.run(chay())
+    assert node is not None
+    # Hai trường upstream đọc để dựng bảng Entities (`operate.py:774-784`).
+    assert node["entity_type"] == dau_che("cause")
+    assert node["description"] == dau_che("cause")
+    # Không mang `source_id`: đó là đường với tới chunk nguồn.
+    assert "source_id" not in node
+    assert FILTER_KEY_FIELD not in node
+    # Chính dòng của `operate.py:1036-1039`, không diễn giải lại.
+    dong = {**node, "entity_name": dau_che("cause"), "rank": 0}
+    assert dong["entity_name"] == dau_che("cause")
+
+
+def test_khoan_38_ten_entity_that_khong_bi_nham_la_dau_che(khong_gian, policy):
+    """Nhận diện bằng dựng lại, không bằng `startswith("[")`.
+
+    Một tên entity thật mở đầu bằng dấu ngoặc vuông mà bị nhận nhầm là dấu che
+    thì một fact có thật biến mất khỏi ngữ cảnh, thay bằng một node rỗng.
+    """
+    he = THEO_ID["HE-01"]
+    ten_giong_dau_che = "[cause:khong phai dau che]"
+
+    async def chay():
+        driver, adapter = await graph_da_nap(khong_gian, policy)
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            with ingest_label(
+                scope=he["scope"], content_type=he["content_type"]
+            ):
+                await adapter.upsert_node(
+                    ten_giong_dau_che,
+                    {"role": "entity", "entity_type": "KHAC",
+                     "description": "mô tả thật", "source_id": he["id"]},
+                )
+        with use_context(vai(policy, "tech_support", khong_gian)):
+            return await adapter.get_node(ten_giong_dau_che)
+
+    node = asyncio.run(chay())
+    assert node is not None
+    assert node["entity_type"] == "KHAC"
+    assert node["source_id"] == he["id"]
+
+
+def test_khoan_39_mo_ta_entity_chi_ra_nguyen_van_khi_vai_dat_l2(
+    khong_gian, policy, bang
+):
+    """`description` của entity là văn bản viết lại từ giá trị slot (NFR-06).
+
+    HE-02 là `bao_cao_su_co`: L1 với `tech_support`, L2 với `devops`. Ngưỡng
+    lấy từ oracle chứ không từ `core/`, nên assert không tự đúng theo code.
+    """
+    he = THEO_ID["HE-02"]
+    ten_entity = he["slots"]["symptom"]  # slot công khai, không bị che theo slot
+
+    async def chay():
+        _, adapter = await graph_da_nap(khong_gian, policy)
+        ket = {}
+        for ten_vai in ("tech_support", "devops"):
+            with use_context(vai(policy, ten_vai, khong_gian)):
+                ket[ten_vai] = await adapter.get_node(ten_entity)
+        return ket
+
+    ket = asyncio.run(chay())
+    duoc_phep = oracle.allowed_keys_ky_vong(bang, "tech_support")["entities"]
+    assert khoa_cua(he) not in duoc_phep, "fixture phải giữ ca L1 với vai này"
+    assert khoa_cua(he) in oracle.allowed_keys_ky_vong(bang, "devops")["entities"]
+
+    assert ket["tech_support"]["description"] == "[description:l2_only]"
+    assert ket["devops"]["description"] == ten_entity
+    # Chỉ `description` bị chạm: id node vẫn ra, và tập khóa không đổi.
+    assert ket["tech_support"][NODE_ID_FIELD] == normalize_id(ten_entity)
+    assert set(ket["tech_support"]) == set(ket["devops"])
+
+
+def test_khoan_39_node_vai_hyperedge_khong_bi_luat_mo_ta_cham(khong_gian, policy):
+    """Node hyperedge không có `description` (`operate.py:153`), nên không bị chạm."""
+
+    async def chay():
+        _, adapter = await graph_da_nap(khong_gian, policy)
+        with use_context(vai(policy, "tech_support", khong_gian)):
+            return await adapter.get_node(id_hyperedge(THEO_ID["HE-02"]))
+
+    node = asyncio.run(chay())
+    assert node is not None
+    assert node["role"] == "hyperedge"
+    assert "description" not in node
+    assert node["source_id"] == "HE-02"
+
+
+def test_khoan_39_ngu_canh_he_thong_van_doc_mo_ta_nguyen_van(khong_gian, policy):
+    """Ingest phải thấy mô tả thật: `_merge_nodes_then_upsert` ghi lại chính nó."""
+    he = THEO_ID["HE-02"]
+    ten_entity = he["slots"]["symptom"]
+
+    async def chay():
+        _, adapter = await graph_da_nap(khong_gian, policy)
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            return await adapter.get_node(ten_entity)
+
+    assert asyncio.run(chay())["description"] == ten_entity
 
 
 def test_get_node_edges_khong_ke_lan_can_ngoai_quyen(khong_gian, policy):

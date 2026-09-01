@@ -40,7 +40,19 @@ from adapters.mask_contract import (
 )
 from core.ids import normalize_id, validate_space
 from core.keys import FILTER_KEY_FIELD
-from core.masking import mask
+# `SLOT_FIELD` là hợp đồng giữa tầng che và adapter này: nhãn vai trên cạnh
+# Neo4j và tên trường mà tầng che đọc để biết bản ghi khai vai gì phải là một.
+# Khai bản thứ hai ở đây là hai hằng trôi dạt được, và trôi dạt nghĩa là tên
+# lân cận không bao giờ bị che.
+from core.masking import (
+    MASK_NAMESPACE,
+    MASK_REASON_L2_ONLY,
+    NEIGHBOR_FIELD,
+    SLOT_FIELD,
+    dau_che_truong,
+    la_dau_che,
+    mask,
+)
 from core.permission import current_context
 from core.slots import SLOT_ROLE_SET
 
@@ -54,19 +66,33 @@ HEALTH_DELAY_KEY = "neo4j_health_delay"
 # Đường graph hỏi tập khóa của namespace `hyperedges`: từ L1 trở lên (AD-4).
 # Không phải `chunks`/`entities` - hai namespace đó là ngưỡng L2 của kho vector,
 # còn ở đây một entity chỉ tới được qua hyperedge đã lọt filter.
-GRAPH_NAMESPACE = "hyperedges"
+#
+# Cùng một hằng với cửa fail-closed của tầng che, không phải hai bản trùng giá
+# trị: nếu đường đọc lọc theo một tập mà tầng che kiểm theo một tập khác thì
+# mọi bản ghi hợp lệ đều nổ, hoặc tệ hơn, không bản nào nổ khi lẽ ra phải nổ.
+GRAPH_NAMESPACE = MASK_NAMESPACE
 
 # Hình dạng graph. Story 1.7 và pipeline ingest Epic 2 ghi theo đúng bộ hằng
 # này; đổi một tên ở đây là đổi hợp đồng của cả hai.
 LABEL_HYPEREDGE = "Hyperedge"
 LABEL_ENTITY = "Entity"
 EDGE_TYPE = "SLOT"
-SLOT_FIELD = "slot"
 SPACE_FIELD = "space"
 NODE_ID_FIELD = "id"
 ROLE_FIELD = "role"
 ROLE_HYPEREDGE = "hyperedge"
 ROLE_ENTITY = "entity"
+
+# Hai trường của node entity mà upstream đọc để dựng bảng Entities gửi LLM
+# (`operate.py:774-784`, `:997-1006` đều đọc đúng hai cái này bằng `.get`).
+DESCRIPTION_FIELD = "description"
+ENTITY_TYPE_FIELD = "entity_type"
+
+# Mô tả entity hỏi tập khóa của namespace `entities`: ngưỡng L2 (NFR-06). Khác
+# `GRAPH_NAMESPACE` một cách có chủ đích - đường graph *đi tới* một node từ L1
+# trở lên, nhưng `description` của node entity là văn bản viết lại từ chính giá
+# trị slot, nên nó chỉ vào ngữ cảnh khi vai đạt L2 với nguồn (FR-05).
+ENTITY_NAMESPACE = "entities"
 
 # Số lần thử health-check và khoảng nghỉ giữa hai lần, tính ra khoảng 15 giây.
 # Neo4j lên chậm hơn `api` là chuyện thường trên máy chủ 15 GB RAM (bẫy A2),
@@ -415,23 +441,98 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
         return bool(dong and dong[0]["ton_tai_canh"])
 
     async def get_node(self, node_id: str) -> dict | None:
-        """Thuộc tính node, đã qua tầng che; ngoài quyền là `None`."""
+        """Thuộc tính node, đã qua tầng che; ngoài quyền là `None`.
+
+        Hai luật che gặp nhau ở đây vì chúng trả lời cùng một câu hỏi - một bản
+        ghi node rời adapter trông thế nào khi nội dung của nó không được ra.
+
+        Một: id hỏi tới có thể chính là một dấu che mà `get_node_edges` vừa
+        sinh ra, vì `operate.py:1036` mang thẳng `e[1]` đi hỏi `get_node`. Kho
+        không có node nào tên như vậy, mà `None` thì nổ ở `operate.py:1039`
+        (`{**n, ...}` không lọc `None`). Trả về một node đã che.
+
+        Hai: `description` của node entity chỉ vào ngữ cảnh khi vai đạt L2 với
+        nguồn - xem `_che_mo_ta`.
+        """
         context = current_context()
         if not self._co_khoa_de_doc(context):
             return None
+        id_chuan = normalize_id(node_id)
+        if not context.bypass_filter and la_dau_che(id_chuan):
+            return self._node_da_che(id_chuan)
         space = self._nhan_space(context)
         dong = await self._chay(
             f"MATCH (n:`{space}` {{{NODE_ID_FIELD}: $id}})\n"
             f"WHERE {self._dieu_kien('n', context)}\n"
             "RETURN properties(n) AS thuoc_tinh_node\n"
             "LIMIT 1",
-            id=normalize_id(node_id),
+            id=id_chuan,
             **self._tham_so_loc(context),
         )
         if not dong:
             return None
-        props = self._ban_ghi(dong[0]["thuoc_tinh_node"])
+        props = self._che_mo_ta(self._ban_ghi(dong[0]["thuoc_tinh_node"]), context)
         return self._che(props, context, props.get(FILTER_KEY_FIELD))
+
+    @staticmethod
+    def _node_da_che(dau: str) -> dict:
+        """Node trả về khi id hỏi tới là một dấu che của chính tầng che.
+
+        Không chạm kho và không tra thêm quyền, vì không có gì để tra: người
+        gọi cầm được dấu che này nghĩa là họ đã đi qua `get_node_edges` có
+        filter, và bản thân dấu che không mang thông tin nào về nội dung bị
+        che. Hỏi kho bằng một id không tồn tại chỉ tốn một vòng truy vấn.
+
+        Hình dạng khớp thứ upstream đọc: `entity_type` và `description` để dựng
+        bảng Entities (`operate.py:774-784`, `:997-1006`). Cả hai mang đúng dấu
+        che chứ không mang một giá trị bịa ra như `"UNKNOWN"` - mọi giá trị
+        khác đều là một khẳng định về node đang bị che mà không ai kiểm quyền
+        cho nó.
+
+        Cố ý **không** mang `source_id`: đó là đường với tới chunk nguồn
+        (`operate.py:833` chỉ đọc nó khi `"source_id" in v`, nên vắng mặt là
+        một nhánh upstream đã biết đi). Cũng không mang khóa quyền: node này
+        không sinh ra từ tài liệu nào, gắn cho nó một nhãn quyền là nói dối.
+        """
+        return {
+            NODE_ID_FIELD: dau,
+            ROLE_FIELD: ROLE_ENTITY,
+            ENTITY_TYPE_FIELD: dau,
+            DESCRIPTION_FIELD: dau,
+        }
+
+    @staticmethod
+    def _che_mo_ta(props: dict, context) -> dict:
+        """`description` của node entity chỉ ra nguyên văn khi vai đạt L2.
+
+        Mô tả entity là văn bản LLM viết lại từ chính giá trị slot đã sinh ra
+        nó, và `operate.py:194-196` còn gộp mô tả qua nhiều hyperedge bằng
+        `GRAPH_FIELD_SEP.join` - nên một entity với tới được qua loại nội dung
+        L2 vẫn có thể mang theo mô tả gộp từ hyperedge hạn chế. NFR-06 và FR-05
+        chốt ngưỡng L2 cho mô tả entity; đường graph thì đi tới node từ L1 trở
+        lên, nên hai ngưỡng lệch nhau đúng ở trường này.
+
+        **Luật này chỉ chạm `description`.** Id node (tên entity) vẫn ra
+        nguyên: người gọi tới được `get_node` là đã cầm tên đó trong tay từ
+        `get_node_edges` - nơi tên đã đi qua tầng che - còn upstream thì lấy
+        `entity_name` từ kho vector `entities` (ngưỡng L2 sẵn) chứ không lấy từ
+        dict node này. Che thêm id ở đây không bịt thêm đường nào mà lại cắt
+        mất đường tra ngược.
+
+        Node vai hyperedge không có `description` (`operate.py:153` chỉ ghi
+        `role`, `weight`, `source_id`) nên luật không chạm nó; điều đó được
+        kiểm bằng test chứ không chỉ nói ở đây.
+        """
+        if context.bypass_filter:
+            return props
+        if props.get(ROLE_FIELD) != ROLE_ENTITY or DESCRIPTION_FIELD not in props:
+            return props
+        if props.get(FILTER_KEY_FIELD) in context.keys_for(ENTITY_NAMESPACE):
+            return props
+        return {
+            **props,
+            DESCRIPTION_FIELD: dau_che_truong(DESCRIPTION_FIELD, MASK_REASON_L2_ONLY),
+        }
 
     async def get_edge(
         self, source_node_id: str, target_node_id: str
@@ -472,7 +573,8 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
         tên bị che vẫn kể rằng có một fact ở đó.
 
         Tầng che nhận cả vai slot của cạnh, vì tên node lân cận điền vào một
-        slot đang bị che thì phải bị che như nội dung slot (AD-9, story 1.6).
+        slot đang bị che thì phải bị che như nội dung slot (AD-9). Vì sao đường
+        này là đường rò thật của Epic 1: docstring `core/masking.py`.
         """
         context = current_context()
         if not self._co_khoa_de_doc(context):
@@ -501,19 +603,30 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
                 (d["vai_nguon"], d["khoa_nguon"]),
                 (d["vai_lan_can"], d["khoa_lan_can"]),
             )
-            # Tên trường cố ý không phải `source`: `source` là *một trong 8 vai
-            # slot*, và tầng che của story 1.6 tra bản ghi theo tên vai. Hai
-            # nghĩa trùng tên trong một dict là một lỗi chờ sẵn.
+            # Vai slot mô tả *entity điền vào* hyperedge, nên nó chỉ có nghĩa
+            # cho lân cận là entity. Gọi từ phía entity (`operate.py:818`,
+            # `:887` ở local mode) thì lân cận là chính node hyperedge, thứ
+            # không điền vào slot nào - khai vai cho nó là bảo tầng che che id
+            # hyperedge, và `operate.py:900-907` sẽ nhận `get_edge(..., dấu
+            # che) -> None` rồi loại nguyên dòng đó, tức một fact mà vai *được*
+            # thấy ở L1 biến mất khỏi ngữ cảnh (đi ngược FR-12).
+            #
+            # Tên trường lấy từ `core.masking`, không viết lại: `NEIGHBOR_FIELD`
+            # cố ý không phải `source`, vì `source` là *một trong 8 vai slot* và
+            # tầng che tra bản ghi theo tên vai - hai nghĩa trùng tên trong một
+            # dict là một lỗi chờ sẵn. Lệch một chữ ở đây thì tầng che không tra
+            # trúng gì và tên lân cận ra nguyên văn.
+            vai_slot = d["slot"] if d["vai_lan_can"] == ROLE_ENTITY else None
             ban_ghi = self._che(
                 {
                     "node_id": d["nguon"],
-                    "neighbor_id": d["lan_can"],
-                    SLOT_FIELD: d["slot"],
+                    NEIGHBOR_FIELD: d["lan_can"],
+                    SLOT_FIELD: vai_slot,
                 },
                 context,
                 khoa,
             )
-            cac_cap.append((ban_ghi["node_id"], ban_ghi["neighbor_id"]))
+            cac_cap.append((ban_ghi["node_id"], ban_ghi[NEIGHBOR_FIELD]))
         return cac_cap
 
     async def node_degree(self, node_id: str) -> int:

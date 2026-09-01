@@ -138,3 +138,31 @@ def chunk_thay_duoc(bang: dict, vai: str, chunks) -> list[str]:
         if THU_TU_MUC[muc_ky_vong(bang, vai, c["content_type"])] >= THU_TU_MUC["L2"]
         and khoa_ky_vong(c["scope"], c["content_type"]) in duoc_phep
     ]
+
+
+# Dấu che kỳ vọng, viết tay ở đây đúng như đã viết tay tám vai slot phía trên.
+# Hai lý do vì hai luật khác nguồn; vì sao phải giữ chúng tách nhau thì đọc
+# docstring ``core/masking.py``. Test đối chiếu hai bản là
+# ``test_oracle_va_core_khai_cung_bang_hang``.
+LY_DO_CHE_THEO_BANG = "masked"
+LY_DO_CHE_OWNER = "group"
+
+
+def dau_che_ky_vong(slot: str) -> str:
+    """Dấu che kỳ vọng của một vai slot, bản viết tay của oracle."""
+    ly_do = LY_DO_CHE_OWNER if slot == "owner" else LY_DO_CHE_THEO_BANG
+    return "[" + slot + ":" + ly_do + "]"
+
+
+def ban_ghi_slot_ky_vong(bang: dict, vai: str, hyperedge) -> dict:
+    """Bản ghi "dict theo slot" sau khi che, tính hoàn toàn từ bảng và fixture.
+
+    Đối chứng độc lập cho story 1.6: giữ nguyên tập khóa của bản ghi gốc (che
+    là thay giá trị, không bỏ khóa), thay giá trị của đúng những slot mà
+    ``slot_phai_che`` chỉ ra, và không bịa thêm slot nào mà hyperedge không có.
+    """
+    che = slot_phai_che(bang, vai, hyperedge)
+    return {
+        slot: dau_che_ky_vong(slot) if slot in che else gia_tri
+        for slot, gia_tri in hyperedge["slots"].items()
+    }

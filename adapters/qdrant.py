@@ -32,9 +32,10 @@ from hypergraphrag.base import BaseVectorStorage
 from qdrant_client import AsyncQdrantClient, models
 
 from adapters.ingest_labels import ingest_key_for_write
-# Hợp đồng che dùng chung với adapter Neo4j (story 1.4): một luật, một chỗ.
-# Tên vẫn nhập được từ `adapters.qdrant` để nơi gọi cũ không phải sửa.
-from adapters.mask_contract import MaskContractViolated
+# Hợp đồng che dùng chung với hai adapter kia: một luật, một chỗ. `_ban_ghi`
+# gọi `kiem_ket_qua_che` chứ không tự viết một nửa hợp đồng. `MaskContractViolated`
+# nhập lại ở đây để tên vẫn lấy được từ `adapters.qdrant`, như nơi gọi cũ vẫn làm.
+from adapters.mask_contract import MaskContractViolated, kiem_ket_qua_che
 from core.ids import point_id
 from core.keys import FILTER_KEY_FIELD
 from core.masking import mask
@@ -391,11 +392,10 @@ class QdrantVectorDBStorage(BaseVectorStorage):
                 f"point {diem.id!r} không mang {FILTER_KEY_FIELD!r} trong"
                 " payload: không tra được `masked_slots` nên không che được"
             )
-        da_che = mask(ban_ghi, context, khoa)
-        if not da_che:
-            raise MaskContractViolated(
-                f"tầng che trả {da_che!r} cho point {diem.id!r}: muốn giấu hẳn"
-                " một mục thì `query` phải lọc nó khỏi list, không đưa giá trị"
-                " rỗng vào list kết quả"
-            )
-        return da_che
+        # Cùng một cửa hợp đồng với hai adapter kia, không phải một nửa viết
+        # lại: nhánh "không mất trường" đúng là nhánh đường vector cần nhất, vì
+        # `operate.py:953` đọc thẳng `k["distance"]` của bản ghi này và một
+        # khóa rụng ở đây thành `KeyError` sâu trong `vendor/`.
+        return kiem_ket_qua_che(
+            mask(ban_ghi, context, khoa), ban_ghi, f"point {diem.id!r}"
+        )

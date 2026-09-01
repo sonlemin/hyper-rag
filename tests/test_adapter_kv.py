@@ -1062,18 +1062,38 @@ def test_dac_ta_hien_trang_cung_id_hai_nhan_first_write_wins(
     assert vai_hep_doc is not None
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Tripwire cho story 1.6: `_tra` sao chép bản ghi một tầng, nên một"
-        " tầng che biến đổi giá trị lồng nhau tại chỗ sẽ ghi ngược vào kho."
-        " Hôm nay không chạm tới được (bản ghi chunk chỉ có trường vô hướng và"
-        " `mask` còn là stub), nhưng 1.6 viết ruột che thật thì phải chọn:"
-        " sao chép sâu ở đây, hoặc chốt rằng tầng che không được biến đổi tại"
-        " chỗ. Khi đã chọn, test này xanh và `strict=True` buộc gỡ marker."
-    ),
-)
-def test_tripwire_ket_qua_da_che_khong_duoc_ro_nguoc_vao_kho(
+def test_doc_tho_cung_tra_ban_sao_chu_khong_tra_doi_tuong_trong_kho(
+    workspace_dir, khong_gian, policy
+):
+    """Ngữ cảnh hệ thống không che, nhưng vẫn không được phát ra chính dict trong kho.
+
+    Đường ingest đọc rồi ghi lại (`operate.py:177-210` gộp `description` của
+    entity), nên nếu `_tra` phát ra đối tượng trong kho thì một phép gán trong
+    pipeline sửa thẳng kho mà không đi qua `upsert` - tức là qua mặt cả cửa
+    nhãn ingest lẫn khóa quyền. Cùng lý do với bản sao ở nhánh có che, chỉ khác
+    là ở đây không có tầng che nào che giấu chuyện đó.
+    """
+
+    async def chay():
+        adapter = dung_adapter(workspace_dir)
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            with ingest_label(scope="noi_bo", content_type="runbook"):
+                await adapter.upsert(
+                    {"chunk-tho": {"content": "nguyên văn", "meta": {"owner": "Minh"}}}
+                )
+            lan_dau = await adapter.get_by_id("chunk-tho")
+            lan_dau["content"] = "đã bị sửa từ ngoài"
+            lan_dau["meta"]["owner"] = "đã bị sửa từ ngoài"
+            lan_dau[FILTER_KEY_FIELD] = filter_key("khach_hang_a", "bao_cao_su_co")
+            return await adapter.get_by_id("chunk-tho")
+
+    lan_sau = asyncio.run(chay())
+    assert lan_sau["content"] == "nguyên văn"
+    assert lan_sau["meta"]["owner"] == "Minh"
+    assert lan_sau[FILTER_KEY_FIELD] == filter_key("noi_bo", "runbook")
+
+
+def test_ket_qua_da_che_khong_ro_nguoc_vao_kho(
     workspace_dir, khong_gian, policy, monkeypatch
 ):
     """Che một bản ghi cho một vai không được đổi thứ vai khác đọc thấy.
@@ -1082,6 +1102,11 @@ def test_tripwire_ket_qua_da_che_khong_duoc_ro_nguoc_vao_kho(
     biến đổi tại chỗ một giá trị lồng nhau thì dấu che của vai hẹp nằm lại
     trong kho, và vai rộng quyền đọc sau đó nhận bản đã bị che - fail-open
     theo chiều ngược, nhưng vẫn là kết quả sai và vẫn im lặng.
+
+    Story 1.6 trả lời bằng hai lớp: `core.masking.mask` là hàm thuần dựng bản
+    ghi mới, và `_tra` sao chép sâu trước khi gọi nó. Test này ghim lớp thứ
+    hai, nên nó cố ý vá `mask` bằng một bản biến đổi tại chỗ - lớp thứ nhất
+    được ghim riêng ở `tests/test_tang_che.py`.
     """
 
     def che_bien_doi_tai_cho(ket_qua, context, khoa_hyperedge):

@@ -7,9 +7,11 @@ thành hai luật:
 - che mà không có khóa của hyperedge thì không phải là che. Khóa vắng nghĩa là
   `masked_slots` không tra trúng gì, tức là không che gì - đúng kiểu mặc định
   fail-open mà cả Epic 1 dựng ra để chống;
-- `mask` biến đổi bản ghi tại chỗ, không loại nó khỏi kết quả. Muốn giấu hẳn
-  một mục thì chính method đọc phải lọc mục đó ra, vì một `None` lọt vào danh
-  sách kết quả sẽ nổ tận trong `vendor/`, xa chỗ gây ra vài tầng.
+- `mask` dựng một bản ghi mới có cùng tập khóa, không loại bản ghi khỏi kết
+  quả. Muốn giấu hẳn một mục thì chính method đọc phải lọc mục đó ra, vì một
+  `None` lọt vào danh sách kết quả sẽ nổ tận trong `vendor/`, xa chỗ gây ra vài
+  tầng. Story 1.6 chốt chiều "dựng bản mới" chứ không phải "sửa tại chỗ": kho
+  KV giữ bản gốc chưa che dùng chung cho mọi vai.
 
 Story 1.3 phát hiện hai luật này ở đường vector; story 1.4 gặp lại nguyên vẹn
 ở đường graph. Chúng sống ở đây thay vì trong `core/` vì đây là chuyện của tầng

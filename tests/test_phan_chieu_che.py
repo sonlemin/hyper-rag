@@ -21,6 +21,9 @@ bị bắt tại đây.
 
 Ba adapter đều nằm trong `CAC_ADAPTER` từ story 1.5; story 1.7 gom chúng lại ở
 cổng M1.
+
+Đây là kịch bản `1.6-INT-002` của test-design: quét bằng introspection thật
+trên cả ba adapter, không so với một danh sách cứng (bẫy TC-5).
 """
 
 import inspect

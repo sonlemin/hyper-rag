@@ -1055,8 +1055,8 @@ def test_ket_qua_khong_bao_gio_chua_phan_tu_rong(khong_gian, policy):
 def test_che_tra_gia_tri_rong_thi_no_tai_cho(khong_gian, policy, monkeypatch):
     """Muốn giấu hẳn một mục thì `query` phải lọc nó ra, không trả `None` vào list.
 
-    Ghim hợp đồng trước khi story 1.6 viết ruột thật: không có cửa này thì lỗi
-    nổ tận `operate.py:944` ở `r["hyperedge_name"]`, cách chỗ gây ra vài tầng.
+    Nửa thứ nhất của hợp đồng che. Không có cửa này thì lỗi nổ tận
+    `operate.py:944` ở `r["hyperedge_name"]`, cách chỗ gây ra vài tầng.
     """
     from adapters import qdrant as mo_dun
 
@@ -1068,6 +1068,36 @@ def test_che_tra_gia_tri_rong_thi_no_tai_cho(khong_gian, policy, monkeypatch):
             with pytest.raises(MaskContractViolated) as loi:
                 await adapter.query(CAU_HOI, top_k=10)
         assert loi.value.code == "MASK_CONTRACT_VIOLATED"
+
+    asyncio.run(chay())
+
+
+def test_che_bo_mat_truong_thi_no_tai_cho(khong_gian, policy, monkeypatch):
+    """Nửa thứ hai của hợp đồng che: che là thay giá trị, không bỏ khóa.
+
+    Đường vector là đường cần nửa này nhất - `operate.py:953` đọc thẳng
+    `k["distance"]` của chính bản ghi này, nên một khóa rụng ở đây thành
+    `KeyError` sâu trong `vendor/`. Story 1.6 cho `_ban_ghi` gọi
+    `kiem_ket_qua_che` thay vì tự viết một nửa hợp đồng, và đây là chỗ ghim
+    rằng nửa còn lại thật sự có người canh.
+    """
+    from adapters import qdrant as mo_dun
+
+    monkeypatch.setattr(
+        mo_dun,
+        "mask",
+        lambda ket_qua, context, khoa: {
+            k: v for k, v in ket_qua.items() if k != "distance"
+        },
+    )
+
+    async def chay():
+        _client, adapter = await kho_da_nap(khong_gian, policy)
+        with use_context(vai(policy, "tech_support", khong_gian)):
+            with pytest.raises(MaskContractViolated) as loi:
+                await adapter.query(CAU_HOI, top_k=10)
+        assert loi.value.code == "MASK_CONTRACT_VIOLATED"
+        assert "distance" in str(loi.value)
 
     asyncio.run(chay())
 
