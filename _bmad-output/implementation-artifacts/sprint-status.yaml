@@ -76,7 +76,7 @@
 #   nếu chạy repair thì chép lại khối chú thích từ git history.
 
 generated: 08-31-2026 21:50
-last_updated: 09-02-2026 00:20
+last_updated: 09-01-2026 22:10
 project: hyper_graph_rag
 project_key: NOKEY
 tracking_system: file-system
@@ -92,7 +92,7 @@ development_status:
   1-5-adapter-kv-và-tắt-cache-llm: done  # AT: test cache LLM đã tắt + KV không rò theo quyền viết trước
   1-6-tầng-che-dùng-chung-theo-chính-sách-slot: done  # AT: test che theo 8 vai slot viết trước; slot là danh mục một nơi trong core/
   1-7-cổng-m1-hai-tài-khoản-hai-kết-quả-kèm-bộ-test-bảo-mật-nền: done  # TR: ma trận test Đo 1 nền <-> FR bảo mật; RV: audit chất lượng test trước cổng M1
-  epic-1-retrospective: optional
+  epic-1-retrospective: done
 
   # Epic 2 - TEST: AT cho story bảo mật (2-1); TA mở rộng coverage pipeline ingest;
   # bộ vàng 2-5 và 2-9 tự thân là bộ test, không cần skill sinh test riêng.
@@ -182,22 +182,56 @@ development_status:
 # Concern còn treo từ cổng readiness 31/08/2026 (2 mâu thuẫn 3.2 và 8.4 đã vá trong epics.md)
 action_items:
   - epic: 3
-    action: "Story 3.8 (cổng M2) cần 5.1-5.3 xong trước; khi tới Epic 3 chen backend break-glass trước 3.8"
+    action: "Story 3.8 (cổng M2) cần 5.1-5.3 xong trước; khi tới Epic 3 chen backend
+      break-glass trước 3.8"
     owner: "sonlm"
     status: open
   - epic: 3
-    action: "Chốt wording template từ chối FR-16 (EXPERIENCE.md Open Question 2) trong Story 3.5, ghi ADR 5 dòng"
+    action: "Chốt wording template từ chối FR-16 (EXPERIENCE.md Open Question 2) trong
+      Story 3.5, ghi ADR 5 dòng"
     owner: "sonlm"
     status: open
   - epic: 2
-    action: "Kết quả spike R1 đa nguồn (SPINE Deferred) chưa có story sở hữu; ghi nhận trong Story 2.1 hoặc chấp nhận mức sàn bảo thủ"
+    action: "Kết quả spike R1 đa nguồn (SPINE Deferred) chưa có story sở hữu; ghi
+      nhận trong Story 2.1 hoặc chấp nhận mức sàn bảo thủ"
     owner: "sonlm"
     status: open
   - epic: 7
-    action: "Rubric Đo 2 chốt với GVHD cuối T2 (Story 7.4 phụ thuộc); lên lịch gửi GVHD trước khi hết Epic 2, có fallback R12"
+    action: "Rubric Đo 2 chốt với GVHD cuối T2 (Story 7.4 phụ thuộc); lên lịch gửi
+      GVHD trước khi hết Epic 2, có fallback R12"
     owner: "sonlm"
     status: open
   - epic: 4
-    action: "Cập nhật EXPERIENCE.md Open Questions 4 và 7 (toggle demo/admin, poll 5 giây) cho khớp AD-10/AD-14 đã chốt"
+    action: "Cập nhật EXPERIENCE.md Open Questions 4 và 7 (toggle demo/admin, poll
+      5 giây) cho khớp AD-10/AD-14 đã chốt"
     owner: "sonlm"
     status: open
+  - id: "epic-1-retro-item-6-bỏ-mệnh-đề-không-mở-lại-adapter-khỏi-epi"
+    epic: 1
+    action: "Bỏ mệnh đề \"không mở lại adapter\" khỏi epics.md:267, :350, epic-1-context.md:39,
+      spec-1-2:105; thay bằng \"chữ ký mask không đổi\" kèm dẫn quyết định 01/09 trong
+      ledger"
+    owner: "sonlm"
+    status: done
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-01.md"
+  - id: "epic-1-retro-item-7-thêm-test-canh-api-không-che-lại-và-khôn"
+    epic: 1
+    action: "Thêm test canh api/ không che lại và không bỏ che, đỏ ngay khi endpoint
+      dữ liệu đầu tiên trả nội dung (story 3.3)"
+    owner: "sonlm"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-01.md"
+  - id: "epic-1-retro-item-8-chốt-cách-đếm-ngân-sách-500-800-dòng-của"
+    epic: 1
+    action: "Chốt cách đếm ngân sách 500-800 dòng của core/ (dòng thực thi hay tổng
+      dòng file) và sửa hai chỗ phát biểu nó"
+    owner: "sonlm"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-01.md"
+  - id: "epic-1-retro-item-9-gom-cửa-tập-khóa-rỗng-của-ba-adapter-về"
+    epic: 1
+    action: "Gom cửa tập khóa rỗng của ba adapter về một hình dạng dùng chung, trước
+      khi Epic 5 mở đường grant"
+    owner: "sonlm"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-01.md"
