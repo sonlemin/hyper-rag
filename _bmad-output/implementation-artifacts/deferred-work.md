@@ -99,7 +99,7 @@
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-3-adapter-qdrant-voi-pre-filter-theo-khoa.md`
   summary: `_bat_buoc_co_index` gọi hai round-trip (`collection_exists` + `get_collection`) cho mỗi lô upsert trên đường nóng.
-  evidence: Ingest của upstream đi theo nhiều lô nhỏ nên chi phí này lặp lại liên tục. Có thể nhớ kết quả sau lần đầu thành công kèm đường vô hiệu hóa khi đổi collection, nhưng phải đo trên Qdrant thật mới biết có đáng không.
+  evidence: Ingest của upstream đi theo nhiều lô nhỏ nên chi phí này lặp lại liên tục. Có thể nhớ kết quả sau lần đầu thành công kèm đường vô hiệu hóa khi đổi collection, nhưng phải đo trên Qdrant thật mới biết có đáng không. Địa chỉ là story 2.3 (pipeline ingest tuần tự): đó là lần đầu có một khối lượng nạp thật để đo, trước đó mọi con số đều là suy đoán.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-3-adapter-qdrant-voi-pre-filter-theo-khoa.md`
   summary: Vòng đời kết nối Qdrant - khi không tiêm sẵn client, mỗi instance adapter tự mở một `AsyncQdrantClient` riêng và không có chỗ nào gọi `close()`.
