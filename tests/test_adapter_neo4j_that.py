@@ -37,6 +37,7 @@ from adapters.neo4j import (
     LABEL_ENTITY,
     LABEL_HYPEREDGE,
     Neo4jACLGraphStorage,
+    NodeIdRoleConflict,
 )
 from core.keys import FILTER_KEY_FIELD
 from core.permission import use_context
@@ -90,6 +91,9 @@ async def kho_that(khong_gian: str, policy):
         try:
             async with driver.session() as phien:
                 await phien.run(f"MATCH (n:`{khong_gian}`) DETACH DELETE n")
+                await phien.run(
+                    f"DROP CONSTRAINT `id_duy_nhat_{khong_gian}` IF EXISTS"
+                )
                 await phien.run(f"DROP INDEX `node_id_{khong_gian}` IF EXISTS")
         finally:
             # Dọn hỏng thì vẫn phải đóng driver, nếu không mỗi lần chạy để lại
@@ -129,25 +133,114 @@ def test_cypher_hop_le_va_cau_truc_hai_phia_nam_trong_db(khong_gian, policy):
     assert {d["space"] for d in dong} == {khong_gian}
 
 
-def test_index_duoc_dung_that(khong_gian, policy):
-    """`initialize()` tạo index thật, không phải một câu chạy rồi trôi.
+def test_rang_buoc_duy_nhat_co_that_va_mang_theo_index(khong_gian, policy):
+    """`initialize()` tạo ràng buộc duy nhất thật, kèm index hậu thuẫn của nó.
 
-    Đây cũng là chỗ duy nhất chứng minh câu `CREATE INDEX` hợp lệ: driver giả
-    chỉ so chuỗi con, nên một cú pháp sai (ví dụ `ON EACH [...]` của fulltext)
-    vẫn qua được bộ test không container.
+    Đây là chỗ duy nhất chứng minh câu `CREATE CONSTRAINT` hợp lệ: driver giả
+    chỉ so chuỗi con, nên một cú pháp sai vẫn qua được bộ test không container.
+    Và đây cũng là chỗ trả lời câu hỏi "đổi index thường sang ràng buộc thì
+    đường tra node theo id còn index không" - Neo4j dựng một index hậu thuẫn
+    cho mỗi ràng buộc duy nhất, và test đọc chính `SHOW INDEXES` để khẳng định.
     """
 
     async def chay():
         async with kho_that(khong_gian, policy) as (driver, _):
-            return await doc_tho(
-                driver, "SHOW INDEXES YIELD name, properties, labelsOrTypes"
+            return (
+                await doc_tho(
+                    driver,
+                    "SHOW CONSTRAINTS YIELD name, properties, labelsOrTypes, type",
+                ),
+                await doc_tho(
+                    driver, "SHOW INDEXES YIELD name, properties, labelsOrTypes"
+                ),
             )
 
-    dong = asyncio.run(chay())
-    cua_ta = [d for d in dong if d["name"] == f"node_id_{khong_gian}"]
-    assert cua_ta, [d["name"] for d in dong]
+    rang_buoc, index = asyncio.run(chay())
+    cua_ta = [d for d in rang_buoc if d["name"] == f"id_duy_nhat_{khong_gian}"]
+    assert cua_ta, [d["name"] for d in rang_buoc]
     assert cua_ta[0]["properties"] == ["id"]
     assert cua_ta[0]["labelsOrTypes"] == [khong_gian]
+    assert "UNIQUENESS" in cua_ta[0]["type"]
+    # Index hậu thuẫn mang cùng tên với ràng buộc.
+    ho_tro = [d for d in index if d["name"] == f"id_duy_nhat_{khong_gian}"]
+    assert ho_tro, [d["name"] for d in index]
+    assert ho_tro[0]["properties"] == ["id"]
+    # Index thường của story 1.4 phải đã được gỡ: hai index tương đương trên
+    # cùng một thuộc tính là một mặt phải bảo trì mà không ai cần.
+    assert not [d for d in index if d["name"] == f"node_id_{khong_gian}"]
+
+
+def test_id_trung_khac_vai_bi_neo4j_that_tu_choi(khong_gian, policy):
+    """Hàng cuối I/O Matrix, đo trên chính DB: `id IS UNIQUE` nổ, không gộp.
+
+    Driver giả dựng lại luật này bằng tay, nên nó chỉ chứng minh adapter *đổi*
+    lỗi thành mã của dự án. Thứ chỉ Neo4j thật trả lời được là ràng buộc có
+    thật sự chặn hay không - và nếu nó không chặn thì read-merge-write đang đọc
+    "khóa của node có id này" trên hai node.
+    """
+
+    async def chay():
+        async with kho_that(khong_gian, policy) as (driver, adapter):
+            he = THEO_ID["HE-01"]
+            with use_context(
+                system_context(
+                    space=khong_gian, policy_version=policy.policy_version
+                )
+            ):
+                with ingest_label(scope="noi_bo", content_type="runbook"):
+                    with pytest.raises(NodeIdRoleConflict) as loi:
+                        # `App01` đã là node vai entity; ghi lại dưới vai
+                        # hyperedge là đúng ca id trùng khác vai.
+                        await adapter.upsert_node(
+                            he["slots"]["subject"], {"role": "hyperedge"}
+                        )
+            dem = await doc_tho(
+                driver,
+                f"MATCH (n:`{khong_gian}` {{id: $id}}) RETURN count(n) AS so",
+                id=he["slots"]["subject"],
+            )
+            return loi.value.code, dem[0]["so"]
+
+    ma, so_node = asyncio.run(chay())
+    assert ma == "NODE_ID_ROLE_CONFLICT"
+    assert so_node == 1, "ràng buộc không chặn: một id thành hai node"
+
+
+def test_ca_khong_khoa_go_han_thuoc_tinh_tren_neo4j_that(khong_gian, policy):
+    """Hợp nhất ra "không khóa" thì node ở lại mà `filter_key` biến mất thật.
+
+    `SET n.filter_key = null` gỡ hẳn thuộc tính trong Neo4j chứ không để lại
+    một giá trị null - đó là hành vi mà luật vô hình đứng lên (`IN $keys`
+    không khớp một thuộc tính vắng), và nó chỉ kiểm được trên DB thật.
+    """
+
+    async def chay():
+        async with kho_that(khong_gian, policy) as (driver, adapter):
+            entity = THEO_ID["HE-01"]["slots"]["condition"]
+            with use_context(
+                system_context(
+                    space=khong_gian, policy_version=policy.policy_version
+                )
+            ):
+                with ingest_label(
+                    scope="khach_hang_a", content_type="bao_cao_su_co"
+                ):
+                    await adapter.upsert_node(entity, {"role": "entity"})
+            trong_db = await doc_tho(
+                driver,
+                f"MATCH (n:`{khong_gian}` {{id: $id}})\n"
+                f"RETURN '{FILTER_KEY_FIELD}' IN keys(n) AS con_khoa,"
+                " count(n) AS so",
+                id=entity,
+            )
+            with use_context(vai(policy, "devops", khong_gian)):
+                con_thay = await adapter.get_node(entity)
+            return trong_db[0], con_thay
+
+    trong_db, con_thay = asyncio.run(chay())
+    assert trong_db["so"] == 1, "node cấu trúc phải ở lại"
+    assert trong_db["con_khoa"] is False, "khóa phải bị gỡ hẳn, không phải null"
+    assert con_thay is None, "vai rộng nhất cũng không tới được node không khóa"
 
 
 def test_hai_vai_hai_ket_qua_tren_neo4j_that(khong_gian, policy, bang):

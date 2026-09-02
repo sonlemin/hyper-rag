@@ -22,11 +22,16 @@ import asyncio
 
 import pytest
 
-from adapters.ingest_labels import IngestLabelMissing, ingest_label
+from adapters.ingest_labels import (
+    IngestLabelMissing,
+    IngestOutsideSystemContext,
+    ingest_label,
+)
 from adapters.neo4j import (
     LABEL_ENTITY,
     LABEL_HYPEREDGE,
     NODE_ID_FIELD,
+    NodeIdRoleConflict,
     SlotRoleInvalid,
 )
 from adapters.policy_loader import load_policy
@@ -185,12 +190,20 @@ def test_ghi_ngoai_pham_vi_nhan_bi_tu_choi(khong_gian, policy):
     asyncio.run(chay())
 
 
-def test_khoi_tao_tao_index_cho_duong_tra_node(khong_gian, policy):
-    """`initialize()` dựng index cho thứ mọi đường đọc bắt đầu bằng: tra id.
+def test_khoi_tao_dung_rang_buoc_duy_nhat_thay_cho_index_thuong(khong_gian, policy):
+    """`initialize()` dựng ràng buộc duy nhất `id` theo `space`, không phải index.
 
-    Hình dạng index chỉ kiểm được thật trên Neo4j (`test_adapter_neo4j_that.py`
-    đọc `SHOW INDEXES`); ở đây chỉ ghim rằng bước khởi tạo có phát ra một câu
-    tạo index lặp lại được, đúng nhãn không gian.
+    Đổi kỳ vọng so với story 1.4 (`test_khoi_tao_tao_index_cho_duong_tra_node`,
+    ghim `CREATE INDEX`). Lý do là điều kiện của chính story 2.1: luật hợp nhất
+    khóa đọc "khóa của node có id này", câu đó chỉ có nghĩa khi một id là một
+    node, mà `MERGE (n:{space}:{nhan} {id})` khóa theo cả nhãn nên hai vai cho
+    hai node. Ràng buộc duy nhất đóng cửa đó và mang theo index hậu thuẫn của
+    nó, nên đường tra node theo id vẫn có index - không mất gì.
+
+    Hình dạng thật chỉ kiểm được trên Neo4j (`test_adapter_neo4j_that.py` đọc
+    `SHOW CONSTRAINTS`); ở đây ghim rằng bước khởi tạo phát ra câu lặp lại được,
+    đúng nhãn không gian, và gỡ index cũ trước - không gỡ thì Neo4j từ chối
+    dựng ràng buộc trên một kho đã nạp bằng bản cũ.
     """
 
     async def chay():
@@ -201,12 +214,217 @@ def test_khoi_tao_tao_index_cho_duong_tra_node(khong_gian, policy):
             # Gọi lại phải không hỏng: khởi động lại tiến trình là chuyện thường.
             await adapter.initialize()
         cau = driver.cau_cuoi().cypher
-        assert cau.startswith("CREATE INDEX")
+        assert cau.startswith("CREATE CONSTRAINT")
         assert "IF NOT EXISTS" in cau
         assert f"`{khong_gian}`" in cau
-        assert f"ON (n.{NODE_ID_FIELD})" in cau
+        assert f"REQUIRE n.{NODE_ID_FIELD} IS UNIQUE" in cau
+        go_index = [lg for lg in driver.loi_goi if lg.cypher.startswith("DROP INDEX")]
+        assert go_index and "IF EXISTS" in go_index[0].cypher
+        assert all(lg.kieu_giao_dich == "write" for lg in driver.loi_goi), (
+            "câu lược đồ phải đi trong transaction ghi có quản lý"
+        )
 
     asyncio.run(chay())
+
+
+def test_id_trung_khac_vai_bi_tu_choi(khong_gian, policy):
+    """Hàng cuối I/O Matrix: cùng id ghi hai vai là lỗi, không sinh node thứ hai.
+
+    Gộp hai vai vào một node là trộn một hyperedge với một entity - hai thứ mà
+    tầng che xử lý bằng hai luật khác nhau - nên cửa đóng lại phải nổ.
+    """
+
+    async def chay():
+        driver = Neo4jGhiLai()
+        adapter = dung_adapter(driver)
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            with ingest_label(scope="noi_bo", content_type="runbook"):
+                await adapter.upsert_node("App01", {"role": "entity"})
+                with pytest.raises(NodeIdRoleConflict) as loi:
+                    await adapter.upsert_node("App01", {"role": "hyperedge"})
+        assert loi.value.code == "NODE_ID_ROLE_CONFLICT"
+        assert driver.dem_node() == 1, "không được sinh node thứ hai"
+        assert driver.node_tho(khong_gian, "App01").props["role"] == "entity"
+
+    asyncio.run(chay())
+
+
+def test_rang_buoc_khac_khong_bi_doi_thanh_id_trung_khac_vai(
+    khong_gian, policy, monkeypatch
+):
+    """Chỉ ràng buộc *của mình* mới thành `NodeIdRoleConflict`.
+
+    Một ràng buộc khác trên cùng nhãn (người vận hành thêm vào, hay một story
+    sau thêm) nói về một luật khác, và đổi nó thành "id trùng khác vai" là một
+    thông điệp đúng cú pháp mà sai nguyên nhân - người đọc đi dọn id trùng
+    trong khi lỗi nằm ở chỗ khác. Không có test này thì nhánh lọc xóa đi vẫn
+    xanh.
+
+    Thông điệp dựng theo đúng hình dạng Neo4j 5.26 thật, chỉ đổi tên thuộc
+    tính: cùng nhãn `space`, nhưng ràng buộc trên `email` chứ không trên `id`.
+    """
+    from neo4j.exceptions import ConstraintError
+
+    async def chay():
+        driver = Neo4jGhiLai()
+        adapter = dung_adapter(driver)
+
+        async def chay_gia(cypher, *, ghi=False, **tham_so):
+            if "MERGE (n:" not in cypher:
+                return []
+            loi = ConstraintError()
+            loi._neo4j_code = "Neo.ClientError.Schema.ConstraintValidationFailed"
+            loi._message = (
+                f"Node(0) already exists with label `{khong_gian}` and property"
+                " `email` = 'a@b.c'"
+            )
+            raise loi
+
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            with ingest_label(scope="noi_bo", content_type="runbook"):
+                monkeypatch.setattr(adapter, "_chay", chay_gia)
+                with pytest.raises(ConstraintError) as loi:
+                    await adapter.upsert_node("App01", {"role": "entity"})
+        return loi.value
+
+    loi = asyncio.run(chay())
+    assert not isinstance(loi, NodeIdRoleConflict), (
+        "ràng buộc khác bị đổi thành mã lỗi nói về id trùng khác vai"
+    )
+    assert "`email`" in str(loi)
+
+
+def test_moi_cau_cypher_deu_khai_database_va_kieu_giao_dich(khong_gian, policy):
+    """Mọi phiên nói rõ nó làm việc trên database nào và trong giao dịch kiểu gì.
+
+    Hai khoản nợ có địa chỉ 2.1 từ ledger story 1.4, ghim bằng test chứ không
+    bằng docstring: `session.run` autocommit không có retry của driver cho lỗi
+    thoáng qua (`TransientError`, đổi leader), thứ chỉ có cơ hội xảy ra khi một
+    đợt nạp corpus chạy lâu; còn `database=` ngầm là một giả định về cấu hình
+    server nằm ngoài repo.
+    """
+
+    async def chay():
+        driver, adapter = await graph_da_nap(khong_gian, policy)
+        with use_context(vai(policy, "devops", khong_gian)):
+            await goi_moi_method_doc(adapter, id_hyperedge(HYPEREDGES[0]), "App01")
+        return list(driver.loi_goi)
+
+    cac_cau = asyncio.run(chay())
+    assert cac_cau, "không có câu nào để đo"
+    assert {lg.database for lg in cac_cau} == {"neo4j"}
+    assert {lg.kieu_giao_dich for lg in cac_cau} == {"read"}
+
+
+def test_doc_khoa_hien_co_chi_chay_duoi_co_system(khong_gian, policy):
+    """Bước đọc khóa của read-merge-write là ngoại lệ có đặc tả của AD-3.
+
+    Bản tương ứng của hai adapter kia đã có từ đầu; thiếu bản này thì gỡ dòng
+    `bat_buoc_ngu_canh_he_thong` trong `khoa_hien_co` làm method trả một bản
+    **đã lọc theo khóa của vai** thay vì từ chối - và luật hợp nhất khi đó chạy
+    trên dữ liệu thiếu đúng những khóa khác scope mà nó sinh ra để gộp, tức nó
+    lặng lẽ quay về last-write-wins. Không gì đỏ.
+
+    Assert cả trên `code` lẫn trên nhật ký driver: cửa phải chặn *trước* khi
+    gửi câu nào đi, không phải lọc kết quả sau khi đã hỏi.
+    """
+
+    async def chay():
+        driver, adapter = await graph_da_nap(khong_gian, policy)
+        with use_context(vai(policy, "devops", khong_gian)):
+            with pytest.raises(IngestOutsideSystemContext) as loi:
+                await adapter.khoa_hien_co(["App01"])
+        return loi.value.code, list(driver.loi_goi)
+
+    ma, cau = asyncio.run(chay())
+    assert ma == "INGEST_OUTSIDE_SYSTEM_CONTEXT"
+    assert cau == [], "không được gửi câu nào đi trước khi cửa AD-3 chặn"
+
+
+def test_khoa_cau_hinh_doi_duoc_bang_hang_do_nhay(khong_gian, policy, tmp_path):
+    """`sensitivity_ranks_path` phải thật sự tới được adapter, không phải trang trí.
+
+    Cùng khuôn với `test_khoa_cau_hinh_doi_duoc_database`. Không có test này
+    thì đổi cả ba adapter thành `bang_hang_mac_dinh()` vẫn xanh, tức khóa cấu
+    hình ấy chưa bao giờ được chứng minh là có đường chạy.
+
+    Bảng dựng ở đây **đảo chiều** bảng chốt của repo (runbook hạn chế hơn
+    `bi_mat_ha_tang`), nên kết quả hợp nhất phải đảo theo. Một bảng chỉ khác về
+    con số mà cùng thứ tự thì không phân biệt được hai nhánh.
+    """
+    bang_dao = tmp_path / "hang-dao.yaml"
+    bang_dao.write_text(
+        "version: 1\nranks:\n  runbook: 90\n  bi_mat_ha_tang: 10\n",
+        encoding="utf-8",
+    )
+
+    async def chay():
+        driver = Neo4jGhiLai()
+        adapter = dung_adapter(driver, sensitivity_ranks_path=str(bang_dao))
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            await adapter.initialize()
+            for loai in ("bi_mat_ha_tang", "runbook"):
+                with ingest_label(scope="noi_bo", content_type=loai):
+                    await adapter.upsert_node("App01", {"role": "entity"})
+            return await adapter.khoa_hien_co(["App01"])
+
+    khoa = asyncio.run(chay())
+    assert khoa["App01"] == "noi_bo:runbook", (
+        "bảng hạng của adapter không đến từ khóa cấu hình: với bảng đảo chiều"
+        " thì runbook mới là loại hạn chế nhất"
+    )
+
+
+def test_khoa_cua_canh_van_la_khoa_cua_tai_lieu_ghi_no(khong_gian, policy):
+    """Cạnh cố ý **không** read-merge-write; ghim điều đó bằng một assert.
+
+    Lý do nằm ở docstring `upsert_edge`, nhưng một lý do không đỏ được. Ghi lại
+    cùng một cạnh dưới một nhãn thường hơn thì khóa cạnh *nới ra* - và điều giữ
+    cho nó không thành đường rò là node hyperedge đã mang khóa hợp nhất, nên cả
+    ba đường đọc cạnh (đòi *cả hai* đầu qua filter) vẫn không tới được.
+
+    Story 2.4 chạm khóa MERGE của cạnh thì test này nói cho biết mình đang đổi
+    cái gì.
+    """
+
+    async def chay():
+        driver = Neo4jGhiLai()
+        adapter = dung_adapter(driver)
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            await adapter.initialize()
+            with ingest_label(scope="noi_bo", content_type="bi_mat_ha_tang"):
+                await adapter.upsert_node("rel-X", {"role": "hyperedge"})
+                await adapter.upsert_node("App01", {"role": "entity"})
+                await adapter.upsert_edge(
+                    "rel-X", "App01", {"weight": 1.0, "slot": "subject"}
+                )
+            with ingest_label(scope="noi_bo", content_type="runbook"):
+                await adapter.upsert_edge(
+                    "rel-X", "App01", {"weight": 1.0, "slot": "subject"}
+                )
+            khoa_node = await adapter.khoa_hien_co(["rel-X", "App01"])
+        return driver.canh_tho(khong_gian, "rel-X", "App01").props, khoa_node
+
+    canh, khoa_node = asyncio.run(chay())
+    # Cạnh mang khóa của tài liệu ghi *sau* - không hợp nhất, đúng như khai.
+    assert canh[FILTER_KEY_FIELD] == "noi_bo:runbook"
+    # Hai node thì có hợp nhất, và đó là thứ chặn đường: vai chỉ thấy runbook
+    # không qua được `n.filter_key IN $keys` ở cả hai đầu.
+    assert khoa_node["rel-X"] == "noi_bo:bi_mat_ha_tang"
+    assert khoa_node["App01"] == "noi_bo:bi_mat_ha_tang"
+
+
+def test_khoa_cau_hinh_doi_duoc_database(khong_gian, policy):
+    """`neo4j_database` là khóa cấu hình thật, không phải một hằng viết cứng."""
+
+    async def chay():
+        driver = Neo4jGhiLai()
+        adapter = dung_adapter(driver, neo4j_database="khac")
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            await adapter.initialize()
+        return driver.cau_cuoi().database
+
+    assert asyncio.run(chay()) == "khac"
 
 
 # --- 1.4-INT-002: bảy method đọc tiêm WHERE theo khóa ---------------------
@@ -315,28 +533,45 @@ def test_node_degree_co_theo_quyen(khong_gian, policy):
     fact nữa tồn tại.
 
     Bảng nhị phân dùng ở đây vì với nó `tech_support` chỉ còn thấy runbook -
-    đúng ca "thấy 1 trong 3". Entity `App01` được ghi lại dưới nhãn runbook ở
-    bước cuối để khóa của chính nó nằm trong tầm nhìn của vai; last-write-wins
-    của khóa đa nguồn là khoản nợ có địa chỉ ở story 2.1.
+    đúng ca "thấy 1 trong 3".
+
+    Setup đổi so với story 1.4, và lý do là chính story 2.1. Bản cũ nạp cả ba
+    hyperedge bằng `nap_hyperedge` rồi dựa vào last-write-wins: HE-01 nạp sau
+    cùng nên khóa của `App01` thành runbook. Nay khóa hợp nhất lấy hạng cao
+    nhất, nên `App01` sẽ mang `bi_mat_ha_tang` và vắng mặt với cả hai vai - ca
+    "degree co theo quyền" khi đó không còn đo được gì. Bản mới ghi *node*
+    `App01` đúng một lần dưới nhãn runbook rồi nối hai hyperedge kia vào bằng
+    cạnh: khóa của cạnh là khóa của tài liệu ghi nó (cạnh không đi qua luật hợp
+    nhất, xem docstring `upsert_edge`), nên vẫn có đủ ba lân cận ba mức quyền.
     """
     policy_nhi_phan = load_policy(oracle.POLICY_NHI_PHAN)
 
     async def chay():
         driver = Neo4jGhiLai()
         adapter = dung_adapter(driver)
+        he_01 = THEO_ID["HE-01"]
         with use_context(ngu_canh_ingest(khong_gian, policy_nhi_phan)):
-            for he in (THEO_ID["HE-02"], THEO_ID["HE-03"], THEO_ID["HE-01"]):
+            with ingest_label(
+                scope=he_01["scope"], content_type=he_01["content_type"]
+            ):
+                await nap_hyperedge(adapter, he_01)
+            for he in (THEO_ID["HE-02"], THEO_ID["HE-03"]):
                 with ingest_label(
                     scope=he["scope"], content_type=he["content_type"]
                 ):
-                    await nap_hyperedge(adapter, he)
-                    # HE-03 không có `App01` trong slot của nó; nối thêm ở đây
-                    # để dựng đúng ca "một entity nằm trên ba hyperedge".
-                    if he["id"] == "HE-03":
-                        await adapter.upsert_edge(
-                            "rel-HE-03", "App01", {"weight": 1.0, "slot": "subject"}
-                        )
+                    await adapter.upsert_node(
+                        id_hyperedge(he),
+                        {"role": "hyperedge", "weight": 1.0, "source_id": he["id"]},
+                    )
+                    await adapter.upsert_edge(
+                        id_hyperedge(he),
+                        "App01",
+                        {"weight": 1.0, "slot": "subject"},
+                    )
         assert driver.dem_lan_can_tho(khong_gian, "App01") == 3
+        assert driver.node_tho(khong_gian, "App01").props[FILTER_KEY_FIELD] == (
+            "noi_bo:runbook"
+        ), "node App01 chỉ được ghi dưới đúng một nhãn nên khóa không bị siết"
 
         with use_context(vai(policy_nhi_phan, "tech_support", khong_gian)):
             assert await adapter.node_degree("App01") == 1

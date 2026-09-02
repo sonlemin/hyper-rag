@@ -11,6 +11,9 @@ Nội dung hiện có:
 - `ingest_labels`  phạm vi nhãn ingest - khóa quyền của đường ghi (1.3)
 - `mask_contract`  hợp đồng tầng che nhìn từ phía adapter (1.3, 1.4)
 - `policy_loader`  nửa I/O của `core/policy.py` (1.2)
+- `sensitivity_loader` bảng hạng độ nhạy đóng băng, đầu vào của luật hợp
+                   nhất khóa đa nguồn (2.1)
+- `doi_chieu`      sổ đợt ingest và bước đối chiếu khóa giữa các kho (2.1)
 - `engine`         subclass `HyperGraphRAG`: registry 3 adapter, khóa cấu hình
                    kho, vòng đời kết nối (1.7)
 - `identity_seed`  nửa I/O của `core/identity.py` (1.7)

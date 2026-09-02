@@ -27,6 +27,9 @@ from core.masking import (
     SlotRoleUnknown,
     dau_che,
     mask,
+    NEIGHBOR_NO_KEY_FIELD,
+    dau_che_lan_can_khong_khoa,
+    la_dau_che,
 )
 from core.permission import user_context
 from core.slots import OWNER_SLOT, SLOT_ROLES
@@ -559,3 +562,104 @@ def test_dau_che_khong_mang_so_luong():
         _khoa(he),
     )
     assert mot[NEIGHBOR_FIELD] == hai[NEIGHBOR_FIELD] == dau_che("cause")
+
+
+# --- Luật che cứng cho lân cận không khóa (AD-9, AD-5; story 2.1) ----------
+
+
+def test_lan_can_khong_khoa_bi_che_o_moi_muc_tiet_lo():
+    """Cờ không-khóa che tên lân cận bất kể mức tiết lộ, cùng hình dạng `owner`.
+
+    Đo ở mức **L2**, chỗ `masked_slots` rỗng và không luật bảng nào còn hiệu
+    lực: nếu luật này là một hàng trong bảng chính sách thì ở đây nó không che
+    gì. Nó là luật AD-9 nên nó vẫn che.
+
+    `subject` cố ý không nằm trong `masked_slots` của bất kỳ vai nào, nên tên
+    lân cận này lẽ ra ra nguyên văn - đúng ca phân biệt hai luật.
+    """
+    he = du_lieu_dung_tay.THEO_ID["HE-01"]  # runbook: L2 với tech_support
+    ket_qua = mask(
+        {
+            "node_id": "rel-HE-01",
+            NEIGHBOR_FIELD: "App01",
+            SLOT_FIELD: "subject",
+            NEIGHBOR_NO_KEY_FIELD: True,
+        },
+        _context("tech_support"),
+        _khoa(he),
+    )
+    assert ket_qua[NEIGHBOR_FIELD] == dau_che_lan_can_khong_khoa()
+    assert "App01" not in ket_qua.values()
+
+
+def test_lan_can_co_khoa_o_slot_khong_bi_che_van_ra_nguyen_van():
+    """Đối chứng: cờ tắt thì luật này không chạm gì.
+
+    Không có ca này thì một luật che *mọi* lân cận cũng làm test trên xanh, và
+    khi đó tầng che vừa cắt mất đúng phần nội dung mà vai được đọc.
+    """
+    he = du_lieu_dung_tay.THEO_ID["HE-01"]
+    ket_qua = mask(
+        {
+            "node_id": "rel-HE-01",
+            NEIGHBOR_FIELD: "App01",
+            SLOT_FIELD: "subject",
+            NEIGHBOR_NO_KEY_FIELD: False,
+        },
+        _context("tech_support"),
+        _khoa(he),
+    )
+    assert ket_qua[NEIGHBOR_FIELD] == "App01"
+
+
+def test_luat_khong_khoa_thang_luat_bang_khi_ca_hai_ap_dung():
+    """Lân cận vừa không khóa vừa điền vào slot đang bị che: lý do là "không khóa".
+
+    Hai lý do khác nguồn nên chúng phải phân biệt được: `masked` hết hiệu lực
+    khi đổi bảng chính sách, `no_key` thì không. Trộn chúng là mất đúng khả
+    năng phân biệt mà đầu `core/masking.py` đã dặn.
+    """
+    he = du_lieu_dung_tay.THEO_ID["HE-02"]  # bao_cao_su_co: L1 với tech_support
+    ket_qua = mask(
+        {
+            "node_id": "rel-HE-02",
+            NEIGHBOR_FIELD: "chỉnh sai giới hạn bộ nhớ PHP-FPM",
+            SLOT_FIELD: "cause",  # nằm trong masked_slots của tech_support
+            NEIGHBOR_NO_KEY_FIELD: True,
+        },
+        _context("tech_support"),
+        _khoa(he),
+    )
+    assert ket_qua[NEIGHBOR_FIELD] == dau_che_lan_can_khong_khoa()
+    assert ket_qua[NEIGHBOR_FIELD] != dau_che("cause")
+
+
+def test_ngu_canh_he_thong_van_doc_tho_lan_can_khong_khoa():
+    """Cờ system đọc thô, như mọi luật che khác - ingest cần tên thật.
+
+    `_merge_nodes_then_upsert` của upstream đọc rồi ghi lại chính giá trị đó
+    (`operate.py:194`), nên một dấu che chạy qua đường ingest sẽ ghi đè dữ liệu
+    thật trong graph.
+    """
+    ket_qua = mask(
+        {
+            "node_id": "rel-HE-01",
+            NEIGHBOR_FIELD: "App01",
+            SLOT_FIELD: "subject",
+            NEIGHBOR_NO_KEY_FIELD: True,
+        },
+        system_context(space="synth", policy_version="v"),
+        _khoa(du_lieu_dung_tay.THEO_ID["HE-01"]),
+    )
+    assert ket_qua[NEIGHBOR_FIELD] == "App01"
+
+
+def test_dau_che_lan_can_khong_trung_dau_che_cua_vai_slot_nao():
+    """Bốn lý do che phải phân biệt được, kể cả khi so bằng chuỗi.
+
+    `la_dau_che` nhận diện bằng cách dựng lại, nên một dấu che mới trùng dấu
+    che của một vai slot sẽ làm hai luật khác nguồn không phân biệt được nữa.
+    """
+    dau = dau_che_lan_can_khong_khoa()
+    assert dau not in {dau_che(slot) for slot in SLOT_ROLES}
+    assert la_dau_che(dau), "dấu che mới phải tra ngược được qua get_node"

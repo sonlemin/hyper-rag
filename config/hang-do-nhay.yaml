@@ -1,0 +1,35 @@
+# Hạng độ nhạy của từng loại nội dung (story 2.1, FR-11).
+#
+# Bảng này trả lời đúng một câu hỏi: khi cùng một id xuất hiện ở hai tài liệu
+# *cùng scope* nhưng khác loại nội dung, loại nào là "hạn chế nhất". Số lớn hơn
+# là hạn chế hơn. Nó không thay bảng chính sách: mức tiết lộ L0/L1/L2 của từng
+# vai vẫn tính lúc truy vấn từ `config/policy-*.yaml`, còn đây là thứ tự dùng
+# lúc *ghi*, để khóa của một artifact đa nguồn xác định được.
+#
+# Khoảng cách 10 giữa hai hạng là chỗ chèn một loại nội dung mới vào giữa mà
+# không phải đánh số lại cả bảng. Hai loại nội dung **không được cùng hạng**:
+# khi đó "hạn chế nhất" không xác định, và loader từ chối cả file.
+#
+# Đánh đổi của luật đó, ghi ra để lần sau không ai tưởng nó miễn phí: nó chặt
+# hơn thứ luật hợp nhất thật sự cần. Phép so hạng chỉ xảy ra giữa hai khóa
+# *cùng scope*, nên hai loại nội dung ngang độ nhạy mà không bao giờ đụng nhau
+# vẫn bị bắt phải khai hai số khác nhau - tức thứ tự giữa chúng là một khẳng
+# định không ai muốn đưa ra. Đổi lại là một file không có ca nhập nhằng nào và
+# một thông điệp lỗi ở đúng chỗ người sửa file đang nhìn. Nới luật này (chỉ cấm
+# cùng hạng khi hai loại thật sự gặp nhau) cần biết trước tập cặp có thể gặp,
+# tức cần validator đơn điệu của AD-5 - khoản nợ có địa chỉ story 3.2.
+#
+# **Đóng băng trước ingest.** Khóa quyền của mọi mục đã nạp được tính bằng đúng
+# bảng này, nên đổi một hạng sau khi đã nạp là mọi khóa đã ghi có thể sai - chỉ
+# re-ingest chữa được (story 2.3). Thêm một loại nội dung mới thì chỉ ảnh hưởng
+# dữ liệu nạp sau, nhưng vẫn phải quyết trước khi lô đầu tiên mang loại đó chạy.
+#
+# Loại nội dung không có trong bảng là `SensitivityRankUnknown`, từ chối cả lô.
+version: 1
+ranks:
+  # Quy trình vận hành, viết ra để lan truyền: hạn chế thấp nhất trong ba loại.
+  runbook: 10
+  # Báo cáo sự cố mang nguyên nhân, mốc thời gian và người xử lý.
+  bao_cao_su_co: 20
+  # Sổ tay hạ tầng, khóa quản trị, đường vào hệ thống: hạn chế nhất.
+  bi_mat_ha_tang: 30

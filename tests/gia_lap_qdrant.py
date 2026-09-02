@@ -73,6 +73,11 @@ class QdrantGhiLai:
     _that: AsyncQdrantClient = field(default_factory=lambda: AsyncQdrantClient(":memory:"))
     # Bù `payload_schema` hay không: local mode cần, server thật thì không.
     bu_payload_schema: bool = True
+    # Nhật ký dùng chung với driver graph giả, khi test cần *thứ tự giữa hai
+    # kho*. Hai nhật ký riêng không so được với nhau: mỗi cái chỉ biết thứ tự
+    # bên trong chính nó, nên "graph ghi xong rồi mới tới vector" không đo được
+    # từ chúng. Một danh sách chung có thứ tự thì đo được.
+    nhat_ky_chung: list | None = None
 
     @classmethod
     def noi_toi(cls, url: str, api_key: str | None = None) -> "QdrantGhiLai":
@@ -100,6 +105,8 @@ class QdrantGhiLai:
         async def boc(*args, **kwargs):
             loi_goi = LoiGoi(ten=ten, args=args, kwargs=kwargs)
             self.loi_goi.append(loi_goi)
+            if self.nhat_ky_chung is not None:
+                self.nhat_ky_chung.append(("vector", ten))
             if ten == "create_payload_index" and self.bu_payload_schema:
                 with warnings.catch_warnings():
                     # Local mode cảnh báo "payload index không có tác dụng" ở

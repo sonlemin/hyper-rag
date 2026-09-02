@@ -51,11 +51,17 @@ from pathlib import Path
 
 from hypergraphrag.base import BaseKVStorage
 
-from adapters.ingest_labels import IngestOutsideSystemContext, ingest_key_for_write
+from adapters.doi_chieu import ghi_vao_so, ten_kho_kv, ten_kho_vector
+from adapters.ingest_labels import (
+    IngestOutsideSystemContext,
+    bat_buoc_ngu_canh_he_thong,
+    ingest_keys_for_write,
+)
 # Hợp đồng che dùng chung với hai adapter kia: một luật, một chỗ.
 from adapters.mask_contract import kiem_ket_qua_che
-from core.ids import validate_space
-from core.keys import FILTER_KEY_FIELD
+from adapters.sensitivity_loader import bang_hang_cho
+from core.ids import normalize_id, validate_space
+from core.keys import CHUA_GHI, FILTER_KEY_FIELD
 from core.masking import mask
 from core.permission import current_context
 
@@ -142,6 +148,12 @@ class RecordFilterKeyMissing(RuntimeError):
 class JsonACLKVStorage(BaseKVStorage):
     """`BaseKVStorage` của upstream, ruột là file JSON có lọc theo khóa quyền."""
 
+    # Bước đối chiếu hai kho hỏi thuộc tính này (`adapters/doi_chieu.py`).
+    # `False` vì ca hợp nhất ra "không khóa" giữ bản ghi lại với
+    # `filter_key=null`, nên "vắng" ở đây đúng là chưa từng ghi. Không chú
+    # kiểu: annotation sẽ biến nó thành field của dataclass.
+    VANG_LA_MO_HO = False
+
     def __post_init__(self):
         if self.namespace == LLM_CACHE_NAMESPACE:
             raise LLMCacheDisabled(
@@ -167,6 +179,9 @@ class JsonACLKVStorage(BaseKVStorage):
                 " không biết ghi file kho vào đâu"
             )
         self._thu_muc = Path(thu_muc)
+        # Bảng hạng độ nhạy, nạp lúc dựng adapter: cùng nguồn với hai adapter
+        # kia, nên ba đường ghi không chạy trên hai bảng hạng khác nhau.
+        self._bang_hang = bang_hang_cho(cau_hinh)
         # Dữ liệu trong bộ nhớ theo từng `space`, nạp lười lúc chạm tới lần
         # đầu. Upstream chốt một file duy nhất lúc `__post_init__` nên một thư
         # mục làm việc là một kho phẳng; ở đây `space` là thuộc tính của
@@ -248,14 +263,30 @@ class JsonACLKVStorage(BaseKVStorage):
         return khoa_duoc_phep is not None and not khoa_duoc_phep
 
     @staticmethod
-    def _khoa_cua(id: str, ban_ghi: dict) -> str:
-        """Khóa quyền của một bản ghi; vắng là hỏng dữ liệu, không phải "không che"."""
-        khoa = ban_ghi.get(FILTER_KEY_FIELD)
-        if not khoa:
+    def _khoa_cua(id: str, ban_ghi: dict) -> str | None:
+        """Khóa quyền của một bản ghi, hoặc `None` khi bản ghi là "không khóa".
+
+        Hai ca trông giống nhau mà nghĩa ngược nhau, nên chúng được phân biệt
+        bằng chính sự có mặt của trường:
+
+        - trường **vắng** (hoặc rỗng) là hỏng dữ liệu: chỉ xảy ra khi có ai đó
+          ghi vào file này không qua adapter, và che một mục bằng khóa rỗng
+          nghĩa là không che gì;
+        - trường có mặt mang `null` là kết quả hợp nhất khóa đa nguồn khác
+          scope (story 2.1): bản ghi ở lại kho, vô hình với mọi vai, đọc thô
+          được dưới cờ system.
+        """
+        if FILTER_KEY_FIELD not in ban_ghi:
             raise RecordFilterKeyMissing(
                 f"bản ghi {id!r} không mang {FILTER_KEY_FIELD!r}: không biết"
                 " vai nào được đọc nó, và không tra được `masked_slots` nên"
                 " cũng không che được"
+            )
+        khoa = ban_ghi[FILTER_KEY_FIELD]
+        if khoa is not None and not khoa:
+            raise RecordFilterKeyMissing(
+                f"bản ghi {id!r} mang {FILTER_KEY_FIELD!r} rỗng: 'không khóa'"
+                f" là {FILTER_KEY_FIELD}=null, không phải chuỗi rỗng"
             )
         return khoa
 
@@ -266,6 +297,11 @@ class JsonACLKVStorage(BaseKVStorage):
         một mục ngoài quyền trả lời "không tồn tại", cùng câu trả lời với một
         id chưa từng được nạp. Trả lời trung thực "đã có trong kho" là kể ra
         rằng fact đó tồn tại.
+
+        Bản ghi "không khóa" vô hình với **mọi** vai, không phải với riêng vai
+        nào: nó là mục mà không khóa nào đúng cho nó, nên không tập khóa nào
+        chứa được nó. Fail-closed, và không cần một nhánh riêng - `None` không
+        nằm trong bất kỳ tập khóa nào.
         """
         ban_ghi = du_lieu.get(id)
         if ban_ghi is None:
@@ -298,6 +334,9 @@ class JsonACLKVStorage(BaseKVStorage):
         if khoa_duoc_phep is None:
             return deepcopy(trong_kho)
         khoa = self._khoa_cua(id, trong_kho)
+        # Bản ghi "không khóa" (`khoa is None`) rơi vào đúng nhánh này mà không
+        # cần một điều kiện riêng: `None` không nằm trong tập khóa nào, nên nó
+        # vắng mặt với mọi vai. Fail-closed bằng chính luật đã có.
         if khoa not in khoa_duoc_phep:
             return None
         # Sao chép sau cửa quyền, không trước: bản ghi mà lời gọi này không được
@@ -367,37 +406,109 @@ class JsonACLKVStorage(BaseKVStorage):
 
     # --- Ghi ---------------------------------------------------------------
 
+    async def khoa_hien_co(self, ids: list[str]) -> dict[str, object]:
+        """Khóa quyền mà kho đang giữ cho từng id, không đọc gì khác.
+
+        Bước đọc của read-merge-write (FR-11) và cửa mà bước đối chiếu hai kho
+        hỏi. Chỉ trả trường khóa nên tầng che không áp dụng; chạy dưới cờ system
+        vì bị lọc theo khóa của tài liệu đang nạp thì nó không bao giờ thấy khóa
+        khác scope cần hợp nhất.
+
+        Ba trạng thái, đúng ba trạng thái mà `core.keys.hop_nhat_khoa` phân
+        biệt: `CHUA_GHI` (id chưa có trong kho), `KHONG_KHOA` (bản ghi ở lại mà
+        không khóa nào đúng cho nó), hoặc một khóa thật.
+        """
+        bat_buoc_ngu_canh_he_thong("đọc khóa hiện có của kho KV")
+        du_lieu = self._du_lieu(current_context().space)
+        return {
+            id: (
+                CHUA_GHI
+                if id not in du_lieu
+                else self._khoa_cua(id, du_lieu[id])
+            )
+            for id in ids
+        }
+
     async def upsert(self, data: dict[str, dict]) -> dict[str, dict]:
-        """Chèn các khóa mới, mỗi bản ghi mang khóa của phạm vi nhãn đang mở.
+        """Chèn khóa mới; khóa của bản ghi đã có thì hợp nhất lại (FR-11).
 
         Hai cửa phải qua trước khi chạm kho: có ngữ cảnh (để biết `space`) và
-        có nhãn ingest dưới ngữ cảnh hệ thống (để biết khóa). Cả hai kiểm
-        trước khi ghi bản ghi đầu tiên, nên hỏng cửa nào cũng là từ chối cả lô.
+        có nhãn ingest dưới ngữ cảnh hệ thống, với loại nội dung có hạng độ
+        nhạy (để hợp nhất được). Cả hai kiểm trước khi ghi bản ghi đầu tiên,
+        nên hỏng cửa nào cũng là từ chối cả lô.
 
         Nhãn ingest ghi **sau** nội dung của người gọi, nên một `filter_key`
         nhét sẵn trong dict đầu vào bị đè chứ không thắng: đường ghi là chỗ duy
         nhất đặt khóa quyền, và dữ liệu tự khai quyền cho mình là đúng thứ toàn
         bộ tầng này dựng ra để chống.
 
-        Giữ ngữ nghĩa upstream: chỉ khóa *mới* được chèn, phần đã có giữ
-        nguyên, và trả về đúng phần vừa chèn. Trả bản sao chứ không trả chính
-        các dict đang nằm trong kho - nơi gọi sửa `ket_qua[id]["filter_key"]`
-        mà đổi được nhãn quyền trong kho là một đường fail-open im lặng.
+        Giữ ngữ nghĩa upstream cho **nội dung**: chỉ khóa mới được chèn, nội
+        dung của bản ghi đã có giữ nguyên, và trả về đúng phần vừa chèn. Nhưng
+        *khóa quyền* thì không đi theo ngữ nghĩa đó, và đây là chỗ story 2.1
+        đổi: id chunk của upstream là md5 nội dung (`compute_mdhash_id`), không
+        mang `scope`, nên hai tài liệu khác quyền có đoạn trùng nội dung sinh
+        cùng một id - ngữ nghĩa chỉ-chèn khi đó giữ nhãn *rộng* của lần nạp đầu
+        và lần nạp sau không siết lại được. Nay mọi id trong lô đều đi qua phép
+        hợp nhất, kể cả id đã có.
+
+        Trả bản sao chứ không trả chính các dict đang nằm trong kho - nơi gọi
+        sửa `ket_qua[id]["filter_key"]` mà đổi được nhãn quyền trong kho là một
+        đường fail-open im lặng.
         """
         if not data:
             return {}
         context = current_context()
-        khoa = ingest_key_for_write()
+        bat_buoc_ngu_canh_he_thong("ghi tri thức")
         du_lieu = self._du_lieu(context.space)
-        moi = {
-            id: {**deepcopy(ban_ghi), FILTER_KEY_FIELD: khoa}
-            for id, ban_ghi in data.items()
-            if id not in du_lieu
-        }
+        khoa_theo_id = ingest_keys_for_write(
+            await self.khoa_hien_co(list(data)), hang=self._bang_hang.hang
+        )
+        # Ghi sổ **ý định** trước khi chạm kho, cùng luật với hai adapter kia:
+        # hỏng giữa chừng thì id phải nằm trong sổ mà khóa vắng ở kho, chứ
+        # không vô hình với bước đối chiếu cuối đợt (NFR-03).
+        for id in data:
+            ghi_vao_so(
+                id_join=self._id_join(id),
+                kho=ten_kho_kv(self.namespace),
+                id_trong_kho=id,
+                kho_doi=self._kho_doi(),
+            )
+        moi = {}
+        for id, ban_ghi in data.items():
+            khoa = khoa_theo_id[id]
+            if id in du_lieu:
+                if du_lieu[id].get(FILTER_KEY_FIELD) != khoa:
+                    du_lieu[id][FILTER_KEY_FIELD] = khoa
+                    self._ban.add(context.space)
+            else:
+                moi[id] = {**deepcopy(ban_ghi), FILTER_KEY_FIELD: khoa}
         if moi:
             du_lieu.update(moi)
             self._ban.add(context.space)
         return deepcopy(moi)
+
+    @staticmethod
+    def _id_join(id: str) -> str:
+        """Id dùng để nối một bản ghi KV với point vector tương ứng của nó.
+
+        **Cùng một phép chuẩn hóa** với `QdrantVectorDBStorage._id_join`, và đó
+        là điều kiện để phép so tồn tại: id chunk ở hai kho là cùng một chuỗi
+        *sau khi chuẩn hóa*, nên hai bên chuẩn hóa khác nhau thì một id cần NFC
+        (hay có khoảng trắng thừa, hay bọc nháy kép) tách thành hai id join
+        mỗi bên một kho - và khi đó phép so biến mất im lặng.
+        """
+        return normalize_id(id)
+
+    def _kho_doi(self) -> str | None:
+        """Kho mà mọi id của namespace này *cũng* phải có mặt (NFR-03).
+
+        `text_chunks` có bản sao vector ở collection `chunks`. `full_docs` thì
+        không: tài liệu gốc không được nạp vào kho vector nào, nên khai một kho
+        đôi cho nó là dựng ra một lệch giả ở mọi đợt.
+        """
+        if self.namespace == "text_chunks":
+            return ten_kho_vector("chunks")
+        return None
 
     async def drop(self) -> None:
         """Xóa sạch kho của một `space`, chỉ pipeline ingest gọi được.

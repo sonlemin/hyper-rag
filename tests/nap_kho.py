@@ -23,14 +23,23 @@ một cách "xanh mà không truy hồi được gì":
 
 Hai hệ quả cố ý của bộ fixture, giữ nguyên chứ không lách:
 
-- entity `App01` xuất hiện ở HE-01 và HE-02, nên khóa của nó là khóa của lần
-  ghi sau (`HE-02`, `noi_bo:bao_cao_su_co`). Đó chính là hành vi last-write-wins
-  mà story 2.1 sẽ đổi; nạp theo thứ tự fixture để nó nhìn thấy được, không giấu;
+- entity `App01` xuất hiện ở HE-01 và HE-02, cùng scope `noi_bo`, nên từ story
+  2.1 khóa của nó là khóa **hạn chế nhất** trong hai nguồn
+  (`noi_bo:bao_cao_su_co`, hạng cao hơn `runbook`). Trước story 2.1 đó là khóa
+  của lần ghi sau, và vì HE-02 vốn nạp sau HE-01 nên giá trị cuối cùng không
+  đổi - cổng M1 không phải sửa kỳ vọng nào. Cái đổi là *lý do*: nay nó không
+  còn phụ thuộc thứ tự nạp;
 - id node entity chính là **giá trị slot**. Mô hình hóa như vậy để tầng che có
   thứ thật để che ở đường `get_node_edges`; hệ quả là ở mức L2 tên entity ra
   nguyên văn qua kho vector `entities` (khoản nợ có địa chỉ, ghi trong ledger).
+
+Từ story 2.1 loader mở một **đợt ingest** quanh cả lần nạp rồi chạy bước đối
+chiếu hai kho ở cuối. Bộ test vì thế đi đúng đường mà pipeline Epic 2 sẽ đi, và
+một lệch khóa giữa hai kho làm cả bộ test đỏ ngay ở bước nạp chứ không hiện ra
+dưới dạng một kết quả truy hồi khó hiểu.
 """
 
+from adapters.doi_chieu import doi_chieu_dot, dot_ingest, kho_cua_engine
 from adapters.ingest_labels import ingest_label
 
 # Tên nhãn vai node của adapter graph. Nhập lại từ adapter thì loader và adapter
@@ -80,7 +89,7 @@ def id_vector_entity(gia_tri: str) -> str:
     return f"ent-{gia_tri}"
 
 
-def kiem_fixture() -> None:
+def kiem_fixture(cac_he=None) -> None:
     """Ba giả định mà loader đứng lên; hỏng cái nào cũng câm chứ không nổ.
 
     Rẻ, chạy một lần mỗi lần nạp, và mỗi dòng ứng với một cách mà bộ test sẽ
@@ -95,9 +104,13 @@ def kiem_fixture() -> None:
       graph đã thiếu;
     - hai hyperedge trùng `ten_hyperedge` là hai fact chung một node, nên
       `get_node_edges` trộn lân cận của cả hai và khóa quyền là của lần ghi sau.
+
+    `cac_he` để nơi gọi kiểm một danh sách khác bộ chuẩn. Bộ hyperedge phụ
+    truyền qua `them=` phải đi qua đúng guard này: đi vòng qua nó là mở lại
+    đúng ba cách "xanh mà không truy hồi được gì" mà guard dựng ra để chặn.
     """
     ten_da_thay = {}
-    for he in HYPEREDGES:
+    for he in HYPEREDGES if cac_he is None else cac_he:
         slots = he["slots"]
         assert "subject" in slots, f"{he['id']} thiếu slot `subject`"
         assert set(slots) <= set(SLOT_ROLES), (
@@ -115,8 +128,19 @@ def kiem_fixture() -> None:
         ten_da_thay[ten] = he["id"]
 
 
-async def _nap_mot_hyperedge(engine, he) -> None:
-    """Một hyperedge thành node + entity + cạnh, cộng point ở hai collection."""
+KHO_GRAPH_NK: str = "graph"
+KHO_VECTOR_NK: str = "vector"
+
+
+async def nap_mot_hyperedge(engine, he) -> None:
+    """Một hyperedge thành node + entity + cạnh, cộng point ở hai collection.
+
+    Thứ tự **graph trước, vector sau**, đúng thứ tự mà `operate.py:403-479` giữ.
+    Đó không phải một chi tiết thẩm mỹ: node graph là kho *nhớ* được trạng thái
+    "không khóa" (point vector thì bị xóa), nên đọc khóa cũ ở phía graph trước
+    là đọc trên bản đầy đủ nhất. Thứ tự đó được ghim bằng test chứ không cài
+    lại (`tests/test_doi_chieu.py`).
+    """
     ten = ten_hyperedge(he)
     id_chunk = he["source_id"]
     graph = engine.chunk_entity_relation_graph
@@ -169,31 +193,46 @@ async def _nap_chunk(engine, chunk) -> None:
     await engine.chunks_vdb.upsert({chunk["id"]: {"content": chunk["content"]}})
 
 
-async def nap_ba_kho(engine, *, khong_gian: str, policy) -> None:
-    """Khởi tạo ba kho rồi nạp 4 hyperedge, 5 chunk và 5 tài liệu gốc.
+async def nap_ba_kho(engine, *, khong_gian: str, policy, them=()) -> None:
+    """Khởi tạo ba kho rồi nạp bộ fixture chuẩn cộng các hyperedge phụ.
+
+    Bộ chuẩn là 4 hyperedge, 5 chunk và 5 tài liệu gốc; `them` nối vào sau
+    chúng, theo đúng thứ tự truyền vào.
 
     Chạy trọn trong một ngữ cảnh hệ thống: đường ghi của cả ba adapter đòi
     `bypass_filter` (AD-3, cửa `ingest_key_for_write`). Mỗi tài liệu mở đúng
     một phạm vi nhãn, nên khóa quyền của mục nào cũng là khóa của tài liệu
     sinh ra nó.
+
+    `them` là các hyperedge phụ nạp sau bộ fixture chuẩn, theo đúng thứ tự
+    truyền vào: bộ test khóa đa nguồn (Đo 1 lớp (d)) dựng ca của nó bằng khe
+    này thay vì bằng một loader thứ hai dễ lệch.
+
+    Cuối đợt chạy bước đối chiếu hai kho. Nó không có cờ tắt và không tự sửa:
+    lệch là `StoreKeyMismatch` kèm danh sách cặp id, ngay tại bước nạp.
     """
     kiem_fixture()
+    if them:
+        kiem_fixture(them)
+        kiem_fixture((*HYPEREDGES, *them))
     with use_context(
         system_context(space=khong_gian, policy_version=policy.policy_version)
     ):
         await engine.khoi_tao()
-        for he in HYPEREDGES:
-            with ingest_label(scope=he["scope"], content_type=he["content_type"]):
-                await _nap_mot_hyperedge(engine, he)
-        for chunk in CHUNKS:
-            with ingest_label(
-                scope=chunk["scope"], content_type=chunk["content_type"]
-            ):
-                await _nap_chunk(engine, chunk)
-        for tai_lieu in TAI_LIEU_GOC:
-            with ingest_label(
-                scope=tai_lieu["scope"], content_type=tai_lieu["content_type"]
-            ):
-                await engine.full_docs.upsert(
-                    {tai_lieu["id"]: {"content": tai_lieu["content"]}}
-                )
+        with dot_ingest() as so:
+            for he in (*HYPEREDGES, *them):
+                with ingest_label(scope=he["scope"], content_type=he["content_type"]):
+                    await nap_mot_hyperedge(engine, he)
+            for chunk in CHUNKS:
+                with ingest_label(
+                    scope=chunk["scope"], content_type=chunk["content_type"]
+                ):
+                    await _nap_chunk(engine, chunk)
+            for tai_lieu in TAI_LIEU_GOC:
+                with ingest_label(
+                    scope=tai_lieu["scope"], content_type=tai_lieu["content_type"]
+                ):
+                    await engine.full_docs.upsert(
+                        {tai_lieu["id"]: {"content": tai_lieu["content"]}}
+                    )
+            await doi_chieu_dot(so, kho=kho_cua_engine(engine))

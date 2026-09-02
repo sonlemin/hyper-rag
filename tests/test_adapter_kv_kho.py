@@ -6,7 +6,8 @@ cửa ghi) nằm ở `tests/test_adapter_kv.py`. Tách ra khi file gốc vượt
 
 Phần này ghim những thứ chỉ lộ ra khi có đĩa thật trong ảnh: ghi nguyên tử
 không sót file tạm, file kho hỏng cho mã lỗi của dự án, tên file mang cả
-`space` lẫn `namespace`, và hai khoản nợ có địa chỉ story 2.1.
+`space` lẫn `namespace`, cộng luật hợp nhất khóa đa nguồn của story 2.1 trên
+chính đường ghi này.
 
 Kho là file JSON trong thư mục tạm nên bộ này không cần mạng, không cần
 container, không cần key LLM.
@@ -17,7 +18,7 @@ import json
 
 import pytest
 
-from adapters.ingest_labels import ingest_label
+from adapters.ingest_labels import IngestOutsideSystemContext, ingest_label
 from adapters.kv import (
     ENABLE_LLM_CACHE,
     KV_NAMESPACES,
@@ -29,7 +30,12 @@ from adapters.kv import (
     RecordFilterKeyMissing,
 )
 from adapters.policy_loader import load_policy
-from core.keys import FILTER_KEY_FIELD, filter_key
+from core.keys import (
+    CHUA_GHI,
+    FILTER_KEY_FIELD,
+    SensitivityRankUnknown,
+    filter_key,
+)
 from core.masking import MASKED_READ_METHODS
 from core.permission import use_context
 from tests.fixtures import oracle
@@ -401,24 +407,24 @@ def test_hai_method_doc_nam_trong_danh_sach_dong():
 # --- Hai khoản nợ có địa chỉ, ghim bằng test --------------------------------
 
 
-def test_dac_ta_hien_trang_cung_id_hai_nhan_first_write_wins(
+def test_cung_id_hai_nhan_khac_scope_thi_ban_ghi_thanh_khong_khoa(
     workspace_dir, khong_gian, policy
 ):
-    """Đặc tả hiện trạng: cùng một id nạp hai lần thì nhãn lần *đầu* thắng.
+    """Chiều first-write-wins của đường KV, đã đóng ở story 2.1 (FR-11).
 
-    Không phải khẳng định hành vi đúng, mà là mốc so sánh cho story 2.1. Id
-    chunk của upstream là md5 của nội dung (`compute_mdhash_id`), không mang
-    `scope`, nên hai tài liệu khác scope có đoạn trùng nội dung sinh cùng một
-    id. Ngữ nghĩa chỉ-chèn của `upsert` khi đó giữ nhãn của lần nạp đầu, và
-    nếu lần đầu là nhãn rộng hơn thì lần nạp sau *không* siết được nó lại.
+    Thay `test_dac_ta_hien_trang_cung_id_hai_nhan_first_write_wins` của story
+    1.5. Test cũ ghim *hiện trạng*: id chunk của upstream là md5 nội dung
+    (`compute_mdhash_id`), không mang `scope`, nên hai tài liệu khác scope có
+    đoạn trùng nội dung sinh cùng một id; ngữ nghĩa chỉ-chèn của `upsert` khi
+    đó giữ nhãn *rộng* của lần nạp đầu và lần nạp sau không siết lại được. Nó
+    nói thẳng rằng story 2.1 sẽ đổi hành vi, nên mốc so sánh nay hết việc.
 
-    Đây là chiều ngược của khoản nợ last-write-wins ở đường vector và đường
-    graph (nhãn của lần ghi sau thắng), nên hai kho lệch nhau ngay trong cùng
-    một đợt nạp. Cả hai chiều trả một lần ở story 2.1; đổi luật hợp nhất là
-    phải sửa cả test này.
+    Hành vi mới: khóa của bản ghi đã có cũng đi qua phép hợp nhất. Hai nhãn
+    khác scope ra "không khóa", và bản ghi *ở lại* kho - khác đường vector, nơi
+    point bị xóa. Chunk là văn bản chạy nên KV không có gì để che; luật của nó
+    là vô hình với mọi vai, và đọc thô được dưới cờ system để re-ingest (story
+    2.3) còn thấy mà dọn.
     """
-    rong = filter_key("noi_bo", "runbook")
-    hep = filter_key("khach_hang_a", "bao_cao_su_co")
 
     async def chay():
         adapter = dung_adapter(workspace_dir)
@@ -429,17 +435,126 @@ def test_dac_ta_hien_trang_cung_id_hai_nhan_first_write_wins(
                 lan_sau = await adapter.upsert({"chunk-trung": {"content": "đoạn trùng"}})
             with use_context(ngu_canh_ingest(khong_gian, policy)):
                 trong_kho = await adapter.get_by_id("chunk-trung")
-        with use_context(vai(policy, "tech_support", khong_gian)):
-            vai_hep_doc = await adapter.get_by_id("chunk-trung")
-        return lan_sau, trong_kho, vai_hep_doc
+                con_trong_all_keys = await adapter.all_keys()
+        doc_theo_vai = {}
+        for ten_vai in ("tech_support", "devops"):
+            with use_context(vai(policy, ten_vai, khong_gian)):
+                doc_theo_vai[ten_vai] = await adapter.get_by_id("chunk-trung")
+        return lan_sau, trong_kho, con_trong_all_keys, doc_theo_vai
 
-    lan_sau, trong_kho, vai_hep_doc = asyncio.run(chay())
-    assert lan_sau == {}, "lần nạp sau bị bỏ qua, đó chính là hiện trạng cần ghim"
-    assert trong_kho[FILTER_KEY_FIELD] == rong
-    assert trong_kho[FILTER_KEY_FIELD] != hep
-    # Hệ quả nhìn thấy được: vai không chạm scope `khach_hang_a` vẫn đọc được
-    # bản ghi mà lần nạp thứ hai định xếp vào scope đó.
-    assert vai_hep_doc is not None
+    lan_sau, trong_kho, con_trong_all_keys, doc_theo_vai = asyncio.run(chay())
+    assert lan_sau == {}, "nội dung vẫn chỉ-chèn: lần nạp sau không thêm bản ghi"
+    assert trong_kho[FILTER_KEY_FIELD] is None, "khóa cũ phải bị siết thành không khóa"
+    assert trong_kho["content"] == "đoạn trùng", "bản ghi ở lại, không bị xóa"
+    assert "chunk-trung" in con_trong_all_keys, "cờ system vẫn đọc thô được"
+    # `devops` chạm *cả hai* scope, nên nếu "không khóa" được cài bằng một khóa
+    # đặc biệt nào đó thì đây là vai nhìn thấy nó. Vô hình với mọi vai nghĩa là
+    # vô hình cả với vai rộng nhất.
+    assert doc_theo_vai == {"tech_support": None, "devops": None}
+
+
+def test_cung_scope_nap_lai_duoi_nhan_nhay_hon_thi_siet_khoa(
+    workspace_dir, khong_gian, policy
+):
+    """Hàng 1 và hàng 2 của I/O Matrix ở đường KV: siết được, không nới ra."""
+
+    async def chay():
+        adapter = dung_adapter(workspace_dir)
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            with ingest_label(scope="noi_bo", content_type="runbook"):
+                await adapter.upsert({"c1": {"content": "x"}, "c2": {"content": "y"}})
+            with ingest_label(scope="noi_bo", content_type="bi_mat_ha_tang"):
+                await adapter.upsert({"c1": {"content": "x"}})
+            with ingest_label(scope="noi_bo", content_type="runbook"):
+                await adapter.upsert({"c1": {"content": "x"}})
+            return await adapter.khoa_hien_co(["c1", "c2", "c3"])
+
+    khoa = asyncio.run(chay())
+    assert khoa["c1"] == filter_key("noi_bo", "bi_mat_ha_tang")
+    assert khoa["c2"] == filter_key("noi_bo", "runbook")
+    assert khoa["c3"] is CHUA_GHI
+
+
+def test_khong_khoa_la_trang_thai_hut_o_duong_kv(workspace_dir, khong_gian, policy):
+    """Bản ghi đã "không khóa" thì lần nạp thứ ba không cấp lại khóa cho nó.
+
+    Khác kho vector: bản ghi KV ở lại nên kho này *nhớ* được trạng thái đó, và
+    nó là một trong hai kho mà bước đối chiếu hỏi khi kho vector không phân
+    biệt được "vắng" với "không khóa".
+    """
+
+    async def chay():
+        adapter = dung_adapter(workspace_dir)
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            for scope, loai in (
+                ("noi_bo", "runbook"),
+                ("khach_hang_a", "bao_cao_su_co"),
+                ("noi_bo", "runbook"),
+            ):
+                with ingest_label(scope=scope, content_type=loai):
+                    await adapter.upsert({"c1": {"content": "x"}})
+            return await adapter.khoa_hien_co(["c1"])
+
+    assert asyncio.run(chay())["c1"] is None
+
+
+def test_loai_noi_dung_khong_co_hang_thi_tu_choi_ca_lo(
+    workspace_dir, khong_gian, policy
+):
+    """Hàng 4 của I/O Matrix ở đường KV: từ chối trước khi ghi bản ghi nào."""
+
+    async def chay():
+        adapter = dung_adapter(workspace_dir)
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            with ingest_label(scope="noi_bo", content_type="hop_dong"):
+                with pytest.raises(SensitivityRankUnknown) as loi:
+                    await adapter.upsert({"c1": {"content": "x"}})
+            assert loi.value.code == "SENSITIVITY_RANK_UNKNOWN"
+            return await adapter.all_keys()
+
+    assert asyncio.run(chay()) == []
+
+
+def test_ban_ghi_thieu_han_truong_khoa_van_la_du_lieu_hong(
+    workspace_dir, khong_gian, policy
+):
+    """"Không khóa" là `filter_key=null`, không phải trường vắng mặt.
+
+    Hai ca trông giống nhau mà nghĩa ngược nhau: trường vắng nghĩa là có ai đó
+    ghi vào file này không qua adapter (hỏng dữ liệu, phải nổ), còn `null` là
+    kết quả hợp nhất khóa đa nguồn (hợp lệ, vô hình với mọi vai). Gộp chúng làm
+    một là biến một file kho bị sửa tay thành một mục im lặng.
+    """
+    async def chay():
+        adapter = dung_adapter(workspace_dir)
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            with ingest_label(scope="noi_bo", content_type="runbook"):
+                await adapter.upsert({"c1": {"content": "x"}})
+            await adapter.index_done_callback()
+        duong_dan = workspace_dir / f"kv_store_{khong_gian}_text_chunks.json"
+        noi_dung = json.loads(duong_dan.read_text(encoding="utf-8"))
+        del noi_dung["c1"][FILTER_KEY_FIELD]
+        duong_dan.write_text(json.dumps(noi_dung), encoding="utf-8")
+        adapter_moi = dung_adapter(workspace_dir)
+        with use_context(vai(policy, "devops", khong_gian)):
+            with pytest.raises(RecordFilterKeyMissing) as loi:
+                await adapter_moi.get_by_id("c1")
+        return loi.value.code
+
+    assert asyncio.run(chay()) == "RECORD_FILTER_KEY_MISSING"
+
+
+def test_doc_khoa_hien_co_chi_chay_duoi_co_system(workspace_dir, khong_gian, policy):
+    """Bước đọc khóa của read-merge-write là ngoại lệ có đặc tả của AD-3."""
+
+    async def chay():
+        adapter = dung_adapter(workspace_dir)
+        with use_context(vai(policy, "devops", khong_gian)):
+            with pytest.raises(IngestOutsideSystemContext) as loi:
+                await adapter.khoa_hien_co(["c1"])
+        return loi.value.code
+
+    assert asyncio.run(chay()) == "INGEST_OUTSIDE_SYSTEM_CONTEXT"
 
 
 def test_doc_tho_cung_tra_ban_sao_chu_khong_tra_doi_tuong_trong_kho(

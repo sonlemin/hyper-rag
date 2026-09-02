@@ -66,6 +66,8 @@ from adapters.neo4j import (
     HEALTH_DELAY_MAC_DINH,
     HEALTH_RETRIES_KEY,
     HEALTH_RETRIES_MAC_DINH,
+    NEO4J_DATABASE_KEY,
+    NEO4J_DATABASE_MAC_DINH,
     NEO4J_PASSWORD_KEY,
     NEO4J_URI_KEY,
     NEO4J_USERNAME_KEY,
@@ -78,6 +80,7 @@ from adapters.qdrant import (
     QDRANT_URL_KEY,
     QdrantVectorDBStorage,
 )
+from adapters.sensitivity_loader import SENSITIVITY_RANKS_KEY
 
 # Tên đăng ký trong registry. Chuỗi này đi vào ba field `kv_storage`,
 # `vector_storage`, `graph_storage` của upstream, nên nó là hợp đồng chứ không
@@ -97,6 +100,8 @@ TEN_GRAPH: str = Neo4jACLGraphStorage.__name__
 # khóa thứ tám tìm ra ở vòng review: nó không phải field của `HyperGraphRAG`
 # nên trước story này không bao giờ xuống tới adapter, và ngưỡng đóng cứng ở
 # mặc định 0.2 của chính adapter.
+# Hai khóa cuối vào ở story 2.1: `neo4j_database` (khoản nợ vòng đời kết nối
+# Neo4j) và `sensitivity_ranks_path` (bảng hạng độ nhạy của luật hợp nhất khóa).
 KHOA_CAU_HINH_KHO: tuple[str, ...] = (
     QDRANT_URL_KEY,
     QDRANT_API_KEY_KEY,
@@ -104,8 +109,10 @@ KHOA_CAU_HINH_KHO: tuple[str, ...] = (
     NEO4J_URI_KEY,
     NEO4J_USERNAME_KEY,
     NEO4J_PASSWORD_KEY,
+    NEO4J_DATABASE_KEY,
     HEALTH_RETRIES_KEY,
     HEALTH_DELAY_KEY,
+    SENSITIVITY_RANKS_KEY,
 )
 
 # Biến môi trường -> khóa cấu hình. Đây là chỗ khép vòng cho khoản nợ "khóa cấu
@@ -121,6 +128,7 @@ BIEN_MOI_TRUONG: dict[str, str] = {
     NEO4J_URI_KEY: "NEO4J_URI",
     NEO4J_USERNAME_KEY: "NEO4J_USERNAME",
     NEO4J_PASSWORD_KEY: "NEO4J_PASSWORD",
+    NEO4J_DATABASE_KEY: "NEO4J_DATABASE",
     WORKING_DIR_KEY: "HYPER_RAG_WORKING_DIR",
 }
 
@@ -136,8 +144,18 @@ BIEN_MOI_TRUONG: dict[str, str] = {
 # thứ mỗi môi trường tự đặt một kiểu - hai môi trường khác ngưỡng là hai kết quả
 # Đo 2 không so được với nhau. Một knob chỉnh được từ môi trường mà không ai
 # từng chỉnh là một mặt cấu hình thừa.
+# Bảng hạng độ nhạy nằm đây vì nó không phải một knob môi trường mà là cấu hình
+# đóng băng của *hệ*: khóa quyền của mọi mục đã nạp được tính bằng đúng bảng đó,
+# nên hai môi trường hai bảng hạng là hai kho không so được với nhau và không
+# re-ingest chung được (đổi hạng = re-ingest). Đường dẫn vẫn là một field để bộ
+# test và `eval/` trỏ sang bảng khác được, chỉ là nó không đến từ `.env`.
 KHOA_KHONG_LAY_TU_MOI_TRUONG: frozenset[str] = frozenset(
-    {HEALTH_RETRIES_KEY, HEALTH_DELAY_KEY, COSINE_THRESHOLD_KEY}
+    {
+        HEALTH_RETRIES_KEY,
+        HEALTH_DELAY_KEY,
+        COSINE_THRESHOLD_KEY,
+        SENSITIVITY_RANKS_KEY,
+    }
 )
 
 
@@ -213,8 +231,16 @@ class EngineACL(HyperGraphRAG):
     neo4j_uri: str | None = None
     neo4j_username: str = NEO4J_USERNAME_MAC_DINH
     neo4j_password: str | None = None
+    # Database của mọi phiên Neo4j. Community chỉ có một, nhưng truyền tường
+    # minh thì không phiên nào dựa vào mặc định ngầm của server (khoản nợ vòng
+    # đời kết nối, ledger story 1.4, địa chỉ 2.1).
+    neo4j_database: str = NEO4J_DATABASE_MAC_DINH
     neo4j_health_retries: int = HEALTH_RETRIES_MAC_DINH
     neo4j_health_delay: float = HEALTH_DELAY_MAC_DINH
+    # Đường dẫn file hạng độ nhạy. `None` nghĩa là dùng bảng chốt của repo
+    # (`config/hang-do-nhay.yaml`); ba adapter nạp nó qua cùng một cửa nên
+    # chúng không thể chạy trên hai bảng khác nhau.
+    sensitivity_ranks_path: str | None = None
 
     # --- Khe tiêm kết nối ----------------------------------------------------
     # Hàm, không phải client: xem docstring đầu file. `None` nghĩa là "tự mở từ

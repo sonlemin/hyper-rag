@@ -76,6 +76,18 @@ MASK_NAMESPACE: str = "hyperedges"
 SLOT_FIELD: str = "slot"
 NEIGHBOR_FIELD: str = "neighbor_id"
 
+# Cờ làm giàu của AD-9: "kết quả `get_node_edges` của upstream chỉ chứa tên node
+# thô, nên adapter làm giàu nó với khóa (hoặc **cờ không-khóa**) của từng node
+# lân cận trước khi gọi hàm che". Đây là cờ đó. Nhờ nó, luật che cứng ở dưới
+# đọc được trạng thái không-khóa mà **chữ ký T1 của hàm che không đổi** - vẫn
+# là (kết quả, context, khóa hyperedge).
+#
+# Cờ chứ không phải khóa: khóa của lân cận không dùng được vào việc gì khác ở
+# tầng này (khóa để tra `masked_slots` là khóa của *hyperedge*, không phải của
+# lân cận), nên mang cả khóa xuống là mang một giá trị mà nơi nhận không có
+# quyền dùng.
+NEIGHBOR_NO_KEY_FIELD: str = "neighbor_no_key"
+
 # Dấu che, dạng máy đọc được `[{slot}:{lý do}]`. Tầng trên đọc ra được vai nào
 # đã bị che và vì lý do gì mà không phải đoán từ một chuỗi sao. Nhãn tiếng Việt
 # hiển thị ("[nguyên nhân: đã che]") map từ đây nhưng sống ở `web/`, không ở
@@ -98,6 +110,19 @@ MASK_REASON_OWNER: str = "group"
 # slot mà là ngưỡng: mô tả entity chỉ vào ngữ cảnh khi vai đạt L2 với nguồn
 # (NFR-06, FR-05).
 MASK_REASON_L2_ONLY: str = "l2_only"
+
+# Lý do thứ tư, cũng không phải một vai slot. Một entity xuất hiện ở hai tài
+# liệu **khác scope** không nhận khóa nào (AD-5: trên trục scope không có thứ
+# tự, nên không khóa nào đúng cho nó). Trên đường Cypher nó vẫn đạt tới được -
+# qua một hyperedge mà vai *được* thấy - và AD-9 chốt rằng tên nó khi đó bị che
+# **cứng với mọi vai**, không phụ thuộc mức tiết lộ.
+#
+# Lý do không thể là một vai slot, vì hai điều: nhìn từ một lân cận không khóa
+# ta không biết nó điền vào vai nào (cùng một entity điền vai khác nhau ở những
+# hyperedge khác nhau), và nó không sinh ra từ tài liệu nào nằm trong quyền của
+# ai cả - đó chính là *lý do* nó không có khóa. Nên lý do đúng là chính sự
+# vắng mặt của khóa.
+MASK_REASON_NO_KEY: str = "no_key"
 
 
 class MaskItemOutOfPermission(RuntimeError):
@@ -160,8 +185,19 @@ def dau_che(slot: str) -> str:
     return dau_che_truong(slot, ly_do)
 
 
+def dau_che_lan_can_khong_khoa() -> str:
+    """Dấu che của một lân cận không khóa; một hằng, dựng bằng đúng một hàm.
+
+    Không mang tên vai slot (ta không biết nó điền vào vai nào) và không mang
+    số lượng - hai entity không khóa cùng nối vào một hyperedge cho ra đúng một
+    chuỗi giống nhau, nên nhìn từ ngoài không đếm được có bao nhiêu giá trị bị
+    che. Cùng chủ ý với dấu che theo slot, và cùng cái giá đã ghi ở đầu file.
+    """
+    return dau_che_truong(NEIGHBOR_FIELD, MASK_REASON_NO_KEY)
+
+
 def la_dau_che(gia_tri) -> bool:
-    """Giá trị này có đúng là một dấu che *theo slot* do tầng che sinh ra không.
+    """Giá trị này có đúng là một dấu che do tầng che sinh ra không.
 
     Cần vì dấu che đi vào **vị trí id**: `get_node_edges` thay tên node lân cận
     bằng dấu che, rồi `operate.py:1036` mang chính chuỗi đó đi hỏi `get_node`.
@@ -177,10 +213,19 @@ def la_dau_che(gia_tri) -> bool:
     bằng một node rỗng.
 
     Không tự parse lại hình dạng dấu che: một bộ nhận diện viết riêng là bản
-    thứ hai của cùng một luật, và hai bản thì trôi dạt được. Ở đây `dau_che` là
-    nguồn duy nhất, nên đổi hình dạng dấu che không thể làm hỏng phép nhận diện.
+    thứ hai của cùng một luật, và hai bản thì trôi dạt được. Ở đây `dau_che` và
+    `dau_che_lan_can_khong_khoa` là hai nguồn duy nhất, nên đổi hình dạng dấu
+    che không thể làm hỏng phép nhận diện.
+
+    Phủ **cả** dấu che của lân cận không khóa, không chỉ dấu che theo slot: nó
+    cũng đi vào vị trí id và cũng bị `operate.py:1036` mang đi hỏi `get_node`.
+    Bỏ sót nó ở đây là `get_node` trả `None` rồi `{**n, ...}` nổ `TypeError`
+    giữa `vendor/` - đúng landmine mà story 1.6 đã gỡ một lần cho dấu che theo
+    slot.
     """
-    return isinstance(gia_tri, str) and any(
+    if not isinstance(gia_tri, str):
+        return False
+    return gia_tri == dau_che_lan_can_khong_khoa() or any(
         gia_tri == dau_che(slot) for slot in SLOT_ROLES
     )
 
@@ -243,4 +288,20 @@ def mask(result: Any, context: PermissionContext, hyperedge_key: str) -> Any:
             )
         if vai_canh in phai_che and NEIGHBOR_FIELD in da_che:
             da_che[NEIGHBOR_FIELD] = dau_che(vai_canh)
+    # Đường ba: lân cận **không có khóa**. Che cứng với mọi vai, không tra bảng
+    # chính sách và không phụ thuộc mức tiết lộ - cùng hình dạng với luật
+    # `owner` ở trên, và cùng lý do hình dạng đó tồn tại: đây là luật của AD-9,
+    # không phải một hàng trong bảng.
+    #
+    # Đặt **sau** hai đường kia nên nó thắng: một lân cận vừa không khóa vừa
+    # điền vào một slot đang bị che thì lý do đúng là "không khóa" (che ở mọi
+    # mức) chứ không phải "bảng khai che" (hết che khi đổi bảng). Trộn hai lý
+    # do là mất khả năng phân biệt đúng thứ đầu file đã dặn.
+    #
+    # Vì sao một lân cận không khóa lại tới được đây: AD-5 giữ node cấu trúc ấy
+    # lại trên graph, và AD-9 cho nó đi qua đúng một đường - làm giàu lân cận
+    # của `get_node_edges`, tức chỉ khi vai đã thấy được hyperedge nối tới nó.
+    # Kết quả là vai biết "có một fact ở đây" (FR-12) mà không biết nó là gì.
+    if da_che.get(NEIGHBOR_NO_KEY_FIELD) and NEIGHBOR_FIELD in da_che:
+        da_che[NEIGHBOR_FIELD] = dau_che_lan_can_khong_khoa()
     return da_che

@@ -44,9 +44,21 @@ from core.masking import MASKED_READ_METHODS
 # một method chỉ đúng cho cái kho đã nghĩ ra nó. Gộp chung thì thêm `all_keys`
 # cho đường KV cũng lặng lẽ miễn luật cho một `all_keys` mai sau của adapter
 # Qdrant hay Neo4j, và cái đó chưa ai xét.
+# Một câu chung cho `khoa_hien_co` của cả ba adapter, viết ra một lần rồi khai
+# lại cho từng adapter: luật miễn trừ giống nhau vì cơ chế giống nhau, nhưng ô
+# khai vẫn phải là ô của từng adapter (xem lý do ngay dưới).
+_LY_DO_KHOA_HIEN_CO = (
+    "chỉ trả trường khóa quyền, không trả nội dung nên không có gì để che;"
+    " cửa của read-merge-write (FR-11) và của bước đối chiếu hai kho, và nó"
+    " từ chối chạy ngoài ngữ cảnh hệ thống (IngestOutsideSystemContext)"
+)
+
 XU_LY_RIENG_THEO_ADAPTER = {
-    "QdrantVectorDBStorage": {},
+    "QdrantVectorDBStorage": {
+        "khoa_hien_co": _LY_DO_KHOA_HIEN_CO,
+    },
     "Neo4jACLGraphStorage": {
+        "khoa_hien_co": _LY_DO_KHOA_HIEN_CO,
         # Số đếm là tín hiệu xếp hạng đi thẳng vào ngữ cảnh trả về; nó co theo
         # quyền bằng WHERE trên chính biến lân cận, không bằng che.
         "node_degree": "đếm sau filter, số đếm co theo quyền",
@@ -61,6 +73,7 @@ XU_LY_RIENG_THEO_ADAPTER = {
         # "có tồn tại không" cũng là một đường rò.
         "all_keys": "chỉ kể id mà vai đạt L2, mục ngoài quyền vắng mặt",
         "filter_keys": "mục ngoài quyền tính là chưa tồn tại",
+        "khoa_hien_co": _LY_DO_KHOA_HIEN_CO,
     },
 }
 
@@ -77,6 +90,11 @@ VONG_DOI = {"index_done_callback", "query_done_callback", "embed_nodes"}
 # Method riêng của adapter, ngoài hợp đồng upstream, không chạm dữ liệu người
 # dùng: dựng kho và đóng kết nối.
 NGOAI_HOP_DONG = {"initialize", "close"}
+
+# Method của riêng dự án, upstream không có. Chúng vẫn phải nằm trong một nhóm
+# như mọi method public khác - luật che không miễn cho ai - nhưng phép neo vào
+# interface của `vendor/` thì không áp dụng được cho chúng.
+NGOAI_UPSTREAM = frozenset({"khoa_hien_co"})
 
 CAC_ADAPTER = [
     (QdrantVectorDBStorage, BaseVectorStorage),
@@ -193,6 +211,21 @@ def test_moi_adapter_deu_co_o_khai_rieng():
 
 
 def test_moi_ten_trong_nhom_ton_tai_o_upstream():
-    """Neo ba nhóm vào interface thật của fork, không để trôi dạt."""
-    for ten in MASKED_READ_METHODS | XU_LY_RIENG | GHI:
+    """Neo ba nhóm vào interface thật của fork, không để trôi dạt.
+
+    Trừ đi tập tên **của riêng dự án**: những method upstream không có nên
+    không neo vào đâu được. Tập đó là tường minh và ngắn, nên thêm một tên vào
+    đây vẫn là một quyết định đọc được, không phải một chỗ luật này bị nới ra.
+    """
+    for ten in (MASKED_READ_METHODS | XU_LY_RIENG | GHI) - NGOAI_UPSTREAM:
         assert any(hasattr(lop, ten) for lop in MOI_INTERFACE), ten
+
+
+def test_ten_ngoai_upstream_dung_la_ngoai_upstream():
+    """Chiều ngược: tên trong tập miễn trừ phải thật sự không có ở upstream.
+
+    Không có test này thì một tên upstream *có* lọt vào tập miễn trừ sẽ lặng lẽ
+    thoát khỏi phép neo ở trên, và đó đúng là cách luật neo mất tác dụng.
+    """
+    for ten in NGOAI_UPSTREAM:
+        assert not any(hasattr(lop, ten) for lop in MOI_INTERFACE), ten

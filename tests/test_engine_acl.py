@@ -265,8 +265,16 @@ def test_doi_chung_bat_debug_thi_secret_ra_that(workspace_dir):
     assert any(API_KEY_NHAN_BIET in d for d in dong)
 
 
-def test_khoi_tao_dung_ba_collection_va_index_graph(workspace_dir, khong_gian, policy):
-    """Bước khởi động tạo đủ ba collection vector và index graph, lặp lại được."""
+def test_khoi_tao_dung_ba_collection_va_rang_buoc_graph(
+    workspace_dir, khong_gian, policy
+):
+    """Bước khởi động tạo đủ ba collection vector và ràng buộc graph, lặp lại được.
+
+    Đổi kỳ vọng so với story 1.7 (câu `CREATE INDEX`): story 2.1 thay index
+    thường bằng ràng buộc duy nhất `id` theo `space`, vì luật hợp nhất khóa
+    đứng trên giả định "một id là một node". Ràng buộc mang theo index hậu
+    thuẫn của nó nên đường tra node theo id không mất index.
+    """
 
     async def chay():
         client = QdrantGhiLai()
@@ -283,15 +291,16 @@ def test_khoi_tao_dung_ba_collection_va_index_graph(workspace_dir, khong_gian, p
                 await client.collection_exists(collection_name=f"{khong_gian}_{ns}")
                 for ns in ("entities", "hyperedges", "chunks")
             ]
-        cau_index = [
-            lg for lg in driver.loi_goi if lg.cypher.startswith("CREATE INDEX")
+        cau_rang_buoc = [
+            lg for lg in driver.loi_goi if lg.cypher.startswith("CREATE CONSTRAINT")
         ]
-        return co_mat, cau_index
+        return co_mat, cau_rang_buoc
 
-    co_mat, cau_index = asyncio.run(chay())
+    co_mat, cau_rang_buoc = asyncio.run(chay())
     assert co_mat == [True, True, True]
-    assert cau_index, "chưa có câu tạo index nào cho graph"
-    assert f"node_id_{khong_gian}" in cau_index[0].cypher
+    assert cau_rang_buoc, "chưa có câu tạo ràng buộc nào cho graph"
+    assert f"id_duy_nhat_{khong_gian}" in cau_rang_buoc[0].cypher
+    assert "IS UNIQUE" in cau_rang_buoc[0].cypher
 
 
 def test_khoi_tao_thieu_ngu_canh_la_fail_closed(workspace_dir):

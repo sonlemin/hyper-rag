@@ -169,8 +169,23 @@ def test_khoan_39_ngu_canh_he_thong_van_doc_mo_ta_nguyen_van(khong_gian, policy)
 
 
 def test_get_node_edges_khong_ke_lan_can_ngoai_quyen(khong_gian, policy):
-    """Lân cận ngoài quyền vắng mặt trong danh sách cạnh, không chỉ vắng nội dung."""
+    """Lân cận ngoài quyền vắng mặt trong danh sách cạnh, không chỉ vắng nội dung.
+
+    Setup đổi so với story 1.4 vì luật hợp nhất khóa của story 2.1. Bản cũ hỏi
+    từ phía `App01` - một entity nằm trên cả HE-01 (runbook) lẫn HE-02
+    (bao_cao_su_co) - và dựa vào last-write-wins để `App01` mang khóa runbook.
+    Nay `App01` mang khóa hạn chế nhất trong hai nguồn của nó, nên với bảng nhị
+    phân `tech_support` không thấy chính `App01` và câu hỏi cũ trả rỗng vì một
+    lý do khác hẳn. Bản mới hỏi từ phía node hyperedge runbook và nối vào đó
+    một entity chỉ thuộc HE-02, đúng hình dạng "node thấy được, lân cận thì
+    không" mà test này đo.
+
+    Hệ quả của luật hợp nhất cũng được ghim luôn ở đây: `App01` biến khỏi danh
+    sách lân cận của chính hyperedge runbook. Đó là giá phải trả của "hạn chế
+    nhất" (FR-11) và nó phải nhìn thấy được, không nằm im trong một docstring.
+    """
     policy_nhi_phan = load_policy(oracle.POLICY_NHI_PHAN)
+    chi_cua_he_02 = THEO_ID["HE-02"]["slots"]["cause"]
 
     async def chay():
         driver = Neo4jGhiLai()
@@ -181,12 +196,117 @@ def test_get_node_edges_khong_ke_lan_can_ngoai_quyen(khong_gian, policy):
                     scope=he["scope"], content_type=he["content_type"]
                 ):
                     await nap_hyperedge(adapter, he)
+            # Cạnh nối thêm dưới nhãn runbook: hyperedge runbook có một lân cận
+            # mang khóa bao_cao_su_co, tức ngoài quyền của `tech_support`.
+            with ingest_label(scope="noi_bo", content_type="runbook"):
+                await adapter.upsert_edge(
+                    "rel-HE-01", chi_cua_he_02, {"weight": 1.0, "slot": "cause"}
+                )
         with use_context(vai(policy_nhi_phan, "tech_support", khong_gian)):
-            cac_cap = await adapter.get_node_edges("App01")
-        # App01 nối cả HE-01 (runbook, thấy) lẫn HE-02 (bao_cao_su_co, L0).
-        assert [c[1] for c in cac_cap] == ["rel-HE-01"]
+            cac_cap = await adapter.get_node_edges("rel-HE-01")
+        return [c[1] for c in cac_cap]
 
-    asyncio.run(chay())
+    lan_can = asyncio.run(chay())
+    assert chi_cua_he_02 not in lan_can, "lân cận ngoài quyền phải vắng mặt hẳn"
+    assert "App01" not in lan_can, (
+        "App01 đa nguồn nay mang khóa hạn chế nhất, nên nó cũng ngoài quyền"
+    )
+    # Các entity chỉ thuộc HE-01 thì vẫn còn: cửa lọc là khóa của từng lân cận,
+    # không phải một phép cắt cả danh sách.
+    assert THEO_ID["HE-01"]["slots"]["condition"] in lan_can
+
+
+def test_ngu_canh_he_thong_doc_duoc_hyperedge_da_hop_nhat_ra_khong_khoa(
+    khong_gian, policy
+):
+    """Ingest phải đọc lại được một hyperedge vừa hợp nhất ra "không khóa".
+
+    Hồi quy cho một lỗi mà story 2.1 tự tạo ra và bộ test adapter không bắt
+    được - nó lộ ra ở đường `ainsert` thật. `_khoa_hyperedge` fail-closed khi
+    node hyperedge không mang khóa, đúng như nó phải làm cho một vai người
+    dùng; nhưng nó được gọi **trước** cửa che, nên nó nổ cả dưới cờ system, nơi
+    không có gì để che. Hậu quả: `extract_entities` đọc lại cạnh của chính
+    hyperedge nó vừa ghi (`_merge_edges_then_upsert` -> `get_edge`) và cả đợt
+    nạp hỏng - tức luật hợp nhất tự chặn đường ingest của mình.
+
+    Đường vai người dùng không đổi: node không khóa vẫn bị mệnh đề
+    `filter_key IN $keys` lọc ra trước khi tới được cửa đó.
+    """
+
+    async def chay():
+        driver = Neo4jGhiLai()
+        adapter = dung_adapter(driver)
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            await adapter.initialize()
+            # Cùng một hyperedge vào từ hai scope: node của nó thành không khóa.
+            for scope, loai in (
+                ("noi_bo", "runbook"),
+                ("khach_hang_a", "bao_cao_su_co"),
+            ):
+                with ingest_label(scope=scope, content_type=loai):
+                    await adapter.upsert_node("rel-X", {"role": "hyperedge"})
+                    await adapter.upsert_node("App01", {"role": "entity"})
+                    await adapter.upsert_edge(
+                        "rel-X", "App01", {"weight": 1.0, "slot": "subject"}
+                    )
+            khoa = await adapter.khoa_hien_co(["rel-X"])
+            # Ba đường đọc mà `extract_entities` đi qua, dưới cờ system.
+            return (
+                khoa["rel-X"],
+                await adapter.get_node("rel-X"),
+                await adapter.get_edge("rel-X", "App01"),
+                await adapter.get_node_edges("rel-X"),
+            )
+
+    khoa, node, canh, lan_can = asyncio.run(chay())
+    assert khoa is None, "tiền đề của test: hyperedge đã hợp nhất ra không khóa"
+    assert node is not None and FILTER_KEY_FIELD not in node
+    assert canh is not None
+    assert [c[1] for c in lan_can] == ["App01"]
+
+
+def test_vai_nguoi_dung_van_khong_toi_duoc_hyperedge_khong_khoa(
+    khong_gian, policy
+):
+    """Chiều ngược của test trên: nới cửa cho cờ system không nới cho vai nào.
+
+    Cặp đối chứng bắt buộc. Nếu sửa "đọc thô không cần khóa che" mà lỡ nới cả
+    đường vai người dùng thì một hyperedge đa nguồn khác scope trở thành thứ
+    mọi vai đọc được - đúng ngược với thứ luật hợp nhất dựng ra.
+    """
+
+    async def chay():
+        driver = Neo4jGhiLai()
+        adapter = dung_adapter(driver)
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            await adapter.initialize()
+            for scope, loai in (
+                ("noi_bo", "runbook"),
+                ("khach_hang_a", "bao_cao_su_co"),
+            ):
+                with ingest_label(scope=scope, content_type=loai):
+                    await adapter.upsert_node("rel-X", {"role": "hyperedge"})
+                    await adapter.upsert_node("App01", {"role": "entity"})
+                    await adapter.upsert_edge(
+                        "rel-X", "App01", {"weight": 1.0, "slot": "subject"}
+                    )
+        do = {}
+        for ten_vai in ("tech_support", "devops"):
+            with use_context(vai(policy, ten_vai, khong_gian)):
+                do[ten_vai] = (
+                    await adapter.get_node("rel-X"),
+                    await adapter.get_edge("rel-X", "App01"),
+                    await adapter.get_node_edges("rel-X"),
+                    await adapter.node_degree("rel-X"),
+                )
+        return do
+
+    do = asyncio.run(chay())
+    for ten_vai, (node, canh, lan_can, bac) in do.items():
+        assert node is None, ten_vai
+        assert canh is None, ten_vai
+        assert lan_can == [], ten_vai
+        assert bac == 0, ten_vai
 
 
 def test_tap_khoa_rong_khong_cham_neo4j(khong_gian, tmp_path):

@@ -112,6 +112,27 @@ def ngu_canh_quyen_sach():
 
 
 @pytest.fixture(autouse=True)
+def bang_hang_sach():
+    """Xóa bảng hạng độ nhạy đã nhớ, trước và sau mỗi test.
+
+    `adapters.sensitivity_loader` nhớ bảng mặc định sau lần nạp đầu - đúng ngữ
+    nghĩa "đóng băng trước ingest" ở đường sản phẩm, nhưng trong một tiến trình
+    test thì nó là trạng thái toàn cục sống qua ranh giới test. Một test ghi
+    một bảng khác vào chỗ đó (hay chỉ nạp trước) làm test sau chạy trên bảng
+    của test trước, và kết quả phụ thuộc thứ tự chạy - đúng kiểu test bảo mật
+    xanh vì lý do sai.
+
+    Cùng kỷ luật đang áp cho contextvar quyền và nhãn ingest, chỉ khác chỗ nó
+    là một biến module nên xóa được thẳng.
+    """
+    from adapters import sensitivity_loader
+
+    sensitivity_loader._MAC_DINH = None
+    yield
+    sensitivity_loader._MAC_DINH = None
+
+
+@pytest.fixture(autouse=True)
 def nhan_ingest_sach():
     """Canh nhãn ingest không rò ra ngoài phạm vi một test.
 

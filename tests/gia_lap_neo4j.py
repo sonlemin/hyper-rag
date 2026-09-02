@@ -30,7 +30,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from neo4j.exceptions import ServiceUnavailable
+from neo4j.exceptions import ClientError, ConstraintError, ServiceUnavailable
 
 from adapters.neo4j import NODE_ID_FIELD, ROLE_FIELD, SLOT_FIELD, SPACE_FIELD
 from core.keys import FILTER_KEY_FIELD
@@ -38,6 +38,13 @@ from core.keys import FILTER_KEY_FIELD
 # --- Đọc mệnh đề lọc ra khỏi câu Cypher ---------------------------------
 
 _LOC_KHOA = re.compile(rf"(\w+)\.{FILTER_KEY_FIELD} IN \$keys")
+# Nhánh nới của AD-9/AD-5: biến lân cận cho node **vai entity không khóa** đi
+# qua. Đọc thẳng từ câu Cypher như mọi mệnh đề khác, nên biến nào *không* khai
+# nhánh này thì ở đây cũng không được nới - quên nới ở adapter là kết quả sai,
+# không phải một câu văn khác đi.
+_CHO_KHONG_KHOA = re.compile(
+    rf"(\w+)\.{FILTER_KEY_FIELD} IS NULL AND \1\.{ROLE_FIELD} = \$vai_entity"
+)
 _LOC_SPACE = re.compile(rf"(\w+)\.{SPACE_FIELD} = \$space")
 # Mọi biến mở ngoặc trong phần pattern, *kể cả biến không nhãn*: `(n)` trong
 # một OPTIONAL MATCH cũng phải là biến đã bị lọc ở trên, nếu không nó là một
@@ -52,6 +59,11 @@ _NHAN = re.compile(r"`([^`]+)`|:([A-Za-z]\w*)")
 def bien_loc_khoa(cypher: str) -> set[str]:
     """Các biến có điều kiện `x.filter_key IN $keys` trong câu."""
     return set(_LOC_KHOA.findall(cypher))
+
+
+def bien_cho_khong_khoa(cypher: str) -> set[str]:
+    """Các biến được phép nhận node vai entity không khóa."""
+    return set(_CHO_KHONG_KHOA.findall(cypher))
 
 
 def bien_loc_space(cypher: str) -> set[str]:
@@ -97,6 +109,30 @@ def canh_moi_bien_deu_bi_loc(cypher: str, *, co_khoa: bool = True) -> None:
         assert not thua, f"ngữ cảnh hệ thống mà vẫn lọc khóa: {sorted(thua)}"
 
 
+def _loi_rang_buoc(space: str, id_node: str) -> ConstraintError:
+    """`ConstraintError` đúng hình dạng mà Neo4j 5.26 thật dội ra.
+
+    Đo trên container ngày 01/09/2026: `code` là
+    `Neo.ClientError.Schema.ConstraintValidationFailed` và thông điệp là
+    "Node(39) already exists with label `{space}` and property `id` = 'X'" -
+    nó mang nhãn và tên thuộc tính trong nháy ngược, và **không** mang tên ràng
+    buộc. Adapter lọc theo đúng hai thứ đó trước khi kết luận "id trùng khác
+    vai", nên kho giả phải nói cùng một ngôn ngữ; nếu không thì nhánh lọc ấy
+    chỉ được đo trên container.
+
+    Đặt thẳng hai thuộc tính riêng của `Neo4jError` thay vì gọi `hydrate` hay
+    gán `.message`: cả hai đường kia đều phát `DeprecationWarning` của driver,
+    tức bộ giả lập đi một đường mà `vendor/` không đi.
+    """
+    loi = ConstraintError()
+    loi._neo4j_code = "Neo.ClientError.Schema.ConstraintValidationFailed"
+    loi._message = (
+        f"Node(0) already exists with label `{space}` and property"
+        f" `{NODE_ID_FIELD}` = '{id_node}'"
+    )
+    return loi
+
+
 # --- Graph hai phía trong bộ nhớ ----------------------------------------
 
 
@@ -116,12 +152,20 @@ class CanhGia:
 
 @dataclass
 class LoiGoiCypher:
-    """Một câu Cypher đã gửi kèm tham số, loại câu và các dòng nó trả về."""
+    """Một câu Cypher đã gửi kèm tham số, loại câu và các dòng nó trả về.
+
+    Từ story 2.1 mang thêm hai thứ mà adapter phải khai tường minh: câu này đi
+    trong transaction đọc hay ghi (`kieu_giao_dich`), và phiên mở trên database
+    nào (`database`). Không ghi lại thì "dùng `execute_write` cho đường ghi" và
+    "truyền `database=`" là hai câu trong docstring mà không gì canh.
+    """
 
     cypher: str
     params: dict
     loai: str = ""
     dong: list[dict] = field(default_factory=list)
+    kieu_giao_dich: str = ""
+    database: str | None = None
 
 
 class KetQuaGia:
@@ -141,9 +185,31 @@ class KetQuaGia:
         return sinh()
 
 
-class PhienGia:
-    def __init__(self, kho: "Neo4jGhiLai"):
+class GiaoDichGia:
+    """Đứng thay `AsyncManagedTransaction`: chỉ có `run`, đúng thứ adapter dùng."""
+
+    def __init__(self, kho: "Neo4jGhiLai", kieu: str, database: str | None):
         self._kho = kho
+        self._kieu = kieu
+        self._database = database
+
+    async def run(self, cypher: str, **params) -> KetQuaGia:
+        return self._kho._chay(
+            cypher, params, kieu_giao_dich=self._kieu, database=self._database
+        )
+
+
+class PhienGia:
+    """Đứng thay `AsyncSession`: hai cửa transaction có quản lý.
+
+    Cố ý **không** có `run`: adapter đi qua `execute_read`/`execute_write` từ
+    story 2.1, nên giữ lại cửa autocommit ở đây là để một lần quay lui lặng lẽ
+    vẫn xanh.
+    """
+
+    def __init__(self, kho: "Neo4jGhiLai", database: str | None):
+        self._kho = kho
+        self._database = database
 
     async def __aenter__(self):
         return self
@@ -151,14 +217,22 @@ class PhienGia:
     async def __aexit__(self, *loi):
         return False
 
-    async def run(self, cypher: str, **params) -> KetQuaGia:
-        return self._kho._chay(cypher, params)
+    async def execute_read(self, cong_viec):
+        return await cong_viec(GiaoDichGia(self._kho, "read", self._database))
+
+    async def execute_write(self, cong_viec):
+        return await cong_viec(GiaoDichGia(self._kho, "write", self._database))
 
 
 class Neo4jGhiLai:
     """Driver giả: nhật ký Cypher cộng một graph hai phía trong bộ nhớ."""
 
-    def __init__(self, so_lan_chua_san_sang: int = 0, loi_ket_noi=None):
+    def __init__(
+        self, so_lan_chua_san_sang: int = 0, loi_ket_noi=None, nhat_ky_chung=None
+    ):
+        # Nhật ký dùng chung với client vector giả, khi test cần *thứ tự giữa
+        # hai kho*; xem docstring của field cùng tên ở `tests/gia_lap_qdrant.py`.
+        self.nhat_ky_chung = nhat_ky_chung
         self.loi_goi: list[LoiGoiCypher] = []
         self.nodes: dict[tuple[str, str], NodeGia] = {}
         self.canh: list[CanhGia] = []
@@ -171,8 +245,8 @@ class Neo4jGhiLai:
 
     # --- Phần hợp đồng của AsyncDriver ---------------------------------
 
-    def session(self, **_):
-        return PhienGia(self)
+    def session(self, database=None, **_):
+        return PhienGia(self, database)
 
     async def verify_connectivity(self):
         """Hỏng đúng `so_lan_chua_san_sang` lần đầu rồi mới sẵn sàng (bẫy A2)."""
@@ -229,14 +303,42 @@ class Neo4jGhiLai:
 
     # --- Diễn giải Cypher ----------------------------------------------
 
-    def _chay(self, cypher: str, params: dict) -> KetQuaGia:
-        lg = LoiGoiCypher(cypher=cypher, params=dict(params))
+    def _chay(
+        self,
+        cypher: str,
+        params: dict,
+        *,
+        kieu_giao_dich: str = "",
+        database: str | None = None,
+    ) -> KetQuaGia:
+        lg = LoiGoiCypher(
+            cypher=cypher,
+            params=dict(params),
+            kieu_giao_dich=kieu_giao_dich,
+            database=database,
+        )
         self.loi_goi.append(lg)
         lg.loai, lg.dong = self._dien_giai(cypher, params)
+        self._canh_kieu_giao_dich(lg)
+        if self.nhat_ky_chung is not None:
+            self.nhat_ky_chung.append(("graph", lg.loai))
         return KetQuaGia(lg.dong)
 
+    # Loại câu chỉ chạy được trong transaction ghi. Neo4j thật từ chối chúng
+    # trong `execute_read` bằng `ForbiddenOnReadOnlyDatabase`/`ClientError`;
+    # driver giả phải từ chối luôn, nếu không thì bỏ `ghi=True` ở một đường ghi
+    # chỉ đỏ được trên container - tức `uv run pytest` mất một cửa canh.
+    LOAI_PHAI_GHI: tuple[str, ...] = ("ghi:",)
+
+    def _canh_kieu_giao_dich(self, lg: "LoiGoiCypher") -> None:
+        if lg.kieu_giao_dich == "read" and lg.loai.startswith(self.LOAI_PHAI_GHI):
+            raise ClientError(
+                "giả lập: câu ghi không chạy được trong transaction đọc"
+                f" (execute_read). Đường ghi phải khai `ghi=True`:\n{lg.cypher}"
+            )
+
     def _dien_giai(self, cypher: str, params: dict) -> tuple[str, list[dict]]:
-        if cypher.startswith("CREATE INDEX"):
+        if cypher.startswith("CREATE CONSTRAINT") or cypher.startswith("DROP INDEX"):
             return "ghi:index", []
         if "MERGE (n:" in cypher:
             return "ghi:node", self._ghi_node(cypher, params)
@@ -261,6 +363,12 @@ class Neo4jGhiLai:
             return "doc:get_edge", self._doc_canh(cypher, params)
         if "AS lan_can" in cypher:
             return "doc:get_node_edges", self._doc_lan_can(cypher, params)
+        if "AS khoa_node" in cypher:
+            # Cố ý **không** mang tiền tố `doc:`: đây là bước đọc khóa của
+            # read-merge-write, chạy dưới cờ system trên đường *ghi*. Gộp nó
+            # vào `cac_cau_doc()` là làm mọi lớp assert "mọi câu đọc đều lọc
+            # khóa quyền" nhận thêm một câu mà theo thiết kế không lọc.
+            return "ghi:doc-khoa", self._doc_khoa(cypher, params)
         raise AssertionError(f"driver giả không biết câu Cypher này:\n{cypher}")
 
     # --- Ghi ------------------------------------------------------------
@@ -281,10 +389,31 @@ class Neo4jGhiLai:
 
     def _ghi_node(self, cypher: str, params: dict) -> list[dict]:
         khoa = (params["space"], params["id"])
-        node = self.nodes.setdefault(khoa, NodeGia())
-        node.nhan |= self._nhan_cua_merge(cypher)
+        nhan_moi = self._nhan_cua_merge(cypher)
+        node = self.nodes.get(khoa)
+        if node is not None and not (nhan_moi <= node.nhan):
+            # Ràng buộc duy nhất `id` theo `space` (story 2.1). `MERGE` theo một
+            # nhãn vai khác không khớp node đã có nên nó tạo node mới, và node
+            # mới vi phạm `id IS UNIQUE`. Kho giả phải dựng lại đúng chỗ đó, nếu
+            # không thì bộ test chạy trên một Neo4j *không có* ràng buộc và ca
+            # id trùng khác vai chỉ đỏ trên container thật.
+            # Thông điệp dựng theo đúng hình dạng của Neo4j 5.26 thật (đo
+            # ngày 01/09/2026): nó mang nhãn và tên thuộc tính trong dấu nháy
+            # ngược, và **không** mang tên ràng buộc. Adapter lọc theo đúng hai
+            # thứ đó, nên kho giả phải nói cùng một ngôn ngữ - nếu không thì
+            # nhánh lọc chỉ được đo trên container.
+            raise _loi_rang_buoc(params["space"], params["id"])
+        if node is None:
+            node = self.nodes.setdefault(khoa, NodeGia())
+        node.nhan |= nhan_moi
         node.props[NODE_ID_FIELD] = params["id"]
         self._ap_gan(node.props, cypher, params, "n")
+        # `SET n.x = null` gỡ hẳn thuộc tính trong Neo4j, không để lại một giá
+        # trị null. Ca "không khóa" của story 2.1 đi đúng đường này, và nếu kho
+        # giả giữ lại `filter_key: None` thì mệnh đề `IN $keys` ở đây vẫn trượt
+        # nhưng `properties(n)` lại trả về một trường mà server thật không có.
+        for ten in [k for k, v in node.props.items() if v is None]:
+            del node.props[ten]
         return []
 
     def _ghi_canh(self, cypher: str, params: dict) -> list[dict]:
@@ -324,7 +453,15 @@ class Neo4jGhiLai:
         if bien in bien_loc_space(cypher) and props.get(SPACE_FIELD) != params["space"]:
             return False
         if bien in bien_loc_khoa(cypher):
-            if props.get(FILTER_KEY_FIELD) not in set(params.get("keys") or ()):
+            trong_tap = props.get(FILTER_KEY_FIELD) in set(params.get("keys") or ())
+            # Nhánh AD-9: node vai entity không khóa đi qua được, nhưng chỉ ở
+            # biến mà câu Cypher *có* khai nhánh ấy.
+            khong_khoa_duoc_phep = (
+                bien in bien_cho_khong_khoa(cypher)
+                and props.get(FILTER_KEY_FIELD) is None
+                and props.get(ROLE_FIELD) == params.get("vai_entity")
+            )
+            if not (trong_tap or khong_khoa_duoc_phep):
                 return False
         return True
 
@@ -389,6 +526,19 @@ class Neo4jGhiLai:
                 "vai_b": b.props.get(ROLE_FIELD),
                 "khoa_b": b.props.get(FILTER_KEY_FIELD),
             }
+        ]
+
+    def _doc_khoa(self, cypher: str, params: dict) -> list[dict]:
+        """Bước đọc khóa của read-merge-write: quét theo danh sách id."""
+        return [
+            {
+                "id_node": id_node,
+                "khoa_node": node.props.get(FILTER_KEY_FIELD),
+            }
+            for (space, id_node), node in self.nodes.items()
+            if space == params["space"]
+            and id_node in params["ids"]
+            and self._hop_le(cypher, params, "n", node.props)
         ]
 
     def _doc_lan_can(self, cypher: str, params: dict) -> list[dict]:

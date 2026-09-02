@@ -30,16 +30,27 @@ from dataclasses import dataclass
 
 from hypergraphrag.base import BaseGraphStorage
 from neo4j import AsyncDriver, AsyncGraphDatabase
-from neo4j.exceptions import AuthError, ConfigurationError, ServiceUnavailable
+from neo4j.exceptions import (
+    AuthError,
+    ConfigurationError,
+    ConstraintError,
+    Neo4jError,
+    ServiceUnavailable,
+)
 
-from adapters.ingest_labels import ingest_key_for_write
+from adapters.doi_chieu import KHO_GRAPH, ghi_vao_so, ten_kho_vector
+from adapters.ingest_labels import (
+    bat_buoc_ngu_canh_he_thong,
+    ingest_key_for_write,
+)
 from adapters.mask_contract import (
     HyperedgeKeyMissing,
     MaskContractViolated,
     kiem_ket_qua_che,
 )
+from adapters.sensitivity_loader import bang_hang_cho
 from core.ids import normalize_id, validate_space
-from core.keys import FILTER_KEY_FIELD
+from core.keys import CHUA_GHI, FILTER_KEY_FIELD
 # `SLOT_FIELD` là hợp đồng giữa tầng che và adapter này: nhãn vai trên cạnh
 # Neo4j và tên trường mà tầng che đọc để biết bản ghi khai vai gì phải là một.
 # Khai bản thứ hai ở đây là hai hằng trôi dạt được, và trôi dạt nghĩa là tên
@@ -48,6 +59,7 @@ from core.masking import (
     MASK_NAMESPACE,
     MASK_REASON_L2_ONLY,
     NEIGHBOR_FIELD,
+    NEIGHBOR_NO_KEY_FIELD,
     SLOT_FIELD,
     dau_che_truong,
     la_dau_che,
@@ -60,6 +72,7 @@ from core.slots import SLOT_ROLE_SET
 NEO4J_URI_KEY = "neo4j_uri"
 NEO4J_USERNAME_KEY = "neo4j_username"
 NEO4J_PASSWORD_KEY = "neo4j_password"
+NEO4J_DATABASE_KEY = "neo4j_database"
 HEALTH_RETRIES_KEY = "neo4j_health_retries"
 HEALTH_DELAY_KEY = "neo4j_health_delay"
 
@@ -105,6 +118,13 @@ HEALTH_DELAY_MAC_DINH = 0.5
 # thay vì viết bản thứ hai, cùng luật với hai hằng health-check ở trên.
 NEO4J_USERNAME_MAC_DINH = "neo4j"
 
+# Database mặc định của Neo4j Community. Community chỉ có một database nên giá
+# trị này gần như không đổi, nhưng truyền `database=` tường minh thì mọi phiên
+# nói rõ nó làm việc trên đâu thay vì dựa vào mặc định ngầm của driver - và đó
+# là điều kiện để đường lùi Enterprise (một database mỗi `space`) sau này chỉ
+# phải đổi cấu hình. Khoản nợ có địa chỉ 2.1, ledger story 1.4.
+NEO4J_DATABASE_MAC_DINH = "neo4j"
+
 
 class Neo4jUnavailable(RuntimeError):
     """Chờ hết hạn mà Neo4j vẫn chưa nhận kết nối.
@@ -137,6 +157,40 @@ class NodeRoleInvalid(ValueError):
     code = "NODE_ROLE_INVALID"
 
 
+class NodeIdRoleConflict(RuntimeError):
+    """Cùng một id ghi một lần dưới vai hyperedge, một lần dưới vai entity.
+
+    `MERGE (n:{space}:{nhan} {id})` khóa theo *cả* nhãn, nên trước story 2.1
+    hai vai khác nhau cho hai node cùng id: `get_node` (LIMIT 1) trả node nào là
+    không xác định và `node_degree` gộp cạnh của cả hai. Ràng buộc duy nhất
+    `id` theo `space` đóng cửa đó, và cửa đóng lại phải *nổ* chứ không gộp: gộp
+    hai vai vào một node là trộn một hyperedge với một entity, hai thứ mà tầng
+    che xử lý bằng hai luật khác nhau.
+
+    Đây cũng là điều kiện nền của luật hợp nhất khóa: read-merge-write đọc
+    "khóa của node có id này", câu đó chỉ có nghĩa khi một id là một node.
+
+    `code` là mã lỗi ổn định để test assert trên `code` (AD-8).
+    """
+
+    code = "NODE_ID_ROLE_CONFLICT"
+
+
+class NodeIdConstraintUnbuildable(RuntimeError):
+    """Không dựng được ràng buộc duy nhất vì kho *đã* có id trùng khác vai.
+
+    Ca thật của một kho nạp bằng bản trước story 2.1: `MERGE` khóa theo cả nhãn
+    nên cùng một id có thể đang là hai node. Neo4j từ chối `CREATE CONSTRAINT`
+    khi dữ liệu hiện có vi phạm, và nó dội một lỗi thô không nói phải làm gì.
+    Đổi thành mã lỗi của dự án kèm đúng một câu chỉ việc: dọn id trùng (hoặc
+    re-ingest cả `space`) rồi chạy lại bước khởi động.
+
+    `code` là mã lỗi ổn định để test assert trên `code` (AD-8).
+    """
+
+    code = "NODE_ID_CONSTRAINT_UNBUILDABLE"
+
+
 class EdgeEndpointMissing(RuntimeError):
     """Ghi cạnh mà một trong hai đầu chưa có trong graph.
 
@@ -155,6 +209,12 @@ NHAN_THEO_VAI = {ROLE_HYPEREDGE: LABEL_HYPEREDGE, ROLE_ENTITY: LABEL_ENTITY}
 @dataclass
 class Neo4jACLGraphStorage(BaseGraphStorage):
     """`BaseGraphStorage` của upstream, ruột là Neo4j có WHERE tiêm theo khóa."""
+
+    # Bước đối chiếu hai kho hỏi thuộc tính này (`adapters/doi_chieu.py`).
+    # `False` vì ca hợp nhất ra "không khóa" giữ node lại và chỉ gỡ thuộc tính
+    # khóa, nên "vắng" ở đây đúng là chưa từng ghi. Không chú kiểu: annotation
+    # sẽ biến nó thành field của dataclass.
+    VANG_LA_MO_HO = False
 
     # Driver tiêm sẵn, tùy chọn. Không tiêm thì adapter tự mở từ `global_config`.
     # Vòng đời kết nối (một driver dùng chung, đóng lúc tắt tiến trình) chốt ở
@@ -175,6 +235,12 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
         self._tu_mo_driver = self.neo4j_driver is None
         self._da_san_sang = False
         self._khoa_san_sang = asyncio.Lock()
+        # Database của mọi phiên, truyền tường minh thay vì để driver dùng mặc
+        # định ngầm của server.
+        self._database = cau_hinh.get(NEO4J_DATABASE_KEY) or NEO4J_DATABASE_MAC_DINH
+        # Bảng hạng độ nhạy, nạp lúc dựng adapter: cùng nguồn với hai adapter
+        # kia, nên ba đường ghi không chạy trên hai bảng hạng khác nhau.
+        self._bang_hang = bang_hang_cho(cau_hinh)
 
     @staticmethod
     def _so_duong(cau_hinh, khoa: str, mac_dinh, kieu, *, toi_thieu):
@@ -279,10 +345,10 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
         """Mệnh đề lọc của một biến - node hay cạnh: `space` và khóa cùng chỗ.
 
         Cạnh cũng mang khóa riêng, và khóa đó có thể lệch khóa của hai đầu:
-        khóa node là last-write-wins theo tài liệu nạp sau (khoản nợ 2.1), nên
-        một cạnh sinh từ tài liệu hạn chế có thể nối hai node mà vai đang hỏi
-        vẫn thấy. Không lọc cạnh là để lộ `source_id` và vai slot của một fact
-        ngoài quyền.
+        khóa node là kết quả hợp nhất đa nguồn (story 2.1) còn khóa cạnh là
+        khóa của tài liệu ghi cạnh đó, nên một cạnh sinh từ tài liệu hạn chế có
+        thể nối hai node mà vai đang hỏi vẫn thấy. Không lọc cạnh là để lộ
+        `source_id` và vai slot của một fact ngoài quyền.
 
         Ngữ cảnh hệ thống đọc thô nên chỉ còn `space` - ingest phải thấy hết
         để hợp nhất khóa, đó là ngoại lệ có đặc tả của AD-3.
@@ -290,6 +356,40 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
         dieu_kien = f"{bien}.{SPACE_FIELD} = $space"
         if not context.bypass_filter:
             dieu_kien += f" AND {bien}.{FILTER_KEY_FIELD} IN $keys"
+        return dieu_kien
+
+    @staticmethod
+    def _dieu_kien_lan_can(bien: str, context) -> str:
+        """Mệnh đề lọc của biến **lân cận** trong `get_node_edges` (AD-9, AD-5).
+
+        Khác `_dieu_kien` đúng một nhánh: node **vai entity không khóa** cũng đi
+        qua. AD-5 chốt "node entity không khóa chỉ đạt tới được qua hyperedge đã
+        lọc và tên luôn bị che cứng qua tầng AD-9", và đây là chỗ cài nửa đầu
+        câu đó; nửa sau nằm ở `core/masking.py`.
+
+        **Nới đúng một đường, và nó không phải một đường mới.** Lân cận tới được
+        chỉ vì lời gọi đã bắt đầu từ một node mà vai *được* thấy: biến nguồn `n`
+        và biến cạnh `r` giữ nguyên điều kiện chặt, nên không có cách nào bắt
+        đầu từ một node ngoài quyền để với tới đây. Sáu đường đọc còn lại
+        (`has_node`, `has_edge`, `get_node`, `get_edge`, `node_degree`,
+        `edge_degree`) **không** dùng mệnh đề này - AD-9 chỉ nói về đường làm
+        giàu lân cận của `get_node_edges`, nên một node không khóa vẫn không tra
+        thẳng được, không đếm vào degree, và không tự nó là một cạnh đọc được.
+
+        Ràng thêm `role = entity` chứ không nới cho mọi node không khóa: một
+        node **hyperedge** không khóa là một fact mà không vai nào được thấy, và
+        cho nó vào danh sách lân cận là kể ra rằng fact đó tồn tại. Chỉ entity -
+        thứ mà AD-5 gọi tên - mới đi qua.
+
+        Ngữ cảnh hệ thống đọc thô nên chỉ còn `space`, như mọi đường khác.
+        """
+        dieu_kien = f"{bien}.{SPACE_FIELD} = $space"
+        if not context.bypass_filter:
+            dieu_kien += (
+                f" AND ({bien}.{FILTER_KEY_FIELD} IN $keys"
+                f" OR ({bien}.{FILTER_KEY_FIELD} IS NULL"
+                f" AND {bien}.{ROLE_FIELD} = $vai_entity))"
+            )
         return dieu_kien
 
     def _tham_so_loc(self, context) -> dict:
@@ -309,13 +409,36 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
         """
         return context.bypass_filter or bool(context.keys_for(GRAPH_NAMESPACE))
 
-    async def _chay(self, cypher: str, **tham_so) -> list[dict]:
-        """Một chỗ duy nhất gửi Cypher đi, để không có đường đọc thứ hai."""
+    async def _chay(self, cypher: str, *, ghi: bool = False, **tham_so) -> list[dict]:
+        """Một chỗ duy nhất gửi Cypher đi, để không có đường đọc thứ hai.
+
+        Transaction có quản lý (`execute_read`/`execute_write`) chứ không phải
+        `session.run` autocommit, và `database=` truyền tường minh - hai khoản
+        nợ có địa chỉ 2.1 từ ledger story 1.4. Cái được là retry của driver cho
+        lỗi thoáng qua (`TransientError`, đổi leader): với autocommit thì một
+        đợt nạp corpus dài gặp một lần đổi leader là hỏng cả đợt, còn ở đây
+        driver chạy lại chính hàm công việc.
+
+        Vì driver có thể chạy lại `cong_viec`, hàm đó phải **đọc hết** kết quả
+        bên trong transaction và không được mang trạng thái nào ra ngoài. Nó
+        đúng là như vậy: dựng list rồi trả, không đụng gì của adapter.
+
+        `ghi` chia hai đường vì chúng khác nhau ở phía server chứ không chỉ ở
+        tên: `execute_read` đi tới replica đọc được và không mở transaction ghi.
+        Mặc định là đọc, nên một đường đọc mới quên khai vẫn an toàn; đường ghi
+        thì có đúng ba nơi và chúng khai tường minh.
+        """
         await self._dam_bao_san_sang()
+
+        async def cong_viec(tx):
+            ket_qua = await tx.run(cypher, **tham_so)
+            return [dict(dong) async for dong in ket_qua]
+
         try:
-            async with self._driver.session() as phien:
-                ket_qua = await phien.run(cypher, **tham_so)
-                return [dict(dong) async for dong in ket_qua]
+            async with self._driver.session(database=self._database) as phien:
+                if ghi:
+                    return await phien.execute_write(cong_viec)
+                return await phien.execute_read(cong_viec)
         except ServiceUnavailable:
             # Neo4j rớt giữa phiên: mở lại cửa health-check để lời gọi sau chờ
             # nó lên thay vì dội lỗi driver thô mãi. Lời gọi này vẫn hỏng - thử
@@ -326,43 +449,175 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
     # --- Ghi ---------------------------------------------------------------
 
     async def initialize(self) -> None:
-        """Index cho đúng thứ mà mọi đường đọc bắt đầu bằng: tra node theo id.
+        """Ràng buộc duy nhất `id` theo `space` - vừa là luật, vừa là index.
 
-        Index trên `filter_key` sẽ vô dụng ở đây, khác hẳn phía Qdrant: mọi câu
-        đọc đều mở đầu bằng `MATCH (n:{space} {id: $id})` rồi mới lọc quyền
-        trên chính node đã tra được, còn lân cận thì tới bằng cạnh chứ không
-        bằng index. Không có index nào trên `id` thì mỗi lần đọc là một lần
-        quét toàn nhãn.
+        Ràng buộc là **điều kiện**, không phải một tính năng kèm.
+        `MERGE (n:{space}:{nhan} {id})` khóa theo cả nhãn, nên trước story 2.1
+        cùng một id ghi dưới hai vai là hai node; read-merge-write đọc "khóa của
+        node có id này" trên nền đó sẽ đọc trúng node nào là không xác định, tức
+        luật hợp nhất chạy trên dữ liệu sai. Ràng buộc phải vào trước, và id
+        trùng khác vai phải nổ (`NodeIdRoleConflict`) chứ không gộp.
 
-        Lặp lại được (`IF NOT EXISTS`), nên gọi lại lúc khởi động không hỏng gì.
+        Nó thay luôn index của story 1.7: Neo4j dựng một index hậu thuẫn cho
+        mỗi ràng buộc duy nhất, nên đường tra `MATCH (n:{space} {id: $id})` mà
+        mọi câu đọc mở đầu bằng vẫn có index - hai thứ chứ không phải hai lần.
+        Index cũ bị gỡ ở dòng đầu vì Neo4j từ chối dựng ràng buộc khi đã có một
+        index tương đương; nếu không có nó thì `initialize()` chạy trên một kho
+        đã nạp bằng bản cũ sẽ hỏng, và đó là kho duy nhất mà việc này đáng lo.
+
+        Lặp lại được (`IF EXISTS`/`IF NOT EXISTS`), nên gọi lại lúc khởi động
+        không hỏng gì.
         """
         context = current_context()
         space = self._nhan_space(context)
-        await self._chay(
-            f"CREATE INDEX `node_id_{space}` IF NOT EXISTS\n"
-            f"FOR (n:`{space}`) ON (n.{NODE_ID_FIELD})"
+        await self._chay(f"DROP INDEX `node_id_{space}` IF EXISTS", ghi=True)
+        try:
+            await self._chay(
+                f"CREATE CONSTRAINT `id_duy_nhat_{space}` IF NOT EXISTS\n"
+                f"FOR (n:`{space}`) REQUIRE n.{NODE_ID_FIELD} IS UNIQUE",
+                ghi=True,
+            )
+        except Neo4jError as loi:
+            # Kho nạp bằng bản trước story 2.1 có thể *đã* chứa id trùng khác
+            # vai - đúng ca story này mô tả. Neo4j từ chối dựng ràng buộc và
+            # dội một lỗi thô; đổi thành mã lỗi của dự án kèm câu chỉ việc,
+            # ngay ở chỗ còn biết `space` nào.
+            if not self._la_loi_du_lieu_vi_pham(loi):
+                raise
+            raise NodeIdConstraintUnbuildable(
+                f"không dựng được ràng buộc duy nhất `id` cho không gian"
+                f" {space!r}: dữ liệu hiện có đã vi phạm, tức đang có id trùng"
+                " dưới hai vai khác nhau. Dọn id trùng (hoặc re-ingest cả"
+                f" không gian) rồi chạy lại bước khởi động. Lỗi gốc: {loi}"
+            ) from loi
+
+    # Mã lỗi Neo4j cho "dựng ràng buộc hỏng vì dữ liệu hiện có đã vi phạm".
+    # Đo trên Neo4j 5.26 thật: nó là `DatabaseError`, không phải `ClientError`,
+    # nên nơi bắt phải là `Neo4jError`. Nhận theo *mã* chứ không theo thông
+    # điệp: thông điệp đổi theo phiên bản, mã thì là hợp đồng.
+    MA_DUNG_RANG_BUOC_HONG = "Neo.DatabaseError.Schema.ConstraintCreationFailed"
+
+    @classmethod
+    def _la_loi_du_lieu_vi_pham(cls, loi: Neo4jError) -> bool:
+        """Đúng lỗi "dữ liệu hiện có vi phạm ràng buộc", tách khỏi mọi lỗi khác.
+
+        Mã khác (cú pháp sai, thiếu quyền, DB chưa lên) đi tiếp nguyên trạng -
+        nuốt hết là biến một lỗi cấu hình thành một câu nói sai nguyên nhân.
+        """
+        return (getattr(loi, "code", "") or "") == cls.MA_DUNG_RANG_BUOC_HONG
+
+    async def khoa_hien_co(self, ids: list[str]) -> dict[str, object]:
+        """Khóa quyền mà graph đang giữ cho từng id node, không đọc gì khác.
+
+        Bước đọc của read-merge-write (FR-11) và cửa mà bước đối chiếu hai kho
+        hỏi. Chỉ trả trường khóa nên tầng che không áp dụng; chạy dưới cờ system
+        vì bị lọc theo khóa của tài liệu đang nạp thì nó không bao giờ thấy khóa
+        khác scope cần hợp nhất.
+
+        Ba trạng thái: `CHUA_GHI` (không có node id đó trong `space` này),
+        `KHONG_KHOA` (node ở lại mà không mang khóa - kết quả hợp nhất khóa đa
+        nguồn khác scope), hoặc một khóa thật. Graph là kho **nhớ** được trạng
+        thái không khóa: node cấu trúc ở lại để hyperedge vẫn nối được, chỉ là
+        không vai nào tới được nó vì mọi câu đọc ràng khóa trên từng biến.
+        """
+        bat_buoc_ngu_canh_he_thong("đọc khóa hiện có của kho graph")
+        if not ids:
+            return {}
+        context = current_context()
+        space = self._nhan_space(context)
+        id_chuan = [normalize_id(i) for i in ids]
+        # `ghi=True` dù đây là một câu đọc: bước đọc khóa cũ của
+        # read-merge-write phải nhìn thấy chính thứ mà lần ghi kế tiếp sẽ đè
+        # lên. `execute_read` đi tới replica đọc được, và một replica trễ một
+        # nhịp là luật hợp nhất chạy trên khóa cũ hơn khóa thật - tức nới quyền
+        # ra mà không ai biết. Đường ghi thì luôn tới leader.
+        dong = await self._chay(
+            f"MATCH (n:`{space}`)\n"
+            f"WHERE {self._dieu_kien('n', context)}"
+            f" AND n.{NODE_ID_FIELD} IN $ids\n"
+            f"RETURN n.{NODE_ID_FIELD} AS id_node,"
+            f" n.{FILTER_KEY_FIELD} AS khoa_node",
+            ghi=True,
+            ids=id_chuan,
+            **self._tham_so_loc(context),
         )
+        trong_kho = {d["id_node"]: d["khoa_node"] for d in dong}
+        return {
+            goc: trong_kho.get(chuan, CHUA_GHI)
+            for goc, chuan in zip(ids, id_chuan)
+        }
 
     async def upsert_node(self, node_id: str, node_data: dict[str, str]) -> None:
-        """Ghi một node mang khóa của phạm vi nhãn ingest đang mở.
+        """Ghi một node, khóa hợp nhất với khóa mà node đang mang (FR-11).
 
-        Hai cửa trước khi chạm kho: có ngữ cảnh (để biết `space`), có nhãn
-        ingest (để biết khóa). Không có nhãn mặc định - một node không khóa
-        hoặc vô hình vĩnh viễn, hoặc lọt vào mọi vai.
+        Ba cửa trước khi chạm kho: có ngữ cảnh (để biết `space`), node khai vai
+        hợp lệ, và có nhãn ingest dưới ngữ cảnh hệ thống với loại nội dung có
+        hạng độ nhạy. Không có nhãn mặc định - một node không khóa vì *quên
+        nhãn* thì hoặc vô hình vĩnh viễn, hoặc lọt vào mọi vai.
+
+        Read-merge-write, không phải last-write-wins: trước story 2.1 một entity
+        nạp lần sau đè khóa của lần trước, nên nhãn quyền của nó phụ thuộc thứ
+        tự nạp tài liệu. Nay khóa cũ được đọc lại rồi hợp nhất ở cửa chung.
+
+        Ca hợp nhất ra "không khóa" ghi `filter_key = null`, tức Neo4j gỡ hẳn
+        thuộc tính đó. Node **ở lại**: nó là node cấu trúc của đồ thị hai phía,
+        xóa nó là cắt cả những hyperedge hợp lệ nối vào. Không vai nào tới được
+        nó, vì mọi câu đọc ràng `n.filter_key IN $keys` trên *từng* biến và một
+        thuộc tính vắng không khớp giá trị nào.
         """
         context = current_context()
         space = self._nhan_space(context)
-        khoa = ingest_key_for_write()
         nhan = self._nhan_vai(node_data)
-        await self._chay(
-            f"MERGE (n:`{space}`:`{nhan}` {{{NODE_ID_FIELD}: $id}})\n"
-            f"SET n += $props, n.{SPACE_FIELD} = $space,"
-            f" n.{FILTER_KEY_FIELD} = $key, n.{NODE_ID_FIELD} = $id",
-            id=normalize_id(node_id),
-            props=dict(node_data),
-            space=space,
-            key=khoa,
+        id_chuan = normalize_id(node_id)
+        khoa = ingest_key_for_write(
+            (await self.khoa_hien_co([id_chuan]))[id_chuan],
+            hang=self._bang_hang.hang,
         )
+        # Ghi sổ **ý định** trước khi chạm kho, cùng luật với hai adapter kia:
+        # hỏng giữa chừng thì id phải nằm trong sổ mà khóa vắng ở kho (NFR-03).
+        ghi_vao_so(
+            id_join=id_chuan,
+            kho=KHO_GRAPH,
+            id_trong_kho=id_chuan,
+            kho_doi=ten_kho_vector(
+                "hyperedges" if nhan == LABEL_HYPEREDGE else "entities"
+            ),
+        )
+        try:
+            await self._chay(
+                f"MERGE (n:`{space}`:`{nhan}` {{{NODE_ID_FIELD}: $id}})\n"
+                f"SET n += $props, n.{SPACE_FIELD} = $space,"
+                f" n.{FILTER_KEY_FIELD} = $key, n.{NODE_ID_FIELD} = $id",
+                ghi=True,
+                id=id_chuan,
+                props=dict(node_data),
+                space=space,
+                key=khoa,
+            )
+        except ConstraintError as loi:
+            # Ràng buộc duy nhất bắt được đúng ca id trùng khác vai: MERGE theo
+            # nhãn khác không khớp node đã có nên nó *tạo mới*, và node mới vi
+            # phạm `id IS UNIQUE` trong `space`. Đổi thành mã lỗi của dự án
+            # ngay tại đây, nơi còn biết id và vai nào gây ra nó.
+            #
+            # Chỉ đổi khi đúng ràng buộc *của mình*: một ràng buộc khác do
+            # người vận hành thêm vào (trên nhãn khác, hay trên thuộc tính
+            # khác của cùng nhãn) nói về một luật khác, và đổi nó thành "id
+            # trùng khác vai" là một thông điệp sai nguyên nhân.
+            #
+            # Nhận theo nhãn `space` và thuộc tính `id` trong thông điệp, không
+            # theo tên ràng buộc: đo trên Neo4j 5.26 thật thì thông điệp là
+            # "Node(39) already exists with label `{space}` and property `id`
+            # = 'X'" - nó **không** mang tên ràng buộc, nên lọc theo tên là một
+            # nhánh không bao giờ khớp và mọi lỗi đều dội nguyên.
+            thong_diep = str(loi)
+            if f"`{space}`" not in thong_diep or f"`{NODE_ID_FIELD}`" not in thong_diep:
+                raise
+            raise NodeIdRoleConflict(
+                f"id {id_chuan!r} đã tồn tại trong không gian {space!r} dưới"
+                f" một vai khác, nay ghi lại dưới vai {node_data.get(ROLE_FIELD)!r}:"
+                " một id là một node, không gộp hai vai vào một"
+            ) from loi
 
     @staticmethod
     def _nhan_vai(node_data: dict) -> str:
@@ -383,10 +638,23 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
         khai vai vẫn ghi được: `_merge_edges_then_upsert` của upstream hiện chỉ
         gửi `weight` và `source_id`, prompt trích xuất 8 vai thuộc story 2.4.
         Cấm cạnh thiếu vai ngay bây giờ là chặn chính đường e2e của cổng M1.
+
+        **Cạnh cố ý không read-merge-write.** Luật hợp nhất của story 2.1 nói về
+        khóa của một *id*, và cạnh không có id: nó được định danh bằng cặp
+        (hyperedge, entity), tức là bằng chính hai node đã hợp nhất. Một tài
+        liệu thường hơn ghi lại cùng cạnh đó có nới khóa cạnh ra, nhưng cạnh
+        vẫn không đi tới được: cả ba đường đọc cạnh (`has_edge`, `get_edge`,
+        `get_node_edges`) đòi *cả hai* đầu qua filter, và node hyperedge thì đã
+        mang khóa hợp nhất. Đưa cạnh vào luật hợp nhất phải cân cùng lúc với
+        việc khóa MERGE của cạnh có mang `slot` hay không - khoản nợ có địa chỉ
+        story 2.4, không sửa lẻ ở đây.
         """
         context = current_context()
         space = self._nhan_space(context)
-        khoa = ingest_key_for_write()
+        # `CHUA_GHI` tường minh: cạnh cố ý không read-merge-write (lý do ở
+        # docstring trên), và cửa chung không có giá trị mặc định để một nơi
+        # gọi *quên* truyền khóa cũ không lặng lẽ quay về last-write-wins.
+        khoa = ingest_key_for_write(CHUA_GHI, hang=self._bang_hang.hang)
         props = dict(edge_data)
         vai = props.get(SLOT_FIELD)
         if vai is not None and vai not in SLOT_ROLE_SET:
@@ -400,6 +668,7 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
             f"SET r += $props, r.{SPACE_FIELD} = $space,"
             f" r.{FILTER_KEY_FIELD} = $key\n"
             "RETURN count(r) AS da_ghi",
+            ghi=True,
             src=normalize_id(source_node_id),
             tgt=normalize_id(target_node_id),
             props=props,
@@ -567,8 +836,8 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
         if not dong:
             return None
         d = dong[0]
-        khoa = self._khoa_hyperedge(
-            (d["vai_a"], d["khoa_a"]), (d["vai_b"], d["khoa_b"])
+        khoa = self._khoa_de_che(
+            context, (d["vai_a"], d["khoa_a"]), (d["vai_b"], d["khoa_b"])
         )
         return self._che(self._ban_ghi(d["thuoc_tinh_canh"]), context, khoa)
 
@@ -583,6 +852,14 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
         Tầng che nhận cả vai slot của cạnh, vì tên node lân cận điền vào một
         slot đang bị che thì phải bị che như nội dung slot (AD-9). Vì sao đường
         này là đường rò thật của Epic 1: docstring `core/masking.py`.
+
+        **Một ngoại lệ về lọc, và chỉ ở method này.** Node entity *không khóa*
+        (kết quả hợp nhất đa nguồn khác scope, AD-5) đi qua được mệnh đề lọc
+        của biến lân cận - xem `_dieu_kien_lan_can` - rồi tên nó bị che cứng ở
+        tầng che. Vai vì thế biết "có một fact ở đây mà tôi không được đọc"
+        (FR-12) thay vì thấy một hyperedge thiếu hẳn một slot. Đây là đường duy
+        nhất tới được một node không khóa; sáu method đọc còn lại giữ nguyên
+        mệnh đề chặt.
         """
         context = current_context()
         if not self._co_khoa_de_doc(context):
@@ -592,7 +869,7 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
             f"MATCH (n:`{space}` {{{NODE_ID_FIELD}: $id}})"
             f"-[r:{EDGE_TYPE}]-(m:`{space}`)\n"
             f"WHERE {self._dieu_kien('n', context)}"
-            f" AND {self._dieu_kien('m', context)}"
+            f" AND {self._dieu_kien_lan_can('m', context)}"
             f" AND {self._dieu_kien('r', context)}\n"
             f"RETURN n.{NODE_ID_FIELD} AS nguon, m.{NODE_ID_FIELD} AS lan_can,"
             f" r.{SLOT_FIELD} AS slot, n.{ROLE_FIELD} AS vai_nguon,"
@@ -600,6 +877,7 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
             f" m.{ROLE_FIELD} AS vai_lan_can,"
             f" m.{FILTER_KEY_FIELD} AS khoa_lan_can",
             id=normalize_id(source_node_id),
+            vai_entity=ROLE_ENTITY,
             **self._tham_so_loc(context),
         )
         cac_cap = []
@@ -607,7 +885,8 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
             # Vai của lân cận đọc từ chính dữ liệu, không suy ra từ vai của
             # node nguồn: suy ra là một giả định, và giả định sai ở đây nghĩa
             # là che một loại nội dung bằng luật của loại nội dung khác.
-            khoa = self._khoa_hyperedge(
+            khoa = self._khoa_de_che(
+                context,
                 (d["vai_nguon"], d["khoa_nguon"]),
                 (d["vai_lan_can"], d["khoa_lan_can"]),
             )
@@ -630,6 +909,11 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
                     "node_id": d["nguon"],
                     NEIGHBOR_FIELD: d["lan_can"],
                     SLOT_FIELD: vai_slot,
+                    # Cờ làm giàu của AD-9: "adapter làm giàu nó với khóa (hoặc
+                    # cờ không-khóa) của từng node lân cận trước khi gọi hàm
+                    # che". Đây là thứ cho phép luật che cứng đọc được trạng
+                    # thái không-khóa mà chữ ký T1 của hàm che không đổi.
+                    NEIGHBOR_NO_KEY_FIELD: d["khoa_lan_can"] is None,
                 },
                 context,
                 khoa,
@@ -678,6 +962,27 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
         `masked_slots` theo và thứ cho phép truy nguyên một mục đã ra ngoài.
         """
         return {k: v for k, v in dict(props).items() if k != SPACE_FIELD}
+
+    @classmethod
+    def _khoa_de_che(cls, context, dau_a: tuple, dau_b: tuple) -> str | None:
+        """Khóa để che một bản ghi cạnh, hoặc `None` khi lời gọi đọc thô.
+
+        Ngữ cảnh hệ thống không che gì, nên hỏi "khóa nào để tra `masked_slots`"
+        là hỏi một câu không dùng tới - và từ story 2.1 nó còn là một câu *nổ
+        được*: một hyperedge đa nguồn khác scope hợp nhất ra "không khóa" thì
+        node của nó không mang khóa nữa, và `_khoa_hyperedge` fail-closed đúng
+        như nó phải làm. Nhưng cửa fail-closed ấy sinh ra để chặn một bản ghi
+        rời adapter mà **không được che**, còn ở đây không có gì để che.
+
+        Không nới lỏng gì cho đường vai người dùng: nhánh dưới vẫn đi qua
+        `_khoa_hyperedge` nguyên vẹn. Đường đọc thô thì node không khóa vốn đã
+        đi tới được (mệnh đề lọc chỉ còn `space`), nên nếu không có nhánh này
+        thì chính pipeline ingest hỏng khi nó đọc lại một hyperedge vừa hợp
+        nhất - và đó không phải một lỗi quyền, đó là một cửa hỏi sai chỗ.
+        """
+        if context.bypass_filter:
+            return None
+        return cls._khoa_hyperedge(dau_a, dau_b)
 
     @staticmethod
     def _khoa_hyperedge(dau_a: tuple, dau_b: tuple) -> str:

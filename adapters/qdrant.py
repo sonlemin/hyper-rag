@@ -31,13 +31,18 @@ from dataclasses import dataclass
 from hypergraphrag.base import BaseVectorStorage
 from qdrant_client import AsyncQdrantClient, models
 
-from adapters.ingest_labels import ingest_key_for_write
+from adapters.doi_chieu import KHO_GRAPH, ghi_vao_so, ten_kho_kv, ten_kho_vector
+from adapters.ingest_labels import (
+    bat_buoc_ngu_canh_he_thong,
+    ingest_keys_for_write,
+)
 # Hợp đồng che dùng chung với hai adapter kia: một luật, một chỗ. `_ban_ghi`
 # gọi `kiem_ket_qua_che` chứ không tự viết một nửa hợp đồng. `MaskContractViolated`
 # nhập lại ở đây để tên vẫn lấy được từ `adapters.qdrant`, như nơi gọi cũ vẫn làm.
 from adapters.mask_contract import MaskContractViolated, kiem_ket_qua_che
-from core.ids import point_id
-from core.keys import FILTER_KEY_FIELD
+from adapters.sensitivity_loader import bang_hang_cho
+from core.ids import normalize_id, point_id
+from core.keys import CHUA_GHI, FILTER_KEY_FIELD, KHONG_KHOA
 from core.masking import mask
 from core.permission import current_context
 
@@ -56,6 +61,16 @@ UPSTREAM_ID_FIELD = "upstream_id"
 # Không bao giờ ghi nội dung vào payload: kho vector không được thành bản sao
 # thứ hai của nội dung chưa che.
 CONTENT_FIELD = "content"
+
+# Hai `meta_fields` mà upstream đặt cho hai namespace có mặt trên graph
+# (`hypergraphrag.py:224-234`), và cũng là *id node* của mục tương ứng
+# (`operate.py:461-479` ghi chính chuỗi ấy vào payload rồi `operate.py:943,747`
+# mang nó đi hỏi `get_node`). Nhờ vậy một point vector nói được nó ứng với node
+# nào, và bước đối chiếu hai kho có id join mà không phải dựng lại phép băm
+# `compute_mdhash_id` của upstream ở một chỗ thứ hai. Namespace `chunks` không
+# có meta field nào nên id join của nó là chính id upstream - trùng với id bản
+# ghi ở kho KV.
+TRUONG_TEN_NODE: tuple[str, ...] = ("entity_name", "hyperedge_name")
 
 # Số cạnh HNSW dựng riêng cho từng giá trị của field đã có payload index. Đây
 # là thứ biến "có index" thành "pre-filter chạy trong HNSW" thay vì thành một
@@ -86,6 +101,21 @@ class QdrantIndexMissing(RuntimeError):
     code = "QDRANT_INDEX_MISSING"
 
 
+class PointIdCollision(RuntimeError):
+    """Hai id upstream khác nhau trong cùng một lô chuẩn hóa về một point id.
+
+    `point_id` là UUID5 của id đã chuẩn hóa (NFC, cắt khoảng trắng, gỡ nháy
+    kép), nên hai id chỉ khác nhau ở đúng những thứ đó là một point. Nếu để
+    chạy tiếp thì bước đọc khóa cũ nuốt mất một id (báo `CHUA_GHI`), phép hợp
+    nhất mất khóa cũ, và point nhận nhãn **rộng hơn** nhãn nó đang mang - một
+    đường fail-open im lặng. Từ chối cả lô, ở chỗ còn biết hai id nào đụng nhau.
+
+    `code` là mã lỗi ổn định để test assert trên `code` (AD-8).
+    """
+
+    code = "POINT_ID_COLLISION"
+
+
 class PointFilterKeyMissing(RuntimeError):
     """Một point rời kho mà không mang khóa quyền trong payload.
 
@@ -101,6 +131,15 @@ class PointFilterKeyMissing(RuntimeError):
 @dataclass
 class QdrantVectorDBStorage(BaseVectorStorage):
     """`BaseVectorStorage` của upstream, ruột là Qdrant có pre-filter theo khóa."""
+
+    # Bước đối chiếu hai kho hỏi thuộc tính này (`adapters/doi_chieu.py`).
+    # `True` vì ca hợp nhất ra "không khóa" **xóa** point (AD-5 đòi vắng mặt
+    # tuyệt đối), nên nhìn từ đây một point vắng có thể là chưa từng ghi hoặc
+    # đã hợp nhất ra không khóa - kho này không phân biệt được hai thứ đó.
+    # Không chú kiểu: một annotation biến nó thành field của dataclass, và khi
+    # đó nó đi vào `asdict(self)` rồi xuống `global_config` như một khóa cấu
+    # hình - thứ nó không phải.
+    VANG_LA_MO_HO = True
 
     # Giữ tên và giá trị mặc định của upstream. Khóa `cosine_better_than_threshold`
     # trong `global_config` chỉ *thật sự* có tác dụng từ story 1.7: nó không phải
@@ -126,6 +165,11 @@ class QdrantVectorDBStorage(BaseVectorStorage):
         self.cosine_better_than_threshold = cau_hinh.get(
             COSINE_THRESHOLD_KEY, self.cosine_better_than_threshold
         )
+        # Bảng hạng độ nhạy, nạp lúc dựng adapter: file hỏng phải nổ ở bước
+        # khởi động chứ không giữa một đợt nạp. Cùng nguồn cho cả ba adapter
+        # (`adapters/sensitivity_loader.bang_hang_cho`), nên ba đường ghi không
+        # chạy trên hai bảng hạng khác nhau.
+        self._bang_hang = bang_hang_cho(cau_hinh)
 
     async def close(self) -> None:
         """Đóng client do chính adapter mở; `adapters/engine.py` gọi lúc tắt.
@@ -270,15 +314,96 @@ class QdrantVectorDBStorage(BaseVectorStorage):
 
     # --- Ghi ---------------------------------------------------------------
 
-    async def upsert(self, data: dict[str, dict]) -> list[str]:
-        """Ghi một lô point, mọi point mang khóa của phạm vi nhãn đang mở.
+    async def khoa_hien_co(self, ids: list[str]) -> dict[str, object]:
+        """Khóa quyền mà kho đang giữ cho từng id upstream, không đọc gì khác.
 
-        Ba cửa phải qua trước khi chạm kho, theo thứ tự từ chung tới riêng:
-        có ngữ cảnh (để biết `space`), có nhãn ingest (để biết khóa), có index
-        (để khóa còn tác dụng). Hỏng cửa nào cũng là từ chối cả lô - ghi được
-        một nửa lô còn tệ hơn không ghi gì, vì nửa kia không ai biết thiếu. Ba
-        cửa kiểm hết trước khi ghi point đầu tiên, nên "từ chối cả lô" vẫn đúng
-        sau khi phần tải lên được chia lô.
+        Bước đọc của read-merge-write (FR-11) và cũng là cửa mà bước đối chiếu
+        hai kho hỏi. Chỉ trả trường khóa: nó không phải một đường đọc nội dung,
+        nên tầng che không áp dụng và cũng không có gì để che.
+
+        Chạy dưới cờ system, và đó là điều kiện để luật hợp nhất đúng: bị lọc
+        theo khóa của tài liệu đang nạp thì nó không bao giờ thấy khóa khác
+        scope cần hợp nhất, và khi ấy mọi artifact đa nguồn khác scope lặng lẽ
+        nhận khóa của lần ghi cuối - đúng lỗ story này đóng.
+
+        Ba giá trị trả về, đúng ba trạng thái mà `core.keys.hop_nhat_khoa` phân
+        biệt: `CHUA_GHI` (point vắng), một khóa thật, và - không bao giờ ở kho
+        này - `KHONG_KHOA`. Ca không khóa **xóa** point khỏi collection (AD-5
+        đòi vắng mặt tuyệt đối), nên nhìn từ Qdrant nó trùng với "chưa từng
+        ghi"; bước đối chiếu nhận cả hai khả năng cho báo cáo của kho vector.
+        """
+        bat_buoc_ngu_canh_he_thong("đọc khóa hiện có của kho vector")
+        if not ids:
+            return {}
+        ten = self._ten_collection()
+        theo_point = self._theo_point_id(ids)
+        ban_ghi = await self._client.retrieve(
+            collection_name=ten,
+            ids=list(theo_point),
+            with_payload=[FILTER_KEY_FIELD],
+            with_vectors=False,
+        )
+        ket_qua: dict[str, object] = {id_goc: CHUA_GHI for id_goc in ids}
+        for r in ban_ghi:
+            khoa = (r.payload or {}).get(FILTER_KEY_FIELD)
+            if not khoa:
+                raise PointFilterKeyMissing(
+                    f"point {r.id!r} của {ten!r} nằm trong kho mà không mang"
+                    f" {FILTER_KEY_FIELD!r}: point không khóa lẽ ra đã bị xóa,"
+                    " nên đây là dữ liệu hỏng chứ không phải ca không khóa"
+                )
+            ket_qua[theo_point[str(r.id)]] = khoa
+        return ket_qua
+
+    @staticmethod
+    def _theo_point_id(ids: list[str]) -> dict[str, str]:
+        """`point_id -> id upstream`, và cửa canh phép ánh xạ đó còn 1-1.
+
+        Không có cửa này thì một lô mang hai id chuẩn hóa về cùng một point
+        lặng lẽ mất một id ở bước đọc khóa cũ - xem `PointIdCollision`.
+        """
+        theo_point: dict[str, str] = {}
+        for id_goc in ids:
+            pid = point_id(id_goc)
+            if pid in theo_point and theo_point[pid] != id_goc:
+                raise PointIdCollision(
+                    f"id {theo_point[pid]!r} và {id_goc!r} cùng cho point id"
+                    f" {pid}: đọc khóa cũ sẽ nuốt mất một trong hai và point"
+                    " nhận nhãn rộng hơn nhãn nó đang mang"
+                )
+            theo_point[pid] = id_goc
+        return theo_point
+
+    async def upsert(self, data: dict[str, dict]) -> list[str]:
+        """Ghi một lô point, khóa của mỗi point hợp nhất với khóa nó đang mang.
+
+        Bốn cửa phải qua trước khi chạm kho, theo thứ tự từ chung tới riêng:
+        có ngữ cảnh (để biết `space`), có index (để khóa còn tác dụng), có ngữ
+        cảnh hệ thống (để đọc được khóa cũ của mọi scope), có nhãn ingest và
+        loại nội dung có hạng (để hợp nhất được). Hỏng cửa nào cũng là từ chối
+        cả lô - ghi được một nửa lô còn tệ hơn không ghi gì, vì nửa kia không ai
+        biết thiếu. Bốn cửa kiểm hết trước khi ghi point đầu tiên, nên "từ chối
+        cả lô" vẫn đúng sau khi phần tải lên được chia lô.
+
+        Read-merge-write, không phải last-write-wins: `point_id` là UUID5 của id
+        upstream nên một entity xuất hiện ở hai tài liệu chỉ có một point, và
+        trước story 2.1 point ấy mang nhãn của tài liệu nạp *sau*. Nay khóa cũ
+        được đọc lại rồi hợp nhất ở cửa chung (`ingest_keys_for_write`).
+
+        Ca hợp nhất ra "không khóa" thì point cũ bị **xóa** và không có point
+        mới nào được ghi: vắng mặt tuyệt đối ở cả 3 collection là yêu cầu của
+        AD-5, không phải một khóa đặc biệt. Xóa chạy **trước** phần ghi, và đó
+        là chiều an toàn của một lô đứt giữa chừng: hỏng sau khi xóa thì mất
+        một point lẽ ra còn (truy hồi thiếu, nhìn thấy được, chạy lại là xong),
+        còn hỏng trước khi xóa thì để lại một point lẽ ra phải vắng, mang khóa
+        cũ **rộng hơn** - tức một mục đa nguồn khác scope vẫn lọt vào tập khóa
+        của một vai.
+
+        Giá trị trả về là point id của phần *đã ghi*, nên nó ngắn hơn đầu vào
+        khi lô có mục hợp nhất ra không khóa. Upstream không đọc giá trị này ở
+        đường nào (`hypergraphrag.py:320,336` và `operate.py:470,479` đều gọi
+        rồi bỏ), nên hợp đồng đó an toàn - và có test ghim đúng câu ấy thay vì
+        để nó là một giả định.
 
         Tải lên chia theo cùng `embedding_batch_num` với phần embedding: một
         request mang cả nghìn point là một request dễ chạm timeout và khó đọc
@@ -289,23 +414,50 @@ class QdrantVectorDBStorage(BaseVectorStorage):
         if not data:
             return []
         ten = self._ten_collection()
-        khoa = ingest_key_for_write()
         await self._bat_buoc_co_index(ten)
 
         ids_goc = list(data)
-        vectors = await self._embed_theo_lo([v[CONTENT_FIELD] for v in data.values()])
-        if len(vectors) != len(ids_goc):
+        khoa_theo_id = ingest_keys_for_write(
+            await self.khoa_hien_co(ids_goc), hang=self._bang_hang.hang
+        )
+        can_ghi = [id for id in ids_goc if khoa_theo_id[id] is not KHONG_KHOA]
+        can_xoa = [id for id in ids_goc if khoa_theo_id[id] is KHONG_KHOA]
+
+        # Ghi sổ **ý định** trước khi chạm kho: một lô đứt giữa chừng phải để
+        # lại id trong sổ mà khóa vắng ở kho, chứ không để lại một id vô hình
+        # với bước đối chiếu cuối đợt (NFR-03).
+        for id_goc in ids_goc:
+            ghi_vao_so(
+                id_join=self._id_join(id_goc, data[id_goc]),
+                kho=ten_kho_vector(self.namespace),
+                id_trong_kho=id_goc,
+                kho_doi=self._kho_doi(),
+            )
+
+        if can_xoa:
+            await self._client.delete(
+                collection_name=ten,
+                points_selector=models.PointIdsList(
+                    points=[point_id(id_goc) for id_goc in can_xoa]
+                ),
+                wait=True,
+            )
+
+        vectors = await self._embed_theo_lo(
+            [data[id][CONTENT_FIELD] for id in can_ghi]
+        )
+        if len(vectors) != len(can_ghi):
             raise RuntimeError(
-                f"embedding trả về {len(vectors)} vector cho {len(ids_goc)} mục:"
+                f"embedding trả về {len(vectors)} vector cho {len(can_ghi)} mục:"
                 " không ghép 1-1 được, từ chối cả lô"
             )
         diem = [
             models.PointStruct(
                 id=point_id(id_goc),
                 vector=vectors[i],
-                payload=self._payload(id_goc, data[id_goc], khoa),
+                payload=self._payload(id_goc, data[id_goc], khoa_theo_id[id_goc]),
             )
-            for i, id_goc in enumerate(ids_goc)
+            for i, id_goc in enumerate(can_ghi)
         ]
         n = self._max_batch_size
         for i in range(0, len(diem), n):
@@ -313,6 +465,33 @@ class QdrantVectorDBStorage(BaseVectorStorage):
                 collection_name=ten, points=diem[i : i + n], wait=True
             )
         return [d.id for d in diem]
+
+    def _kho_doi(self) -> str | None:
+        """Kho mà mọi id của namespace này *cũng* phải có mặt (NFR-03).
+
+        Khai từ phía kho biết câu trả lời: hai namespace có mặt trên graph đi
+        cùng kho graph, còn `chunks` là bản sao vector của kho KV `text_chunks`.
+        Không khai thì một id chỉ được một kho ghi sổ luôn tự khớp với chính nó
+        và ca "có ở kho này thiếu ở kho kia" đi qua im lặng.
+        """
+        if self.namespace == "chunks":
+            return ten_kho_kv("text_chunks")
+        return KHO_GRAPH
+
+    @staticmethod
+    def _id_join(id_goc: str, gia_tri: dict) -> str:
+        """Id dùng để nối một point với node graph tương ứng của nó.
+
+        Tên node nếu lô mang nó (`entity_name`/`hyperedge_name` - upstream ghi
+        chính chuỗi đó vào payload và cũng dùng nó làm id node), còn lại là
+        chính id upstream (namespace `chunks`, trùng id bản ghi ở kho KV).
+        Chuẩn hóa bằng cùng một hàm với adapter graph, nếu không hai kho nói hai
+        chuỗi khác nhau về cùng một mục.
+        """
+        for ten in TRUONG_TEN_NODE:
+            if gia_tri.get(ten):
+                return normalize_id(str(gia_tri[ten]))
+        return normalize_id(id_goc)
 
     def _payload(self, id_goc: str, gia_tri: dict, khoa: str) -> dict:
         """Payload một điểm: đúng `meta_fields`, id gốc và khóa quyền.

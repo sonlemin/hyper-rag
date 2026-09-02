@@ -29,10 +29,17 @@ from adapters.qdrant import (
     UPSTREAM_ID_FIELD,
     MaskContractViolated,
     PointFilterKeyMissing,
+    PointIdCollision,
     QdrantIndexMissing,
     QdrantVectorDBStorage,
 )
-from core.keys import FILTER_KEY_FIELD, filter_key
+from core.ids import point_id
+from core.keys import (
+    CHUA_GHI,
+    FILTER_KEY_FIELD,
+    SensitivityRankUnknown,
+    filter_key,
+)
 from core.permission import use_context
 from tests.fixtures.du_lieu_dung_tay import HYPEREDGES
 from tests.gia_lap_qdrant import QdrantGhiLai, embedding_gia, vector_tu_chuoi
@@ -509,35 +516,290 @@ def test_ba_cua_kiem_xong_truoc_khi_ghi_lo_dau_tien(khong_gian, policy):
     asyncio.run(chay())
 
 
-# --- Đặc tả hiện trạng: khóa đa nguồn là last-write-wins (nợ story 2.1) --
+# --- Khóa đa nguồn: read-merge-write ở đường vector (story 2.1, FR-11) ----
+#
+# Ba test dưới đây thay `test_dac_ta_hien_trang_khoa_da_nguon_last_write_wins`
+# của story 1.3. Test cũ ghim *hiện trạng* last-write-wins làm mốc so sánh và
+# nói thẳng trong docstring rằng story 2.1 sẽ đổi hành vi này; nay hành vi đã
+# đổi nên mốc so sánh hết việc. Ba ca mới phủ đúng ba hàng đầu của I/O Matrix
+# story 2.1 trên chính đường ghi vector.
 
 
-def test_dac_ta_hien_trang_khoa_da_nguon_last_write_wins(khong_gian, policy):
-    """Cùng một id upstream nạp từ hai tài liệu khác scope: khóa của lần ghi sau thắng.
-
-    Đây là test **đặc tả hiện trạng**, không phải test khẳng định hành vi đúng.
-    `point_id` là UUID5 của id upstream, nên một entity xuất hiện ở hai tài liệu
-    khác scope chỉ còn một point và mang nhãn của tài liệu nạp sau. Story 2.1
-    ("hợp nhất khóa đa nguồn") sẽ đổi hành vi này; mốc so sánh nằm ở đây, để lúc
-    đó thấy rõ mình đang đổi cái gì.
-    """
+async def _nap_hai_lan(client, adapter, khong_gian, policy, cac_nhan):
+    """Nạp cùng một lô hyperedge dưới lần lượt các nhãn, rồi trả các point còn lại."""
     chung = HYPEREDGES[0]
+    with use_context(ngu_canh_ingest(khong_gian, policy)):
+        await adapter.initialize()
+        for scope, loai in cac_nhan:
+            with ingest_label(scope=scope, content_type=loai):
+                await adapter.upsert(lo_upsert(chung))
+    diem, _ = await client.scroll(
+        collection_name=f"{khong_gian}_hyperedges", limit=10, with_payload=True
+    )
+    return diem
+
+
+def test_cung_scope_nap_lai_duoi_nhan_nhay_hon_thi_siet_khoa(khong_gian, policy):
+    """Hàng 1 của I/O Matrix ở đường vector: khóa thành nhãn hạn chế hơn."""
+
+    async def chay():
+        client = QdrantGhiLai()
+        diem = await _nap_hai_lan(
+            client,
+            dung_adapter(client, khong_gian),
+            khong_gian,
+            policy,
+            (("noi_bo", "runbook"), ("noi_bo", "bi_mat_ha_tang")),
+        )
+        assert len(diem) == 1, "cùng id upstream thì cùng point id, không nhân bản"
+        assert diem[0].payload[FILTER_KEY_FIELD] == filter_key(
+            "noi_bo", "bi_mat_ha_tang"
+        )
+
+    asyncio.run(chay())
+
+
+def test_cung_scope_nap_lai_duoi_nhan_thuong_hon_thi_khong_noi_long(
+    khong_gian, policy
+):
+    """Hàng 2: chiều mà last-write-wins làm sai - nạp sau không nới quyền ra."""
+
+    async def chay():
+        client = QdrantGhiLai()
+        diem = await _nap_hai_lan(
+            client,
+            dung_adapter(client, khong_gian),
+            khong_gian,
+            policy,
+            (("noi_bo", "bi_mat_ha_tang"), ("noi_bo", "runbook")),
+        )
+        assert len(diem) == 1
+        assert diem[0].payload[FILTER_KEY_FIELD] == filter_key(
+            "noi_bo", "bi_mat_ha_tang"
+        )
+
+    asyncio.run(chay())
+
+
+def test_khac_scope_thi_point_vang_mat_khoi_collection(khong_gian, policy):
+    """Hàng 3: khác scope ra "không khóa", và không khóa nghĩa là point bị xóa.
+
+    Không phải một khóa đặc biệt: một khóa `"__none__"` sẽ là một giá trị hợp lệ
+    trong `match_any`, và chỉ cần một vai vô ý được cấp nó là mọi artifact đa
+    nguồn khác scope đổ ra. AD-5 đòi vắng mặt tuyệt đối ở cả 3 collection, nên
+    ca này *xóa* point cũ và không ghi point mới.
+    """
+
+    async def chay():
+        client = QdrantGhiLai()
+        diem = await _nap_hai_lan(
+            client,
+            dung_adapter(client, khong_gian),
+            khong_gian,
+            policy,
+            (("noi_bo", "runbook"), ("khach_hang_a", "bao_cao_su_co")),
+        )
+        assert diem == [], "point đa nguồn khác scope phải vắng mặt tuyệt đối"
+        assert client.cac_loi_goi("delete"), "phải xóa point cũ, không chỉ bỏ qua"
+
+    asyncio.run(chay())
+
+
+def test_khac_scope_nap_lan_ba_cung_scope_dau_van_khong_khoa(khong_gian, policy):
+    """Trạng thái hút phải sống được qua một lần nạp nữa ở đường vector.
+
+    Point đã bị xóa nên kho vector một mình nó không phân biệt được "chưa từng
+    ghi" với "đã hợp nhất ra không khóa" - đó là hệ quả cố ý của việc xóa thật.
+    Ở đây nạp lại lần ba dưới đúng nhãn của lần đầu và ghim rằng point *quay
+    lại*: hành vi này được biết, và chính bước đối chiếu hai kho là thứ bắt nó
+    (node graph vẫn nhớ trạng thái không khóa), chứ không phải kho vector.
+    """
+
+    async def chay():
+        client = QdrantGhiLai()
+        diem = await _nap_hai_lan(
+            client,
+            dung_adapter(client, khong_gian),
+            khong_gian,
+            policy,
+            (
+                ("noi_bo", "runbook"),
+                ("khach_hang_a", "bao_cao_su_co"),
+                ("noi_bo", "runbook"),
+            ),
+        )
+        assert len(diem) == 1 and diem[0].payload[FILTER_KEY_FIELD] == filter_key(
+            "noi_bo", "runbook"
+        )
+
+    asyncio.run(chay())
+
+
+def test_loai_noi_dung_khong_co_hang_thi_tu_choi_ca_lo(khong_gian, policy):
+    """Hàng 4: nhãn mang loại nội dung ngoài bảng hạng là từ chối trước khi ghi."""
 
     async def chay():
         client = QdrantGhiLai()
         adapter = dung_adapter(client, khong_gian)
         with use_context(ngu_canh_ingest(khong_gian, policy)):
             await adapter.initialize()
-            for scope, loai in (("noi_bo", "runbook"), ("khach_hang_a", "bao_cao_su_co")):
-                with ingest_label(scope=scope, content_type=loai):
-                    await adapter.upsert(lo_upsert(chung))
-        diem, _ = await client.scroll(
-            collection_name=f"{khong_gian}_hyperedges", limit=10, with_payload=True
-        )
-        assert len(diem) == 1, "cùng id upstream thì cùng point id, không nhân bản"
-        assert diem[0].payload[FILTER_KEY_FIELD] == "khach_hang_a:bao_cao_su_co"
+            client.xoa_nhat_ky()
+            with ingest_label(scope="noi_bo", content_type="hop_dong"):
+                with pytest.raises(SensitivityRankUnknown) as loi:
+                    await adapter.upsert(lo_upsert(HYPEREDGES[0]))
+        assert loi.value.code == "SENSITIVITY_RANK_UNKNOWN"
+        assert client.cac_loi_goi("upsert") == []
+        assert await client.dem_point(f"{khong_gian}_hyperedges") == 0
 
     asyncio.run(chay())
+
+
+def test_upsert_tra_ve_dung_phan_da_ghi_va_khong_ai_doc_gia_tri_do(
+    khong_gian, policy
+):
+    """Hợp đồng giá trị trả về đổi ở story 2.1; ghim cả phần đổi lẫn phần an toàn.
+
+    Lô có mục hợp nhất ra "không khóa" thì point ấy bị xóa, nên danh sách trả
+    về **ngắn hơn** đầu vào. Điều làm cho việc đó an toàn không phải là một giả
+    định: không nơi nào trong `vendor/` đọc giá trị này. Test đọc chính mã
+    nguồn upstream bằng AST để khẳng định câu ấy, thay vì để nó nằm trong một
+    docstring và mục rữa dần theo thời gian.
+    """
+    import ast
+    import inspect
+
+    from hypergraphrag import hypergraphrag as hgr
+    from hypergraphrag import operate
+
+    async def chay():
+        client = QdrantGhiLai()
+        adapter = dung_adapter(client, khong_gian)
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            await adapter.initialize()
+            with ingest_label(scope="noi_bo", content_type="runbook"):
+                await adapter.upsert(lo_upsert(HYPEREDGES[0]))
+            with ingest_label(scope="khach_hang_a", content_type="bao_cao_su_co"):
+                # Một mục hợp nhất ra không khóa, một mục bình thường.
+                lo = {**lo_upsert(HYPEREDGES[0]), **lo_upsert(HYPEREDGES[3])}
+                return await adapter.upsert(lo), lo
+
+    tra_ve, lo = asyncio.run(chay())
+    assert len(tra_ve) == 1 and len(lo) == 2, (
+        "phần hợp nhất ra không khóa không nằm trong danh sách trả về"
+    )
+
+    # Mọi lời gọi `*_vdb.upsert` / `chunks_vdb.upsert` của upstream đều là một
+    # câu lệnh độc lập (`ast.Expr`), tức giá trị trả về bị bỏ ngay.
+    dung_gia_tri = []
+    for module in (hgr, operate):
+        cay = ast.parse(inspect.getsource(module))
+        goi_bo_di = {
+            id(n.value) for n in ast.walk(cay) if isinstance(n, ast.Expr)
+        }
+        for n in ast.walk(cay):
+            if not isinstance(n, ast.Await):
+                continue
+            goi = n.value
+            if not isinstance(goi, ast.Call):
+                continue
+            if getattr(goi.func, "attr", None) != "upsert":
+                continue
+            ten_kho = getattr(goi.func.value, "attr", "") or getattr(
+                goi.func.value, "id", ""
+            )
+            if not ten_kho.endswith("vdb"):
+                continue
+            if id(n) not in goi_bo_di:
+                dung_gia_tri.append(f"{module.__name__}:{n.lineno}")
+    assert not dung_gia_tri, (
+        "upstream đọc giá trị trả về của `upsert` ở"
+        f" {dung_gia_tri}: hợp đồng danh sách ngắn hơn đầu vào không còn an toàn"
+    )
+
+
+def test_doc_khoa_hien_co_chi_chay_duoi_co_system(khong_gian, policy):
+    """Bước đọc khóa của read-merge-write là ngoại lệ có đặc tả của AD-3.
+
+    Dưới ngữ cảnh vai thì nó bị lọc theo khóa của vai đó, tức không bao giờ
+    thấy khóa khác scope cần hợp nhất - luật hợp nhất khi ấy chạy trên dữ liệu
+    sai. Nên cửa này từ chối thẳng thay vì trả một kết quả đã bị lọc.
+    """
+
+    async def chay():
+        client, adapter = await kho_da_nap(khong_gian, policy)
+        with use_context(vai(policy, "devops", khong_gian)):
+            with pytest.raises(IngestOutsideSystemContext) as loi:
+                await adapter.khoa_hien_co(["rel-HE-01"])
+        assert loi.value.code == "INGEST_OUTSIDE_SYSTEM_CONTEXT"
+        assert client.cac_loi_goi("retrieve") == []
+
+    asyncio.run(chay())
+
+
+def test_doc_khoa_hien_co_no_khi_point_mat_khoa(khong_gian, policy):
+    """Point nằm trong kho mà không mang khóa là dữ liệu hỏng, phải nổ.
+
+    Nhánh này chưa từng chạy trước đây: hai test khác đo nhánh *sinh đôi* ở
+    đường đọc (`_ban_ghi`). Hậu quả nếu nó rụng thì nặng và im lặng - point
+    hỏng cho `khoa = None`, `hop_nhat_khoa` coi `None` là trạng thái hút, và
+    lần `upsert` kế tiếp **xóa hẳn** point đó. Mất dữ liệu mà không ai biết.
+    """
+
+    async def chay():
+        client, adapter = await kho_da_nap(khong_gian, policy)
+        # Gỡ khóa của một point đã nạp, đúng hình dạng một lần ghi tay không
+        # qua adapter.
+        await client.set_payload(
+            collection_name=f"{khong_gian}_hyperedges",
+            payload={FILTER_KEY_FIELD: None},
+            points=[point_id("rel-HE-01")],
+            wait=True,
+        )
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            with pytest.raises(PointFilterKeyMissing) as loi:
+                await adapter.khoa_hien_co(["rel-HE-01"])
+        return loi.value.code
+
+    assert asyncio.run(chay()) == "POINT_FILTER_KEY_MISSING"
+
+
+def test_hai_id_cung_point_id_thi_tu_choi_ca_lo(khong_gian, policy):
+    """Hai id upstream chuẩn hóa về một point id là từ chối, không phải nuốt một.
+
+    `point_id` là UUID5 của id đã chuẩn hóa, nên `"App01"` và `' "App01" '`
+    là một point. Không có cửa này thì bước đọc khóa cũ nuốt mất một id, phép
+    hợp nhất mất khóa cũ, và point nhận nhãn **rộng hơn** nhãn nó đang mang.
+    """
+
+    async def chay():
+        client, adapter = await kho_da_nap(khong_gian, policy)
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            with ingest_label(scope="noi_bo", content_type="runbook"):
+                with pytest.raises(PointIdCollision) as loi:
+                    await adapter.upsert(
+                        {
+                            "rel-HE-01": {"content": "a", "hyperedge_name": "a"},
+                            ' "rel-HE-01" ': {"content": "b", "hyperedge_name": "b"},
+                        }
+                    )
+        return loi.value.code, client.cac_loi_goi("upsert")
+
+    ma, da_ghi = asyncio.run(chay())
+    assert ma == "POINT_ID_COLLISION"
+    assert da_ghi == [], "từ chối cả lô, không ghi nửa nào"
+
+
+def test_doc_khoa_hien_co_tra_ba_trang_thai(khong_gian, policy):
+    """Id vắng ra `CHUA_GHI`, id đã ghi ra chính khóa của nó."""
+
+    async def chay():
+        _, adapter = await kho_da_nap(khong_gian, policy)
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            return await adapter.khoa_hien_co(["rel-HE-01", "rel-KHONG-CO"])
+
+    khoa = asyncio.run(chay())
+    assert khoa["rel-HE-01"] == filter_key("noi_bo", "runbook")
+    assert khoa["rel-KHONG-CO"] is CHUA_GHI
 
 
 def test_ghi_duoi_ngu_canh_vai_bi_tu_choi(khong_gian, policy):

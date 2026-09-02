@@ -6,7 +6,15 @@ chạm payload đã ghi, đó là điều làm cho hot-swap (NFR-04) và độ t
 quyền một truy vấn (NFR-09) thành có thể.
 
 Bảng chính sách chỉ ánh xạ vai người hỏi ra *tập* khóa được phép, ở `policy.py`.
+
+Từ story 2.1 file này còn giữ luật **hợp nhất khóa đa nguồn** (FR-11): một id
+xuất hiện trong nhiều tài liệu khác quyền nhận đúng một khóa, tính bằng hàm
+thuần `hop_nhat_khoa`. Luật ở đây, không ở adapter: ba đường ghi đi qua một cửa
+chung (`adapters/ingest_labels.ingest_key_for_write`) nên chúng không thể lệch
+nhau về *quyết định*, và bước đối chiếu hai kho chỉ còn phải bắt lệch do sự cố.
 """
+
+from typing import Mapping
 
 KEY_SEPARATOR: str = ":"
 
@@ -62,3 +70,95 @@ def split_key(key: str) -> tuple[str, str]:
     if filter_key(scope, content_type) != key:
         raise ValueError(f"khóa lọc {key!r} không đúng dạng scope:content_type")
     return scope, content_type
+
+
+# --- Hợp nhất khóa đa nguồn (story 2.1, FR-11) ---------------------------
+
+
+class SensitivityRankUnknown(ValueError):
+    """Loại nội dung không có hạng độ nhạy trong bảng cấu hình.
+
+    Từ chối cả lô chứ không đoán một hạng mặc định: đoán thấp là nới quyền cho
+    một loại nội dung chưa ai xét, đoán cao là giấu mất dữ liệu mà không ai
+    biết. Cả hai đều im lặng, còn một lô bị từ chối thì nhìn thấy được.
+
+    `code` là mã lỗi ổn định để test assert trên `code`, không trên thông điệp
+    (AD-8, Consistency Conventions).
+    """
+
+    code = "SENSITIVITY_RANK_UNKNOWN"
+
+
+class _ChuaGhi:
+    """Kiểu của sentinel "id này chưa từng vào kho". Không tự nó là giá trị."""
+
+    __slots__ = ()
+
+    def __repr__(self) -> str:
+        # Sentinel rơi vào một thông điệp lỗi mà in ra `<object object at 0x…>`
+        # là một thông điệp không giúp được ai.
+        return "CHUA_GHI"
+
+
+# Hai sentinel, hai trạng thái khác nhau, và khác nhau là điều kiện để luật
+# đúng. `CHUA_GHI` nghĩa là kho chưa có id này; `KHONG_KHOA` nghĩa là id đã có
+# và đã hợp nhất ra "không khóa". Gộp chúng làm một thì lần nạp thứ ba (cùng
+# scope với lần đầu) cấp lại khóa cho một id đa nguồn khác scope - đúng lỗ mà
+# story này đóng.
+#
+# `KHONG_KHOA` là `None` chứ không phải một chuỗi khóa đặc biệt: một khóa
+# `"__none__"` sẽ là một giá trị hợp lệ trong `match_any`, và chỉ cần một vai
+# vô ý được cấp nó là mọi artifact đa nguồn khác scope đổ ra. Mỗi kho có nghĩa
+# riêng cho `None` (vector xóa point, KV vô hình với mọi vai, graph giữ node
+# cấu trúc không khóa), nhưng nguồn quyết định thì chỉ một.
+CHUA_GHI: _ChuaGhi = _ChuaGhi()
+KHONG_KHOA: None = None
+
+
+def hop_nhat_khoa(khoa_cu, khoa_moi: str, *, hang: Mapping[str, int]) -> str | None:
+    """Khóa của một id sau khi tài liệu mang `khoa_moi` chạm vào nó (FR-11).
+
+    Hàm thuần, không I/O và không đọc bảng chính sách: `hang` là bảng hạng độ
+    nhạy đã nạp, truyền vào như một tham số bình thường. Nhờ vậy luật này kiểm
+    được mà không cần file, và bảng hạng đóng băng trước ingest là một quyết
+    định của tầng cấu hình chứ không phải của luật.
+
+    Ba nhánh, không có nhánh thứ tư:
+
+    - `khoa_cu is CHUA_GHI` - id mới, khóa của tài liệu đang nạp thắng;
+    - `khoa_cu is KHONG_KHOA` - trạng thái hút, mọi lần nạp sau vẫn không khóa.
+      Nguồn khác scope đã chạm vào id này vẫn còn đó, nên cấp lại một khóa là
+      để lộ đúng thứ vừa giấu đi;
+    - hai khóa thật - cùng scope thì lấy hạng độ nhạy cao hơn, khác scope thì
+      "không khóa".
+
+    Kết quả không phụ thuộc thứ tự nạp, và đó là tính chất làm cho một đợt ingest
+    chạy lại cho ra cùng một kho.
+    """
+    loai_moi = _loai_co_hang(khoa_moi, hang)
+    if khoa_cu is CHUA_GHI:
+        return khoa_moi
+    if khoa_cu is KHONG_KHOA:
+        return KHONG_KHOA
+    if not isinstance(khoa_cu, str):
+        raise TypeError(
+            f"khóa cũ phải là chuỗi, CHUA_GHI hoặc KHONG_KHOA, nhận được"
+            f" {type(khoa_cu).__name__}"
+        )
+    loai_cu = _loai_co_hang(khoa_cu, hang)
+    scope_cu, _ = split_key(khoa_cu)
+    scope_moi, _ = split_key(khoa_moi)
+    if scope_cu != scope_moi:
+        return KHONG_KHOA
+    return khoa_cu if hang[loai_cu] >= hang[loai_moi] else khoa_moi
+
+
+def _loai_co_hang(khoa: str, hang: Mapping[str, int]) -> str:
+    """Loại nội dung của một khóa, sau khi chắc chắn nó có hạng độ nhạy."""
+    _, content_type = split_key(khoa)
+    if content_type not in hang:
+        raise SensitivityRankUnknown(
+            f"loại nội dung {content_type!r} không có hạng độ nhạy trong bảng"
+            f" cấu hình (đang có {sorted(hang)}): không so được 'hạn chế nhất'"
+        )
+    return content_type
