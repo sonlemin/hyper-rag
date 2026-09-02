@@ -19,6 +19,8 @@ Nội dung hiện có, đặt từ story 1.2:
 - `system_context`  constructor ngữ cảnh ingest, chỉ ingest được import
 - `masking`         chữ ký tầng che + danh sách đóng method phải che (AD-9)
 - `identity`        danh tính người hỏi và đường sang ngữ cảnh quyền (1.7)
+- `ingest_scan`     quét thư mục nguồn: nhận `.md`/`.txt` có frontmatter, từ
+                    chối kèm mã lý do (2.3)
 
 Còn thiếu, vào ở các story sau: validator đơn điệu AD-5 (3.2), bộ lọc vùng
 break-glass (5.2), các sự kiện audit lọc/từ chối/truy vấn của adapter (3.6).

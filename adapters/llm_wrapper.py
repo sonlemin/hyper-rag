@@ -30,6 +30,7 @@ cộng bằng SUM (FR-25 đọc lũy kế từ đó). Không cache, không retry
 retry sẵn có của SDK.
 """
 
+import asyncio
 import os
 from dataclasses import dataclass
 from functools import partial
@@ -197,6 +198,10 @@ class OpenAITuongThich:
             ),
         )
 
+    async def san_sang(self) -> bool:
+        """API ngoài không có phép thăm dò rẻ; sẵn sàng hay không lộ ra ở lời gọi đầu."""
+        return True
+
     async def nhung(self, model: str, texts: list[str]) -> KetQuaEmbedding:
         response = await self._client.embeddings.create(
             model=model, input=texts, encoding_format="float"
@@ -263,6 +268,11 @@ def _format_ollama(response_format, ten: str):
     )
 
 
+# Thời hạn (giây) cho phép thăm dò `san_sang()` của Ollama: một daemon treo
+# không được giữ pipeline treo theo; quá hạn là "chưa sẵn sàng".
+THOI_HAN_SAN_SANG: float = 5.0
+
+
 class OllamaCucBo:
     """Ollama qua `ollama.AsyncClient`; token từ `prompt_eval_count` / `eval_count`.
 
@@ -278,6 +288,20 @@ class OllamaCucBo:
     def __init__(self, *, ten: str, host: str | None = None, client=None):
         self.ten = ten
         self._client = ollama.AsyncClient(host=host) if client is None else client
+
+    async def san_sang(self) -> bool:
+        """Ollama có trả lời không: một `list()` rẻ, hỏng vì bất cứ gì là chưa sẵn sàng.
+
+        Pipeline ingest hỏi câu này trước khi chạm kho trên space `real`
+        (AD-12): không có nhánh fallback sang API ngoài, nên "chưa sẵn sàng"
+        phải nhìn thấy được trước lời gọi tốn tiền đầu tiên.
+        """
+        try:
+            await asyncio.wait_for(self._client.list(), timeout=THOI_HAN_SAN_SANG)
+        except Exception:
+            # `TimeoutError` của `wait_for` cũng là `Exception`: treo là chưa sẵn sàng.
+            return False
+        return True
 
     async def hoan_thanh(self, model: str, messages: list[dict], **kwargs) -> KetQuaLLM:
         response = await self._client.chat(
@@ -315,26 +339,44 @@ class OllamaCucBo:
 # bằng `is`, để một thuộc tính trùng tên đặt tay không qua được cửa.
 DAU_WRAPPER: str = "_hyper_rag_wrapper"
 _DAU = object()
+# Provider đứng sau hàm bọc, gắn cùng chỗ với dấu wrapper và sống sót qua
+# `functools.wraps` theo cùng cách. Pipeline ingest (2.3) đọc nó để hỏi
+# `cuc_bo`/`san_sang()` trước khi chạm kho trên space `real`.
+DAU_NHA_CUNG_CAP: str = "_hyper_rag_ncc"
+
+
+def _theo_chuoi_boc(ham):
+    """Duyệt chuỗi bọc: `__wrapped__` của `functools.wraps`, `.func` của `partial`.
+
+    Giới hạn số bước để một chuỗi vòng không treo cửa kiểm.
+    """
+    for _ in range(16):
+        if ham is None:
+            return
+        yield ham
+        if isinstance(ham, partial):
+            ham = ham.func
+        else:
+            ham = getattr(ham, "__wrapped__", None)
 
 
 def la_wrapper(ham) -> bool:
     """Hàm này có phải wrapper của dự án, kể cả sau khi upstream bọc thêm lớp.
 
-    Đi theo chuỗi bọc: `functools.wraps` để lại `__wrapped__`, còn `partial`
+    `functools.wraps` để lại `__wrapped__` và sao chép `__dict__`, còn `partial`
     (upstream bind `hashing_kv` bằng partial rồi mới `wraps`) giữ hàm gốc ở
-    `.func` và không sao chép `__dict__`. Giới hạn số bước để một chuỗi vòng
-    không treo cửa kiểm.
+    `.func` và không sao chép `__dict__`, nên phải đi theo cả hai.
     """
-    for _ in range(16):
-        if ham is None:
-            return False
-        if getattr(ham, DAU_WRAPPER, None) is _DAU:
-            return True
-        if isinstance(ham, partial):
-            ham = ham.func
-        else:
-            ham = getattr(ham, "__wrapped__", None)
-    return False
+    return any(getattr(h, DAU_WRAPPER, None) is _DAU for h in _theo_chuoi_boc(ham))
+
+
+def nha_cung_cap_cua(ham):
+    """Provider đứng sau một hàm đã bọc (kể cả sau lớp bọc của upstream), hoặc `None`."""
+    for h in _theo_chuoi_boc(ham):
+        ncc = getattr(h, DAU_NHA_CUNG_CAP, None)
+        if ncc is not None:
+            return ncc
+    return None
 
 
 # --- Sự kiện chi phí -----------------------------------------------------------
@@ -451,6 +493,7 @@ def bo_llm(
         return ket_qua.noi_dung
 
     setattr(llm, DAU_WRAPPER, _DAU)
+    setattr(llm, DAU_NHA_CUNG_CAP, nha_cung_cap)
     return llm
 
 
@@ -484,6 +527,7 @@ def bo_embedding(
         embedding_dim=muc.so_chieu, max_token_size=muc.max_token, func=func
     )
     setattr(ham, DAU_WRAPPER, _DAU)
+    setattr(ham, DAU_NHA_CUNG_CAP, nha_cung_cap)
     return ham
 
 

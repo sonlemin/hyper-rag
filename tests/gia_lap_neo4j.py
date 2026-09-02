@@ -32,7 +32,14 @@ from typing import Any
 
 from neo4j.exceptions import ClientError, ConstraintError, ServiceUnavailable
 
-from adapters.neo4j import NODE_ID_FIELD, ROLE_FIELD, SLOT_FIELD, SPACE_FIELD
+from adapters.neo4j import (
+    LABEL_ENTITY,
+    LABEL_HYPEREDGE,
+    NODE_ID_FIELD,
+    ROLE_FIELD,
+    SLOT_FIELD,
+    SPACE_FIELD,
+)
 from core.keys import FILTER_KEY_FIELD
 
 # --- Đọc mệnh đề lọc ra khỏi câu Cypher ---------------------------------
@@ -340,6 +347,15 @@ class Neo4jGhiLai:
     def _dien_giai(self, cypher: str, params: dict) -> tuple[str, list[dict]]:
         if cypher.startswith("CREATE CONSTRAINT") or cypher.startswith("DROP INDEX"):
             return "ghi:index", []
+        # Ba đường của story 2.3, nhận dạng trước các câu chung hơn. Đều mang
+        # tiền tố `ghi:` vì chúng là đường ghi (hoặc đọc-để-ghi) chạy dưới cờ
+        # system, cùng lý do với `ghi:doc-khoa` ở dưới.
+        if "DETACH DELETE" in cypher:
+            return "ghi:xoa", self._xoa_node(cypher, params)
+        if "AS khoa_hyperedge" in cypher:
+            return "ghi:doc-khoa-lan-can", self._doc_khoa_lan_can(cypher, params)
+        if "AS da_ghi" in cypher and "SET n." in cypher:
+            return "ghi:dat-lai", self._dat_lai(cypher, params)
         if "MERGE (n:" in cypher:
             return "ghi:node", self._ghi_node(cypher, params)
         if "MERGE (a)-[" in cypher:
@@ -439,6 +455,52 @@ class Neo4jGhiLai:
             canh = CanhGia(space=space, src=params["src"], tgt=params["tgt"])
             self.canh.append(canh)
         self._ap_gan(canh.props, cypher, params, "r")
+        return [{"da_ghi": 1}]
+
+    def _xoa_node(self, cypher: str, params: dict) -> list[dict]:
+        """`DETACH DELETE`: theo danh sách id nếu câu mang `$ids`, không thì cả space."""
+        ids = params.get("ids") if "$ids" in cypher else None
+        muc = [
+            (sp, id_node)
+            for (sp, id_node), node in self.nodes.items()
+            if sp == params["space"]
+            and (ids is None or id_node in ids)
+            and self._hop_le(cypher, params, "n", node.props)
+        ]
+        for khoa in muc:
+            del self.nodes[khoa]
+        da_xoa = {id_node for _, id_node in muc}
+        self.canh = [
+            c
+            for c in self.canh
+            if not (c.space == params["space"] and (c.src in da_xoa or c.tgt in da_xoa))
+        ]
+        return [{"da_xoa": len(muc)}]
+
+    def _doc_khoa_lan_can(self, cypher: str, params: dict) -> list[dict]:
+        """Khóa của hyperedge nối tới entity: chỉ lân cận mang nhãn Hyperedge."""
+        e = self._node_hop_le(cypher, params, "id", "e")
+        if e is None:
+            return []
+        return [
+            {"id_hyperedge": id_kia, "khoa_hyperedge": kia.props.get(FILTER_KEY_FIELD)}
+            for _, id_kia, kia in self._lan_can(cypher, params, params["id"], "h")
+            if LABEL_HYPEREDGE in kia.nhan
+        ]
+
+    def _dat_lai(self, cypher: str, params: dict) -> list[dict]:
+        """`MATCH (n:space:<Entity|Hyperedge> {id}) SET ...`: no-op im lặng khi không khớp, như Cypher."""
+        node = self.nodes.get((params["space"], params["id"]))
+        nhan = LABEL_HYPEREDGE if f"`{LABEL_HYPEREDGE}`" in cypher.split("\n")[0] else LABEL_ENTITY
+        if (
+            node is None
+            or nhan not in node.nhan
+            or not self._hop_le(cypher, params, "n", node.props)
+        ):
+            return [{"da_ghi": 0}]
+        self._ap_gan(node.props, cypher, params, "n")
+        for ten in [k for k, v in node.props.items() if v is None]:
+            del node.props[ten]
         return [{"da_ghi": 1}]
 
     # --- Đọc ------------------------------------------------------------

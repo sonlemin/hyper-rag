@@ -18,6 +18,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from core.ingest_scan import tach_frontmatter
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = REPO_ROOT / "eval" / "data"
 WORK_DIR = REPO_ROOT / "eval" / "expr" / "smoke_upstream"
@@ -57,7 +59,10 @@ def main() -> None:
     buoc(f"Buoc 2: doc tai lieu tieng Viet trong {DATA_DIR.relative_to(REPO_ROOT)}")
     docs = []
     for path in sorted(DATA_DIR.glob("*.txt")):
-        text = path.read_text(encoding="utf-8").strip()
+        # Từ story 2.3 file trong eval/data/ mang frontmatter scope/content_type
+        # cho pipeline ingest; smoke upstream chỉ cần phần thân.
+        _, text = tach_frontmatter(path.read_text(encoding="utf-8"))
+        text = text.strip()
         docs.append(text)
         buoc(f"  - {path.name}: {len(text)} ky tu")
     if not (3 <= len(docs) <= 5):

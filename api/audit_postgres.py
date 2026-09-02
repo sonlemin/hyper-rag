@@ -118,6 +118,7 @@ _SQL_TONG_CHI_PHI = f"""
     WHERE space = $1
       AND event = ANY($2::text[])
       AND ($3::timestamptz IS NULL OR thoi_diem >= $3)
+      AND ($4::timestamptz IS NULL OR thoi_diem < $4)
     GROUP BY 1, 2
     ORDER BY 1, 2
 """
@@ -162,16 +163,20 @@ class AuditPostgres:
                 json.dumps(dict(su_kien.chi_tiet), ensure_ascii=False),
             )
 
-    async def tong_chi_phi(self, space: str, *, tu: str | None = None) -> TongChiPhi:
+    async def tong_chi_phi(
+        self, space: str, *, tu: str | None = None, den: str | None = None
+    ) -> TongChiPhi:
         """Tổng token và USD của các sự kiện chi phí trong một space, theo model.
 
-        `tu` là mốc ISO-8601 UTC (cùng luật với `thoi_diem` của sự kiện) để đọc
-        riêng một đợt thay vì cả lịch sử. Cộng bằng SQL chứ không kéo hàng về:
-        FR-25 đọc lũy kế từ đây.
+        `tu`/`den` là mốc ISO-8601 UTC (cùng luật với `thoi_diem` của sự kiện),
+        nửa mở `[tu, den)`, để đọc riêng một đoạn (một tài liệu của một lần
+        nạp) thay vì cả lịch sử. Cộng bằng SQL chứ không kéo hàng về, và cả
+        dòng theo model lẫn dòng tổng cùng một cửa sổ: FR-25 đọc lũy kế từ đây.
         """
         moc = kiem_thoi_diem(tu) if tu else None
+        moc_ket = kiem_thoi_diem(den) if den else None
         async with self._pool.acquire() as conn:
-            hang = await conn.fetch(_SQL_TONG_CHI_PHI, space, list(CAC_SU_KIEN_CHI_PHI), moc)
+            hang = await conn.fetch(_SQL_TONG_CHI_PHI, space, list(CAC_SU_KIEN_CHI_PHI), moc, moc_ket)
         theo_model = tuple(
             DongChiPhi(
                 model=h["model"] or "",

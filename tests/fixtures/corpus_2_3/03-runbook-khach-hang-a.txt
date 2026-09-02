@@ -1,0 +1,5 @@
+---
+scope: khach_hang_a
+content_type: runbook
+---
+Runbook riêng cho khách hàng A. Cổng thanh toán báo hàng đợi đầy thì giãn nhịp gọi API.

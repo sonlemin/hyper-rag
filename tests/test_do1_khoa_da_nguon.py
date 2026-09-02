@@ -467,18 +467,21 @@ def test_ca_khong_khoa_khong_lam_hai_kho_lech(workspace_dir, khong_gian, policy)
 
     khoa_graph, khoa_vector = asyncio.run(chay())
     assert khoa_graph is KHONG_KHOA
-    assert khoa_vector is CHUA_GHI
+    # Story 2.3: sổ không khóa của kho vector nhớ trạng thái, không còn `CHUA_GHI`.
+    assert khoa_vector is KHONG_KHOA
 
 
-def test_nap_lai_lan_ba_lam_hai_kho_lech_va_buoc_doi_chieu_bat_duoc(
+def test_nap_lai_lan_ba_van_khong_khoa_o_ca_hai_kho_va_doi_chieu_sach(
     workspace_dir, khong_gian, policy
 ):
-    """Trạng thái hút sống qua lần nạp thứ ba, và bước đối chiếu bắt phần lệch.
+    """Trạng thái hút sống qua lần nạp thứ ba ở **cả hai** kho; đợt sạch.
 
-    Kho vector không phân biệt được "vắng" với "không khóa" nên nó cấp lại khóa
-    cho point; node graph thì nhớ, nên nó vẫn không khóa. Hai kho lệch nhau, và
-    đó là **hành vi đã biết**: bước đối chiếu bắt được, đợt fail kèm id, và
-    đường chữa là re-ingest (story 2.3) chứ không phải một phép tự sửa.
+    Đổi kỳ vọng ở story 2.3. Bản 2.1 của test này
+    (`test_nap_lai_lan_ba_lam_hai_kho_lech_va_buoc_doi_chieu_bat_duoc`) ghim
+    rằng kho vector cấp lại khóa cho point vì nó không phân biệt được "vắng"
+    với "không khóa", và bước đối chiếu bắt phần lệch. Nay kho vector giữ sổ
+    không khóa bền vững theo space, nên lần nạp thứ ba cùng scope với lần đầu
+    vẫn ra không khóa ở cả hai kho, point vẫn vắng mặt, và đợt không lệch.
     """
 
     async def chay():
@@ -504,15 +507,14 @@ def test_nap_lai_lan_ba_lam_hai_kho_lech_va_buoc_doi_chieu_bat_duoc(
             khoa_vector = await engine.entities_vdb.khoa_hien_co(
                 [f"ent-{QUY_TRINH_CHUNG}"]
             )
-        return khoa_graph[QUY_TRINH_CHUNG], khoa_vector[f"ent-{QUY_TRINH_CHUNG}"]
+        so_point = await client.dem_point(f"{khong_gian}_entities")
+        return khoa_graph[QUY_TRINH_CHUNG], khoa_vector[f"ent-{QUY_TRINH_CHUNG}"], so_point
 
-    with pytest.raises(StoreKeyMismatch) as loi:
-        asyncio.run(chay())
-    assert loi.value.code == "STORE_KEY_MISMATCH"
-    assert van_tay(QUY_TRINH_CHUNG) in str(loi.value)
-    assert QUY_TRINH_CHUNG not in str(loi.value), (
-        "thông điệp lỗi không được mang nguyên văn giá trị slot ra log"
-    )
+    khoa_graph, khoa_vector, so_point = asyncio.run(chay())
+    assert khoa_graph is KHONG_KHOA and khoa_vector is KHONG_KHOA
+    # Point của entity không khóa vẫn vắng; các entity khác của hai hyperedge
+    # vẫn có mặt (nên số point không phải 0).
+    assert so_point > 0
 
 
 def test_hai_fixture_khong_lam_lech_phan_con_lai_cua_kho(

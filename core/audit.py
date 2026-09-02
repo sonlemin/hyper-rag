@@ -34,11 +34,24 @@ TIER_MUTATION: str = "mutation"
 TIER_OBSERVATION: str = "observation"
 TIERS: frozenset[str] = frozenset({TIER_MUTATION, TIER_OBSERVATION})
 
-# Danh mục sự kiện. Story 2.2 chỉ có hai sự kiện chi phí; các sự kiện lọc / từ
-# chối / truy vấn của adapter vào ở story 3.6, mỗi cái là một hằng thêm ở đây.
+# Danh mục sự kiện. Story 2.2 có hai sự kiện chi phí (tầng observation); story
+# 2.3 thêm ba sự kiện ghi tri thức của pipeline ingest (tầng mutation: nạp và
+# xóa đổi kho, mất dấu vết một lần xóa là mất dấu vết một thay đổi quyền). Các
+# sự kiện lọc / từ chối / truy vấn của adapter vào ở story 3.6.
 EVENT_LLM_COST: str = "llm_cost"
 EVENT_EMBEDDING_COST: str = "embedding_cost"
-EVENTS: frozenset[str] = frozenset({EVENT_LLM_COST, EVENT_EMBEDDING_COST})
+EVENT_INGEST_DOC: str = "ingest_doc"
+EVENT_DELETE_DOC: str = "delete_doc"
+EVENT_DELETE_SPACE: str = "delete_space"
+EVENTS: frozenset[str] = frozenset(
+    {
+        EVENT_LLM_COST,
+        EVENT_EMBEDDING_COST,
+        EVENT_INGEST_DOC,
+        EVENT_DELETE_DOC,
+        EVENT_DELETE_SPACE,
+    }
+)
 
 # Thời hạn (giây) cho một lần ghi ở tầng observation. Một Postgres treo giữ
 # kết nối mở mà không trả lời sẽ giữ lời gọi LLM treo theo nếu không có hạn;
@@ -86,6 +99,11 @@ class SuKienAudit:
     `None` với ngữ cảnh hệ thống của ingest; `role` cũng vậy. `chi_tiet` là số
     liệu riêng của từng loại sự kiện (token, model, USD), giữ dạng map để hiện
     thực Postgres ghi thành jsonb mà không đổi lược đồ bảng khi thêm sự kiện.
+
+    Quy ước `hyperedge_ids`: id **vector** của hyperedge (`rel-<md5>`, do
+    upstream sinh từ tên fact), mờ, không mang nội dung fact - audit đi vào một
+    kho ngoài tầng che. Pipeline ingest (2.3) ghi theo dạng đó; sự kiện lọc /
+    truy vấn của adapter (3.6) theo cùng quy ước.
     """
 
     tier: str

@@ -762,3 +762,29 @@ def test_ollama_qua_wrapper_van_nhan_kwargs_da_map(session_prefix, policy):
     assert asyncio.run(chay()) == "x"
     assert client.goi[0][1]["options"] == {"num_predict": 10}
     assert so.cac_su_kien(EVENT_LLM_COST)[0].chi_tiet[CT_CHI_PHI_USD] == 0
+
+
+# --- Story 2.3: `san_sang()` của Ollama ---------------------------------------
+
+
+class _OllamaListGia:
+    def __init__(self, kieu):
+        self.kieu = kieu
+
+    async def list(self):
+        if self.kieu == "no":
+            raise ConnectionError("giả lập: ollama không nghe")
+        if self.kieu == "treo":
+            import asyncio
+
+            await asyncio.sleep(10)
+        return {"models": []}
+
+
+@pytest.mark.parametrize("kieu,ky_vong", [("ok", True), ("no", False), ("treo", False)])
+def test_ollama_san_sang_tra_loi_nem_va_treo(monkeypatch, kieu, ky_vong):
+    import adapters.llm_wrapper as mod
+
+    monkeypatch.setattr(mod, "THOI_HAN_SAN_SANG", 0.05)
+    ncc = OllamaCucBo(ten="ollama", client=_OllamaListGia(kieu))
+    assert asyncio.run(ncc.san_sang()) is ky_vong

@@ -39,7 +39,7 @@ from adapters.neo4j import (
     Neo4jACLGraphStorage,
     NodeIdRoleConflict,
 )
-from core.keys import FILTER_KEY_FIELD
+from core.keys import CHUA_GHI, FILTER_KEY_FIELD
 from core.permission import use_context
 from core.system_context import system_context
 from tests.fixtures import oracle
@@ -339,3 +339,36 @@ def test_khoa_quyen_cua_canh_bi_loc_tren_neo4j_that(khong_gian, policy):
     )
     assert sorted(c[1] for c in do["cap"]) == con_lai
     assert do["bac"] == len(con_lai)
+
+
+def test_duong_xoa_va_ghi_thang_hop_le_tren_neo4j_that(khong_gian, policy):
+    """Ba câu Cypher mới của story 2.3 chạy được trên server thật, đúng ngữ nghĩa.
+
+    Driver giả chỉ diễn giải câu; `DETACH DELETE ... RETURN count(n)`,
+    `MATCH ... SET ... RETURN count(n)` và pattern lân cận theo nhãn Hyperedge
+    phải được Neo4j thật chấp nhận. Dọn bằng `xoa_tat_ca` ở cuối.
+    """
+
+    async def chay():
+        async with kho_that(khong_gian, policy) as (driver, adapter):
+            with use_context(
+                system_context(space=khong_gian, policy_version=policy.policy_version)
+            ):
+                khoa = await adapter.khoa_lan_can_hyperedge("App01")
+                await adapter.dat_lai_entity(
+                    "App01", description="mô tả mới", source_id="chunk-HE-02", khoa=None
+                )
+                sau_dat_lai = await adapter.khoa_hien_co(["App01"])
+                da_xoa = await adapter.xoa_node([id_hyperedge(THEO_ID["HE-01"]), "khong-co"])
+                khoa_sau = await adapter.khoa_lan_can_hyperedge("App01")
+                con = await adapter.khoa_hien_co([id_hyperedge(THEO_ID["HE-01"])])
+                tat_ca = await adapter.xoa_tat_ca()
+                rong = await adapter.khoa_hien_co(["App01"])
+            return khoa, sau_dat_lai, da_xoa, khoa_sau, con, tat_ca, rong
+
+    khoa, sau_dat_lai, da_xoa, khoa_sau, con, tat_ca, rong = asyncio.run(chay())
+    assert len(khoa) == 2 and set(khoa) == {"noi_bo:runbook", "noi_bo:bao_cao_su_co"}
+    assert sau_dat_lai["App01"] is None
+    assert da_xoa == 1 and khoa_sau == ["noi_bo:bao_cao_su_co"]
+    assert con[id_hyperedge(THEO_ID["HE-01"])] is CHUA_GHI
+    assert tat_ca > 0 and rong["App01"] is CHUA_GHI

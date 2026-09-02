@@ -608,11 +608,12 @@ def test_khac_scope_thi_point_vang_mat_khoi_collection(khong_gian, policy):
 def test_khac_scope_nap_lan_ba_cung_scope_dau_van_khong_khoa(khong_gian, policy):
     """Trạng thái hút phải sống được qua một lần nạp nữa ở đường vector.
 
-    Point đã bị xóa nên kho vector một mình nó không phân biệt được "chưa từng
-    ghi" với "đã hợp nhất ra không khóa" - đó là hệ quả cố ý của việc xóa thật.
-    Ở đây nạp lại lần ba dưới đúng nhãn của lần đầu và ghim rằng point *quay
-    lại*: hành vi này được biết, và chính bước đối chiếu hai kho là thứ bắt nó
-    (node graph vẫn nhớ trạng thái không khóa), chứ không phải kho vector.
+    Đổi kỳ vọng ở story 2.3. Bản 2.1 ghim rằng point *quay lại* vì point đã bị
+    xóa và kho vector một mình nó không phân biệt được "chưa từng ghi" với "đã
+    hợp nhất ra không khóa". Nay adapter giữ sổ không khóa theo space (trong bộ
+    nhớ khi không có `working_dir`, trên đĩa khi có), `khoa_hien_co` trả
+    `KHONG_KHOA` cho id trong sổ, nên lần nạp thứ ba dưới đúng nhãn của lần đầu
+    vẫn ra không khóa và point vẫn vắng mặt tuyệt đối.
     """
 
     async def chay():
@@ -628,9 +629,7 @@ def test_khac_scope_nap_lan_ba_cung_scope_dau_van_khong_khoa(khong_gian, policy)
                 ("noi_bo", "runbook"),
             ),
         )
-        assert len(diem) == 1 and diem[0].payload[FILTER_KEY_FIELD] == filter_key(
-            "noi_bo", "runbook"
-        )
+        assert diem == [], "trạng thái hút: point không quay lại ở lần nạp thứ ba"
 
     asyncio.run(chay())
 

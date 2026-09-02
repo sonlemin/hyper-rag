@@ -53,15 +53,17 @@ from hypergraphrag.base import BaseKVStorage
 
 from adapters.doi_chieu import ghi_vao_so, ten_kho_kv, ten_kho_vector
 from adapters.ingest_labels import (
+    IngestLabelMissing,
     IngestOutsideSystemContext,
     bat_buoc_ngu_canh_he_thong,
+    current_ingest_key,
     ingest_keys_for_write,
 )
 # Hợp đồng che dùng chung với hai adapter kia: một luật, một chỗ.
 from adapters.mask_contract import kiem_ket_qua_che
 from adapters.sensitivity_loader import bang_hang_cho
 from core.ids import normalize_id, validate_space
-from core.keys import CHUA_GHI, FILTER_KEY_FIELD
+from core.keys import CHUA_GHI, FILTER_KEY_FIELD, hop_nhat_khoa
 from core.masking import mask
 from core.permission import current_context
 
@@ -396,13 +398,40 @@ class JsonACLKVStorage(BaseKVStorage):
         Mục ngoài quyền tính là chưa tồn tại. Trả lời khác đi thì một vai hẹp
         quyền hỏi được kho "id này có chưa" và nhận câu trả lời trung thực về
         một tài liệu nó không được đọc.
+
+        **Dưới nhãn ingest** (ngữ cảnh hệ thống và có phạm vi nhãn đang mở) thì
+        thêm một nhánh, và đó là chỗ story 2.3 đóng lỗ `ainsert` né luật hợp
+        nhất ở đường chunk: `hypergraphrag.py:309-313` gọi `filter_keys` rồi
+        *loại* id đã có khỏi lô trước khi `upsert` nhìn thấy, nên chunk trùng
+        id giữa hai tài liệu khác quyền không bao giờ tới được cửa hợp nhất.
+        Nay một id đã có mà khóa **sẽ đổi** sau hợp nhất với nhãn đang mở được
+        báo là "chưa có", để `ainsert` đưa nó qua `upsert` (nơi nội dung giữ
+        nguyên, chỉ khóa được hợp nhất). Id đã có và khóa không đổi vẫn báo "đã
+        có", giữ đúng ngữ nghĩa chỉ-chèn của upstream cho nội dung.
+
+        Ngoài nhãn ingest (đọc thô không nạp gì, bộ test adapter lẻ) giữ hành
+        vi cũ: `IngestLabelMissing` là "không có nhãn", không phải lỗi ở đây.
         """
         context = current_context()
         khoa_duoc_phep = self._khoa_duoc_phep(context)
         if self._khong_thay_gi(khoa_duoc_phep):
             return set(data)
         du_lieu = self._du_lieu(context.space)
-        return {id for id in data if not self._ton_tai(du_lieu, id, khoa_duoc_phep)}
+        chua_co = {id for id in data if not self._ton_tai(du_lieu, id, khoa_duoc_phep)}
+        if khoa_duoc_phep is not None:
+            return chua_co
+        try:
+            khoa_moi = current_ingest_key()
+        except IngestLabelMissing:
+            return chua_co
+        hang = self._bang_hang.hang
+        for id in data:
+            if id in chua_co or id not in du_lieu:
+                continue
+            khoa_cu = self._khoa_cua(id, du_lieu[id])
+            if hop_nhat_khoa(khoa_cu, khoa_moi, hang=hang) != khoa_cu:
+                chua_co.add(id)
+        return chua_co
 
     # --- Ghi ---------------------------------------------------------------
 
@@ -510,16 +539,47 @@ class JsonACLKVStorage(BaseKVStorage):
             return ten_kho_vector("chunks")
         return None
 
+    async def xoa(self, ids: list[str]) -> list[str]:
+        """Gỡ các bản ghi theo id khỏi kho của `space` hiện tại; trả phần đã gỡ.
+
+        Đường xóa của re-ingest và xóa tài liệu (story 2.3): chunk không còn tài
+        liệu nào dùng thì rời kho. Cùng cửa AD-3 với `upsert`; id không có
+        trong kho bỏ qua chứ không nổ, vì "xóa cái đã vắng" là trạng thái đích
+        đã đạt. Xuống đĩa ở `index_done_callback`, cùng nhịp với ghi.
+        """
+        bat_buoc_ngu_canh_he_thong("xóa bản ghi KV")
+        if not ids:
+            return []
+        space = validate_space(current_context().space)
+        du_lieu = self._du_lieu(space)
+        da_xoa = [id for id in ids if id in du_lieu]
+        for id in da_xoa:
+            del du_lieu[id]
+        if da_xoa:
+            self._ban.add(space)
+        return da_xoa
+
+    async def xoa_tat_ca(self) -> None:
+        """Xóa sạch kho của `space` hiện tại và gỡ file của nó khỏi đĩa.
+
+        `drop` (bộ nhớ) rồi flush (để một tiến trình khác đang đọc file thấy
+        kho rỗng chứ không thấy bản cũ) rồi unlink: sau đó file vắng mặt và lần
+        nạp kế đọc `{}`. Đường xóa theo `space` mà `drop` từng ghi là nợ.
+        """
+        await self.drop()
+        space = validate_space(current_context().space)
+        await self.index_done_callback()
+        self._duong_dan(space).unlink(missing_ok=True)
+        self._kho.pop(space, None)
+
     async def drop(self) -> None:
-        """Xóa sạch kho của một `space`, chỉ pipeline ingest gọi được.
+        """Xóa sạch kho của một `space` trong bộ nhớ, chỉ pipeline ingest gọi được.
 
         Upstream chỉ gán `_data = {}` và không kiểm gì (`storage.py:62`), nhưng
         đây là đường ghi phá hủy và `space` lấy theo ngữ cảnh, nên nó đi cùng
         luật với `upsert`: chạy dưới ngữ cảnh vai người dùng nghĩa là chính
-        người hỏi xóa được kho của không gian mình đang đọc.
-
-        Không phải đường xóa theo `space` mà pipeline Epic 2 cần - khoản đó là
-        nợ có địa chỉ, không mở ở đây.
+        người hỏi xóa được kho của không gian mình đang đọc. Đường xóa cả
+        `space` kể cả file trên đĩa là `xoa_tat_ca`.
         """
         context = current_context()
         if not context.bypass_filter:

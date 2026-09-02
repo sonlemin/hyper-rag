@@ -43,7 +43,17 @@ def su_kien(**doi) -> SuKienAudit:
 
 
 def test_danh_muc_su_kien_va_tang_la_hang_trong_core():
-    assert EVENTS == {EVENT_LLM_COST, EVENT_EMBEDDING_COST}
+    """Danh mục là hằng trong core/: story 2.2 hai sự kiện chi phí, 2.3 thêm ba sự kiện ingest."""
+    from core.audit import EVENT_DELETE_DOC, EVENT_DELETE_SPACE, EVENT_INGEST_DOC
+
+    assert EVENTS == {
+        EVENT_LLM_COST,
+        EVENT_EMBEDDING_COST,
+        EVENT_INGEST_DOC,
+        EVENT_DELETE_DOC,
+        EVENT_DELETE_SPACE,
+    }
+    assert (EVENT_INGEST_DOC, EVENT_DELETE_DOC, EVENT_DELETE_SPACE) == ("ingest_doc", "delete_doc", "delete_space")
     assert TIERS == {TIER_MUTATION, TIER_OBSERVATION}
 
 

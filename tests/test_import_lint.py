@@ -79,11 +79,23 @@ GOI_QUET = ("core", "adapters", "api", "redteam", "eval")
 MODULE_SYSTEM_CONTEXT = "core.system_context"
 FILE_SYSTEM_CONTEXT = "core/system_context.py"
 # Danh sách trắng: đường dẫn tương đối gốc repo của module ingest được phép.
-# Rỗng ở story 1.2 - chưa có pipeline ingest nào. Story 2.2 thêm script đo thô
-# `api/do_chi_phi.py`: nó chạy `ainsert` dưới ngữ cảnh hệ thống đúng như
-# pipeline 2.3 sẽ làm, và là *dòng của pipeline ingest* cho tới khi 2.3 thay
-# nó bằng module thật (lúc đó đổi đường dẫn ở đây, không thêm dòng thứ hai).
-CHO_PHEP_SYSTEM_CONTEXT: frozenset[str] = frozenset({"api/do_chi_phi.py"})
+# Rỗng ở story 1.2; story 2.2 tạm đặt script đo thô `api/do_chi_phi.py`; story
+# 2.3 thay bằng module pipeline thật và script gọi pipeline. Vẫn đúng một dòng.
+CHO_PHEP_SYSTEM_CONTEXT: frozenset[str] = frozenset({"adapters/ingest.py"})
+
+# Cùng luật với danh sách trắng ở trên nhưng cho *lối vào ghi tri thức*:
+# `ainsert`/`insert` của engine chỉ được gọi từ pipeline (story 2.3). Gọi thẳng
+# ở chỗ khác là một đường nạp không có sổ tài liệu, không có khóa tiến trình,
+# không có kiểm space real - tức mọi luật của pipeline bị đi vòng.
+# `eval/smoke_upstream.py` là smoke của story 1.1 chạy *engine upstream* trên
+# storage mặc định (không phải ba kho ACL), nên nó không phải một đường nạp
+# của dự án; miễn tường minh kèm lý do thay vì nới luật.
+CHO_PHEP_AINSERT: frozenset[str] = frozenset({"adapters/ingest.py", "eval/smoke_upstream.py"})
+# `.ainsert(` bắt vô điều kiện; `.insert(` chỉ khi đối tượng nhận là một tên
+# mang `engine`/`rag` (`list.insert`, `sys.path.insert` là chuyện khác).
+TEN_GOI_NAP_LUON = frozenset({"ainsert"})
+TEN_GOI_NAP_THEO_DOI_TUONG = frozenset({"insert"})
+DAU_HIEU_ENGINE = ("engine", "rag")
 
 
 def _module_tuyet_doi(node: ast.ImportFrom, goi_cha: tuple[str, ...]) -> str:
@@ -159,6 +171,57 @@ def test_chi_ingest_duoc_import_context_he_thong():
     assert not vi_pham, (
         "import core.system_context ngoài danh sách trắng ingest:\n" + "\n".join(vi_pham)
     )
+
+
+def _goi_nap(py: Path) -> list[int]:
+    """Số dòng của mọi lời gọi `<x>.ainsert(...)` / `<x>.insert(...)` trong file."""
+    tree = ast.parse(py.read_text(encoding="utf-8"), filename=str(py))
+
+    def la_goi_nap(node: ast.Call) -> bool:
+        if not isinstance(node.func, ast.Attribute):
+            return False
+        if node.func.attr in TEN_GOI_NAP_LUON:
+            return True
+        if node.func.attr not in TEN_GOI_NAP_THEO_DOI_TUONG:
+            return False
+        goc = node.func.value
+        ten = (getattr(goc, "id", None) or getattr(goc, "attr", None) or "").lower()
+        return any(dau in ten for dau in DAU_HIEU_ENGINE)
+
+    return sorted(node.lineno for node in ast.walk(tree) if isinstance(node, ast.Call) and la_goi_nap(node))
+
+
+def test_ainsert_chi_duoc_goi_tu_pipeline_ingest():
+    """`.ainsert(`/`.insert(` ngoài `tests/` chỉ ở `adapters/ingest.py` (story 2.3)."""
+    assert (REPO_ROOT / "adapters" / "ingest.py").exists()
+    vi_pham = []
+    for package in GOI_QUET:
+        thu_muc = REPO_ROOT / package
+        if not thu_muc.is_dir():
+            continue
+        for py in thu_muc.rglob("*.py"):
+            duong_dan = str(py.relative_to(REPO_ROOT))
+            if duong_dan in CHO_PHEP_AINSERT:
+                continue
+            vi_pham += [f"{duong_dan}:{dong}" for dong in _goi_nap(py)]
+    assert not vi_pham, "gọi ainsert/insert ngoài pipeline ingest:\n" + "\n".join(vi_pham)
+    assert _goi_nap(REPO_ROOT / "adapters" / "ingest.py"), "pipeline phải là nơi gọi ainsert"
+
+
+def test_bo_do_ainsert_bat_dung_va_khong_bat_nham(tmp_path):
+    py = tmp_path / "x.py"
+    py.write_text(
+        "import sys\n"
+        "async def f(engine, rag, xs):\n"
+        "    await engine.ainsert('x')\n"          # 3: ainsert luôn bắt
+        "    rag.insert(['y'])\n"                  # 4: insert trên tên mang `rag`
+        "    self.engine.insert('z')\n"            # 5: insert trên thuộc tính mang `engine`
+        "    sys.path.insert(0, 'p')\n"            # không bắt: đối tượng nhận là `path`
+        "    xs.insert(0, 1)\n"                    # không bắt: list.insert
+        "    ainsert('z')\n",                      # không bắt: tên trần
+        encoding="utf-8",
+    )
+    assert _goi_nap(py) == [3, 4, 5]
 
 
 # Bốn cách với tới module, viết như code thật để AST nhìn thấy đúng thứ cần bắt.

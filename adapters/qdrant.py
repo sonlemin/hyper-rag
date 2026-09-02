@@ -26,7 +26,11 @@ tạo trước khi nạp dữ liệu, và upsert từ chối chạy khi index ch
 """
 
 import asyncio
+import json
+import os
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Mapping
 
 from hypergraphrag.base import BaseVectorStorage
 from qdrant_client import AsyncQdrantClient, models
@@ -36,12 +40,15 @@ from adapters.ingest_labels import (
     bat_buoc_ngu_canh_he_thong,
     ingest_keys_for_write,
 )
+# Cùng khóa cấu hình và cùng đuôi file tạm với kho KV: sổ không khóa của kho
+# vector nằm trong chính thư mục làm việc đó và ghi nguyên tử theo cùng cách.
+from adapters.kv import DUOI_TAM, WORKING_DIR_KEY
 # Hợp đồng che dùng chung với hai adapter kia: một luật, một chỗ. `_ban_ghi`
 # gọi `kiem_ket_qua_che` chứ không tự viết một nửa hợp đồng. `MaskContractViolated`
 # nhập lại ở đây để tên vẫn lấy được từ `adapters.qdrant`, như nơi gọi cũ vẫn làm.
 from adapters.mask_contract import MaskContractViolated, kiem_ket_qua_che
 from adapters.sensitivity_loader import bang_hang_cho
-from core.ids import normalize_id, point_id
+from core.ids import normalize_id, point_id, validate_space
 from core.keys import CHUA_GHI, FILTER_KEY_FIELD, KHONG_KHOA
 from core.masking import mask
 from core.permission import current_context
@@ -89,6 +96,9 @@ GLOBAL_M = 16
 # kèm lý do, không nới lén ở một adapter nào đó.
 FILTER_MAX_CONDITIONS = 1
 
+# Phiên bản lược đồ của sổ không khóa trên đĩa (`{"version": 1, "ids": [...]}`).
+VERSION_SO_KHONG_KHOA = 1
+
 
 class QdrantIndexMissing(RuntimeError):
     """Ghi dữ liệu khi payload index khóa chưa tồn tại.
@@ -129,6 +139,12 @@ class PointIdCollision(RuntimeError):
     code = "POINT_ID_COLLISION"
 
 
+class KhongKhoaLedgerCorrupt(RuntimeError):
+    """Sổ không khóa trên đĩa không đọc được hoặc mang phiên bản lược đồ lạ."""
+
+    code = "KHONG_KHOA_LEDGER_CORRUPT"
+
+
 class PointFilterKeyMissing(RuntimeError):
     """Một point rời kho mà không mang khóa quyền trong payload.
 
@@ -146,13 +162,14 @@ class QdrantVectorDBStorage(BaseVectorStorage):
     """`BaseVectorStorage` của upstream, ruột là Qdrant có pre-filter theo khóa."""
 
     # Bước đối chiếu hai kho hỏi thuộc tính này (`adapters/doi_chieu.py`).
-    # `True` vì ca hợp nhất ra "không khóa" **xóa** point (AD-5 đòi vắng mặt
-    # tuyệt đối), nên nhìn từ đây một point vắng có thể là chưa từng ghi hoặc
-    # đã hợp nhất ra không khóa - kho này không phân biệt được hai thứ đó.
+    # `False` từ story 2.3: ca hợp nhất ra "không khóa" vẫn **xóa** point (AD-5
+    # đòi vắng mặt tuyệt đối), nhưng id đó vào sổ không khóa bền vững theo
+    # space trong `working_dir`, và `khoa_hien_co` trả `KHONG_KHOA` cho id trong
+    # sổ. Nên "vắng" của kho này lại đúng là chưa từng ghi, như graph và KV.
     # Không chú kiểu: một annotation biến nó thành field của dataclass, và khi
     # đó nó đi vào `asdict(self)` rồi xuống `global_config` như một khóa cấu
     # hình - thứ nó không phải.
-    VANG_LA_MO_HO = True
+    VANG_LA_MO_HO = False
 
     # Giữ tên và giá trị mặc định của upstream. Khóa `cosine_better_than_threshold`
     # trong `global_config` chỉ *thật sự* có tác dụng từ story 1.7: nó không phải
@@ -183,6 +200,80 @@ class QdrantVectorDBStorage(BaseVectorStorage):
         # (`adapters/sensitivity_loader.bang_hang_cho`), nên ba đường ghi không
         # chạy trên hai bảng hạng khác nhau.
         self._bang_hang = bang_hang_cho(cau_hinh)
+        # Sổ không khóa theo `space`, nạp lười từ `working_dir`. Không có
+        # `working_dir` (bộ test adapter lẻ dựng không qua engine) thì sổ chỉ
+        # sống trong bộ nhớ của instance; engine của dự án luôn truyền nó.
+        thu_muc = cau_hinh.get(WORKING_DIR_KEY)
+        self._thu_muc: Path | None = Path(thu_muc) if thu_muc else None
+        self._so_khong_khoa: dict[str, set[str]] = {}
+
+    # --- Sổ không khóa ------------------------------------------------------
+
+    def _duong_dan_so(self, space: str) -> Path | None:
+        if self._thu_muc is None:
+            return None
+        return self._thu_muc / f"khong_khoa_{validate_space(space)}_{self.namespace}.json"
+
+    def _so(self, space: str) -> set[str]:
+        """Tập id upstream đã hợp nhất ra không khóa trong `space`, nạp một lần từ đĩa."""
+        if space not in self._so_khong_khoa:
+            duong_dan = self._duong_dan_so(space)
+            noi_dung: list = []
+            if duong_dan is not None and duong_dan.exists():
+                try:
+                    raw = json.loads(duong_dan.read_text(encoding="utf-8"))
+                except (json.JSONDecodeError, UnicodeDecodeError) as loi:
+                    raise KhongKhoaLedgerCorrupt(
+                        f"sổ không khóa {duong_dan.name!r} không parse được: {loi}"
+                    ) from loi
+                if not isinstance(raw, dict) or raw.get("version") != VERSION_SO_KHONG_KHOA:
+                    raise KhongKhoaLedgerCorrupt(
+                        f"sổ không khóa {duong_dan.name!r} phải là bảng có"
+                        f" version={VERSION_SO_KHONG_KHOA}"
+                    )
+                noi_dung = raw.get("ids")
+                if not isinstance(noi_dung, list) or not all(isinstance(x, str) for x in noi_dung):
+                    raise KhongKhoaLedgerCorrupt(
+                        f"sổ không khóa {duong_dan.name!r} hỏng: `ids` phải là một danh sách id"
+                    )
+            self._so_khong_khoa[space] = set(noi_dung)
+        return self._so_khong_khoa[space]
+
+    def _ghi_so(self, space: str) -> None:
+        """Ghi sổ xuống đĩa nguyên tử (file tạm rồi `os.replace`), như kho KV."""
+        duong_dan = self._duong_dan_so(space)
+        if duong_dan is None:
+            return
+        duong_dan.parent.mkdir(parents=True, exist_ok=True)
+        tam = duong_dan.with_name(duong_dan.name + DUOI_TAM)
+        try:
+            with tam.open("w", encoding="utf-8") as f:
+                json.dump(
+                    {"version": VERSION_SO_KHONG_KHOA, "ids": sorted(self._so(space))},
+                    f,
+                    indent=2,
+                    ensure_ascii=False,
+                )
+            os.replace(tam, duong_dan)
+        finally:
+            tam.unlink(missing_ok=True)
+
+    def _cap_nhat_so(self, space: str, *, them=(), bo=()) -> None:
+        so = self._so(space)
+        truoc = set(so)
+        so.update(them)
+        so.difference_update(bo)
+        if so != truoc:
+            self._ghi_so(space)
+
+    def so_khong_khoa(self, space: str) -> set[str]:
+        """Bản sao tập id không khóa của một `space`; chỉ dưới ngữ cảnh hệ thống.
+
+        Trả lời "id này đã hợp nhất ra không khóa chưa" cũng là trả lời "có
+        fact như vậy tồn tại", nên nó đi cùng cửa AD-3 với `khoa_hien_co`.
+        """
+        bat_buoc_ngu_canh_he_thong("đọc sổ không khóa của kho vector")
+        return set(self._so(space))
 
     async def close(self) -> None:
         """Đóng client do chính adapter mở; `adapters/engine.py` gọi lúc tắt.
@@ -258,10 +349,18 @@ class QdrantVectorDBStorage(BaseVectorStorage):
         nhận rồi bỏ qua: `hnsw_config.payload_m` dựng cạnh HNSW theo khóa quyền,
         `strict_mode_config` là hàng rào phía server cho cùng luật mà adapter tự
         giữ. Hiệu lực thật của cả hai là khoản kiểm ở cổng M1.
+
+        Collection **đã có** thì hai tham số đó được áp lại bằng
+        `update_collection` khi cấu hình đọc về lệch hằng (story 2.3): một
+        collection sống lâu hơn một lần chạy phải nhận giá trị mới của
+        `PAYLOAD_M`/`GLOBAL_M`/`FILTER_MAX_CONDITIONS` mà không cần re-ingest.
+        Số chiều thì không áp lại được - đổi model embedding là re-ingest.
         """
         ten = self._ten_collection()
         if await self._client.collection_exists(collection_name=ten):
-            await self._kiem_so_chieu(ten)
+            thong_tin = await self._client.get_collection(collection_name=ten)
+            self._kiem_so_chieu(ten, thong_tin)
+            await self._ap_lai_cau_hinh(ten, thong_tin)
         else:
             await self._client.create_collection(
                 collection_name=ten,
@@ -269,15 +368,8 @@ class QdrantVectorDBStorage(BaseVectorStorage):
                     size=self.embedding_func.embedding_dim,
                     distance=models.Distance.COSINE,
                 ),
-                hnsw_config=models.HnswConfigDiff(payload_m=PAYLOAD_M, m=GLOBAL_M),
-                strict_mode_config=models.StrictModeConfig(
-                    enabled=True,
-                    filter_max_conditions=FILTER_MAX_CONDITIONS,
-                    # Lọc trên field chưa có index là đúng thứ AD-4 cấm; để
-                    # server từ chối thay vì âm thầm duyệt vét cạn.
-                    unindexed_filtering_retrieve=False,
-                    unindexed_filtering_update=False,
-                ),
+                hnsw_config=self._hnsw_config(),
+                strict_mode_config=self._strict_mode_config(),
             )
         await self._client.create_payload_index(
             collection_name=ten,
@@ -291,9 +383,54 @@ class QdrantVectorDBStorage(BaseVectorStorage):
         )
         return ten
 
-    async def _kiem_so_chieu(self, ten: str) -> None:
+    @staticmethod
+    def _hnsw_config() -> models.HnswConfigDiff:
+        return models.HnswConfigDiff(payload_m=PAYLOAD_M, m=GLOBAL_M)
+
+    @staticmethod
+    def _strict_mode_config() -> models.StrictModeConfig:
+        return models.StrictModeConfig(
+            enabled=True,
+            filter_max_conditions=FILTER_MAX_CONDITIONS,
+            # Lọc trên field chưa có index là đúng thứ AD-4 cấm; để server từ
+            # chối thay vì âm thầm duyệt vét cạn.
+            unindexed_filtering_retrieve=False,
+            unindexed_filtering_update=False,
+        )
+
+    async def _ap_lai_cau_hinh(self, ten: str, thong_tin) -> None:
+        """Áp lại HNSW và strict mode lên collection đã có khi cấu hình đọc về lệch hằng.
+
+        So từng trường mà hằng của adapter quyết định; trường server tự chọn
+        (`ef_construct`, ngưỡng full scan) không so. Một collection do bản cũ
+        tạo báo `payload_m` vắng hay strict mode vắng đều là lệch.
+        """
+        hnsw = getattr(thong_tin.config, "hnsw_config", None)
+        strict = getattr(thong_tin.config, "strict_mode_config", None)
+        khop_hnsw = hnsw is not None and (
+            getattr(hnsw, "m", None),
+            getattr(hnsw, "payload_m", None),
+        ) == (GLOBAL_M, PAYLOAD_M)
+        mong = self._strict_mode_config()
+        khop_strict = strict is not None and all(
+            getattr(strict, truong, None) == getattr(mong, truong)
+            for truong in (
+                "enabled",
+                "filter_max_conditions",
+                "unindexed_filtering_retrieve",
+                "unindexed_filtering_update",
+            )
+        )
+        if khop_hnsw and khop_strict:
+            return
+        await self._client.update_collection(
+            collection_name=ten,
+            hnsw_config=self._hnsw_config(),
+            strict_mode_config=mong,
+        )
+
+    def _kiem_so_chieu(self, ten: str, thong_tin) -> None:
         """Collection đã có phải cùng số chiều với `embedding_func` đang cấu hình."""
-        thong_tin = await self._client.get_collection(collection_name=ten)
         vectors = thong_tin.config.params.vectors
         hien_co = getattr(vectors, "size", None)
         cau_hinh = self.embedding_func.embedding_dim
@@ -355,23 +492,30 @@ class QdrantVectorDBStorage(BaseVectorStorage):
         nhận khóa của lần ghi cuối - đúng lỗ story này đóng.
 
         Ba giá trị trả về, đúng ba trạng thái mà `core.keys.hop_nhat_khoa` phân
-        biệt: `CHUA_GHI` (point vắng), một khóa thật, và - không bao giờ ở kho
-        này - `KHONG_KHOA`. Ca không khóa **xóa** point khỏi collection (AD-5
-        đòi vắng mặt tuyệt đối), nên nhìn từ Qdrant nó trùng với "chưa từng
-        ghi"; bước đối chiếu nhận cả hai khả năng cho báo cáo của kho vector.
+        biệt: `CHUA_GHI` (point vắng và không có trong sổ), một khóa thật, và
+        `KHONG_KHOA` cho id nằm trong sổ không khóa. Ca không khóa **xóa** point
+        khỏi collection (AD-5 đòi vắng mặt tuyệt đối) nên sổ là nơi duy nhất
+        còn nhớ nó; tra sổ trước, chỉ hỏi Qdrant phần còn lại.
         """
         bat_buoc_ngu_canh_he_thong("đọc khóa hiện có của kho vector")
         if not ids:
             return {}
-        ten = self._ten_collection()
-        theo_point = self._theo_point_id(ids)
+        context = current_context()
+        ten = self._ten_collection(context)
+        so = self._so(context.space)
+        ket_qua: dict[str, object] = {
+            id_goc: (KHONG_KHOA if id_goc in so else CHUA_GHI) for id_goc in ids
+        }
+        con_hoi = [id_goc for id_goc in ids if id_goc not in so]
+        if not con_hoi:
+            return ket_qua
+        theo_point = self._theo_point_id(con_hoi)
         ban_ghi = await self._client.retrieve(
             collection_name=ten,
             ids=list(theo_point),
             with_payload=[FILTER_KEY_FIELD],
             with_vectors=False,
         )
-        ket_qua: dict[str, object] = {id_goc: CHUA_GHI for id_goc in ids}
         for r in ban_ghi:
             khoa = (r.payload or {}).get(FILTER_KEY_FIELD)
             if not khoa:
@@ -441,7 +585,8 @@ class QdrantVectorDBStorage(BaseVectorStorage):
         """
         if not data:
             return []
-        ten = self._ten_collection()
+        context = current_context()
+        ten = self._ten_collection(context)
         await self._bat_buoc_co_index(ten)
 
         ids_goc = list(data)
@@ -463,13 +608,13 @@ class QdrantVectorDBStorage(BaseVectorStorage):
             )
 
         if can_xoa:
-            await self._client.delete(
-                collection_name=ten,
-                points_selector=models.PointIdsList(
-                    points=[point_id(id_goc) for id_goc in can_xoa]
-                ),
-                wait=True,
-            )
+            await self._xoa_point(ten, can_xoa)
+            # Sổ không khóa ghi **sau** khi xóa point: đứt giữa hai bước thì
+            # point đã vắng mà sổ chưa có, tức lần nạp sau coi nó là id mới
+            # (ca 2.1 đã biết, bước đối chiếu bắt được); chiều ngược lại để
+            # lại một point mang khóa cũ rộng hơn mà `khoa_hien_co` lại nói
+            # "không khóa" - kho lệch với chính nó mà không ai thấy.
+            self._cap_nhat_so(context.space, them=can_xoa)
 
         vectors = await self._embed_theo_lo(
             [data[id][CONTENT_FIELD] for id in can_ghi]
@@ -493,6 +638,114 @@ class QdrantVectorDBStorage(BaseVectorStorage):
                 collection_name=ten, points=diem[i : i + n], wait=True
             )
         return [d.id for d in diem]
+
+    async def _xoa_point(self, ten: str, ids_goc: list[str]) -> None:
+        await self._client.delete(
+            collection_name=ten,
+            points_selector=models.PointIdsList(
+                points=[point_id(id_goc) for id_goc in ids_goc]
+            ),
+            wait=True,
+        )
+
+    # --- Đường xóa và ghi thẳng của pipeline re-ingest (story 2.3) ----------
+
+    async def payload_cua(self, ids: list[str]) -> dict[str, dict]:
+        """Payload hiện có của từng id upstream (không vector), đọc thô dưới cờ system.
+
+        Đường dựng lại của re-ingest cần đúng tên mà upstream đã ghi
+        (`entity_name`/`hyperedge_name` giữ nguyên dấu nháy của bản ghi trích
+        xuất) để point dựng lại giống hệt point `ainsert` sẽ ghi. Id vắng thì
+        không có trong kết quả. Không che: chỉ pipeline dưới ngữ cảnh hệ thống
+        gọi được, và payload không mang nội dung (`content` bị chặn lúc ghi).
+        """
+        bat_buoc_ngu_canh_he_thong("đọc payload của kho vector")
+        if not ids:
+            return {}
+        ten = self._ten_collection()
+        theo_point = self._theo_point_id(ids)
+        if not await self._client.collection_exists(collection_name=ten):
+            return {}
+        ban_ghi = await self._client.retrieve(
+            collection_name=ten, ids=list(theo_point), with_payload=True, with_vectors=False
+        )
+        return {theo_point[str(r.id)]: dict(r.payload or {}) for r in ban_ghi}
+
+    async def xoa(self, ids: list[str]) -> None:
+        """Gỡ hẳn các point theo id upstream, và gỡ id khỏi sổ không khóa.
+
+        Đường xóa của re-ingest và xóa tài liệu: point rời kho *và* rời sổ, nên
+        lần nạp sau nó là một id mới (khác với ca hợp nhất ra không khóa, nơi
+        point rời kho nhưng sổ giữ lại). Id không có trong kho bỏ qua. Không
+        vào sổ đợt: id đã xóa không còn gì để đối chiếu.
+        """
+        bat_buoc_ngu_canh_he_thong("xóa point của kho vector")
+        if not ids:
+            return
+        context = current_context()
+        ten = self._ten_collection(context)
+        if await self._client.collection_exists(collection_name=ten):
+            await self._xoa_point(ten, ids)
+        self._cap_nhat_so(context.space, bo=ids)
+
+    async def ghi_thang(
+        self, id_goc: str, *, content: str, khoa: str | None, meta: Mapping | None = None
+    ) -> None:
+        """Ghi một point với khóa đã tính sẵn, không read-merge-write.
+
+        Pipeline re-ingest dựng lại entity chung từ hyperedge còn nối và đã
+        gấp khóa bằng `hop_nhat_khoa`; cửa hợp nhất chạy lại ở đây sẽ hợp nhất
+        khóa *mới tính* với khóa *cũ* của chính point đó và không bao giờ nới
+        được. Vì thế đường này nhận khóa tường minh; `KHONG_KHOA` nghĩa là xóa
+        point và ghi sổ, đúng ngữ nghĩa AD-5 của kho này. Vẫn qua cửa hệ thống,
+        cửa index và sổ đợt như `upsert`, để bước đối chiếu thấy nó.
+        """
+        bat_buoc_ngu_canh_he_thong("ghi thẳng point của kho vector")
+        context = current_context()
+        ten = self._ten_collection(context)
+        await self._bat_buoc_co_index(ten)
+        gia_tri = dict(meta or {})
+        ghi_vao_so(
+            id_join=self._id_join(id_goc, gia_tri),
+            kho=ten_kho_vector(self.namespace),
+            id_trong_kho=id_goc,
+            kho_doi=self._kho_doi(),
+        )
+        if khoa is KHONG_KHOA:
+            await self._xoa_point(ten, [id_goc])
+            self._cap_nhat_so(context.space, them=[id_goc])
+            return
+        vector = (await self._embed_theo_lo([content]))[0]
+        await self._client.upsert(
+            collection_name=ten,
+            points=[
+                models.PointStruct(
+                    id=point_id(id_goc),
+                    vector=vector,
+                    payload=self._payload(id_goc, gia_tri, khoa),
+                )
+            ],
+            wait=True,
+        )
+        self._cap_nhat_so(context.space, bo=[id_goc])
+
+    async def xoa_tat_ca(self) -> None:
+        """Bỏ collection của `space` hiện tại và gỡ sổ không khóa của nó.
+
+        Xóa cả collection chứ không xóa từng point: sau đó không còn point lạc
+        nào, và `initialize()` dựng lại collection với đúng cấu hình hiện hành
+        (pipeline gọi ngay sau). Sổ rời đĩa luôn: xóa space là xóa cả trí nhớ
+        không khóa, để lần nạp sau là nạp mới.
+        """
+        bat_buoc_ngu_canh_he_thong("xóa cả collection của kho vector")
+        context = current_context()
+        ten = self._ten_collection(context)
+        if await self._client.collection_exists(collection_name=ten):
+            await self._client.delete_collection(collection_name=ten)
+        self._so_khong_khoa.pop(context.space, None)
+        duong_dan = self._duong_dan_so(context.space)
+        if duong_dan is not None:
+            duong_dan.unlink(missing_ok=True)
 
     def _kho_doi(self) -> str | None:
         """Kho mà mọi id của namespace này *cũng* phải có mặt (NFR-03).

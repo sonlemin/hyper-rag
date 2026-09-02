@@ -191,6 +191,23 @@ class NodeIdConstraintUnbuildable(RuntimeError):
     code = "NODE_ID_CONSTRAINT_UNBUILDABLE"
 
 
+class EntityMissing(RuntimeError):
+    """Đặt lại một entity không có trong graph của `space` này.
+
+    `MATCH ... SET` không khớp là một no-op im lặng của Cypher; với đường dựng
+    lại entity chung của re-ingest (story 2.3) thì im lặng nghĩa là khóa mới
+    tính không được ghi và bước đối chiếu sẽ báo lệch ở một chỗ xa nguyên nhân.
+    """
+
+    code = "ENTITY_MISSING"
+
+
+class HyperedgeMissing(RuntimeError):
+    """Đặt lại một hyperedge không có trong graph của `space` này; cùng lý do với `EntityMissing`."""
+
+    code = "HYPEREDGE_MISSING"
+
+
 class EdgeEndpointMissing(RuntimeError):
     """Ghi cạnh mà một trong hai đầu chưa có trong graph.
 
@@ -618,6 +635,156 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
                 f" một vai khác, nay ghi lại dưới vai {node_data.get(ROLE_FIELD)!r}:"
                 " một id là một node, không gộp hai vai vào một"
             ) from loi
+
+    # --- Đường xóa và ghi thẳng của pipeline re-ingest (story 2.3) ----------
+
+    async def xoa_node(self, ids: list[str]) -> int:
+        """`DETACH DELETE` các node theo id trong `space` hiện tại; trả số đã xóa.
+
+        Đường xóa của re-ingest và xóa tài liệu: hyperedge cũ của tài liệu và
+        entity không còn hyperedge nào nối rời graph cùng mọi cạnh của chúng.
+        Cùng cửa AD-3 với `upsert_node`; id không có thì bỏ qua. Không vào sổ
+        đợt: node đã xóa không còn gì để đối chiếu.
+        """
+        bat_buoc_ngu_canh_he_thong("xóa node graph")
+        if not ids:
+            return 0
+        context = current_context()
+        space = self._nhan_space(context)
+        dong = await self._chay(
+            f"MATCH (n:`{space}`)\n"
+            f"WHERE {self._dieu_kien('n', context)}"
+            f" AND n.{NODE_ID_FIELD} IN $ids\n"
+            "DETACH DELETE n\n"
+            "RETURN count(n) AS da_xoa",
+            ghi=True,
+            ids=[normalize_id(i) for i in ids],
+            **self._tham_so_loc(context),
+        )
+        return int(dong[0]["da_xoa"]) if dong else 0
+
+    async def delete_node(self, node_id: str) -> None:
+        """Hợp đồng upstream, đi cùng luật với `xoa_node`: một id, cùng cửa hệ thống."""
+        await self.xoa_node([node_id])
+
+    async def khoa_lan_can_hyperedge(self, entity_id: str) -> list[str | None]:
+        """Khóa của mọi hyperedge còn nối tới entity này qua cạnh SLOT.
+
+        Nguồn sự thật để dựng lại khóa entity chung khi một tài liệu bị bỏ
+        (story 2.3, Design Notes): hyperedge mang khóa của tài liệu sinh ra nó,
+        nên gấp danh sách này bằng `hop_nhat_khoa` cho cùng luật với
+        read-merge-write. `None` là hyperedge đã hợp nhất ra không khóa - phần
+        tử đó kéo cả entity về không khóa. Không trả nội dung nên tầng che không
+        áp dụng; chạy dưới cờ system và trong transaction ghi, cùng lý do với
+        `khoa_hien_co`: phải thấy trạng thái mà lần ghi kế tiếp sẽ đè lên.
+        """
+        bat_buoc_ngu_canh_he_thong("đọc khóa hyperedge lân cận")
+        context = current_context()
+        space = self._nhan_space(context)
+        dong = await self._chay(
+            f"MATCH (e:`{space}` {{{NODE_ID_FIELD}: $id}})"
+            f"-[r:{EDGE_TYPE}]-(h:`{space}`:`{LABEL_HYPEREDGE}`)\n"
+            f"WHERE {self._dieu_kien('e', context)}"
+            f" AND {self._dieu_kien('h', context)}"
+            f" AND {self._dieu_kien('r', context)}\n"
+            f"RETURN h.{NODE_ID_FIELD} AS id_hyperedge,"
+            f" h.{FILTER_KEY_FIELD} AS khoa_hyperedge",
+            ghi=True,
+            id=normalize_id(entity_id),
+            **self._tham_so_loc(context),
+        )
+        return [d["khoa_hyperedge"] for d in dong]
+
+    async def dat_lai_entity(
+        self, node_id: str, *, description: str, source_id: str, khoa: str | None
+    ) -> None:
+        """Ghi đè `description`, `source_id` và khóa của một entity đã có.
+
+        Không read-merge-write: pipeline đã tính khóa từ hyperedge còn nối, và
+        cửa hợp nhất chạy lại ở đây sẽ hợp nhất với khóa cũ của chính node rồi
+        không bao giờ nới được. `khoa=None` gỡ hẳn thuộc tính (`SET ... = null`),
+        đúng nghĩa không khóa của graph. Node phải có sẵn: `EntityMissing` nếu
+        không. Vào sổ đợt để bước đối chiếu so với point tương ứng.
+        """
+        bat_buoc_ngu_canh_he_thong("đặt lại entity")
+        context = current_context()
+        space = self._nhan_space(context)
+        id_chuan = normalize_id(node_id)
+        ghi_vao_so(
+            id_join=id_chuan,
+            kho=KHO_GRAPH,
+            id_trong_kho=id_chuan,
+            kho_doi=ten_kho_vector("entities"),
+        )
+        dong = await self._chay(
+            f"MATCH (n:`{space}`:`{LABEL_ENTITY}` {{{NODE_ID_FIELD}: $id}})\n"
+            f"WHERE {self._dieu_kien('n', context)}\n"
+            f"SET n.{DESCRIPTION_FIELD} = $description, n.source_id = $source_id,"
+            f" n.{FILTER_KEY_FIELD} = $key\n"
+            "RETURN count(n) AS da_ghi",
+            ghi=True,
+            id=id_chuan,
+            description=description,
+            source_id=source_id,
+            key=khoa,
+            **self._tham_so_loc(context),
+        )
+        if not dong or not dong[0]["da_ghi"]:
+            raise EntityMissing(
+                f"không có entity {id_chuan!r} trong không gian {space!r} để đặt lại"
+            )
+
+    async def dat_lai_hyperedge(self, node_id: str, *, source_id: str, khoa: str | None) -> None:
+        """Ghi đè `source_id` và khóa của một hyperedge đã có (hyperedge chung hai tài liệu).
+
+        Cùng luật với `dat_lai_entity`: pipeline re-ingest đã gấp khóa từ nhãn
+        các tài liệu còn kể tên hyperedge này, không read-merge-write ở đây.
+        `khoa=None` gỡ hẳn thuộc tính. Node phải có sẵn: `HyperedgeMissing`.
+        """
+        bat_buoc_ngu_canh_he_thong("đặt lại hyperedge")
+        context = current_context()
+        space = self._nhan_space(context)
+        id_chuan = normalize_id(node_id)
+        ghi_vao_so(
+            id_join=id_chuan,
+            kho=KHO_GRAPH,
+            id_trong_kho=id_chuan,
+            kho_doi=ten_kho_vector("hyperedges"),
+        )
+        dong = await self._chay(
+            f"MATCH (n:`{space}`:`{LABEL_HYPEREDGE}` {{{NODE_ID_FIELD}: $id}})\n"
+            f"WHERE {self._dieu_kien('n', context)}\n"
+            f"SET n.source_id = $source_id, n.{FILTER_KEY_FIELD} = $key\n"
+            "RETURN count(n) AS da_ghi",
+            ghi=True,
+            id=id_chuan,
+            source_id=source_id,
+            key=khoa,
+            **self._tham_so_loc(context),
+        )
+        if not dong or not dong[0]["da_ghi"]:
+            raise HyperedgeMissing(
+                f"không có hyperedge {id_chuan!r} trong không gian {space!r} để đặt lại"
+            )
+
+    async def xoa_tat_ca(self) -> int:
+        """`DETACH DELETE` mọi node mang nhãn `space` hiện tại; trả số đã xóa.
+
+        Chỉ nhãn của không gian trong ngữ cảnh: không gian khác trên cùng DB
+        không bị chạm (AD-12). Ràng buộc duy nhất `id` giữ nguyên.
+        """
+        bat_buoc_ngu_canh_he_thong("xóa cả không gian graph")
+        context = current_context()
+        space = self._nhan_space(context)
+        dong = await self._chay(
+            f"MATCH (n:`{space}`)\n"
+            f"WHERE {self._dieu_kien('n', context)}\n"
+            "DETACH DELETE n\n"
+            "RETURN count(n) AS da_xoa",
+            ghi=True,
+            **self._tham_so_loc(context),
+        )
+        return int(dong[0]["da_xoa"]) if dong else 0
 
     @staticmethod
     def _nhan_vai(node_data: dict) -> str:

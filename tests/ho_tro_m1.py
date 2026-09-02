@@ -35,27 +35,43 @@ from tests.nap_kho import ten_hyperedge
 CAU_HOI = "App01 trả lỗi 502 thì xử lý thế nào"
 
 
-def llm_boc(llm, so_audit: SoAuditBoNho):
-    """`LLMGia` bọc qua wrapper thật, provider giả trả token cố định."""
+def llm_boc(llm, so_audit: SoAuditBoNho, ncc=None, model: str = MODEL_LLM_GIA):
+    """`LLMGia` bọc qua wrapper thật, provider giả trả token cố định.
+
+    `ncc`/`model` để bộ test pipeline (2.3) cắm provider *cục bộ* giả cho ca
+    space `real`; mặc định là provider API ngoài giả của story 2.2.
+    """
     return bo_llm(
-        nha_cung_cap=NhaCungCapGia(llm),
-        model=MODEL_LLM_GIA,
+        nha_cung_cap=NhaCungCapGia(llm) if ncc is None else ncc,
+        model=model,
         audit=so_audit,
         danh_muc=danh_muc_gia(),
     )
 
 
-def embedding_boc(so_audit: SoAuditBoNho):
+def embedding_boc(so_audit: SoAuditBoNho, ncc=None, model: str = MODEL_EMBEDDING_GIA):
     """`EmbeddingFunc` bọc qua wrapper thật, ruột là hàm hash của `embedding_gia`."""
     return bo_embedding(
-        nha_cung_cap=EmbeddingGia(),
-        model=MODEL_EMBEDDING_GIA,
+        nha_cung_cap=EmbeddingGia() if ncc is None else ncc,
+        model=model,
         audit=so_audit,
         danh_muc=danh_muc_gia(),
     )
 
 
-def dung_engine(workspace_dir, client, driver, llm, so_audit=None, **them) -> EngineACL:
+def dung_engine(
+    workspace_dir,
+    client,
+    driver,
+    llm,
+    so_audit=None,
+    *,
+    ncc_llm=None,
+    ncc_embedding=None,
+    model_llm: str = MODEL_LLM_GIA,
+    model_embedding: str = MODEL_EMBEDDING_GIA,
+    **them,
+) -> EngineACL:
     """Engine cổng M1: ba adapter thật, ba kết nối giả, LLM giả đã bọc.
 
     Sổ audit gắn lên engine dưới tên `so_audit` - thuộc tính thường, không phải
@@ -64,8 +80,8 @@ def dung_engine(workspace_dir, client, driver, llm, so_audit=None, **them) -> En
     so_audit = SoAuditBoNho() if so_audit is None else so_audit
     engine = EngineACL(
         working_dir=str(workspace_dir),
-        embedding_func=embedding_boc(so_audit),
-        llm_model_func=llm_boc(llm, so_audit),
+        embedding_func=embedding_boc(so_audit, ncc_embedding, model_embedding),
+        llm_model_func=llm_boc(llm, so_audit, ncc_llm, model_llm),
         embedding_batch_num=2,
         tao_qdrant_client=(lambda: client) if client is not None else None,
         tao_neo4j_driver=(lambda: driver) if driver is not None else None,

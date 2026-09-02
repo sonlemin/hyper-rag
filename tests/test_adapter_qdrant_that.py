@@ -249,3 +249,40 @@ def test_collection_that_khac_so_chieu_bi_tu_choi_luc_initialize(khong_gian, pol
     assert loi.code == "EMBEDDING_DIM_MISMATCH"
     assert "16" in str(loi)
     assert size_sau == 16, "initialize() không được sửa collection đang có"
+
+
+def test_initialize_ap_lai_hnsw_va_strict_mode_len_collection_cu(khong_gian, policy):
+    """Hàng "Collection cũ khác HNSW": collection dựng sẵn `m=4`, không strict mode.
+
+    Sau `initialize()`, server báo `hnsw_config.m == GLOBAL_M`,
+    `payload_m == PAYLOAD_M` và strict mode bật (khoản nợ ledger 1.7: trước
+    2.3 không có đường code nào áp giá trị mới lên collection sống lâu hơn một
+    lần chạy). Chỉ Qdrant thật xác nhận được, local mode bỏ qua cả hai.
+    """
+
+    async def chay():
+        client = QdrantGhiLai.noi_toi(URL, API_KEY)
+        ten = f"{khong_gian}_hyperedges"
+        try:
+            await client.create_collection(
+                collection_name=ten,
+                vectors_config=models.VectorParams(size=SO_CHIEU, distance=models.Distance.COSINE),
+                hnsw_config=models.HnswConfigDiff(m=4),
+            )
+            with use_context(
+                system_context(space=khong_gian, policy_version=policy.policy_version)
+            ):
+                await dung_adapter(client).initialize()
+            tt = await client.get_collection(collection_name=ten)
+            return tt.config.hnsw_config, tt.config.strict_mode_config, client.cac_loi_goi("update_collection")
+        finally:
+            try:
+                await client.delete_collection(collection_name=ten)
+            finally:
+                await client._that.close()
+
+    hnsw, strict, goi = asyncio.run(chay())
+    assert len(goi) == 1
+    assert (hnsw.m, hnsw.payload_m) == (GLOBAL_M, PAYLOAD_M)
+    assert strict is not None and strict.enabled is True
+    assert strict.filter_max_conditions == FILTER_MAX_CONDITIONS

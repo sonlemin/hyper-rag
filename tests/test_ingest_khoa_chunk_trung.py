@@ -1,27 +1,16 @@
-"""Đặc tả hiện trạng: lối vào `ainsert` né được luật hợp nhất ở đường KV.
+"""Chunk trùng id giữa hai tài liệu khác scope qua lối vào `ainsert` (story 2.1 -> 2.3).
 
-Không phải khẳng định hành vi đúng, mà là **mốc so sánh** - cùng kiểu mà story
-1.3 và 1.5 đã dùng cho hai chiều last-write-wins/first-write-wins, và cùng lý
-do: story sau phải thấy rõ mình đang đổi cái gì.
+Story 2.1 ghim đây là *đặc tả hiện trạng* của một lỗ: `ainsert`
+(`vendor/hypergraphrag/hypergraphrag.py:309-313`) gọi `text_chunks.filter_keys`
+rồi loại id đã có khỏi lô trước khi `upsert` nhìn thấy, nên chunk trùng id
+giữa hai tài liệu khác quyền giữ nhãn rộng của lần nạp đầu và không bao giờ
+tới cửa hợp nhất. Story 2.3 đóng lỗ ở adapter KV: dưới nhãn ingest,
+`filter_keys` coi id đã có mà khóa sẽ đổi sau hợp nhất là "chưa có", nên
+`ainsert` đưa nó qua `upsert` và khóa được hợp nhất ở cả KV lẫn collection
+`chunks`. File này vì thế đổi từ đặc tả hiện trạng thành test hành vi.
 
-Lỗ nằm ở `vendor/hypergraphrag/hypergraphrag.py:309-313`. `ainsert` gọi
-`text_chunks.filter_keys(...)` rồi **loại các id đã tồn tại** khỏi
-`inserting_chunks` trước khi gọi `chunks_vdb.upsert` (`:320`) và
-`text_chunks.upsert` (`:336`). Adapter KV chạy phép đó dưới cờ system, nên
-`_ton_tai` trả `True` cho mọi id đã có - và đúng những chunk trùng id mà luật
-hợp nhất sinh ra để xử lý thì không bao giờ tới được `upsert`. Bản ghi giữ nhãn
-*rộng* của lần nạp đầu, và vai chạm scope đó vẫn đọc được nó. `full_docs` dính
-cùng phép lọc (`:284-285`).
-
-**Phạm vi chính xác của lỗ**: đường KV (`text_chunks`, `full_docs`) và
-collection vector `chunks`. Đường graph và hai collection `entities`/
-`hyperedges` **không** dính, vì `extract_entities` gọi thẳng `upsert_node` và
-`upsert` mà không qua `filter_keys` - test dưới đây ghim cả ranh giới đó, nếu
-không thì một lần đọc vội biến "lỗ ở đường chunk" thành "luật hợp nhất không
-chạy".
-
-Không sửa `vendor/`. Quyết định đường ingest của dự án có đi qua `filter_keys`
-hay không thuộc story 2.3 (pipeline ingest tuần tự), và ledger giữ địa chỉ đó.
+Không sửa `vendor/`. Ranh giới cũ (đường graph không dính lỗ) giữ nguyên làm
+đối chứng.
 """
 
 import asyncio
@@ -83,40 +72,37 @@ def _id_chunk(noi_dung: str) -> str:
     return compute_mdhash_id(noi_dung, prefix="chunk-")
 
 
-def test_dac_ta_hien_trang_ainsert_khong_siet_khoa_chunk_trung(
+def test_chunk_trung_hai_scope_thanh_khong_khoa_o_kv_va_chunks(
     workspace_dir, khong_gian, policy
 ):
-    """Chunk trùng id giữa hai tài liệu khác scope **không** bị siết khóa.
+    """Hàng "Chunk trùng hai scope": chunk chung ra `KHONG_KHOA` ở KV và `chunks`.
 
-    Hành vi đúng theo FR-11 là chunk ấy thành "không khóa" (hai scope chạm cùng
-    một id). Hiện trạng: nó giữ nhãn `noi_bo:runbook` của lần nạp đầu, vì
-    `filter_keys` đã loại nó khỏi lô trước khi `upsert` nhìn thấy.
-
-    Hệ quả nhìn thấy được ở dòng cuối: `tech_support` - vai **không** chạm
-    scope `khach_hang_a` - vẫn đọc được nguyên văn một đoạn văn bản mà lần nạp
-    thứ hai xếp vào scope đó.
+    Hành vi đúng theo FR-11: hai scope chạm cùng một id thì id đó không khóa.
+    Hệ quả nhìn thấy được: `tech_support` - vai không chạm scope `khach_hang_a`
+    - không đọc được nguyên văn đoạn văn bản mà lần nạp thứ hai xếp vào scope
+    đó (trước 2.3 thì đọc được, đó là hình dạng của lỗ).
     """
     id_chung = _id_chunk(DOAN_CHUNG)
 
     async def chay():
-        engine, _ = await _nap_hai_tai_lieu(workspace_dir, khong_gian, policy)
+        engine, client = await _nap_hai_tai_lieu(workspace_dir, khong_gian, policy)
         with use_context(ngu_canh_ingest(khong_gian, policy)):
-            khoa = await engine.text_chunks.khoa_hien_co([id_chung])
+            khoa_kv = await engine.text_chunks.khoa_hien_co([id_chung])
+            khoa_vec = await engine.chunks_vdb.khoa_hien_co([id_chung])
         with use_context(vai(policy, "tech_support", khong_gian)):
             doc_duoc = await engine.text_chunks.get_by_id(id_chung)
-        return khoa[id_chung], doc_duoc
+        diem, _ = await client._that.scroll(
+            collection_name=f"{khong_gian}_chunks", limit=10, with_payload=True
+        )
+        return khoa_kv[id_chung], khoa_vec[id_chung], doc_duoc, diem
 
-    khoa, doc_duoc = asyncio.run(chay())
-    assert khoa == RONG, "hiện trạng cần ghim: nhãn rộng của lần nạp đầu thắng"
-    assert khoa != HEP
-    assert khoa is not None, (
-        "hành vi *đúng* của FR-11 là không khóa; ngày nào dòng này đỏ là ngày"
-        " lỗ đã được đóng, và test đặc tả này phải bị thay bằng test hành vi"
-    )
-    assert doc_duoc is not None, (
-        "vai không chạm scope khach_hang_a vẫn đọc được đoạn văn bản mà lần nạp"
-        " thứ hai xếp vào scope đó - đó là hình dạng của lỗ"
-    )
+    khoa_kv, khoa_vec, doc_duoc, diem = asyncio.run(chay())
+    assert khoa_kv is None, "KV: chunk chung hai scope phải không khóa"
+    assert khoa_vec is None, "collection chunks: cùng luật, id vào sổ không khóa"
+    assert doc_duoc is None, "vai không chạm scope khach_hang_a không được đọc chunk chung"
+    # Point của chunk chung vắng mặt tuyệt đối; hai chunk riêng vẫn còn.
+    id_point = {d.payload.get("upstream_id") for d in diem}
+    assert id_chung not in id_point and len(id_point) == 2
 
 
 def test_pham_vi_lo_dung_la_duong_kv_khong_phai_duong_graph(
@@ -148,3 +134,29 @@ def test_pham_vi_lo_dung_la_duong_kv_khong_phai_duong_graph(
         "đường graph phải hợp nhất bình thường; nếu nó cũng giữ nhãn rộng thì"
         " phạm vi lỗ rộng hơn thứ ledger đang ghi"
     )
+
+
+def test_filter_keys_id_da_co_khoa_khong_doi_van_la_da_co(workspace_dir, khong_gian, policy):
+    """Nhánh còn lại của `filter_keys` dưới nhãn ingest: cùng nhãn thì khóa không đổi, id báo "đã có".
+
+    Đối chứng tay: bỏ phép so `!= khoa_cu` trong `filter_keys` là tập trả về
+    có `c1` và test đỏ.
+    """
+    from tests.ho_tro_kv import dung_adapter
+
+    async def chay():
+        adapter = dung_adapter(workspace_dir)
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            with ingest_label(scope="noi_bo", content_type="runbook"):
+                await adapter.upsert({"c1": {"content": "x"}})
+                cung_nhan = await adapter.filter_keys(["c1", "c2"])
+            with ingest_label(scope="noi_bo", content_type="bi_mat_ha_tang"):
+                nhan_nhay_hon = await adapter.filter_keys(["c1", "c2"])
+            with ingest_label(scope="noi_bo", content_type="runbook"):
+                # Hạng thấp hơn khóa đang có thì hợp nhất giữ khóa cũ: vẫn "đã có".
+                pass
+        return cung_nhan, nhan_nhay_hon
+
+    cung_nhan, nhan_nhay_hon = asyncio.run(chay())
+    assert cung_nhan == {"c2"}
+    assert nhan_nhay_hon == {"c1", "c2"}

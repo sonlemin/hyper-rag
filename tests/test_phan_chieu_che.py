@@ -56,9 +56,25 @@ _LY_DO_KHOA_HIEN_CO = (
 XU_LY_RIENG_THEO_ADAPTER = {
     "QdrantVectorDBStorage": {
         "khoa_hien_co": _LY_DO_KHOA_HIEN_CO,
+        # Chỉ trả tập id đã hợp nhất ra không khóa, không trả nội dung; cùng
+        # cửa hệ thống với `khoa_hien_co` vì "có id này không" cũng là rò.
+        "so_khong_khoa": (
+            "chỉ trả tập id không khóa của một space, không trả nội dung;"
+            " từ chối ngoài ngữ cảnh hệ thống"
+        ),
+        # Payload không mang nội dung (`content` bị chặn lúc ghi); đọc thô dưới
+        # cờ system cho đường dựng lại của re-ingest, từ chối ngoài ngữ cảnh đó.
+        "payload_cua": "đọc thô dưới cờ system cho đường dựng lại, từ chối ngoài ngữ cảnh hệ thống",
     },
     "Neo4jACLGraphStorage": {
         "khoa_hien_co": _LY_DO_KHOA_HIEN_CO,
+        # Chỉ trả khóa của các hyperedge nối tới một entity, không trả nội
+        # dung: nguồn để pipeline re-ingest gấp lại khóa entity chung (2.3), và
+        # nó từ chối chạy ngoài ngữ cảnh hệ thống (IngestOutsideSystemContext).
+        "khoa_lan_can_hyperedge": (
+            "chỉ trả trường khóa của hyperedge lân cận, không trả nội dung;"
+            " đường đọc-để-ghi của re-ingest, từ chối ngoài ngữ cảnh hệ thống"
+        ),
         # Số đếm là tín hiệu xếp hạng đi thẳng vào ngữ cảnh trả về; nó co theo
         # quyền bằng WHERE trên chính biến lân cận, không bằng che.
         "node_degree": "đếm sau filter, số đếm co theo quyền",
@@ -82,7 +98,20 @@ XU_LY_RIENG = {
     ten for theo_adapter in XU_LY_RIENG_THEO_ADAPTER.values() for ten in theo_adapter
 }
 
-GHI = {"upsert", "upsert_node", "upsert_edge", "delete_node", "drop"}
+GHI = {
+    "upsert",
+    "upsert_node",
+    "upsert_edge",
+    "delete_node",
+    "drop",
+    # Đường xóa/ghi thẳng của pipeline re-ingest (story 2.3), cả ba adapter.
+    "xoa",
+    "xoa_tat_ca",
+    "ghi_thang",
+    "xoa_node",
+    "dat_lai_entity",
+    "dat_lai_hyperedge",
+}
 
 # Method của `StorageNameSpace` không đọc dữ liệu người dùng.
 VONG_DOI = {"index_done_callback", "query_done_callback", "embed_nodes"}
@@ -94,7 +123,20 @@ NGOAI_HOP_DONG = {"initialize", "close"}
 # Method của riêng dự án, upstream không có. Chúng vẫn phải nằm trong một nhóm
 # như mọi method public khác - luật che không miễn cho ai - nhưng phép neo vào
 # interface của `vendor/` thì không áp dụng được cho chúng.
-NGOAI_UPSTREAM = frozenset({"khoa_hien_co"})
+NGOAI_UPSTREAM = frozenset(
+    {
+        "khoa_hien_co",
+        "so_khong_khoa",
+        "khoa_lan_can_hyperedge",
+        "xoa",
+        "xoa_tat_ca",
+        "ghi_thang",
+        "xoa_node",
+        "dat_lai_entity",
+        "dat_lai_hyperedge",
+        "payload_cua",
+    }
+)
 
 CAC_ADAPTER = [
     (QdrantVectorDBStorage, BaseVectorStorage),

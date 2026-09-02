@@ -1,3 +1,7 @@
+---
+scope: noi_bo
+content_type: runbook
+---
 Quy trình cấp quyền truy cập kho mã nguồn nội bộ.
 Nhân viên mới thuộc phòng Kỹ thuật được cấp tài khoản GitLab và quyền đọc kho mã nguồn sau khi trưởng phòng Kỹ thuật phê duyệt.
 Quyền ghi vào nhánh chính (main) chỉ cấp cho kỹ sư từ cấp Senior trở lên, do Giám đốc Kỹ thuật (CTO) phê duyệt.

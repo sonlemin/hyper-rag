@@ -1,22 +1,19 @@
-"""Đo thô chi phí LLM/embedding của một lần nạp tài liệu (FR-30 bậc 1, story 2.2).
+"""Nạp tài liệu bằng pipeline ingest và đo thô chi phí LLM/embedding (FR-30 bậc 1).
 
-    uv run python -m api.do_chi_phi eval/data/01-cap-quyen-gitlab.txt eval/data/02-vpn-va-mat-khau.txt
+    uv run python -m api.do_chi_phi eval/data                      # nạp cả thư mục
+    uv run python -m api.do_chi_phi eval/data/01-cap-quyen-gitlab.txt  # nạp từng file
+    uv run python -m api.do_chi_phi --xoa-space --space synth      # xóa sạch một space
 
-Dựng `EngineACL` từ môi trường với provider thật (`LLM_MODEL`,
-`EMBEDDING_MODEL`, key theo danh mục) và `AuditPostgres` làm audit port, rồi
-`ainsert` từng file dưới ngữ cảnh hệ thống cộng một nhãn ingest mỗi tài liệu,
-đúng cách `tests/nap_kho.py` nạp fixture: mở một đợt, đối chiếu hai kho ở cuối.
-In tổng token và USD đọc từ `audit_log` cho **từng tài liệu** (FR-30 bậc 1 cần
-chi phí trên một tài liệu) rồi cả đợt; ngoại lệ giữa đợt (đối chiếu lệch, 429)
-vẫn in số đã tiêu.
+Từ story 2.3 script không tự mở ngữ cảnh hệ thống hay đợt nữa: nó dựng
+`EngineACL` từ môi trường với provider thật và `AuditPostgres`, rồi gọi
+`adapters.ingest` (nạp thư mục / danh sách file / xóa space). Nhãn quyền của
+mỗi tài liệu đọc từ frontmatter `scope`/`content_type` của chính file; file
+hỏng bị từ chối kèm mã, không chặn file kế; re-ingest ghi đè sạch.
 
-Mọi file được đọc và kiểm (UTF-8, không rỗng) **trước** khi mở pool và trước
-lời gọi tốn tiền đầu tiên: một file hỏng ở vị trí thứ hai không được làm mất
-tiền của file thứ nhất.
-
-Không phải pipeline ingest (2.3): không quét thư mục, không ghi tiến trình. Nó
-ở `api/` chứ không ở `eval/` vì `eval/` không import được hiện thực Postgres.
-Script tốn tiền thật: chạy sau khi spec được duyệt, không chạy lặp.
+In tổng token và USD đọc từ `audit_log` cho **từng tài liệu** (theo mốc thời
+gian bắt đầu/kết thúc mà pipeline ghi lại) rồi cả đợt; ngoại lệ giữa đợt (đối
+chiếu lệch, 429) vẫn in số đã tiêu. Nằm ở `api/` vì `eval/` không import được
+hiện thực Postgres. Script tốn tiền thật: chạy sau khi spec được duyệt.
 
 Biến môi trường: bảy khóa kho (`adapters.engine.BIEN_MOI_TRUONG`), năm biến
 Postgres (`api.audit_postgres.BIEN_POSTGRES`), ba biến model
@@ -29,44 +26,38 @@ import asyncio
 import sys
 from pathlib import Path
 
-from adapters.doi_chieu import doi_chieu_dot, dot_ingest, kho_cua_engine
 from adapters.engine import EngineACL, cau_hinh_kho_tu_moi_truong
-from adapters.ingest_labels import ingest_label
+from adapters.ingest import (
+    TRANG_THAI_DA_NAP,
+    TRANG_THAI_DA_XOA,
+    TRANG_THAI_KHONG_DOI,
+    KetQuaNap,
+    nap_cac_file,
+    nap_thu_muc,
+    xoa_space,
+)
 from adapters.llm_wrapper import ham_tu_moi_truong
 from adapters.policy_loader import load_policy
 from api.audit_postgres import AuditPostgres, TongChiPhi
 from core.audit import thoi_diem_utc
-from core.permission import use_context
-from core.system_context import system_context
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 POLICY_MAC_DINH = REPO_ROOT / "config" / "policy-toi-gian.yaml"
 
 
 def _tham_so(argv: list[str]) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Đo thô chi phí LLM/embedding khi ainsert tài liệu")
-    p.add_argument("files", nargs="+", type=Path, help="file văn bản để nạp, theo thứ tự")
+    p = argparse.ArgumentParser(description="Nạp tài liệu qua pipeline ingest và đo chi phí LLM/embedding")
+    p.add_argument("duong_dan", nargs="*", type=Path, help="một thư mục, hoặc các file .md/.txt theo thứ tự")
     p.add_argument("--space", default="synth", help="không gian dữ liệu (mặc định synth)")
-    p.add_argument("--scope", default="noi_bo", help="scope của nhãn ingest cho mọi file")
-    p.add_argument("--content-type", default="runbook", help="loại nội dung của nhãn ingest")
+    p.add_argument("--xoa-space", action="store_true", help="xóa sạch space rồi thoát, không nạp gì")
+    p.add_argument("--ep-ghi-de", action="store_true", help="re-ingest cả tài liệu không đổi (cùng sha256 và nhãn)")
     p.add_argument("--policy", type=Path, default=POLICY_MAC_DINH, help="bảng chính sách lấy policy_version")
-    return p.parse_args(argv)
-
-
-def doc_tai_lieu(files: list[Path]) -> list[tuple[Path, str]]:
-    """Đọc và kiểm mọi file trước khi tốn tiền; hỏng cái nào thoát nêu tên cái đó."""
-    ket_qua = []
-    for f in files:
-        if not f.is_file():
-            sys.exit(f"không có file {f}")
-        try:
-            noi_dung = f.read_bytes().decode("utf-8")
-        except UnicodeDecodeError as loi:
-            sys.exit(f"file {f} không phải UTF-8: {loi}")
-        if not noi_dung.strip():
-            sys.exit(f"file {f} rỗng hoặc toàn khoảng trắng")
-        ket_qua.append((f, noi_dung))
-    return ket_qua
+    ts = p.parse_args(argv)
+    if not ts.xoa_space and not ts.duong_dan:
+        p.error("cần một thư mục hoặc ít nhất một file, hoặc --xoa-space")
+    if ts.xoa_space and ts.duong_dan:
+        p.error("--xoa-space không đi cùng đường dẫn nạp")
+    return ts
 
 
 def in_tong(tieu_de: str, tong: TongChiPhi) -> None:
@@ -83,23 +74,27 @@ def in_tong(tieu_de: str, tong: TongChiPhi) -> None:
     )
 
 
-async def _tong_tu(audit: AuditPostgres, space: str, moc: str, moc_ket: str | None = None):
-    """Tổng từ mốc `moc`; nếu có `moc_ket` thì trừ phần từ mốc sau để ra một đoạn."""
-    tong = await audit.tong_chi_phi(space, tu=moc)
-    if moc_ket is None:
-        return tong
-    sau = await audit.tong_chi_phi(space, tu=moc_ket)
-    return TongChiPhi(
-        so_lan=tong.so_lan - sau.so_lan,
-        token_vao=tong.token_vao - sau.token_vao,
-        token_ra=tong.token_ra - sau.token_ra,
-        chi_phi_usd=tong.chi_phi_usd - sau.chi_phi_usd,
-        theo_model=tong.theo_model,
-    )
+async def _tong_tu(audit: AuditPostgres, space: str, moc: str, moc_ket: str | None = None) -> TongChiPhi:
+    """Tổng của đoạn `[moc, moc_ket)`; cả dòng theo model lẫn dòng tổng cùng một cửa sổ."""
+    return await audit.tong_chi_phi(space, tu=moc, den=moc_ket)
+
+
+def in_ket_qua(kq: KetQuaNap) -> None:
+    for tc in kq.tu_choi:
+        print(f"TỪ CHỐI {tc.ten}: {tc.ma} - {tc.ly_do}")
+    for t in kq.tai_lieu:
+        so = f"{t.so_chunk} chunk, {t.so_hyperedge} hyperedge, {t.so_entity} entity"
+        if t.trang_thai == TRANG_THAI_DA_NAP:
+            print(f"{'RE-INGEST' if t.re_ingest else 'NẠP'} {t.doc_key}: {so}")
+        elif t.trang_thai == TRANG_THAI_DA_XOA:
+            print(f"XÓA {t.doc_key}: {so}")
+        elif t.trang_thai == TRANG_THAI_KHONG_DOI:
+            print(f"KHÔNG ĐỔI {t.doc_key}: giữ nguyên ({so})")
+        else:
+            print(f"{t.trang_thai.upper()} {t.doc_key}: {t.ma} - {t.ly_do}")
 
 
 async def chay(ts: argparse.Namespace) -> TongChiPhi:
-    tai_lieu = doc_tai_lieu(ts.files)
     policy = load_policy(ts.policy)
     audit = await AuditPostgres.mo()
     try:
@@ -112,20 +107,23 @@ async def chay(ts: argparse.Namespace) -> TongChiPhi:
             llm_model_max_token_size=ham.llm_max_token,
         )
         bat_dau = thoi_diem_utc()
+        kq = KetQuaNap()
         try:
-            with use_context(system_context(space=ts.space, policy_version=policy.policy_version)):
-                await engine.khoi_tao()
-                with dot_ingest() as so:
-                    for f, noi_dung in tai_lieu:
-                        moc = thoi_diem_utc()
-                        print(f"[{moc}] nạp {f} ({len(noi_dung.encode('utf-8'))} byte)", flush=True)
-                        with ingest_label(scope=ts.scope, content_type=ts.content_type):
-                            await engine.ainsert(noi_dung)
-                        in_tong(f"Tài liệu {f} (từ {moc}):", await audit.tong_chi_phi(ts.space, tu=moc))
-                    await doi_chieu_dot(so, kho=kho_cua_engine(engine))
-                print(f"[{thoi_diem_utc()}] đối chiếu hai kho: khớp", flush=True)
+            chung = dict(space=ts.space, policy_version=policy.policy_version, audit=audit)
+            if ts.xoa_space:
+                await xoa_space(engine, **chung)
+                print(f"[{thoi_diem_utc()}] đã xóa sạch space {ts.space!r}", flush=True)
+            elif len(ts.duong_dan) == 1 and ts.duong_dan[0].is_dir():
+                await nap_thu_muc(engine, ts.duong_dan[0], ket_qua=kq, ep_ghi_de=ts.ep_ghi_de, **chung)
+            else:
+                await nap_cac_file(engine, ts.duong_dan, ket_qua=kq, ep_ghi_de=ts.ep_ghi_de, **chung)
         finally:
             # Ngoại lệ giữa đợt (đối chiếu lệch, 429) vẫn phải cho biết đã tiêu bao nhiêu.
+            in_ket_qua(kq)
+            for t in kq.tai_lieu:
+                if t.bat_dau:
+                    in_tong(f"Tài liệu {t.doc_key} ({t.bat_dau} -> {t.ket_thuc or 'chưa xong'}):",
+                            await _tong_tu(audit, ts.space, t.bat_dau, t.ket_thuc or None))
             tong = await audit.tong_chi_phi(ts.space, tu=bat_dau)
             in_tong(f"Cả đợt (thoi_diem >= {bat_dau}):", tong)
             await engine.dong()

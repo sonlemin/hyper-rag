@@ -1,3 +1,7 @@
+---
+scope: noi_bo
+content_type: runbook
+---
 Quy định về VPN và mật khẩu nội bộ.
 Tài khoản VPN do phòng IT cấp trong vòng 1 ngày làm việc, yêu cầu gửi qua hệ thống Jira kèm xác nhận của quản lý trực tiếp.
 Mật khẩu VPN hết hạn sau 90 ngày và phải đổi qua cổng self-service tại địa chỉ nội bộ portal.it.local.

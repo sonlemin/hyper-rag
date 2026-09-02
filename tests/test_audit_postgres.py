@@ -83,6 +83,9 @@ def test_tong_chi_phi_tu_choi_moc_khong_utc():
             await audit.tong_chi_phi("synth", tu="2026-09-02T10:00:00+07:00")
         with pytest.raises(TypeError):
             await audit.tong_chi_phi("synth", tu=123)  # type: ignore[arg-type]
+        # `den` (story 2.3, patch 25) đi qua cùng luật.
+        with pytest.raises(ValueError):
+            await audit.tong_chi_phi("synth", den="2026-09-02T10:00:00+07:00")
 
     asyncio.run(chay())
 
@@ -229,3 +232,31 @@ def test_wrapper_ghi_qua_postgres_that(cau_hinh_pg, khong_gian, policy):
     assert tong.token_vao == 12 + 3 and tong.token_ra == 34
     assert {d.model for d in tong.theo_model} == {MODEL_LLM_GIA, MODEL_EMBEDDING_GIA}
     assert tong.chi_phi_usd == pytest.approx((12 * 1.0 + 34 * 2.0 + 3 * 0.5) / 1e6)
+
+
+@pytest.mark.postgres
+def test_tong_chi_phi_theo_doan_tu_den_cung_cua_so_o_dong_model(cau_hinh_pg, khong_gian):
+    """`[tu, den)`: cả dòng tổng lẫn dòng theo model đều chỉ đếm sự kiện trong đoạn.
+
+    Patch 25 vòng review 2.3: bảng từng tài liệu của `api/do_chi_phi.py` từng
+    in dòng theo model bằng tổng từ mốc đầu tới hết lịch sử vì phép trừ chỉ
+    làm ở cấp tổng. Nay mốc kết thúc vào SQL nên hai dòng không lệch nhau.
+    """
+
+    async def chay():
+        async with kho_audit(cau_hinh_pg, khong_gian) as audit:
+            await audit.ghi(_su_kien(khong_gian, EVENT_LLM_COST, 10, 20, 0.001))
+            moc = thoi_diem_utc()
+            await audit.ghi(_su_kien(khong_gian, EVENT_LLM_COST, 5, 5, 0.0005))
+            moc_ket = thoi_diem_utc()
+            await audit.ghi(_su_kien(khong_gian, EVENT_LLM_COST, 100, 100, 0.01))
+            return (
+                await audit.tong_chi_phi(khong_gian, tu=moc, den=moc_ket),
+                await audit.tong_chi_phi(khong_gian, den=moc),
+            )
+
+    doan, truoc_moc = asyncio.run(chay())
+    assert (doan.so_lan, doan.token_vao, doan.token_ra) == (1, 5, 5)
+    assert len(doan.theo_model) == 1
+    assert (doan.theo_model[0].so_lan, doan.theo_model[0].token_vao) == (1, 5), "dòng theo model cùng cửa sổ với dòng tổng"
+    assert (truoc_moc.so_lan, truoc_moc.token_vao) == (1, 10)

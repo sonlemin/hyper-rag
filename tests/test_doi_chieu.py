@@ -375,7 +375,10 @@ def test_ca_khong_khoa_khong_bi_bao_lech(workspace_dir, khong_gian, policy):
     lech, khoa_graph, khoa_vector = asyncio.run(chay())
     assert lech == [], "ca không khóa không được báo lệch"
     assert khoa_graph is KHONG_KHOA, "node graph ở lại và nhớ trạng thái không khóa"
-    assert khoa_vector is CHUA_GHI, "point vector bị xóa hẳn"
+    # Đổi kỳ vọng ở story 2.3: point vẫn bị xóa hẳn (AD-5), nhưng id vào sổ
+    # không khóa bền vững của kho vector nên `khoa_hien_co` nay trả
+    # `KHONG_KHOA` thay vì `CHUA_GHI`. Kho vector không còn "quên".
+    assert khoa_vector is KHONG_KHOA, "point bị xóa nhưng sổ không khóa nhớ trạng thái"
 
 
 def test_thieu_mot_kho_trong_buoc_doi_chieu_la_loi(workspace_dir, khong_gian, policy):
@@ -419,14 +422,16 @@ def test_ba_adapter_deu_khai_vang_la_mo_ho():
 
     Kỳ vọng viết tay ở đây, không suy từ chính thuộc tính: đó là điều làm cho
     một lần đổi giá trị thành một test đỏ chứ thành một ngữ nghĩa mới không ai
-    duyệt. Kho vector khai `True` vì ca không khóa **xóa** point (AD-5); graph
-    và KV khai `False` vì chúng giữ bản ghi lại và chỉ bỏ khóa.
+    duyệt. Story 2.1 kho vector khai `True` vì ca không khóa **xóa** point
+    (AD-5) và kho không còn chỗ nhớ. Story 2.3 đổi thành `False`: point vẫn bị
+    xóa nhưng sổ không khóa bền vững theo space nhớ trạng thái đó, nên "vắng"
+    của kho vector lại đúng là chưa từng ghi, như graph và KV.
     """
     from adapters.kv import JsonACLKVStorage
     from adapters.neo4j import Neo4jACLGraphStorage
     from adapters.qdrant import QdrantVectorDBStorage
 
-    assert QdrantVectorDBStorage.VANG_LA_MO_HO is True
+    assert QdrantVectorDBStorage.VANG_LA_MO_HO is False
     assert Neo4jACLGraphStorage.VANG_LA_MO_HO is False
     assert JsonACLKVStorage.VANG_LA_MO_HO is False
 

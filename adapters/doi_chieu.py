@@ -23,13 +23,15 @@ trong payload (`operate.py:461-479` ghi `entity_name`/`hyperedge_name`). Nên id
 join là *tên node*, và mỗi kho tự khai id nội bộ của nó. Chunk thì id ở kho KV
 và ở collection `chunks` trùng nhau nên join là chính id đó.
 
-**Vector không phân biệt được "vắng" với "không khóa".** Ca không khóa xóa point
-khỏi collection (AD-5 đòi vắng mặt tuyệt đối), nên nhìn từ Qdrant một point
-vắng có thể là "chưa từng ghi" hoặc "đã hợp nhất ra không khóa". Bước đối chiếu
-nhận cả hai khả năng cho báo cáo của kho vector và chỉ kết luận lệch khi không
-còn khả năng nào chung với các kho khác. Điều đó **mỗi kho tự khai** bằng
-`VANG_LA_MO_HO`, không phải bước đối chiếu suy từ tên kho: suy từ tên là treo
-ngữ nghĩa của phép so vào một tiền tố chuỗi, và hai chỗ ấy trôi dạt được.
+**"Vắng" của một kho có mơ hồ không là chuyện của chính kho đó.** Ca không
+khóa xóa point khỏi collection (AD-5 đòi vắng mặt tuyệt đối); ở story 2.1 kho
+vector vì thế không phân biệt được "chưa từng ghi" với "đã hợp nhất ra không
+khóa" và khai `VANG_LA_MO_HO = True`. Từ story 2.3 nó giữ sổ không khóa bền
+vững theo space và `khoa_hien_co` trả `KHONG_KHOA` cho id trong sổ, nên cả ba
+kho nay khai `False`. Cơ chế "nhận cả hai khả năng" vẫn ở lại cho một kho tương
+lai không nhớ được trạng thái, và điều đó **mỗi kho tự khai**, không phải bước
+đối chiếu suy từ tên kho: suy từ tên là treo ngữ nghĩa của phép so vào một
+tiền tố chuỗi, và hai chỗ ấy trôi dạt được.
 """
 
 import hashlib
@@ -84,9 +86,10 @@ class ReconcileStoreContractMissing(RuntimeError):
     """Một storage không khai `VANG_LA_MO_HO`, nên bước đối chiếu không chạy.
 
     Câu hỏi "kho này trả 'vắng' thì có thể là 'không khóa' không" quyết định
-    toàn bộ phép so, và chỉ chính kho trả lời được: kho vector xóa point ở ca
-    không khóa nên "vắng" của nó mơ hồ, còn graph và KV giữ bản ghi lại nên
-    "vắng" của chúng đúng là chưa từng ghi. Đoán một mặc định là chọn giữa hai
+    toàn bộ phép so, và chỉ chính kho trả lời được: graph và KV giữ bản ghi
+    lại, kho vector xóa point nhưng nhớ bằng sổ không khóa (2.3), nên cả ba
+    hôm nay khai "không mơ hồ"; một kho mới không nhớ được thì phải khai
+    ngược lại. Đoán một mặc định là chọn giữa hai
     cách hỏng: mặc định True làm mọi lệch thật thành "không lệch", mặc định
     False làm mọi ca không khóa thành lệch giả - và một bước đối chiếu hay báo
     động giả là một bước sẽ bị tắt. Nên không đoán.
@@ -284,10 +287,11 @@ def vang_la_mo_ho(storage, ten_kho: str) -> bool:
 def _kha_nang(bao_cao, mo_ho: bool) -> set:
     """Tập trạng thái mà báo cáo của một kho còn cho phép.
 
-    Kho khai `VANG_LA_MO_HO = True` (kho vector) thì "vắng" của nó có thể là
-    một trong hai: point bị xóa vì hợp nhất ra không khóa trông y hệt point
-    chưa từng ghi. Hai kho kia khai False - node graph và bản ghi KV ở lại với
-    khóa `null`, nên "vắng" của chúng đúng là chưa từng ghi.
+    Kho khai `VANG_LA_MO_HO = True` thì "vắng" của nó có thể là một trong hai:
+    point bị xóa vì hợp nhất ra không khóa trông y hệt point chưa từng ghi (kho
+    vector ở story 2.1, trước khi có sổ không khóa). Kho khai False - node
+    graph, bản ghi KV với khóa `null`, và kho vector từ 2.3 nhờ sổ - thì "vắng"
+    đúng là chưa từng ghi.
     """
     if mo_ho and bao_cao is CHUA_GHI:
         return {CHUA_GHI, KHONG_KHOA}

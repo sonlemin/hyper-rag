@@ -34,6 +34,7 @@ chứng minh mình assert trên ngữ cảnh truy hồi chứ không trên câu 
 """
 
 from pathlib import Path
+from typing import Callable
 
 from adapters.llm_wrapper import KetQuaEmbedding, KetQuaLLM
 from adapters.model_catalog import DanhMucModel, tai_danh_muc_model
@@ -84,8 +85,13 @@ class LLMGia:
     trong `global_config`, tức bộ đồ đo tự đổi hình dạng của thứ nó đang đo.
     """
 
-    def __init__(self, phan_hoi: str | None = None):
+    def __init__(self, phan_hoi: str | None = None, theo_prompt: Callable[[str], str] | None = None):
         self.phan_hoi = phan_hoi if phan_hoi is not None else phan_hoi_tu_khoa()
+        # Story 2.3: đường ingest thật gọi LLM một lần cho mỗi chunk, và bộ test
+        # pipeline cần mỗi chunk ra một tập fact *xác định*. `theo_prompt` nhận
+        # nguyên văn prompt (upstream nhét chunk vào đó) và trả câu trả lời;
+        # `None` là hành vi cũ, một phản hồi cho mọi lời gọi.
+        self.theo_prompt = theo_prompt
         self.prompts: list[str] = []
         # Lời gọi có `system_prompt` là lời gọi *sinh câu trả lời*. Đếm riêng,
         # vì một lời gọi như vậy trong bộ Đo 1 nghĩa là test đang đi qua đường
@@ -104,6 +110,8 @@ class LLMGia:
         self.kwargs.append(dict(kwargs))
         if system_prompt is not None:
             self.prompts_sinh_cau_tra_loi.append(prompt)
+        if self.theo_prompt is not None:
+            return self.theo_prompt(prompt)
         return self.phan_hoi
 
     @property
@@ -173,6 +181,7 @@ class NhaCungCapGia:
         token_vao: int = 12,
         token_ra: int = 34,
         loi: BaseException | None = None,
+        san_sang: bool = True,
     ):
         self.llm = llm if llm is not None else LLMGia()
         self.ten = ten
@@ -180,7 +189,13 @@ class NhaCungCapGia:
         self.token_vao = token_vao
         self.token_ra = token_ra
         self.loi = loi
+        # Câu trả lời của `san_sang()`: pipeline ingest hỏi nó trên space `real`
+        # (story 2.3); `False` dựng ca "ollama chết".
+        self._san_sang = san_sang
         self.loi_goi: list[tuple[str, list[dict], dict]] = []
+
+    async def san_sang(self) -> bool:
+        return self._san_sang
 
     async def hoan_thanh(self, model: str, messages: list[dict], **kwargs) -> KetQuaLLM:
         self.loi_goi.append((model, list(messages), dict(kwargs)))
@@ -211,12 +226,17 @@ class EmbeddingGia:
         cuc_bo: bool = False,
         token_vao: int | None = None,
         loi: BaseException | None = None,
+        san_sang: bool = True,
     ):
         self.ten = ten
         self.cuc_bo = cuc_bo
         self.token_vao = token_vao
         self.loi = loi
+        self._san_sang = san_sang
         self.loi_goi: list[tuple[str, list[str]]] = []
+
+    async def san_sang(self) -> bool:
+        return self._san_sang
 
     async def nhung(self, model: str, texts: list[str]) -> KetQuaEmbedding:
         self.loi_goi.append((model, list(texts)))
