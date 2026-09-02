@@ -61,6 +61,7 @@ from neo4j import AsyncDriver
 from qdrant_client import AsyncQdrantClient
 
 from adapters.kv import ENABLE_LLM_CACHE, WORKING_DIR_KEY, JsonACLKVStorage
+from adapters.llm_wrapper import la_wrapper
 from adapters.neo4j import (
     HEALTH_DELAY_KEY,
     HEALTH_DELAY_MAC_DINH,
@@ -159,6 +160,18 @@ KHOA_KHONG_LAY_TU_MOI_TRUONG: frozenset[str] = frozenset(
 )
 
 
+class LLMNotWrapped(TypeError):
+    """`llm_model_func` hoặc `embedding_func` không đi qua wrapper của dự án.
+
+    "Mọi lời gọi LLM đều qua wrapper" (AD-13, FR-30) mà chỉ là quy ước thì test
+    cổng M1 dùng hàm giả trần vẫn xanh và không ai biết đường sản phẩm có bọc
+    hay không. Cửa này biến quy ước thành cấu trúc: hàm trần không dựng được
+    engine. Mã lỗi ổn định để test assert trên `code`.
+    """
+
+    code = "LLM_NOT_WRAPPED"
+
+
 def cau_hinh_kho_tu_moi_truong(moi_truong=None) -> dict[str, str]:
     """Khóa cấu hình kho suy từ biến môi trường, bỏ qua biến chưa đặt.
 
@@ -253,6 +266,16 @@ class EngineACL(HyperGraphRAG):
     )
 
     def __post_init__(self):
+        # Cửa từ chối hàm chưa bọc đứng trước mọi thứ khác (story 2.2): mặc
+        # định của upstream (`gpt_4o_mini_complete`, `openai_embedding`) cũng
+        # là hàm trần, nên quên truyền là nổ ở đây chứ không phải một engine
+        # gọi API ngoài mà không đếm token và không kiểm space.
+        for ten in ("llm_model_func", "embedding_func"):
+            if not la_wrapper(getattr(self, ten)):
+                raise LLMNotWrapped(
+                    f"{ten} không đi qua wrapper của dự án; dựng bằng"
+                    " adapters.llm_wrapper.bo_llm / bo_embedding (FR-30)"
+                )
         # Kết nối phải có trước `super().__post_init__()`: chính lời gọi đó tra
         # registry và dựng sáu storage.
         cau_hinh = asdict(self)

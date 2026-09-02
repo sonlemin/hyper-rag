@@ -96,6 +96,15 @@ services:
       POSTGRES_DB: "${POSTGRES_DB:?thieu POSTGRES_DB trong .env.server/.env.laptop}"
       OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
       DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-}"
+      # Chon model cho wrapper LLM/embedding (story 2.2, adapters/llm_wrapper.py):
+      # ten phai co trong config/danh-muc-model.yaml (loader tu choi model la
+      # ngay luc dung). Gia tri o .env.server/.env.laptop (khong secret); key cua
+      # provider thi danh muc chi ten bien (OPENAI_API_KEY/DEEPSEEK_API_KEY o tren).
+      # OLLAMA_HOST chi co nghia khi bat profile local-llm; mac dinh tro service
+      # ollama trong network compose, space `real` chi bind duong nay (AD-12).
+      LLM_MODEL: "${LLM_MODEL:?thieu LLM_MODEL trong .env.server/.env.laptop}"
+      EMBEDDING_MODEL: "${EMBEDDING_MODEL:?thieu EMBEDDING_MODEL trong .env.server/.env.laptop}"
+      OLLAMA_HOST: "${OLLAMA_HOST:-http://ollama:11434}"
     # Quyet dinh pho cong (chot 31/08/2026): 8000 publish cong khai co chu dich cho demo;
     # tu Epic 3 moi endpoint du lieu bat buoc JWT. DB va ollama khong bao gio publish.
     # Luu y: cong do Docker publish di vong qua UFW (iptables chain DOCKER), khong dua vao UFW;

@@ -1,0 +1,40 @@
+# Danh mục model giả cho bộ test wrapper (story 2.2). Giá chọn để phép nhân
+# đọc bằng mắt được: 1 USD / 1M token vào, 2 USD / 1M token ra.
+version: 1
+
+nha_cung_cap:
+  gia:
+    cuc_bo: false
+    base_url: null
+    bien_api_key: GIA_API_KEY
+  ollama_gia:
+    cuc_bo: true
+    bien_host: GIA_HOST
+
+models:
+  llm-gia:
+    loai: llm
+    nha_cung_cap: gia
+    gia_vao_usd_1m: 1.0
+    gia_ra_usd_1m: 2.0
+    max_token: 32768
+  embedding-gia:
+    loai: embedding
+    nha_cung_cap: gia
+    gia_vao_usd_1m: 0.5
+    gia_ra_usd_1m: 0
+    so_chieu: 8
+    max_token: 512
+  llm-cuc-bo-gia:
+    loai: llm
+    nha_cung_cap: ollama_gia
+    gia_vao_usd_1m: 0
+    gia_ra_usd_1m: 0
+    max_token: 32768
+  embedding-cuc-bo-gia:
+    loai: embedding
+    nha_cung_cap: ollama_gia
+    gia_vao_usd_1m: 0
+    gia_ra_usd_1m: 0
+    so_chieu: 8
+    max_token: 512

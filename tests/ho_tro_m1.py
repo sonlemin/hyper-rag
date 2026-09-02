@@ -7,31 +7,72 @@ cho engine và cấu hình.
 Ba hàm đo ở cuối file là cách bộ test đọc "vai này truy hồi được những fact
 nào" mà không phải parse CSV của upstream. Tên hyperedge là chuỗi duy nhất định
 danh một fact ở cả hai kho, nên nó là thứ đo được.
+
+Từ story 2.2, `dung_engine` là nơi **duy nhất** trong suite dựng `EngineACL`,
+và nó bọc hai bản giả qua wrapper của dự án: engine từ chối hàm trần
+(`LLMNotWrapped`), nên mọi lời gọi LLM/embedding của cổng M1 đi qua đúng đường
+mà sản phẩm đi, và sổ audit bộ nhớ (`engine.so_audit`) có sự kiện chi phí của
+từng lời gọi.
 """
 
+from adapters.engine import EngineACL
+from adapters.llm_wrapper import bo_embedding, bo_llm
 from core.permission import use_context
 from hypergraphrag.base import QueryParam
 from tests.fixtures import oracle
 from tests.fixtures.du_lieu_dung_tay import CHUNKS, HYPEREDGES, THEO_ID
-from tests.gia_lap_qdrant import QdrantGhiLai, embedding_gia, khoa_trong_filter
+from tests.gia_lap_llm import (
+    MODEL_EMBEDDING_GIA,
+    MODEL_LLM_GIA,
+    EmbeddingGia,
+    NhaCungCapGia,
+    SoAuditBoNho,
+    danh_muc_gia,
+)
+from tests.gia_lap_qdrant import QdrantGhiLai, khoa_trong_filter
 from tests.nap_kho import ten_hyperedge
-
-from adapters.engine import EngineACL
 
 CAU_HOI = "App01 trả lỗi 502 thì xử lý thế nào"
 
 
-def dung_engine(workspace_dir, client, driver, llm, **them) -> EngineACL:
-    """Engine cổng M1: ba adapter thật, ba kết nối giả, LLM giả."""
-    return EngineACL(
+def llm_boc(llm, so_audit: SoAuditBoNho):
+    """`LLMGia` bọc qua wrapper thật, provider giả trả token cố định."""
+    return bo_llm(
+        nha_cung_cap=NhaCungCapGia(llm),
+        model=MODEL_LLM_GIA,
+        audit=so_audit,
+        danh_muc=danh_muc_gia(),
+    )
+
+
+def embedding_boc(so_audit: SoAuditBoNho):
+    """`EmbeddingFunc` bọc qua wrapper thật, ruột là hàm hash của `embedding_gia`."""
+    return bo_embedding(
+        nha_cung_cap=EmbeddingGia(),
+        model=MODEL_EMBEDDING_GIA,
+        audit=so_audit,
+        danh_muc=danh_muc_gia(),
+    )
+
+
+def dung_engine(workspace_dir, client, driver, llm, so_audit=None, **them) -> EngineACL:
+    """Engine cổng M1: ba adapter thật, ba kết nối giả, LLM giả đã bọc.
+
+    Sổ audit gắn lên engine dưới tên `so_audit` - thuộc tính thường, không phải
+    field, nên `asdict(self)` không chạm tới nó.
+    """
+    so_audit = SoAuditBoNho() if so_audit is None else so_audit
+    engine = EngineACL(
         working_dir=str(workspace_dir),
-        embedding_func=embedding_gia(),
-        llm_model_func=llm,
+        embedding_func=embedding_boc(so_audit),
+        llm_model_func=llm_boc(llm, so_audit),
         embedding_batch_num=2,
         tao_qdrant_client=(lambda: client) if client is not None else None,
         tao_neo4j_driver=(lambda: driver) if driver is not None else None,
         **them,
     )
+    engine.so_audit = so_audit
+    return engine
 
 
 async def cong_m1(workspace_dir, khong_gian, policy):
@@ -48,6 +89,7 @@ async def cong_m1(workspace_dir, khong_gian, policy):
     client.xoa_nhat_ky()
     driver.xoa_nhat_ky()
     llm.xoa_nhat_ky()
+    engine.so_audit.xoa()
     return engine, client, driver, llm
 
 

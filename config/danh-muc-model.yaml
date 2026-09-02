@@ -1,0 +1,81 @@
+# Danh mục model LLM / embedding và đơn giá (story 2.2, FR-30, NFR-05).
+#
+# Đây là nơi *duy nhất* mang tên model, nhà cung cấp và giá: code Python chỉ
+# đọc bảng này. Đổi model, đổi giá, thêm provider là sửa file, không sửa code.
+# Wrapper (`adapters/llm_wrapper.py`) tính chi phí một lời gọi bằng
+#   token_vao * gia_vao_usd_1m / 1e6 + token_ra * gia_ra_usd_1m / 1e6
+# với token đọc từ `usage` của phản hồi provider, không ước lượng.
+#
+# Nguồn giá và ngày tra (agent tra bảng giá công khai, sonlm xác nhận số trước
+# khi dùng cho ngoại suy FR-30 chính thức ở story 2.6):
+#   - DeepSeek: https://api-docs.deepseek.com/quick_start/pricing, tra ngày
+#     2026-09-02. Bảng giá có hai mức peak/off-peak (off-peak bằng nửa peak;
+#     peak là 01:00-04:00 và 06:00-10:00 UTC, thứ Hai đến thứ Sáu). Ghi mức
+#     **peak** và giá **cache miss** để ước tính là cận trên: FR-30 đối chiếu
+#     với mức báo động 60 USD, ước cao an toàn hơn ước thấp. Token cache-hit
+#     vẫn tính giá cache-miss (usage.prompt_tokens gộp cả hai).
+#   - OpenAI: https://developers.openai.com/api/docs/pricing, tra ngày
+#     2026-09-02, mức Standard.
+#   - Ollama (profile `local-llm` của compose): chạy trên máy chủ, 0 USD.
+#
+# `max_token` là ngữ cảnh vào tối đa (với embedding nó thành
+# `EmbeddingFunc.max_token_size` của upstream). `so_chieu` chỉ có ở embedding
+# và đi vào `EmbeddingFunc.embedding_dim`, tức kích thước collection Qdrant:
+# đổi model embedding là đổi số chiều và phải re-ingest.
+#
+# Nhà cung cấp cục bộ (`cuc_bo: true`) là nhà cung cấp duy nhất mà space `real`
+# được gọi (AD-12): model của nó bắt buộc giá 0, loader từ chối file nếu không.
+version: 1
+
+nha_cung_cap:
+  deepseek:
+    cuc_bo: false
+    base_url: https://api.deepseek.com
+    bien_api_key: DEEPSEEK_API_KEY
+  openai:
+    cuc_bo: false
+    base_url: null
+    bien_api_key: OPENAI_API_KEY
+  ollama:
+    cuc_bo: true
+    bien_host: OLLAMA_HOST
+
+models:
+  # LLM chính của khóa luận: rẻ nhất trong bảng DeepSeek, đủ cho trích xuất
+  # fact có lược đồ (story 2.4). Ngữ cảnh 1M token, xuất tối đa 384K.
+  deepseek-v4-flash:
+    loai: llm
+    nha_cung_cap: deepseek
+    gia_vao_usd_1m: 0.44
+    gia_ra_usd_1m: 1.32
+    max_token: 1000000
+  # LLM dự phòng, cùng cấu hình spike 29/08 (mặc định của upstream).
+  gpt-4o-mini:
+    loai: llm
+    nha_cung_cap: openai
+    gia_vao_usd_1m: 0.15
+    gia_ra_usd_1m: 0.60
+    max_token: 128000
+  # Embedding: DeepSeek không có API embedding, nên đường API ngoài dùng OpenAI.
+  text-embedding-3-small:
+    loai: embedding
+    nha_cung_cap: openai
+    gia_vao_usd_1m: 0.02
+    gia_ra_usd_1m: 0
+    so_chieu: 1536
+    max_token: 8191
+  # Đường cục bộ cho space `real` (story 2.11), chưa pull; tên là tag Ollama.
+  qwen2.5:7b:
+    loai: llm
+    nha_cung_cap: ollama
+    gia_vao_usd_1m: 0
+    gia_ra_usd_1m: 0
+    max_token: 32768
+  # Embedding cục bộ theo spine (AD-12, NFR-05: Qwen + bge-m3); 1024 chiều.
+  bge-m3:
+    loai: embedding
+    nha_cung_cap: ollama
+    gia_vao_usd_1m: 0
+    gia_ra_usd_1m: 0
+    so_chieu: 1024
+    max_token: 8192

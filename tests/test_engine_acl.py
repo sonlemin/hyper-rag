@@ -36,11 +36,11 @@ from adapters.neo4j import Neo4jACLGraphStorage
 from adapters.qdrant import QdrantVectorDBStorage
 from core.permission import PermissionContextMissing, use_context
 from core.system_context import system_context
-from tests.gia_lap_llm import LLMGia
+from tests.gia_lap_llm import LLMGia, SoAuditBoNho
 from tests.gia_lap_neo4j import Neo4jGhiLai
-from tests.gia_lap_qdrant import QdrantGhiLai, embedding_gia
+from tests.gia_lap_qdrant import QdrantGhiLai
 from tests.ho_tro_compose import doc_compose
-from tests.ho_tro_m1 import CAU_HOI, cong_m1, dung_engine
+from tests.ho_tro_m1 import CAU_HOI, cong_m1, dung_engine, embedding_boc, llm_boc
 from tests.nap_kho import kiem_fixture
 
 # Hai giá trị nhận biết được, chỉ dùng cho ca kiểm secret-không-ra-log. Không
@@ -423,12 +423,18 @@ def test_dong_hong_giua_chung_van_goi_lai_duoc(
 
 
 def test_khe_tiem_tra_none_bi_tu_choi(workspace_dir):
-    """Thông điệp phải nói về khe tiêm, không nói về khóa cấu hình thiếu."""
+    """Thông điệp phải nói về khe tiêm, không nói về khóa cấu hình thiếu.
+
+    Từ story 2.2 hai hàm phải đi qua wrapper (engine từ chối hàm trần trước
+    cả khe tiêm), nên ca này dựng bằng hai bản giả đã bọc để tới được đúng cửa
+    nó muốn đo.
+    """
+    so_audit = SoAuditBoNho()
     with pytest.raises(ValueError) as loi:
         EngineACL(
             working_dir=str(workspace_dir),
-            embedding_func=embedding_gia(),
-            llm_model_func=LLMGia(),
+            embedding_func=embedding_boc(so_audit),
+            llm_model_func=llm_boc(LLMGia(), so_audit),
             tao_qdrant_client=lambda: None,
             tao_neo4j_driver=lambda: Neo4jGhiLai(),
         )

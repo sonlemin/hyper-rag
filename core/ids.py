@@ -46,6 +46,30 @@ def point_id(raw: str) -> str:
 _SPACE_HOP_LE = re.compile(r"[A-Za-z][A-Za-z0-9_]*\Z")
 SPACE_MAX_LEN: int = 64
 
+# Không gian dữ liệu thật đã khử nhạy cảm (AD-12, story 2.11). Luật của nó nằm ở
+# đây, cạnh hình dạng của `space`, vì "space nào là real" là một tính chất của
+# tên không gian chứ không phải của từng nơi gọi tự đoán: wrapper LLM (2.2) hỏi
+# để chặn provider API ngoài, adapter kho (2.11) sẽ hỏi cùng câu đó.
+SPACE_REAL: str = "real"
+
+
+def la_space_real(space: str) -> bool:
+    """`space` có thuộc không gian dữ liệu thật không.
+
+    Đúng khi `space` là `real` hoặc đoạn cuối của nó là `real` (không phân
+    biệt hoa thường), theo quy ước
+    prefix gấp *vào trong* tên không gian (`test_3fa9c1d2_synth`, xem
+    `tests/conftest.py::session_prefix`): loại của một không gian là đoạn cuối
+    tên nó. Phía an toàn là phía dương - một tên kết thúc bằng `_real` mà không
+    định là real thì chỉ mất quyền gọi API ngoài, còn chiều ngược lại là gửi
+    dữ liệu thật ra ngoài.
+    """
+    validate_space(space)
+    # Không phân biệt hoa thường: `validate_space` cho phép chữ hoa, và
+    # `TEST_REAL` mà không phải real là một không gian thật gọi API ngoài.
+    thuong = space.lower()
+    return thuong == SPACE_REAL or thuong.endswith(f"_{SPACE_REAL}")
+
 
 def validate_space(space: str) -> str:
     """Kiểm `space` trước khi nó thành tên collection và nhãn graph (AD-12).

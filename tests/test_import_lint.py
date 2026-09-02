@@ -79,8 +79,11 @@ GOI_QUET = ("core", "adapters", "api", "redteam", "eval")
 MODULE_SYSTEM_CONTEXT = "core.system_context"
 FILE_SYSTEM_CONTEXT = "core/system_context.py"
 # Danh sách trắng: đường dẫn tương đối gốc repo của module ingest được phép.
-# Rỗng ở story 1.2 - chưa có pipeline ingest nào.
-CHO_PHEP_SYSTEM_CONTEXT: frozenset[str] = frozenset()
+# Rỗng ở story 1.2 - chưa có pipeline ingest nào. Story 2.2 thêm script đo thô
+# `api/do_chi_phi.py`: nó chạy `ainsert` dưới ngữ cảnh hệ thống đúng như
+# pipeline 2.3 sẽ làm, và là *dòng của pipeline ingest* cho tới khi 2.3 thay
+# nó bằng module thật (lúc đó đổi đường dẫn ở đây, không thêm dòng thứ hai).
+CHO_PHEP_SYSTEM_CONTEXT: frozenset[str] = frozenset({"api/do_chi_phi.py"})
 
 
 def _module_tuyet_doi(node: ast.ImportFrom, goi_cha: tuple[str, ...]) -> str:

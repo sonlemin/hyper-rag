@@ -159,3 +159,21 @@ def nhan_ingest_sach():
     yield
     ro_ri = dang_mo()
     assert ro_ri is None, f"test này thoát khi nhãn ingest {ro_ri!r} còn mở"
+
+
+@pytest.fixture(autouse=True)
+def khong_key_provider_trong_moi_truong(monkeypatch):
+    """Xóa key của mọi provider API ngoài khỏi `os.environ` cho cả suite.
+
+    Bộ test chạy không mạng, không key (AGENTS.md). Một test dựng provider từ
+    `os.environ` (`ham_tu_moi_truong`/`nha_cung_cap_tu_moi_truong` không truyền
+    `moi_truong=`) trên máy có `.env` đã nạp sẽ cầm key thật và có thể gọi API
+    trả tiền. Xóa key ở đây biến ca đó thành `ProviderConfigMissing` ngay lập
+    tức, dù test chạy ở dev hay ở CI trên máy chủ. Tên biến lấy từ chính danh
+    mục model, không viết tay.
+    """
+    from adapters.model_catalog import danh_muc_mac_dinh
+
+    for ncc in danh_muc_mac_dinh().nha_cung_cap.values():
+        if not ncc.cuc_bo:
+            monkeypatch.delenv(ncc.bien_api_key, raising=False)

@@ -120,3 +120,24 @@ def _doc_dockerfile() -> str:
 
     duong_dan = Path(__file__).resolve().parent.parent / "api" / "Dockerfile"
     return duong_dan.read_text(encoding="utf-8")
+
+
+def test_ci_thieu_container_la_fail_khong_phai_bo_qua():
+    """`scripts/ci-remote.sh`: thiếu container kho thật thì dòng ci.log phải là FAIL.
+
+    Ledger 2.2: nhánh `ip_container` rỗng từng chỉ echo rồi giữ `st=PASS`, nên
+    một PASS không phân biệt được "marker xanh" với "marker chưa chạy".
+    """
+    import re
+    from pathlib import Path
+
+    script = (Path(__file__).resolve().parent.parent / "scripts" / "ci-remote.sh").read_text(
+        encoding="utf-8"
+    )
+    nhanh = re.search(r'if \[ -z "\$NEO4J_IP" \].*?\n\s*else', script, re.DOTALL)
+    assert nhanh, "không tìm thấy nhánh kiểm container trong ci-remote.sh"
+    assert "st=FAIL" in nhanh.group(0)
+    assert "bo qua" not in nhanh.group(0).split("\n")[0]
+    # Tên container thiếu phải ra thông điệp, để log nói đúng cái nào chưa lên.
+    for kho in ("neo4j", "qdrant", "postgres"):
+        assert f'thieu="$thieu {kho}"' in nhanh.group(0)

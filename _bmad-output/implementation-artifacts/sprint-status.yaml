@@ -76,7 +76,7 @@
 #   nếu chạy repair thì chép lại khối chú thích từ git history.
 
 generated: 08-31-2026 21:50
-last_updated: 09-02-2026 02:20
+last_updated: 09-02-2026 10:46
 project: hyper_graph_rag
 project_key: NOKEY
 tracking_system: file-system
@@ -98,7 +98,7 @@ development_status:
   # bộ vàng 2-5 và 2-9 tự thân là bộ test, không cần skill sinh test riêng.
   epic-2: in-progress
   2-1-trả-nợ-sàn-t1-hợp-nhất-khóa-đa-nguồn-và-đối-chiếu-hai-kho: done  # 533 test xanh dev + server, 11 marker trên container; 3 lớp review + 30 patch; cách đọc câu frozen chốt theo AD-9/AD-5 (che cứng lân cận không khóa)
-  2-2-wrapper-llm-embedding-đếm-chi-phí-qua-audit-port: backlog  # TA: unit test đếm chi phí, mock LLM, không gọi API thật
+  2-2-wrapper-llm-embedding-đếm-chi-phí-qua-audit-port: done  # 665 test xanh dev + server, 16 marker trên container thật (4 postgres); 3 lớp review, 23 patch, 3 defer đóng ngay; đo thô 2 tài liệu 0.234 USD (deepseek-v4-flash xuất 17-23k token ra/lời gọi, 2.4 quyết tắt suy luận hoặc đổi model)
   2-3-import-thư-mục-và-pipeline-ingest-tuần-tự: backlog  # TA: test pipeline tuần tự (idempotent, chạy lại giữa chừng)
   2-4-trích-xuất-fact-8-vai-slot-tiếng-việt: backlog  # AT: chốt tiêu chí chấm trích xuất trước khi tinh chỉnh prompt
   2-5-bộ-vàng-trích-xuất: backlog  # bộ vàng chính là red-phase spec cho 2-4/2-6; không cần skill riêng

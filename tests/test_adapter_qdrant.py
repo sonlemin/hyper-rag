@@ -600,3 +600,45 @@ def test_upsert_ghi_vao_collection_cua_space_dang_mo(khong_gian, policy, session
     asyncio.run(chay())
 
 
+
+
+# --- Ledger 2.2: collection đã có phải cùng số chiều với embedding cấu hình --
+
+
+def test_initialize_tu_choi_collection_da_co_khac_so_chieu(khong_gian, policy):
+    """Đổi model embedding trên kho đã nạp là `EMBEDDING_DIM_MISMATCH` ngay lúc `initialize()`.
+
+    Không có cửa này thì lỗi chỉ nổ ở lượt upsert đầu, dưới dạng lỗi kích
+    thước của Qdrant nói về vector chứ không nói về model.
+    """
+    from adapters.qdrant import EmbeddingDimMismatch, QdrantVectorDBStorage
+    from core.permission import use_context
+    from core.system_context import system_context
+    from tests.gia_lap_qdrant import QdrantGhiLai, embedding_gia
+
+    client = QdrantGhiLai()
+
+    def adapter(so_chieu):
+        return QdrantVectorDBStorage(
+            namespace="hyperedges",
+            global_config={"embedding_batch_num": 2},
+            embedding_func=embedding_gia(so_chieu),
+            meta_fields={"hyperedge_name"},
+            qdrant_client=client,
+        )
+
+    async def chay():
+        with use_context(system_context(space=khong_gian, policy_version=policy.policy_version)):
+            ten = await adapter(8).initialize()
+            # Cùng số chiều thì gọi lại vẫn lặp lại được như trước.
+            await adapter(8).initialize()
+            with pytest.raises(EmbeddingDimMismatch) as loi:
+                await adapter(16).initialize()
+        return ten, loi.value
+
+    ten, loi = asyncio.run(chay())
+    assert loi.code == "EMBEDDING_DIM_MISMATCH"
+    assert ten in str(loi) and "8" in str(loi) and "16" in str(loi)
+    # Kho giữ nguyên: không có lời tạo lại hay xóa collection nào.
+    assert len(client.cac_loi_goi("create_collection")) == 1
+    assert client.cac_loi_goi("delete_collection") == []

@@ -23,3 +23,19 @@ def doc_compose() -> dict:
     return yaml.safe_load(
         (REPO_ROOT / "docker-compose.yml").read_text(encoding="utf-8")
     )
+
+
+def doc_env(ten_file: str) -> dict[str, str]:
+    """Một file `.env.*` tham số môi trường ở gốc repo, đã parse thành dict.
+
+    Chỉ dạng `KEY=VALUE`, bỏ dòng trống và dòng `#`. Không dùng cho `.env` gốc
+    (secret, gitignore): test không được đọc secret.
+    """
+    ket_qua: dict[str, str] = {}
+    for dong in (REPO_ROOT / ten_file).read_text(encoding="utf-8").splitlines():
+        dong = dong.strip()
+        if not dong or dong.startswith("#") or "=" not in dong:
+            continue
+        khoa, gia_tri = dong.split("=", 1)
+        ket_qua[khoa.strip()] = gia_tri.strip()
+    return ket_qua

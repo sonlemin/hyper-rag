@@ -101,6 +101,19 @@ class QdrantIndexMissing(RuntimeError):
     code = "QDRANT_INDEX_MISSING"
 
 
+class EmbeddingDimMismatch(RuntimeError):
+    """Collection đã tồn tại có kích thước vector khác `embedding_dim` cấu hình.
+
+    Đổi `EMBEDDING_MODEL` sang model khác số chiều trên một kho đã nạp là phải
+    re-ingest (header `config/danh-muc-model.yaml`). Không có cửa này thì lỗi
+    chỉ nổ ở lượt upsert đầu, dưới dạng một lỗi kích thước của Qdrant nói về
+    vector chứ không nói về model. Bắt ngay lúc `initialize()`, nêu tên
+    collection, số chiều đang có và số chiều cấu hình.
+    """
+
+    code = "EMBEDDING_DIM_MISMATCH"
+
+
 class PointIdCollision(RuntimeError):
     """Hai id upstream khác nhau trong cùng một lô chuẩn hóa về một point id.
 
@@ -247,7 +260,9 @@ class QdrantVectorDBStorage(BaseVectorStorage):
         giữ. Hiệu lực thật của cả hai là khoản kiểm ở cổng M1.
         """
         ten = self._ten_collection()
-        if not await self._client.collection_exists(collection_name=ten):
+        if await self._client.collection_exists(collection_name=ten):
+            await self._kiem_so_chieu(ten)
+        else:
             await self._client.create_collection(
                 collection_name=ten,
                 vectors_config=models.VectorParams(
@@ -275,6 +290,19 @@ class QdrantVectorDBStorage(BaseVectorStorage):
             ),
         )
         return ten
+
+    async def _kiem_so_chieu(self, ten: str) -> None:
+        """Collection đã có phải cùng số chiều với `embedding_func` đang cấu hình."""
+        thong_tin = await self._client.get_collection(collection_name=ten)
+        vectors = thong_tin.config.params.vectors
+        hien_co = getattr(vectors, "size", None)
+        cau_hinh = self.embedding_func.embedding_dim
+        if hien_co != cau_hinh:
+            raise EmbeddingDimMismatch(
+                f"collection {ten!r} đang có vector {hien_co!r} chiều, cấu hình"
+                f" embedding là {cau_hinh} chiều: đổi model embedding trên kho đã"
+                " nạp là phải re-ingest, không nạp tiếp"
+            )
 
     async def _bat_buoc_co_index(self, ten: str) -> None:
         """Từ chối ghi khi payload index khóa chưa có hoặc sai kiểu (AD-4).

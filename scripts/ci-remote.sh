@@ -73,13 +73,29 @@ else
     }
     NEO4J_IP="$(ip_container hyper-rag-copilot-neo4j-1)"
     QDRANT_IP="$(ip_container hyper-rag-copilot-qdrant-1)"
-    if [ -z "$NEO4J_IP" ] || [ -z "$QDRANT_IP" ]; then
-        echo "[ci] thieu container neo4j/qdrant dang chay, bo qua bo test kho that"
+    POSTGRES_IP="$(ip_container hyper-rag-copilot-postgres-1)"
+    if [ -z "$NEO4J_IP" ] || [ -z "$QDRANT_IP" ] || [ -z "$POSTGRES_IP" ]; then
+        # Thieu container la FAIL, khong phai "bo qua": mot dong PASS ma bo
+        # marker chua chay la mot ket qua noi doi (cung ly do voi *_REQUIRED).
+        thieu=""
+        [ -z "$NEO4J_IP" ] && thieu="$thieu neo4j"
+        [ -z "$QDRANT_IP" ] && thieu="$thieu qdrant"
+        [ -z "$POSTGRES_IP" ] && thieu="$thieu postgres"
+        echo "[ci] thieu container dang chay:$thieu - bo test kho that khong chay duoc" >&2
+        st=FAIL
     else
-        set -a; . ./.env; set +a
+        # Chi export dung bien bo test can, khong source ca .env: key LLM that
+        # nam trong .env va khong duoc lot vao moi truong cua bo test (test phai
+        # chay khong mang, khong key).
+        doc_bien() { grep -E "^$2=" "$1" | head -n 1 | cut -d= -f2-; }
+        export NEO4J_PASSWORD="$(doc_bien .env NEO4J_PASSWORD)"
+        export POSTGRES_PASSWORD="$(doc_bien .env POSTGRES_PASSWORD)"
+        export POSTGRES_USER="$(doc_bien .env.server POSTGRES_USER)"
+        export POSTGRES_DB="$(doc_bien .env.server POSTGRES_DB)"
         if ! NEO4J_REQUIRED=1 NEO4J_URI="bolt://$NEO4J_IP:7687" \
              QDRANT_REQUIRED=1 QDRANT_URL="http://$QDRANT_IP:6333" \
-             uv run pytest -m "neo4j or qdrant"; then
+             POSTGRES_REQUIRED=1 POSTGRES_HOST="$POSTGRES_IP" \
+             uv run pytest -m "neo4j or qdrant or postgres"; then
             st=FAIL
         fi
     fi

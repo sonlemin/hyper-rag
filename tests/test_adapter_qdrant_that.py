@@ -217,3 +217,35 @@ def test_filter_hai_dieu_kien_bi_server_tu_choi(khong_gian, policy):
 
     thong_diep = asyncio.run(chay())
     assert "condition" in thong_diep.lower() or "strict mode" in thong_diep.lower()
+
+
+def test_collection_that_khac_so_chieu_bi_tu_choi_luc_initialize(khong_gian, policy):
+    """Trên Qdrant thật: collection dựng sẵn với size khác thì `initialize()` nổ, không sửa gì."""
+    from adapters.qdrant import EmbeddingDimMismatch
+    from qdrant_client import models
+
+    async def chay():
+        client = QdrantGhiLai.noi_toi(URL, API_KEY)
+        ten = f"{khong_gian}_hyperedges"
+        try:
+            await client.create_collection(
+                collection_name=ten,
+                vectors_config=models.VectorParams(size=16, distance=models.Distance.COSINE),
+            )
+            with use_context(
+                system_context(space=khong_gian, policy_version=policy.policy_version)
+            ):
+                with pytest.raises(EmbeddingDimMismatch) as loi:
+                    await dung_adapter(client).initialize()
+            size_sau = (await client.get_collection(collection_name=ten)).config.params.vectors.size
+            return loi.value, size_sau
+        finally:
+            try:
+                await client.delete_collection(collection_name=ten)
+            finally:
+                await client._that.close()
+
+    loi, size_sau = asyncio.run(chay())
+    assert loi.code == "EMBEDDING_DIM_MISMATCH"
+    assert "16" in str(loi)
+    assert size_sau == 16, "initialize() không được sửa collection đang có"

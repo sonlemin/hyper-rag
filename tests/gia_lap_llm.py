@@ -33,7 +33,13 @@ chứng minh mình assert trên ngữ cảnh truy hồi chứ không trên câu 
 (chốt brief §6).
 """
 
+from pathlib import Path
+
+from adapters.llm_wrapper import KetQuaEmbedding, KetQuaLLM
+from adapters.model_catalog import DanhMucModel, tai_danh_muc_model
+from core.audit import SuKienAudit
 from hypergraphrag.prompt import PROMPTS
+from tests.gia_lap_qdrant import vector_tu_chuoi
 
 TD: str = PROMPTS["DEFAULT_TUPLE_DELIMITER"]
 RD: str = PROMPTS["DEFAULT_RECORD_DELIMITER"]
@@ -125,3 +131,124 @@ class MaHoaOffline:
     @staticmethod
     def decode(tokens: list[int]) -> str:
         return bytes(tokens).decode("utf-8", errors="ignore")
+
+
+# --- Story 2.2: provider giả, sổ audit bộ nhớ, danh mục model giả -----------
+#
+# Wrapper của `adapters/llm_wrapper.py` bọc một *provider* (thứ trả nội dung
+# kèm token), không bọc hàm LLM. Hai bản giả dưới đây là provider; `LLMGia` ở
+# trên vẫn là chỗ ghi nhật ký prompt, `NhaCungCapGia` chỉ dịch messages về
+# lại lời gọi `llm(prompt, system_prompt=...)` mà bộ test đã quen đọc.
+
+DUONG_DAN_DANH_MUC_GIA: Path = (
+    Path(__file__).resolve().parent / "fixtures" / "danh-muc-model-gia.yaml"
+)
+MODEL_LLM_GIA: str = "llm-gia"
+MODEL_EMBEDDING_GIA: str = "embedding-gia"
+MODEL_LLM_CUC_BO_GIA: str = "llm-cuc-bo-gia"
+MODEL_EMBEDDING_CUC_BO_GIA: str = "embedding-cuc-bo-gia"
+NCC_GIA: str = "gia"
+NCC_CUC_BO_GIA: str = "ollama_gia"
+
+
+def danh_muc_gia() -> DanhMucModel:
+    """Danh mục giả, nạp qua đúng loader của hệ."""
+    return tai_danh_muc_model(DUONG_DAN_DANH_MUC_GIA)
+
+
+class NhaCungCapGia:
+    """Provider LLM giả: chuyển messages về `LLMGia`, trả token cố định.
+
+    `loi` khác None thì lời gọi ném đúng exception đó thay vì trả kết quả -
+    dựng ca "provider hỏng". `cuc_bo` và `ten` chỉnh được để dựng ca space
+    `real` với provider cục bộ/API ngoài.
+    """
+
+    def __init__(
+        self,
+        llm: LLMGia | None = None,
+        *,
+        ten: str = NCC_GIA,
+        cuc_bo: bool = False,
+        token_vao: int = 12,
+        token_ra: int = 34,
+        loi: BaseException | None = None,
+    ):
+        self.llm = llm if llm is not None else LLMGia()
+        self.ten = ten
+        self.cuc_bo = cuc_bo
+        self.token_vao = token_vao
+        self.token_ra = token_ra
+        self.loi = loi
+        self.loi_goi: list[tuple[str, list[dict], dict]] = []
+
+    async def hoan_thanh(self, model: str, messages: list[dict], **kwargs) -> KetQuaLLM:
+        self.loi_goi.append((model, list(messages), dict(kwargs)))
+        if self.loi is not None:
+            raise self.loi
+        system_prompt = None
+        con_lai = list(messages)
+        if con_lai and con_lai[0]["role"] == "system":
+            system_prompt = con_lai.pop(0)["content"]
+        prompt = con_lai.pop()["content"]
+        noi_dung = await self.llm(
+            prompt, system_prompt=system_prompt, history_messages=con_lai, **kwargs
+        )
+        return KetQuaLLM(noi_dung=noi_dung, token_vao=self.token_vao, token_ra=self.token_ra)
+
+    @property
+    def so_lan(self) -> int:
+        return len(self.loi_goi)
+
+
+class EmbeddingGia:
+    """Provider embedding giả: vector hash của `tests/gia_lap_qdrant`, token cố định."""
+
+    def __init__(
+        self,
+        *,
+        ten: str = NCC_GIA,
+        cuc_bo: bool = False,
+        token_vao: int | None = None,
+        loi: BaseException | None = None,
+    ):
+        self.ten = ten
+        self.cuc_bo = cuc_bo
+        self.token_vao = token_vao
+        self.loi = loi
+        self.loi_goi: list[tuple[str, list[str]]] = []
+
+    async def nhung(self, model: str, texts: list[str]) -> KetQuaEmbedding:
+        self.loi_goi.append((model, list(texts)))
+        if self.loi is not None:
+            raise self.loi
+        token = self.token_vao if self.token_vao is not None else sum(
+            len(t.split()) for t in texts
+        )
+        return KetQuaEmbedding(vector=[vector_tu_chuoi(t) for t in texts], token_vao=token)
+
+    @property
+    def so_lan(self) -> int:
+        return len(self.loi_goi)
+
+
+class SoAuditBoNho:
+    """Audit port trong bộ nhớ: giữ mọi sự kiện theo thứ tự ghi.
+
+    `loi` khác None thì `ghi` ném exception đó - dựng ca "port audit hỏng".
+    """
+
+    def __init__(self, *, loi: BaseException | None = None):
+        self.su_kien: list[SuKienAudit] = []
+        self.loi = loi
+
+    async def ghi(self, su_kien: SuKienAudit) -> None:
+        if self.loi is not None:
+            raise self.loi
+        self.su_kien.append(su_kien)
+
+    def cac_su_kien(self, event: str | None = None) -> list[SuKienAudit]:
+        return [sk for sk in self.su_kien if event is None or sk.event == event]
+
+    def xoa(self) -> None:
+        self.su_kien.clear()

@@ -8,9 +8,12 @@ bằng tên module trong import-lint.
 Nội dung hiện có, đặt từ story 1.2:
 
 - `slots`           danh mục 8 vai slot snake_case
-- `ids`             chuẩn hóa id node + namespace UUID5 + point id Qdrant
+- `ids`             chuẩn hóa id node + namespace UUID5 + point id Qdrant +
+                    hình dạng `space` và luật space nào là `real` (2.2)
 - `keys`            khóa lọc `{scope}:{content_type}` (AD-4) + hợp nhất khóa
                     đa nguồn và sentinel "không khóa" (2.1)
+- `audit`           audit port: interface, danh mục sự kiện, luật hai tầng
+                    mutation/observation (AD-16, 2.2)
 - `policy`          kiểm và dựng bảng chính sách bất biến (AD-6)
 - `permission`      PermissionContext + contextvar fail-closed (AD-3)
 - `system_context`  constructor ngữ cảnh ingest, chỉ ingest được import
@@ -18,5 +21,5 @@ Nội dung hiện có, đặt từ story 1.2:
 - `identity`        danh tính người hỏi và đường sang ngữ cảnh quyền (1.7)
 
 Còn thiếu, vào ở các story sau: validator đơn điệu AD-5 (3.2), bộ lọc vùng
-break-glass (5.2), audit port (3.6).
+break-glass (5.2), các sự kiện audit lọc/từ chối/truy vấn của adapter (3.6).
 """

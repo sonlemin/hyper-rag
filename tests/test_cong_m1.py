@@ -97,21 +97,32 @@ def test_hashing_kv_xuong_ham_llm_la_none_tren_duong_truy_van(
 
     `HyperGraphRAG.__post_init__` bind `hashing_kv=self.llm_response_cache`
     bằng `partial` (`hypergraphrag.py:242-248`), và `handle_cache`/`save_to_cache`
-    đọc đúng giá trị đó. Ghim ở đầu ra của lời gọi LLM là ghim chỗ cơ chế thật
+    đọc đúng giá trị đó. Ghim ở chỗ giá trị được bind là ghim chỗ cơ chế thật
     sự đọc, chứ không phải chỗ nó được khai.
+
+    Đổi kỳ vọng ở story 2.2: hàm LLM của engine nay là wrapper, và wrapper
+    nuốt `hashing_kv` trước khi gọi provider (hợp đồng của nó: provider thật
+    không hiểu kwarg này). Nên bản giả không còn nhìn thấy `hashing_kv`; thứ
+    nhìn thấy được là `partial` mà upstream bọc quanh wrapper
+    (`engine.llm_model_func.__wrapped__`, do `functools.wraps` để lại), và giá
+    trị bind ở đó phải là `None`. Vế thứ hai ghim luôn hợp đồng "nuốt": provider
+    giả không nhận `hashing_kv` trong bất kỳ lời gọi nào.
     """
+    from functools import partial
 
     async def chay():
         engine, _, _, llm = await cong_m1(workspace_dir, khong_gian, policy)
         dt = DanhTinh(tai_khoan="ts01", vai="tech_support", khong_gian=khong_gian)
         await hoi(engine, ngu_canh_cua(dt, policy))
-        return llm.kwargs
+        return engine.llm_model_func.__wrapped__, llm.kwargs
 
-    kwargs = asyncio.run(chay())
+    bind, kwargs = asyncio.run(chay())
+    assert isinstance(bind, partial), "upstream không còn bind hashing_kv bằng partial"
+    assert "hashing_kv" in bind.keywords, "upstream đã bỏ tham số cache, xem lại AD-18"
+    assert bind.keywords["hashing_kv"] is None
     assert kwargs, "không có lời gọi LLM nào để kiểm"
     for lan in kwargs:
-        assert "hashing_kv" in lan, "upstream đã bỏ tham số cache, xem lại AD-18"
-        assert lan["hashing_kv"] is None
+        assert "hashing_kv" not in lan, "wrapper để lọt hashing_kv xuống provider"
 
 
 # --- 1.7-INT-001: contextvar qua pipeline async tới cả ba adapter -----------

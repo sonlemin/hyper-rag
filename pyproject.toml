@@ -31,6 +31,8 @@ dependencies = [
     # la dep bac cau qua transformers, go transformers la loader chet theo.
     "pyyaml>=6",
     "uvicorn>=0.30",
+    # Audit port Postgres (story 2.2, AD-16): async toan tuyen, spine Stack 0.31.
+    "asyncpg>=0.31",
 ]
 
 [dependency-groups]
@@ -58,8 +60,9 @@ packages = ["core", "adapters", "api", "redteam", "vendor/hypergraphrag"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q -m 'not neo4j and not qdrant'"
+addopts = "-q -m 'not neo4j and not qdrant and not postgres'"
 markers = [
     "neo4j: test can Neo4j that (container compose), mac dinh bo qua; chay bang `uv run pytest -m neo4j`",
     "qdrant: test can Qdrant that (container compose), mac dinh bo qua; chay bang `uv run pytest -m qdrant`",
+    "postgres: test can Postgres that (container compose), mac dinh bo qua; chay bang `uv run pytest -m postgres`",
 ]

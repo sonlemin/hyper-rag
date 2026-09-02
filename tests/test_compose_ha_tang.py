@@ -11,7 +11,9 @@ Không cần container, không cần mạng: test đọc file, không dựng sta
 
 import pytest
 
-from tests.ho_tro_compose import KHO_PHAI_CHO, doc_compose
+from adapters.llm_wrapper import BIEN_EMBEDDING_MODEL, BIEN_LLM_MODEL, BIEN_MOI_TRUONG_MODEL
+from adapters.model_catalog import LOAI_EMBEDDING, LOAI_LLM, danh_muc_mac_dinh
+from tests.ho_tro_compose import KHO_PHAI_CHO, doc_compose, doc_env
 
 
 @pytest.fixture(scope="module")
@@ -93,3 +95,42 @@ def test_chi_api_publish_cong_ra_ngoai(compose):
     }
     assert co_ports == {"api"}
     assert compose["services"]["api"]["ports"] == ["8000:8000"]
+
+
+# --- Story 2.2: biến chọn model có nguồn trong compose và trỏ vào danh mục ---
+
+FILE_THAM_SO = (".env.server", ".env.laptop")
+
+
+def test_compose_khai_du_bien_chon_model_wrapper_doc(compose):
+    """Mỗi biến mà `adapters/llm_wrapper.py` đọc phải có nguồn trong service `api`."""
+    env = compose["services"]["api"]["environment"]
+    thieu = [b for b in BIEN_MOI_TRUONG_MODEL if b not in env]
+    assert not thieu, f"biến {thieu} chưa có nguồn trong docker-compose.yml"
+
+
+@pytest.mark.parametrize("ten_file", FILE_THAM_SO)
+def test_file_tham_so_chon_model_co_trong_danh_muc(ten_file):
+    """`LLM_MODEL`/`EMBEDDING_MODEL` của mỗi môi trường phải là mục thật, đúng loại.
+
+    Loader từ chối model lạ lúc dựng wrapper, tức lúc tiến trình `api` lên.
+    Bắt ở đây để một tên gõ sai trong `.env.server` đỏ ở CI, không đỏ lúc
+    `docker compose up` trên máy chủ.
+    """
+    env = doc_env(ten_file)
+    dm = danh_muc_mac_dinh()
+    assert dm.muc(env[BIEN_LLM_MODEL], loai=LOAI_LLM)
+    assert dm.muc(env[BIEN_EMBEDDING_MODEL], loai=LOAI_EMBEDDING)
+
+
+def test_bien_ket_noi_moi_provider_co_nguon_trong_compose(compose):
+    """Biến mà danh mục chỉ cho mỗi provider (key API, host cục bộ) phải có trong `api`.
+
+    Tên biến lấy từ chính YAML (`bien_api_key`/`bien_host`), không từ hằng
+    trong code: đổi `bien_host` trong danh mục mà compose thiếu là đỏ ở đây.
+    """
+    env = compose["services"]["api"]["environment"]
+    dm = danh_muc_mac_dinh()
+    can = {n.bien_host if n.cuc_bo else n.bien_api_key for n in dm.nha_cung_cap.values()}
+    thieu = sorted(b for b in can if b not in env)
+    assert not thieu, f"biến {thieu} chưa có nguồn trong docker-compose.yml"
