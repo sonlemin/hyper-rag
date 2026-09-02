@@ -341,6 +341,48 @@ def test_khoa_quyen_cua_canh_bi_loc_tren_neo4j_that(khong_gian, policy):
     assert do["bac"] == len(con_lai)
 
 
+def test_hai_canh_khac_slot_tren_mot_cap_tren_neo4j_that(khong_gian, policy):
+    """Story 2.4: `MERGE ... [r:SLOT {slot: $slot}]` tách hai vai thành hai cạnh trên DB thật.
+
+    Ba đường đọc đổi cùng lúc phải được Neo4j thật chấp nhận: `get_node_edges`
+    một bản ghi mỗi cạnh, `get_edge` gộp bằng `collect(properties(r))`,
+    `node_degree` bằng `count(DISTINCT m)`; cộng `slot_cua_hyperedge` dưới cờ
+    system. Driver giả chỉ diễn giải, cú pháp là việc của file này.
+    """
+    he = THEO_ID["HE-01"]
+
+    async def chay():
+        async with kho_that(khong_gian, policy) as (driver, adapter):
+            with use_context(
+                system_context(space=khong_gian, policy_version=policy.policy_version)
+            ):
+                with ingest_label(scope=he["scope"], content_type=he["content_type"]):
+                    # `App01` (subject của HE-01) điền thêm vai `source` của chính HE-01.
+                    await adapter.upsert_edge(
+                        id_hyperedge(he), "App01", {"weight": 2.0, "source_id": "chunk-x", "slot": "source"}
+                    )
+                slots = await adapter.slot_cua_hyperedge(id_hyperedge(he))
+            so_canh = await doc_tho(
+                driver,
+                f"MATCH (h:`{khong_gian}` {{id: $id}})-[r:{EDGE_TYPE}]->(e:`{khong_gian}` {{id: 'App01'}})"
+                " RETURN count(r) AS so, collect(r.slot) AS slot",
+                id=id_hyperedge(he),
+            )
+            with use_context(vai(policy, "devops", khong_gian)):
+                cap = await adapter.get_node_edges(id_hyperedge(he))
+                canh = await adapter.get_edge(id_hyperedge(he), "App01")
+                bac = await adapter.node_degree(id_hyperedge(he))
+            return so_canh[0], slots, cap, canh, bac
+
+    so_canh, slots, cap, canh, bac = asyncio.run(chay())
+    assert so_canh["so"] == 2 and sorted(so_canh["slot"]) == ["source", "subject"]
+    assert [c[1] for c in cap].count("App01") == 2, "một bản ghi mỗi cạnh"
+    assert canh["weight"] == 3.0 and canh["slots"] == ["source", "subject"]
+    assert set(canh["source_id"].split("<SEP>")) == {he["id"], "chunk-x"}
+    assert bac == len(he["slots"]), "degree đếm distinct lân cận"
+    assert slots["subject"] == ["App01"] and slots["source"] == sorted(["App01", he["slots"]["source"]])
+
+
 def test_duong_xoa_va_ghi_thang_hop_le_tren_neo4j_that(khong_gian, policy):
     """Ba câu Cypher mới của story 2.3 chạy được trên server thật, đúng ngữ nghĩa.
 

@@ -303,10 +303,13 @@ class Neo4jGhiLai:
         )
 
     def canh_tho(self, space: str, src: str, tgt: str) -> CanhGia | None:
-        for c in self.canh:
-            if c.space == space and {c.src, c.tgt} == {src, tgt}:
-                return c
-        return None
+        """Cạnh đầu tiên của một cặp; cặp có nhiều cạnh (nhiều vai) thì dùng `cac_canh_tho`."""
+        cac = self.cac_canh_tho(space, src, tgt)
+        return cac[0] if cac else None
+
+    def cac_canh_tho(self, space: str, src: str, tgt: str) -> list[CanhGia]:
+        """Mọi cạnh của một cặp, mỗi vai một cạnh (khóa MERGE mang `slot`, story 2.4)."""
+        return [c for c in self.canh if c.space == space and {c.src, c.tgt} == {src, tgt}]
 
     # --- Diễn giải Cypher ----------------------------------------------
 
@@ -354,6 +357,11 @@ class Neo4jGhiLai:
             return "ghi:xoa", self._xoa_node(cypher, params)
         if "AS khoa_hyperedge" in cypher:
             return "ghi:doc-khoa-lan-can", self._doc_khoa_lan_can(cypher, params)
+        if "AS slot_hyperedge" in cypher:
+            # Story 2.4: đọc vai của từng cạnh của một hyperedge dưới cờ system,
+            # đường dựng lại `content` khi re-ingest. Cùng lý do mang tiền tố
+            # `ghi:` với hai câu đọc-để-ghi ở trên.
+            return "ghi:doc-slot-hyperedge", self._doc_slot_hyperedge(cypher, params)
         if "AS da_ghi" in cypher and "SET n." in cypher:
             return "ghi:dat-lai", self._dat_lai(cypher, params)
         if "MERGE (n:" in cypher:
@@ -441,6 +449,10 @@ class Neo4jGhiLai:
             # dòng nào trả 0 - đúng ngữ nghĩa Cypher, và đúng ca mà
             # `EdgeEndpointMissing` của adapter bắt.
             return [{"da_ghi": 0}]
+        # Khóa MERGE mang `slot` khi pattern khai `{slot: $slot}` (story 2.4):
+        # đọc từ chính câu Cypher, nên bỏ `slot` khỏi pattern ở adapter là kho
+        # giả quay về một cạnh mỗi cặp và test hai vai đỏ.
+        theo_slot = f"{{{SLOT_FIELD}: $slot}}" in cypher
         canh = next(
             (
                 c
@@ -448,11 +460,14 @@ class Neo4jGhiLai:
                 if c.space == space
                 and c.src == params["src"]
                 and c.tgt == params["tgt"]
+                and (not theo_slot or c.props.get(SLOT_FIELD) == params["slot"])
             ),
             None,
         )
         if canh is None:
             canh = CanhGia(space=space, src=params["src"], tgt=params["tgt"])
+            if theo_slot:
+                canh.props[SLOT_FIELD] = params["slot"]
             self.canh.append(canh)
         self._ap_gan(canh.props, cypher, params, "r")
         return [{"da_ghi": 1}]
@@ -486,6 +501,16 @@ class Neo4jGhiLai:
             {"id_hyperedge": id_kia, "khoa_hyperedge": kia.props.get(FILTER_KEY_FIELD)}
             for _, id_kia, kia in self._lan_can(cypher, params, params["id"], "h")
             if LABEL_HYPEREDGE in kia.nhan
+        ]
+
+    def _doc_slot_hyperedge(self, cypher: str, params: dict) -> list[dict]:
+        """Vai và id entity của từng cạnh nối tới một hyperedge (chỉ node mang nhãn Hyperedge)."""
+        h = self._node_hop_le(cypher, params, "id", "h")
+        if h is None or LABEL_HYPEREDGE not in h.nhan:
+            return []
+        return [
+            {"slot_hyperedge": canh.props.get(SLOT_FIELD), "id_entity": id_kia}
+            for canh, id_kia, _ in self._lan_can(cypher, params, params["id"], "e")
         ]
 
     def _dat_lai(self, cypher: str, params: dict) -> list[dict]:
@@ -559,7 +584,12 @@ class Neo4jGhiLai:
         n = self._node_hop_le(cypher, params)
         if n is None:
             return 0
-        return len(self._lan_can(cypher, params, params["id"], "m"))
+        lan_can = self._lan_can(cypher, params, params["id"], "m")
+        # `count(DISTINCT m)` (story 2.4): hai cạnh khác vai tới cùng một lân cận
+        # đếm một. Đọc từ câu Cypher, cùng kỷ luật với mệnh đề lọc.
+        if "count(DISTINCT" in cypher:
+            return len({id_kia for _, id_kia, _ in lan_can})
+        return len(lan_can)
 
     def _cac_canh_hai_dau(self, cypher: str, params: dict):
         a = self._node_hop_le(cypher, params, "src", "a")
@@ -580,9 +610,16 @@ class Neo4jGhiLai:
             return []
         a = self.nodes[(params["space"], params["src"])]
         b = self.nodes[(params["space"], params["tgt"])]
+        # `collect(properties(r))` (story 2.4): mọi cạnh của cặp về trong một
+        # dòng để adapter gộp; câu không collect thì một cạnh như trước.
+        thuoc_tinh = (
+            [dict(c.props) for c in cac_canh]
+            if "collect(properties(r))" in cypher
+            else dict(cac_canh[0].props)
+        )
         return [
             {
-                "thuoc_tinh_canh": dict(cac_canh[0].props),
+                "thuoc_tinh_canh": thuoc_tinh,
                 "vai_a": a.props.get(ROLE_FIELD),
                 "khoa_a": a.props.get(FILTER_KEY_FIELD),
                 "vai_b": b.props.get(ROLE_FIELD),

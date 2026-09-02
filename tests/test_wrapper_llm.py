@@ -788,3 +788,63 @@ def test_ollama_san_sang_tra_loi_nem_va_treo(monkeypatch, kieu, ky_vong):
     monkeypatch.setattr(mod, "THOI_HAN_SAN_SANG", 0.05)
     ncc = OllamaCucBo(ten="ollama", client=_OllamaListGia(kieu))
     assert asyncio.run(ncc.san_sang()) is ky_vong
+
+
+# --- Story 2.4: `extra_body` từ danh mục tới SDK OpenAI ---------------------------
+
+
+def test_openai_tuong_thich_truyen_extra_body_nguyen_ven_khi_co():
+    client = _OpenAIGia(chat_response=_chat_response())
+    ncc = OpenAITuongThich(ten="ncc", client=client, extra_body={"thinking": {"type": "disabled"}})
+    asyncio.run(ncc.hoan_thanh("m", [{"role": "user", "content": "hỏi"}], temperature=0))
+    assert client.goi[0][1]["extra_body"] == {"thinking": {"type": "disabled"}}
+    assert client.goi[0][1]["temperature"] == 0
+
+
+def test_openai_tuong_thich_khong_extra_body_thi_khong_co_tham_so():
+    client = _OpenAIGia(chat_response=_chat_response())
+    ncc = OpenAITuongThich(ten="ncc", client=client)
+    asyncio.run(ncc.hoan_thanh("m", [{"role": "user", "content": "hỏi"}]))
+    assert "extra_body" not in client.goi[0][1]
+
+
+def test_nha_cung_cap_tu_moi_truong_mang_extra_body_cua_muc():
+    from tests.gia_lap_llm import MODEL_LLM_TAT_SUY_LUAN_GIA
+
+    dm = danh_muc_gia()
+    moi_truong = {"GIA_API_KEY": "k"}
+    co = nha_cung_cap_tu_moi_truong(dm.muc(MODEL_LLM_TAT_SUY_LUAN_GIA), dm, moi_truong)
+    khong = nha_cung_cap_tu_moi_truong(dm.muc(MODEL_LLM_GIA), dm, moi_truong)
+    assert isinstance(co, OpenAITuongThich) and co.extra_body == {"thinking": {"type": "disabled"}}
+    assert isinstance(khong, OpenAITuongThich) and khong.extra_body is None
+
+
+def test_extra_body_di_tu_danh_muc_toi_chat_completions_create():
+    """Đường đầy đủ: mục model có `extra_body` -> provider -> `create(..., extra_body=...)`."""
+    from tests.gia_lap_llm import MODEL_LLM_TAT_SUY_LUAN_GIA
+
+    dm = danh_muc_gia()
+    ncc = nha_cung_cap_tu_moi_truong(dm.muc(MODEL_LLM_TAT_SUY_LUAN_GIA), dm, {"GIA_API_KEY": "k"})
+    client = _OpenAIGia(chat_response=_chat_response())
+    ncc._client = client
+    asyncio.run(ncc.hoan_thanh(MODEL_LLM_TAT_SUY_LUAN_GIA, [{"role": "user", "content": "x"}], max_tokens=8))
+    goi = client.goi[0][1]
+    assert goi["extra_body"] == {"thinking": {"type": "disabled"}} and goi["max_tokens"] == 8
+    # Bản gửi SDK là dict thường tuần tự hóa được, không phải MappingProxyType
+    # của danh mục (so `==` với dict vẫn đúng nên phải kiểm kiểu tường minh).
+    import json
+
+    json.dumps(goi["extra_body"])
+    assert type(goi["extra_body"]) is dict and type(goi["extra_body"]["thinking"]) is dict
+
+
+def test_extra_body_cua_noi_goi_duoc_gop_khong_bi_de():
+    """Vòng review 2.4: `extra_body` của nơi gọi gộp với của danh mục, khóa trùng thì danh mục thắng."""
+    client = _OpenAIGia(chat_response=_chat_response())
+    ncc = OpenAITuongThich(ten="ncc", client=client, extra_body={"thinking": {"type": "disabled"}})
+    asyncio.run(
+        ncc.hoan_thanh(
+            "m", [{"role": "user", "content": "x"}], extra_body={"top_k": 5, "thinking": {"type": "enabled"}}
+        )
+    )
+    assert client.goi[0][1]["extra_body"] == {"top_k": 5, "thinking": {"type": "disabled"}}

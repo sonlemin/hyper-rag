@@ -16,7 +16,12 @@ của node hyperedge. Nên tầng che phải đọc được cả hai hình dạ
 - bản ghi "dict theo slot", khóa của bản ghi chính là tên vai slot - hình dạng
   của fixture, của oracle, và của mọi tầng sau lắp fact lại thành một dict;
 - bản ghi "cạnh có vai", tự khai vai của nó ở trường `slot` và mang tên node
-  lân cận điền vào vai đó - hình dạng mà `get_node_edges` dựng.
+  lân cận điền vào vai đó - hình dạng mà `get_node_edges` dựng;
+- bản ghi "cạnh gộp" của `get_edge` (từ 2.4 một cặp hyperedge-entity có nhiều
+  cạnh, mỗi vai một cạnh), mang danh sách vai ở trường `slots`. Nó không mang
+  tên lân cận nên không có gì để thay, nhưng chính danh sách vai đã nói "entity
+  này điền vào vai X" - với vai đang bị che thì đó là nội dung. Vai bị che bị
+  **bỏ khỏi danh sách**, không thay bằng dấu che, để không lộ số vai bị che.
 
 Đường thứ hai mới là đường rò thật ở Epic 1: `operate.py:923` ghép tên lân cận
 bằng `"|"` rồi đổ thẳng vào cột `related_entities` của bảng Relationships gửi
@@ -75,6 +80,9 @@ MASK_NAMESPACE: str = "hyperedges"
 # trong một dict là một lỗi chờ sẵn.
 SLOT_FIELD: str = "slot"
 NEIGHBOR_FIELD: str = "neighbor_id"
+# Danh sách vai của bản ghi cạnh gộp (`get_edge`, story 2.4). Cùng luật một
+# hằng một chỗ với `SLOT_FIELD`: adapter nhập lại, không viết chuỗi tay.
+SLOTS_FIELD: str = "slots"
 
 # Cờ làm giàu của AD-9: "kết quả `get_node_edges` của upstream chỉ chứa tên node
 # thô, nên adapter làm giàu nó với khóa (hoặc **cờ không-khóa**) của từng node
@@ -275,10 +283,12 @@ def mask(result: Any, context: PermissionContext, hyperedge_key: str) -> Any:
         if slot in da_che:
             da_che[slot] = dau_che(slot)
     # Đường hai: bản ghi tự khai vai của nó và mang tên node lân cận điền vào
-    # vai đó. Cạnh chưa khai vai vẫn ghi được ở story 1.4 (prompt trích xuất 8
-    # vai thuộc story 2.4), nên `slot` vắng hoặc None là hiện trạng hợp lệ.
-    # Một tên *khác* thì không: nó không tra trúng `masked_slots` bao giờ, nên
-    # bỏ qua im lặng là để nguyên văn đi ra.
+    # vai đó. Từ story 2.4 mọi cạnh trong graph đều mang vai (`upsert_edge` từ
+    # chối cạnh thiếu `slot`), nên `slot` vắng hoặc None chỉ còn một nguồn hợp
+    # lệ: `get_node_edges` gọi từ phía entity khai None cho lân cận là node
+    # hyperedge, thứ không điền vào slot nào. Một tên *khác* thì không: nó
+    # không tra trúng `masked_slots` bao giờ, nên bỏ qua im lặng là để nguyên
+    # văn đi ra.
     vai_canh = da_che.get(SLOT_FIELD)
     if vai_canh is not None:
         if not isinstance(vai_canh, str) or vai_canh not in SLOT_ROLE_SET:
@@ -288,6 +298,23 @@ def mask(result: Any, context: PermissionContext, hyperedge_key: str) -> Any:
             )
         if vai_canh in phai_che and NEIGHBOR_FIELD in da_che:
             da_che[NEIGHBOR_FIELD] = dau_che(vai_canh)
+    # Đường bốn (2.4): bản ghi cạnh gộp mang danh sách vai. Bỏ vai bị che khỏi
+    # danh sách - không thay bằng dấu che, vì đếm được số dấu che là đếm được
+    # số vai bị che, và "entity này điền vào 2 vai đang che" tự nó là thông
+    # tin về nội dung bị che. Vai lạ trong danh sách nổ như đường hai.
+    vai_gop = da_che.get(SLOTS_FIELD)
+    if vai_gop is not None:
+        if not isinstance(vai_gop, (list, tuple)):
+            raise SlotRoleUnknown(
+                f"bản ghi cạnh gộp khai {SLOTS_FIELD}={vai_gop!r}: phải là danh sách vai"
+            )
+        for v in vai_gop:
+            if not isinstance(v, str) or v not in SLOT_ROLE_SET:
+                raise SlotRoleUnknown(
+                    f"bản ghi cạnh gộp khai vai {v!r} trong {SLOTS_FIELD}, ngoài"
+                    " danh mục 8 vai của core/"
+                )
+        da_che[SLOTS_FIELD] = [v for v in vai_gop if v not in phai_che]
     # Đường ba: lân cận **không có khóa**. Che cứng với mọi vai, không tra bảng
     # chính sách và không phụ thuộc mức tiết lộ - cùng hình dạng với luật
     # `owner` ở trên, và cùng lý do hình dạng đó tồn tại: đây là luật của AD-9,

@@ -38,3 +38,14 @@ models:
     gia_ra_usd_1m: 0
     so_chieu: 8
     max_token: 512
+  # Story 2.4: model API ngoài khai tham số riêng của nhà cung cấp (`extra_body`),
+  # wrapper chuyển nguyên vẹn thành `extra_body=` của SDK OpenAI.
+  llm-gia-tat-suy-luan:
+    loai: llm
+    nha_cung_cap: gia
+    gia_vao_usd_1m: 1.0
+    gia_ra_usd_1m: 2.0
+    max_token: 32768
+    extra_body:
+      thinking:
+        type: disabled

@@ -1,32 +1,32 @@
-"""Đồ nghề cho bộ test pipeline ingest (story 2.3).
+"""Đồ nghề cho bộ test pipeline ingest (story 2.3, đổi sang fact 8 vai ở 2.4).
 
 Ba thứ ở đây:
 
 - `viet_tai_lieu` ghi một file nguồn có frontmatter vào thư mục tạm;
 - `llm_theo_fact` dựng `LLMGia` trả lời *xác định* theo chunk: bảng
-  `{đoạn văn trong thân tài liệu: [(câu fact, {entity: mô tả})]}`. Prompt
-  trích xuất của upstream nhét nguyên văn chunk vào, nên tìm đoạn văn trong
-  prompt là đủ để biết đang trích chunk nào. Định dạng bản ghi lấy dấu phân
-  tách từ `PROMPTS`, cùng luật với `tests/gia_lap_llm.py`;
+  `{đoạn văn trong thân tài liệu: [slots_dict, ...]}`. Prompt trích xuất của
+  dự án (`adapters/trich_xuat.py`) nhét nguyên văn chunk vào, nên tìm đoạn văn
+  trong prompt là đủ để biết đang trích chunk nào; câu trả lời là JSON
+  `{"facts": [...]}` đúng lược đồ mà `core/facts.py` đọc. Prompt không khớp
+  đoạn nào là prompt của đường truy vấn (trích từ khóa), trả phản hồi từ khóa
+  của `LLMGia` như cũ;
 - vài hàm đọc thô hai kho giả để chấm: node theo vai, point theo collection.
 
-Tên entity ở upstream bị `upper()` và giữ nguyên dấu nháy kép của bản ghi
-(`operate.py:_handle_single_entity_extraction`), rồi adapter chuẩn hóa id bằng
-`core.ids.normalize_id` (gỡ nháy). Tên hyperedge là `<hyperedge>` cộng nguyên
-văn trường thứ hai của bản ghi, kể cả nháy. Hai hàm `ten_entity`/`ten_hyperedge`
-là bản ghi lại của đúng hai luật đó để test khỏi viết tay ở từng chỗ.
+Từ story 2.4 id node hyperedge là nhãn mờ `core.facts.id_fact(slots)` và id
+node entity là chính giá trị slot đã `normalize_id` (không upper-case, không
+nháy). Bốn hàm `ten_*`/`id_vector_*` là bản ghi lại của đúng hai luật đó để
+test khỏi viết tay ở từng chỗ.
 """
 
+import json
 from pathlib import Path
 
-from hypergraphrag.prompt import GRAPH_FIELD_SEP, PROMPTS
+from hypergraphrag.prompt import GRAPH_FIELD_SEP
 from hypergraphrag.utils import compute_mdhash_id
 
+from core.facts import id_fact
 from core.ids import normalize_id, point_id
 from tests.gia_lap_llm import (
-    CD,
-    RD,
-    TD,
     MODEL_EMBEDDING_CUC_BO_GIA,
     MODEL_LLM_CUC_BO_GIA,
     NCC_CUC_BO_GIA,
@@ -42,6 +42,10 @@ from tests.ho_tro_m1 import dung_engine
 
 SEP = GRAPH_FIELD_SEP
 
+# Phản hồi "chunk không có fact" đúng lược đồ: dùng làm `mac_dinh` khi test cần
+# một chunk trả 0 bản ghi hợp lệ.
+KHONG_FACT: str = json.dumps({"facts": []})
+
 
 def viet_tai_lieu(thu_muc: Path, ten: str, *, scope: str, content_type: str, than: str) -> Path:
     """Một file nguồn có frontmatter; trả đường dẫn."""
@@ -54,47 +58,45 @@ def viet_tai_lieu(thu_muc: Path, ten: str, *, scope: str, content_type: str, tha
     return f
 
 
-def ban_ghi_fact(cau: str, entities: dict[str, str]) -> str:
-    """Một hyper-relation rồi các entity của nó, đúng thứ tự parser cần."""
-    cac = [f'("hyper-relation"{TD}"{cau}"{TD}"1.0")']
-    for ten, mo_ta in entities.items():
-        cac.append(f'("entity"{TD}"{ten}"{TD}"KHAC"{TD}"{mo_ta}"{TD}"1.0")')
-    return RD.join(cac)
+def phan_hoi_fact(cac_fact: list) -> str:
+    """JSON `{"facts": [...]}` cho một chunk; phần tử giữ nguyên để test nhét bản ghi sai lược đồ."""
+    return json.dumps({"facts": list(cac_fact)}, ensure_ascii=False)
 
 
-def llm_theo_fact(bang: dict[str, list[tuple[str, dict[str, str]]]], mac_dinh: str | None = None) -> LLMGia:
-    """LLM giả: chunk chứa đoạn văn nào thì trả đúng tập fact của đoạn đó.
+def llm_theo_fact(bang: dict[str, list], mac_dinh: str | None = None) -> LLMGia:
+    """LLM giả: chunk chứa đoạn văn nào thì trả đúng tập fact (JSON) của đoạn đó.
 
     Prompt không khớp đoạn nào thì trả `mac_dinh`; mặc định là phản hồi từ khóa
-    của `LLMGia` (một hyper-relation + một entity, cho đường truy vấn). Muốn
-    dựng ca "chunk không có fact" thì truyền `mac_dinh=CD` (chỉ dấu kết thúc).
+    của `LLMGia` (cho đường truy vấn). Muốn dựng ca "chunk không có fact" thì
+    truyền `mac_dinh=KHONG_FACT`; ca "chunk không parse được" thì truyền một
+    chuỗi không phải JSON.
     """
 
     def theo_prompt(prompt: str) -> str:
         for doan, cac_fact in bang.items():
             if doan in prompt:
-                return RD.join(ban_ghi_fact(cau, ents) for cau, ents in cac_fact) + CD
+                return cac_fact if isinstance(cac_fact, str) else phan_hoi_fact(cac_fact)
         return phan_hoi_tu_khoa() if mac_dinh is None else mac_dinh
 
     return LLMGia(theo_prompt=theo_prompt)
 
 
-def ten_entity(ten: str) -> str:
-    """Id node graph của một entity trích ra: upstream upper() rồi adapter gỡ nháy."""
-    return normalize_id(f'"{ten.upper()}"')
+def ten_entity(gia_tri: str) -> str:
+    """Id node graph của một entity: chính giá trị slot đã chuẩn hóa."""
+    return normalize_id(gia_tri)
 
 
-def ten_hyperedge(cau: str) -> str:
-    """Id node graph của một hyperedge trích ra."""
-    return normalize_id(f'<hyperedge>"{cau}"')
+def ten_hyperedge(slots: dict) -> str:
+    """Id node graph của một hyperedge: nhãn mờ `he-<băm slot>`."""
+    return id_fact(slots)
 
 
-def id_vector_entity(ten: str) -> str:
-    return compute_mdhash_id(f'"{ten.upper()}"', prefix="ent-")
+def id_vector_entity(gia_tri: str) -> str:
+    return compute_mdhash_id(ten_entity(gia_tri), prefix="ent-")
 
 
-def id_vector_hyperedge(cau: str) -> str:
-    return compute_mdhash_id(f'<hyperedge>"{cau}"', prefix="rel-")
+def id_vector_hyperedge(slots: dict) -> str:
+    return compute_mdhash_id(ten_hyperedge(slots), prefix="rel-")
 
 
 def id_chunk(than: str) -> str:
@@ -142,13 +144,19 @@ class MoiTruong:
         kho = self.engine.text_chunks if namespace == "text_chunks" else self.engine.full_docs
         return kho._du_lieu(space)
 
+    def van_ban_da_nhung(self) -> list[str]:
+        """Mọi văn bản đã đi qua provider embedding giả, theo thứ tự gọi."""
+        from adapters.llm_wrapper import nha_cung_cap_cua
+
+        ncc = nha_cung_cap_cua(self.engine.embedding_func)
+        return [t for _, texts in ncc.loi_goi for t in texts]
+
 
 def dung_moi_truong(workspace_dir, llm: LLMGia, **them) -> MoiTruong:
-    """Engine cổng M1 với LLM giả theo fact; không gleaning để mỗi chunk gọi LLM đúng một lần."""
+    """Engine cổng M1 với LLM giả theo fact."""
     client = QdrantGhiLai()
     driver = Neo4jGhiLai()
     so_audit = SoAuditBoNho()
-    them.setdefault("entity_extract_max_gleaning", 0)
     engine = dung_engine(workspace_dir, client, driver, llm, so_audit=so_audit, **them)
     return MoiTruong(engine, client, driver, llm, so_audit)
 
@@ -174,6 +182,5 @@ def dung_moi_truong_cuc_bo(workspace_dir, llm: LLMGia, *, llm_san_sang=True, emb
         ncc_embedding=ncc_emb,
         model_llm=MODEL_LLM_CUC_BO_GIA,
         model_embedding=MODEL_EMBEDDING_CUC_BO_GIA,
-        entity_extract_max_gleaning=0,
     )
     return MoiTruong(engine, client, driver, llm, so_audit)

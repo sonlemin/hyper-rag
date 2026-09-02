@@ -36,13 +36,17 @@ TIERS: frozenset[str] = frozenset({TIER_MUTATION, TIER_OBSERVATION})
 
 # Danh mục sự kiện. Story 2.2 có hai sự kiện chi phí (tầng observation); story
 # 2.3 thêm ba sự kiện ghi tri thức của pipeline ingest (tầng mutation: nạp và
-# xóa đổi kho, mất dấu vết một lần xóa là mất dấu vết một thay đổi quyền). Các
-# sự kiện lọc / từ chối / truy vấn của adapter vào ở story 3.6.
+# xóa đổi kho, mất dấu vết một lần xóa là mất dấu vết một thay đổi quyền);
+# story 2.4 thêm `extract_doc` (tầng observation: số fact thô / hợp lệ / bị
+# loại theo mã của một tài liệu, FR-02 - số liệu đo, mất một hàng không được
+# làm hỏng lần nạp). Các sự kiện lọc / từ chối / truy vấn của adapter vào ở
+# story 3.6.
 EVENT_LLM_COST: str = "llm_cost"
 EVENT_EMBEDDING_COST: str = "embedding_cost"
 EVENT_INGEST_DOC: str = "ingest_doc"
 EVENT_DELETE_DOC: str = "delete_doc"
 EVENT_DELETE_SPACE: str = "delete_space"
+EVENT_EXTRACT_DOC: str = "extract_doc"
 EVENTS: frozenset[str] = frozenset(
     {
         EVENT_LLM_COST,
@@ -50,6 +54,7 @@ EVENTS: frozenset[str] = frozenset(
         EVENT_INGEST_DOC,
         EVENT_DELETE_DOC,
         EVENT_DELETE_SPACE,
+        EVENT_EXTRACT_DOC,
     }
 )
 

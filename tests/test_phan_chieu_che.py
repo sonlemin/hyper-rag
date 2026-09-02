@@ -75,6 +75,15 @@ XU_LY_RIENG_THEO_ADAPTER = {
             "chỉ trả trường khóa của hyperedge lân cận, không trả nội dung;"
             " đường đọc-để-ghi của re-ingest, từ chối ngoài ngữ cảnh hệ thống"
         ),
+        # Trả `{vai: [id entity]}` của một hyperedge - tức tên entity theo vai,
+        # là nội dung - nhưng chỉ chạy dưới cờ system (2.4): đường dựng lại
+        # `content` của hyperedge chung khi re-ingest (`cau_fact`), cùng cửa
+        # AD-3 với `payload_cua`; ngoài ngữ cảnh hệ thống là
+        # IngestOutsideSystemContext, không có nhánh vai người dùng nào tới được.
+        "slot_cua_hyperedge": (
+            "đọc slot của hyperedge dưới cờ system cho đường dựng lại content"
+            " khi re-ingest, từ chối ngoài ngữ cảnh hệ thống"
+        ),
         # Số đếm là tín hiệu xếp hạng đi thẳng vào ngữ cảnh trả về; nó co theo
         # quyền bằng WHERE trên chính biến lân cận, không bằng che.
         "node_degree": "đếm sau filter, số đếm co theo quyền",
@@ -128,6 +137,7 @@ NGOAI_UPSTREAM = frozenset(
         "khoa_hien_co",
         "so_khong_khoa",
         "khoa_lan_can_hyperedge",
+        "slot_cua_hyperedge",
         "xoa",
         "xoa_tat_ca",
         "ghi_thang",

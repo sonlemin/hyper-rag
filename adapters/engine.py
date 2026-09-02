@@ -50,6 +50,7 @@ bằng chứng chứ không phải lời hứa - `tests/test_cong_m1.py` giữ p
 sống dưới dạng một test.
 """
 
+import logging
 import os
 from dataclasses import asdict, dataclass, field, replace
 from functools import partial
@@ -57,11 +58,14 @@ from typing import Callable
 
 from hypergraphrag import HyperGraphRAG
 from hypergraphrag.base import QueryParam
+from hypergraphrag.operate import chunking_by_token_size
+from hypergraphrag.utils import compute_mdhash_id
 from neo4j import AsyncDriver
 from qdrant_client import AsyncQdrantClient
 
 from adapters.kv import ENABLE_LLM_CACHE, WORKING_DIR_KEY, JsonACLKVStorage
 from adapters.llm_wrapper import la_wrapper
+from adapters.trich_xuat import ThongKeTrichXuat, trich_xuat_chunks
 from adapters.neo4j import (
     HEALTH_DELAY_KEY,
     HEALTH_DELAY_MAC_DINH,
@@ -82,6 +86,8 @@ from adapters.qdrant import (
     QdrantVectorDBStorage,
 )
 from adapters.sensitivity_loader import SENSITIVITY_RANKS_KEY
+
+logger = logging.getLogger(__name__)
 
 # Tên đăng ký trong registry. Chuỗi này đi vào ba field `kv_storage`,
 # `vector_storage`, `graph_storage` của upstream, nên nó là hợp đồng chứ không
@@ -411,6 +417,92 @@ class EngineACL(HyperGraphRAG):
         if self._tu_mo_neo4j and self._driver_neo4j is not None:
             await self._driver_neo4j.close()
         self._da_dong = True
+
+    # --- Nạp -----------------------------------------------------------------
+
+    async def ainsert(self, string_or_strings) -> ThongKeTrichXuat | None:
+        """Đường nạp của upstream với bộ trích xuất 8 vai của dự án thay `extract_entities` (2.4).
+
+        Chép đúng luồng `hypergraphrag.py:274-339` - doc id `doc-md5`,
+        `filter_keys` hai lần, `chunks_vdb.upsert`, trích xuất, rồi
+        `full_docs`/`text_chunks.upsert`, `_insert_done` trong `finally` - và
+        chỉ đổi một bước: `adapters.trich_xuat.trich_xuat_chunks` thay
+        `extract_entities`. Không gọi `super().ainsert`: hàm upstream gắn cứng
+        `extract_entities` bên trong, không có khe tiêm.
+
+        Trả `None` khi không có gì mới (doc hay mọi chunk đã trong kho), và
+        trả `ThongKeTrichXuat` mọi khi trích xuất đã chạy - kể cả 0 fact hợp
+        lệ, để pipeline phát `extract_doc` và phân biệt "LLM trả 0 bản ghi" với
+        "N bản ghi đều bị loại". Ở ca 0 fact hợp lệ hàm dừng trước
+        `full_docs`/`text_chunks.upsert` như upstream; pipeline dọn `chunks_vdb`.
+
+        **Đúng một tài liệu mỗi lời gọi.** Upstream nhận danh sách; ở đây
+        danh sách dài hơn một là `ValueError`: pipeline luôn gọi từng tài liệu
+        (mỗi tài liệu một nhãn, một đợt, một `extract_doc`), và một thống kê gộp
+        nhiều tài liệu che mất ca 0 fact của từng tài liệu.
+
+        Chỉ `adapters/ingest.py` được gọi hàm này (import-lint canh).
+        """
+        update_storage = False
+        try:
+            if isinstance(string_or_strings, str):
+                string_or_strings = [string_or_strings]
+            string_or_strings = list(string_or_strings)
+            if len(string_or_strings) != 1:
+                raise ValueError(
+                    f"ainsert nhận đúng một tài liệu mỗi lời gọi, nhận được {len(string_or_strings)}:"
+                    " pipeline nạp tuần tự từng tài liệu để thống kê trích xuất không bị gộp"
+                )
+            new_docs = {
+                compute_mdhash_id(c.strip(), prefix="doc-"): {"content": c.strip()}
+                for c in string_or_strings
+            }
+            _add_doc_keys = await self.full_docs.filter_keys(list(new_docs.keys()))
+            new_docs = {k: v for k, v in new_docs.items() if k in _add_doc_keys}
+            if not new_docs:
+                logger.warning("ainsert: mọi tài liệu đã có trong kho")
+                return None
+            update_storage = True
+
+            inserting_chunks: dict[str, dict] = {}
+            for doc_key, doc in new_docs.items():
+                inserting_chunks.update(
+                    {
+                        compute_mdhash_id(dp["content"], prefix="chunk-"): {
+                            **dp,
+                            "full_doc_id": doc_key,
+                        }
+                        for dp in chunking_by_token_size(
+                            doc["content"],
+                            overlap_token_size=self.chunk_overlap_token_size,
+                            max_token_size=self.chunk_token_size,
+                            tiktoken_model=self.tiktoken_model_name,
+                        )
+                    }
+                )
+            _add_chunk_keys = await self.text_chunks.filter_keys(list(inserting_chunks.keys()))
+            inserting_chunks = {k: v for k, v in inserting_chunks.items() if k in _add_chunk_keys}
+            if not inserting_chunks:
+                logger.warning("ainsert: mọi chunk đã có trong kho")
+                return None
+
+            await self.chunks_vdb.upsert(inserting_chunks)
+            thong_ke = await trich_xuat_chunks(
+                inserting_chunks,
+                graph=self.chunk_entity_relation_graph,
+                entity_vdb=self.entities_vdb,
+                hyperedge_vdb=self.hyperedges_vdb,
+                global_config=asdict(self),
+            )
+            if thong_ke.so_hop_le == 0:
+                logger.warning("ainsert: không có fact hợp lệ nào, không ghi doc/chunk vào KV")
+                return thong_ke
+            await self.full_docs.upsert(new_docs)
+            await self.text_chunks.upsert(inserting_chunks)
+            return thong_ke
+        finally:
+            if update_storage:
+                await self._insert_done()
 
     # --- Truy vấn ------------------------------------------------------------
 

@@ -1,9 +1,11 @@
 """Loader dùng chung: nạp fixture dựng tay vào cả ba kho (story 1.7).
 
-Cổng M1 chạy đường truy vấn thật của upstream, nhưng **không** chạy ingest thật:
-`extract_entities` cần LLM sinh fact 8 vai, việc đó thuộc story 2.4. Nên dữ
-liệu vào kho bằng chính hợp đồng `upsert*` của ba adapter, dưới ngữ cảnh hệ
-thống, đúng hình dạng mà `operate.py` sẽ đọc lại.
+Cổng M1 chạy đường truy vấn thật của upstream, nhưng **không** chạy ingest thật
+(đường trích xuất 8 vai của story 2.4 cần LLM; bộ test pipeline có LLM giả
+riêng). Nên dữ liệu vào kho bằng chính hợp đồng `upsert*` của ba adapter, dưới
+ngữ cảnh hệ thống, đúng hình dạng mà `operate.py` sẽ đọc lại. Tên hyperedge ở
+đây là nhãn fixture `{subject} - {content_type}`, không phải id mờ `he-…` của
+đường trích xuất; cả hai đều là id không mang giá trị slot bị che.
 
 Ba luật của file này là chỗ đường e2e sống hay chết. Mỗi luật đều đã từng là
 một cách "xanh mà không truy hồi được gì":
@@ -96,18 +98,17 @@ def kiem_fixture(cac_he=None) -> None:
     "xanh mà không truy hồi được gì":
 
     - thiếu slot `subject` thì `ten_hyperedge` nổ `KeyError` - đó là ca dễ, còn
-      hai ca dưới thì im lặng;
-    - hai slot của cùng một hyperedge mang cùng giá trị nghĩa là hai cạnh cùng
-      cặp `(hyperedge, entity)`, và `MERGE (a)-[r:SLOT]->(b)` không mang `slot`
-      trong pattern (khoản nợ có địa chỉ story 2.4), nên cạnh ghi sau đè cạnh
-      ghi trước và một vai biến mất khỏi graph. Tầng che khi đó "đúng" trên một
-      graph đã thiếu;
+      ca dưới thì im lặng;
     - hai hyperedge trùng `ten_hyperedge` là hai fact chung một node, nên
       `get_node_edges` trộn lân cận của cả hai và khóa quyền là của lần ghi sau.
 
+    Guard "hai slot cùng giá trị" của story 1.7 đã bỏ ở story 2.4: khóa MERGE
+    của cạnh nay mang `slot`, nên một entity điền hai vai của cùng hyperedge là
+    hai cạnh, không còn cạnh ghi sau đè cạnh ghi trước.
+
     `cac_he` để nơi gọi kiểm một danh sách khác bộ chuẩn. Bộ hyperedge phụ
     truyền qua `them=` phải đi qua đúng guard này: đi vòng qua nó là mở lại
-    đúng ba cách "xanh mà không truy hồi được gì" mà guard dựng ra để chặn.
+    đúng những cách "xanh mà không truy hồi được gì" mà guard dựng ra để chặn.
     """
     ten_da_thay = {}
     for he in HYPEREDGES if cac_he is None else cac_he:
@@ -115,10 +116,6 @@ def kiem_fixture(cac_he=None) -> None:
         assert "subject" in slots, f"{he['id']} thiếu slot `subject`"
         assert set(slots) <= set(SLOT_ROLES), (
             f"{he['id']} khai vai ngoài danh mục 8 vai: {sorted(set(slots) - set(SLOT_ROLES))}"
-        )
-        assert len(set(slots.values())) == len(slots), (
-            f"{he['id']} có hai slot cùng giá trị, cạnh ghi sau sẽ đè cạnh trước:"
-            f" {sorted(slots.values())}"
         )
         ten = ten_hyperedge(he)
         assert ten not in ten_da_thay, (

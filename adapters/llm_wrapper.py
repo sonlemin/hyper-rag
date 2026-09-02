@@ -152,6 +152,15 @@ class NhaCungCapEmbedding(Protocol):
     async def nhung(self, model: str, texts: list[str]) -> KetQuaEmbedding: ...
 
 
+def _sao_chep_bang(gia_tri):
+    """Bản sao dict/list thường của một bảng (có thể là `MappingProxyType` lồng nhau) để SDK tuần tự hóa."""
+    if isinstance(gia_tri, Mapping):
+        return {k: _sao_chep_bang(v) for k, v in gia_tri.items()}
+    if isinstance(gia_tri, (list, tuple)):
+        return [_sao_chep_bang(v) for v in gia_tri]
+    return gia_tri
+
+
 def _so_token(gia_tri, ten: str, ncc: str) -> int:
     if gia_tri is None:
         raise ProviderUsageMissing(f"phản hồi của {ncc!r} thiếu {ten}")
@@ -162,7 +171,10 @@ class OpenAITuongThich:
     """DeepSeek và OpenAI qua `AsyncOpenAI(base_url, api_key)`; token từ `response.usage`.
 
     `client` tiêm được để test dịch phản hồi SDK mà không mở mạng; mặc định tự
-    dựng từ `api_key`/`base_url`.
+    dựng từ `api_key`/`base_url`. `extra_body` (story 2.4) là bảng tham số
+    riêng của provider lấy từ danh mục model (ví dụ `thinking: {type: disabled}`
+    của DeepSeek), chuyển nguyên vẹn thành `extra_body=` của SDK ở mỗi lời gọi
+    chat; `None` là không gửi tham số đó.
     """
 
     cuc_bo: bool = False
@@ -174,13 +186,25 @@ class OpenAITuongThich:
         api_key: str | None = None,
         base_url: str | None = None,
         client=None,
+        extra_body: Mapping[str, Any] | None = None,
     ):
         self.ten = ten
+        self.extra_body = None if extra_body is None else _sao_chep_bang(extra_body)
         self._client = (
             AsyncOpenAI(api_key=api_key, base_url=base_url) if client is None else client
         )
 
     async def hoan_thanh(self, model: str, messages: list[dict], **kwargs) -> KetQuaLLM:
+        if self.extra_body is not None:
+            # Gộp với `extra_body` của nơi gọi (nếu có), của danh mục thắng ở
+            # khóa trùng; không đè im lặng cả bảng của nơi gọi.
+            kwargs = {
+                **kwargs,
+                "extra_body": {
+                    **_sao_chep_bang(kwargs.get("extra_body") or {}),
+                    **_sao_chep_bang(self.extra_body),
+                },
+            }
         response = await self._client.chat.completions.create(
             model=model, messages=messages, **kwargs
         )
@@ -598,7 +622,9 @@ def nha_cung_cap_tu_moi_truong(
             f"nhà cung cấp {ncc.ten!r} cần biến môi trường {ncc.bien_api_key}"
             f" (model {muc.ten!r}); key chỉ đọc từ .env gốc repo"
         )
-    return OpenAITuongThich(ten=ncc.ten, api_key=api_key, base_url=ncc.base_url)
+    return OpenAITuongThich(
+        ten=ncc.ten, api_key=api_key, base_url=ncc.base_url, extra_body=muc.extra_body
+    )
 
 
 def ham_tu_moi_truong(

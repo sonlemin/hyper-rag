@@ -114,8 +114,9 @@ def test_qdrant_xoa_ghi_thang_duoi_vai_bi_tu_choi(khong_gian, policy, goi):
         lambda a: a.khoa_lan_can_hyperedge("App01"),
         lambda a: a.dat_lai_entity("App01", description="d", source_id="s", khoa="noi_bo:runbook"),
         lambda a: a.xoa_tat_ca(),
+        lambda a: a.slot_cua_hyperedge("rel-HE-01"),
     ],
-    ids=["xoa_node", "delete_node", "khoa_lan_can_hyperedge", "dat_lai_entity", "xoa_tat_ca"],
+    ids=["xoa_node", "delete_node", "khoa_lan_can_hyperedge", "dat_lai_entity", "xoa_tat_ca", "slot_cua_hyperedge"],
 )
 def test_neo4j_duong_xoa_ghi_thang_duoi_vai_bi_tu_choi(khong_gian, policy, goi):
     async def chay():
@@ -525,8 +526,8 @@ def test_xoa_space_don_sach_ba_kho_va_hai_so(workspace_dir, khong_gian, policy, 
     than_a = "Runbook App01 chung. Khi traffic cao thì khởi động lại PHP-FPM."
     than_c = "Runbook khách A về App01. App01 lỗi thì gọi đầu mối khách hàng."
     bang = {
-        than_a: [("App01 khởi động lại PHP-FPM", {"APP01": "a", "PHP_FPM": "b"})],
-        than_c: [("App01 lỗi gọi đầu mối", {"APP01": "c"})],
+        than_a: [{"subject": "App01", "remediation": "khởi động lại PHP-FPM"}],
+        than_c: [{"subject": "App01", "remediation": "gọi đầu mối khách hàng"}],
     }
     viet_tai_lieu(thu_muc, "a.md", scope="noi_bo", content_type="runbook", than=than_a)
     viet_tai_lieu(thu_muc, "c.md", scope="khach_hang_a", content_type="runbook", than=than_c)
@@ -556,7 +557,7 @@ def test_xoa_space_trang_thai_kho_ngay_sau_khi_xoa(workspace_dir, khong_gian, po
     thu_muc = tmp_path / "corpus"
     than_a = "Runbook App01 chung. Khi traffic cao thì khởi động lại PHP-FPM."
     viet_tai_lieu(thu_muc, "a.md", scope="noi_bo", content_type="runbook", than=than_a)
-    mt = dung_moi_truong(workspace_dir, llm_theo_fact({than_a: [("App01 khởi động lại PHP-FPM", {"APP01": "a"})]}))
+    mt = dung_moi_truong(workspace_dir, llm_theo_fact({than_a: [{"subject": "App01", "remediation": "khởi động lại PHP-FPM"}]}))
 
     async def chay():
         await nap_thu_muc(mt.engine, thu_muc, space=khong_gian, policy_version=policy.policy_version, audit=mt.so_audit)

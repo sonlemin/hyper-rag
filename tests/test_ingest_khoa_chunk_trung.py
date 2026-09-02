@@ -21,9 +21,9 @@ from adapters.ingest_labels import ingest_label
 from core.keys import filter_key
 from core.permission import use_context
 from core.system_context import system_context
-from tests.gia_lap_llm import LLMGia
 from tests.gia_lap_neo4j import Neo4jGhiLai
 from tests.gia_lap_qdrant import QdrantGhiLai
+from tests.ho_tro_ingest import llm_theo_fact
 from tests.ho_tro_m1 import dung_engine
 from tests.ngu_canh import ngu_canh_ingest, vai
 
@@ -41,6 +41,15 @@ DOC_HAI: str = DOAN_CHUNG + "C" * CO_CHUNK
 RONG = filter_key("noi_bo", "runbook")
 HEP = filter_key("khach_hang_a", "bao_cao_su_co")
 
+# Story 2.4: LLM giả trả JSON fact 8 vai cho từng chunk. `App01` có mặt ở cả
+# hai tài liệu nên nó là entity đa nguồn khác scope của test thứ hai.
+ENTITY_CHUNG = "App01"
+BANG_FACT = {
+    DOAN_CHUNG: [{"subject": ENTITY_CHUNG, "condition": "doan chung"}],
+    "B" * CO_CHUNK: [{"subject": ENTITY_CHUNG, "remediation": "doan b"}],
+    "C" * CO_CHUNK: [{"subject": ENTITY_CHUNG, "remediation": "doan c"}],
+}
+
 
 async def _nap_hai_tai_lieu(workspace_dir, khong_gian, policy):
     """Nạp hai tài liệu chia nhau đúng một chunk, dưới hai nhãn khác scope."""
@@ -49,7 +58,7 @@ async def _nap_hai_tai_lieu(workspace_dir, khong_gian, policy):
         workspace_dir,
         client,
         Neo4jGhiLai(),
-        LLMGia(),
+        llm_theo_fact(BANG_FACT),
         # Cắt nhỏ để hai tài liệu chia nhau *đúng* chunk đầu: id chunk của
         # upstream là md5 nội dung chunk, nên hai chunk trùng nội dung là một id.
         chunk_token_size=CO_CHUNK,
@@ -110,24 +119,24 @@ def test_pham_vi_lo_dung_la_duong_kv_khong_phai_duong_graph(
 ):
     """Ranh giới của lỗ: `filter_keys` chặn đường chunk, không chặn đường graph.
 
-    `extract_entities` gọi `upsert_node`/`upsert` thẳng, không qua
-    `filter_keys`, nên luật hợp nhất *có* chạy ở đó. Ghim ranh giới này để một
-    lần đọc vội không biến "lỗ ở đường chunk" thành "luật hợp nhất không chạy",
-    và để story 2.3 biết đúng phạm vi phải sửa.
+    Bộ trích xuất (`adapters/trich_xuat.py`) gọi `upsert_node`/`upsert` thẳng,
+    không qua `filter_keys`, nên luật hợp nhất *có* chạy ở đó. Ghim ranh giới
+    này để một lần đọc vội không biến "lỗ ở đường chunk" thành "luật hợp nhất
+    không chạy", và để story 2.3 biết đúng phạm vi phải sửa.
     """
 
     async def chay():
         engine, _ = await _nap_hai_tai_lieu(workspace_dir, khong_gian, policy)
         with use_context(ngu_canh_ingest(khong_gian, policy)):
-            # Mọi node do `extract_entities` sinh ra trong đợt hai đều mang
-            # khóa của tài liệu thứ hai, hoặc khóa hợp nhất nếu trùng id với
-            # đợt một. Không node nào giữ nhãn rộng vì bị `filter_keys` loại.
+            # Mọi node do bộ trích xuất sinh ra trong đợt hai đều mang khóa của
+            # tài liệu thứ hai, hoặc khóa hợp nhất nếu trùng id với đợt một.
+            # Không node nào giữ nhãn rộng vì bị `filter_keys` loại.
             graph = engine.chunk_entity_relation_graph
-            tu_khoa = await graph.khoa_hien_co(["APP01"])
-        return tu_khoa["APP01"]
+            tu_khoa = await graph.khoa_hien_co([ENTITY_CHUNG])
+        return tu_khoa[ENTITY_CHUNG]
 
     khoa = asyncio.run(chay())
-    # `APP01` là từ khóa cố định mà LLM giả trả về, nên nó là entity duy nhất
+    # `App01` là `subject` của mọi fact mà LLM giả trả về, nên nó là entity
     # được trích trong *cả hai* đợt - tức đúng ca đa nguồn khác scope, và
     # đường graph xử lý nó đúng luật: không khóa.
     assert khoa is None, (

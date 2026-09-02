@@ -566,9 +566,6 @@ def test_thu_muc_lam_viec_nam_tren_volume_co_khai():
 FIXTURE_HONG = {
     "thieu_subject": ({"id": "X", "scope": "noi_bo", "content_type": "runbook",
                        "source_id": "chunk-X", "slots": {"cause": "a"}},),
-    "hai_slot_trung_gia_tri": ({"id": "X", "scope": "noi_bo",
-                                "content_type": "runbook", "source_id": "chunk-X",
-                                "slots": {"subject": "A", "cause": "A"}},),
     "vai_ngoai_danh_muc": ({"id": "X", "scope": "noi_bo", "content_type": "runbook",
                             "source_id": "chunk-X",
                             "slots": {"subject": "A", "khong_co_vai_nay": "B"}},),

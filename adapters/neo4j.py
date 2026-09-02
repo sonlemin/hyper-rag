@@ -22,13 +22,19 @@ thể thành một label Neo4j và không có chỗ nào cho quyền hay `space`
 Hypergraph nằm dạng hai phía (FR-03/04): hyperedge là node `:Hyperedge` mang
 thuộc tính, entity là node `:Entity`, cạnh `:SLOT` nối hai bên và mang vai slot
 từ danh mục `core/`. Quan hệ 2 vai là hyperedge có đúng 2 cạnh, đi cùng một
-đường ghi và cùng một đường đọc, không có nhánh riêng.
+đường ghi và cùng một đường đọc, không có nhánh riêng. Từ story 2.4 vai là
+bắt buộc và nằm trong khóa MERGE của cạnh: một entity điền hai vai của cùng
+hyperedge là hai cạnh; `get_node_edges` một bản ghi mỗi cạnh (che theo vai
+từng cạnh), `get_edge` gộp mọi cạnh của cặp, `node_degree` đếm distinct lân cận.
 """
 
 import asyncio
+import logging
 from dataclasses import dataclass
+from typing import Mapping
 
 from hypergraphrag.base import BaseGraphStorage
+from hypergraphrag.prompt import GRAPH_FIELD_SEP
 from neo4j import AsyncDriver, AsyncGraphDatabase
 from neo4j.exceptions import (
     AuthError,
@@ -61,6 +67,7 @@ from core.masking import (
     NEIGHBOR_FIELD,
     NEIGHBOR_NO_KEY_FIELD,
     SLOT_FIELD,
+    SLOTS_FIELD,
     dau_che_truong,
     la_dau_che,
     mask,
@@ -147,6 +154,19 @@ class SlotRoleInvalid(ValueError):
     code = "SLOT_ROLE_INVALID"
 
 
+class SlotRoleMissing(ValueError):
+    """Cạnh không khai vai slot (story 2.4).
+
+    Từ 2.4 mọi cạnh trong graph đều sinh từ một fact 8 vai, nên một cạnh không
+    vai là một cạnh mà tầng che không tra được luật nào ở đường
+    `get_node_edges` - để nó vào kho là fail-open im lặng. Trước 2.4 cạnh thiếu
+    vai được chấp nhận vì upstream chưa gửi vai (ledger 1.4); quyết định ở 2.4
+    là đóng cửa đó.
+    """
+
+    code = "SLOT_ROLE_MISSING"
+
+
 class NodeRoleInvalid(ValueError):
     """Node không khai `role` là hyperedge hay entity.
 
@@ -221,6 +241,8 @@ class EdgeEndpointMissing(RuntimeError):
 
 
 NHAN_THEO_VAI = {ROLE_HYPEREDGE: LABEL_HYPEREDGE, ROLE_ENTITY: LABEL_ENTITY}
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -695,6 +717,48 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
         )
         return [d["khoa_hyperedge"] for d in dong]
 
+    async def slot_cua_hyperedge(self, hyperedge_id: str) -> dict[str, list[str]]:
+        """`{vai: [id entity đã sắp xếp]}` của mọi cạnh SLOT nối tới một hyperedge (2.4).
+
+        Nguồn để dựng lại `content` (`core.facts.cau_fact`) của hyperedge chung
+        khi re-ingest: node hyperedge không mang giá trị slot nào, giá trị chỉ
+        sống ở entity và cạnh, nên đọc cạnh là cách duy nhất lắp fact lại. Trả
+        nội dung (tên entity) nên chỉ chạy dưới cờ system, cùng khuôn với
+        `khoa_lan_can_hyperedge`: `ghi=True` để thấy đúng trạng thái mà lần ghi
+        kế tiếp sẽ đè lên. Hyperedge không có hay không có cạnh: dict rỗng.
+        """
+        bat_buoc_ngu_canh_he_thong("đọc slot của hyperedge")
+        context = current_context()
+        space = self._nhan_space(context)
+        dong = await self._chay(
+            f"MATCH (h:`{space}`:`{LABEL_HYPEREDGE}` {{{NODE_ID_FIELD}: $id}})"
+            f"-[r:{EDGE_TYPE}]-(e:`{space}`)\n"
+            f"WHERE {self._dieu_kien('h', context)}"
+            f" AND {self._dieu_kien('e', context)}"
+            f" AND {self._dieu_kien('r', context)}\n"
+            f"RETURN r.{SLOT_FIELD} AS slot_hyperedge, e.{NODE_ID_FIELD} AS id_entity",
+            ghi=True,
+            id=normalize_id(hyperedge_id),
+            **self._tham_so_loc(context),
+        )
+        ket_qua: dict[str, list[str]] = {}
+        khong_vai = 0
+        for d in dong:
+            if d["slot_hyperedge"] is None:
+                # Dữ liệu nạp trước 2.4 (cạnh không vai): không lắp được vào
+                # câu render, bỏ qua nhưng nói ra - kho như vậy phải xóa space
+                # rồi nạp lại (AGENTS.md), không có di trú tự động.
+                khong_vai += 1
+                continue
+            ket_qua.setdefault(d["slot_hyperedge"], []).append(d["id_entity"])
+        if khong_vai:
+            logger.warning(
+                "hyperedge %s có %d cạnh không mang slot (dữ liệu trước 2.4), bỏ qua khi dựng lại content",
+                hyperedge_id,
+                khong_vai,
+            )
+        return {vai: sorted(ids) for vai, ids in ket_qua.items()}
+
     async def dat_lai_entity(
         self, node_id: str, *, description: str, source_id: str, khoa: str | None
     ) -> None:
@@ -801,20 +865,21 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
     ) -> None:
         """Ghi cạnh hyperedge → entity, mang vai slot và khóa quyền.
 
-        Vai slot kiểm theo danh mục `core/` trước khi gửi câu đi. Cạnh **chưa**
-        khai vai vẫn ghi được: `_merge_edges_then_upsert` của upstream hiện chỉ
-        gửi `weight` và `source_id`, prompt trích xuất 8 vai thuộc story 2.4.
-        Cấm cạnh thiếu vai ngay bây giờ là chặn chính đường e2e của cổng M1.
+        Vai slot **bắt buộc** và kiểm theo danh mục `core/` trước khi gửi câu đi
+        (story 2.4): thiếu là `SlotRoleMissing`, lạ là `SlotRoleInvalid`. Khóa
+        MERGE mang `slot` - `(a)-[r:SLOT {slot: $slot}]->(b)` - nên một entity
+        điền hai vai của cùng hyperedge là hai cạnh, và che theo vai ở
+        `get_node_edges` che đúng cạnh của vai đó chứ không che luôn vai kia.
+        Ghi lại cùng (hyperedge, entity, vai) là chính cạnh đó, không sinh
+        cạnh thứ hai.
 
-        **Cạnh cố ý không read-merge-write.** Luật hợp nhất của story 2.1 nói về
-        khóa của một *id*, và cạnh không có id: nó được định danh bằng cặp
-        (hyperedge, entity), tức là bằng chính hai node đã hợp nhất. Một tài
-        liệu thường hơn ghi lại cùng cạnh đó có nới khóa cạnh ra, nhưng cạnh
-        vẫn không đi tới được: cả ba đường đọc cạnh (`has_edge`, `get_edge`,
-        `get_node_edges`) đòi *cả hai* đầu qua filter, và node hyperedge thì đã
-        mang khóa hợp nhất. Đưa cạnh vào luật hợp nhất phải cân cùng lúc với
-        việc khóa MERGE của cạnh có mang `slot` hay không - khoản nợ có địa chỉ
-        story 2.4, không sửa lẻ ở đây.
+        **Cạnh cố ý không read-merge-write** (giữ ở 2.4). Luật hợp nhất của
+        story 2.1 nói về khóa của một *id*, và cạnh không có id: nó được định
+        danh bằng (hyperedge, entity, vai), tức bằng hai node đã hợp nhất. Một
+        tài liệu thường hơn ghi lại cùng cạnh đó có nới khóa cạnh ra, nhưng
+        cạnh vẫn không đi tới được: cả ba đường đọc cạnh (`has_edge`,
+        `get_edge`, `get_node_edges`) đòi *cả hai* đầu qua filter, và node
+        hyperedge thì đã mang khóa hợp nhất.
         """
         context = current_context()
         space = self._nhan_space(context)
@@ -824,20 +889,28 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
         khoa = ingest_key_for_write(CHUA_GHI, hang=self._bang_hang.hang)
         props = dict(edge_data)
         vai = props.get(SLOT_FIELD)
-        if vai is not None and vai not in SLOT_ROLE_SET:
+        if vai is None:
+            raise SlotRoleMissing(
+                f"cạnh {source_node_id!r} -> {target_node_id!r} không khai"
+                f" {SLOT_FIELD!r}: mọi cạnh phải mang một vai trong danh mục 8 vai"
+            )
+        # `isinstance` trước khi tra tập: một list/dict lọt vào đây phải ra mã
+        # `SLOT_ROLE_INVALID`, không phải `TypeError: unhashable type`.
+        if not isinstance(vai, str) or vai not in SLOT_ROLE_SET:
             raise SlotRoleInvalid(
                 f"vai slot {vai!r} không có trong danh mục 8 vai của core/"
             )
         dong = await self._chay(
             f"MATCH (a:`{space}` {{{NODE_ID_FIELD}: $src}})\n"
             f"MATCH (b:`{space}` {{{NODE_ID_FIELD}: $tgt}})\n"
-            f"MERGE (a)-[r:{EDGE_TYPE}]->(b)\n"
+            f"MERGE (a)-[r:{EDGE_TYPE} {{{SLOT_FIELD}: $slot}}]->(b)\n"
             f"SET r += $props, r.{SPACE_FIELD} = $space,"
             f" r.{FILTER_KEY_FIELD} = $key\n"
             "RETURN count(r) AS da_ghi",
             ghi=True,
             src=normalize_id(source_node_id),
             tgt=normalize_id(target_node_id),
+            slot=vai,
             props=props,
             space=space,
             key=khoa,
@@ -981,7 +1054,15 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
     async def get_edge(
         self, source_node_id: str, target_node_id: str
     ) -> dict | None:
-        """Thuộc tính cạnh, đã qua tầng che; ngoài quyền là `None`."""
+        """Thuộc tính của **mọi** cạnh giữa hai node, gộp một bản ghi, đã qua tầng che.
+
+        Từ story 2.4 một cặp (hyperedge, entity) có thể có nhiều cạnh (một cạnh
+        mỗi vai). Upstream chỉ dùng `weight` của cặp để sắp xếp
+        (`operate.py:900`), nên gộp là đúng ngữ nghĩa: `weight` cộng, `source_id`
+        hợp, các vai vào danh sách `slots` đã sắp xếp; trường `slot` đơn không
+        còn trong bản ghi. Ngoài quyền là `None`. Cạnh nào cũng phải qua filter
+        riêng của nó (biến `r`), nên cạnh mang khóa ngoài quyền không vào tổng.
+        """
         context = current_context()
         if not self._co_khoa_de_doc(context):
             return None
@@ -992,7 +1073,8 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
             f"WHERE {self._dieu_kien('a', context)}"
             f" AND {self._dieu_kien('b', context)}"
             f" AND {self._dieu_kien('r', context)}\n"
-            "RETURN properties(r) AS thuoc_tinh_canh,"
+            "WITH a, b, collect(properties(r)) AS cac_canh\n"
+            "RETURN cac_canh AS thuoc_tinh_canh,"
             f" a.{ROLE_FIELD} AS vai_a, a.{FILTER_KEY_FIELD} AS khoa_a,"
             f" b.{ROLE_FIELD} AS vai_b, b.{FILTER_KEY_FIELD} AS khoa_b\n"
             "LIMIT 1",
@@ -1000,13 +1082,51 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
             tgt=normalize_id(target_node_id),
             **self._tham_so_loc(context),
         )
-        if not dong:
+        if not dong or not dong[0]["thuoc_tinh_canh"]:
             return None
         d = dong[0]
         khoa = self._khoa_de_che(
             context, (d["vai_a"], d["khoa_a"]), (d["vai_b"], d["khoa_b"])
         )
-        return self._che(self._ban_ghi(d["thuoc_tinh_canh"]), context, khoa)
+        return self._che(self._gop_canh(d["thuoc_tinh_canh"]), context, khoa)
+
+    @classmethod
+    def _gop_canh(cls, cac_canh) -> dict:
+        """Gộp thuộc tính nhiều cạnh của một cặp thành một bản ghi.
+
+        `weight` cộng, `source_id` hợp (tách bằng `GRAPH_FIELD_SEP`, giữ thứ tự
+        gặp), `slots` (`core.masking.SLOTS_FIELD`) là danh sách vai sắp xếp; các
+        trường còn lại lấy của cạnh đầu **sau khi sắp theo `slot`**, nên kết quả
+        tất định dù Neo4j trả `collect` theo thứ tự nào. Khóa quyền của cạnh
+        (`filter_key`) trong bản ghi gộp chỉ là nhãn truy nguyên: tầng che tra
+        `masked_slots` bằng khóa của *hyperedge* (`_khoa_hyperedge`), không bằng
+        khóa cạnh, nên hai cạnh khác khóa không đổi cách che. Nhận cả một dict
+        đơn để không phụ thuộc hình dạng dòng.
+        """
+        if isinstance(cac_canh, Mapping):
+            cac_canh = [cac_canh]
+        cac_canh = sorted((dict(c) for c in cac_canh), key=lambda c: str(c.get(SLOT_FIELD) or ""))
+        gop = cls._ban_ghi(cac_canh[0])
+        gop.pop(SLOT_FIELD, None)
+        weight = 0.0
+        co_weight = False
+        nguon: list[str] = []
+        slots: set[str] = set()
+        for c in cac_canh:
+            if c.get("weight") is not None:
+                co_weight = True
+                weight += float(c["weight"])
+            for m in str(c.get("source_id") or "").split(GRAPH_FIELD_SEP):
+                if m and m not in nguon:
+                    nguon.append(m)
+            if c.get(SLOT_FIELD) is not None:
+                slots.add(c[SLOT_FIELD])
+        if co_weight:
+            gop["weight"] = weight
+        if nguon or "source_id" in gop:
+            gop["source_id"] = GRAPH_FIELD_SEP.join(nguon)
+        gop[SLOTS_FIELD] = sorted(slots)
+        return gop
 
     async def get_node_edges(self, source_node_id: str) -> list[tuple[str, str]]:
         """Cặp `(id, id_lân_cận)` của mọi cạnh còn thấy được.
@@ -1089,7 +1209,7 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
         return cac_cap
 
     async def node_degree(self, node_id: str) -> int:
-        """Số lân cận *còn thấy được*, không phải tổng số cạnh.
+        """Số lân cận *còn thấy được* (distinct), không phải tổng số cạnh.
 
         Degree đi thẳng vào xếp hạng ngữ cảnh trả về (`operate.py:754,1041`),
         nên một số đếm không co theo quyền tự nó đã kể rằng còn fact khác tồn
@@ -1105,7 +1225,10 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
             f"OPTIONAL MATCH (n)-[r:{EDGE_TYPE}]-(m:`{space}`)\n"
             f"WHERE {self._dieu_kien('m', context)}"
             f" AND {self._dieu_kien('r', context)}\n"
-            "RETURN count(r) AS bac",
+            # `DISTINCT m` (2.4): một entity điền hai vai của cùng hyperedge là
+            # hai cạnh nhưng một lân cận, giữ ngữ nghĩa đơn đồ thị của
+            # `NetworkXStorage` upstream để xếp hạng không đổi.
+            "RETURN count(DISTINCT m) AS bac",
             id=normalize_id(node_id),
             **self._tham_so_loc(context),
         )

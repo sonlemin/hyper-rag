@@ -316,10 +316,12 @@ def test_canh_mang_vai_owner_bi_che_ca_o_l2():
 
 
 def test_canh_khong_khai_vai_thi_khong_no():
-    """Cạnh chưa mang vai slot vẫn ghi được (story 1.4); che phải chịu được nó.
+    """Bản ghi cạnh `slot=None` không nổ: đó là lân cận phía hyperedge.
 
-    Prompt trích xuất 8 vai thuộc story 2.4, nên `slot=None` là hiện trạng của
-    đường e2e cổng M1 chứ không phải dữ liệu hỏng.
+    Từ story 2.4 mọi cạnh trong graph đều mang vai (`upsert_edge` từ chối cạnh
+    thiếu `slot`), nên `slot=None` chỉ còn một nguồn: `get_node_edges` gọi từ
+    phía entity khai `None` cho lân cận là node hyperedge, thứ không điền vào
+    slot nào. Tầng che phải chịu được hình dạng đó.
     """
     he = du_lieu_dung_tay.THEO_ID["HE-02"]
     ban_ghi = {"node_id": "rel-HE-02", NEIGHBOR_FIELD: "App01", SLOT_FIELD: None}
@@ -663,3 +665,31 @@ def test_dau_che_lan_can_khong_trung_dau_che_cua_vai_slot_nao():
     dau = dau_che_lan_can_khong_khoa()
     assert dau not in {dau_che(slot) for slot in SLOT_ROLES}
     assert la_dau_che(dau), "dấu che mới phải tra ngược được qua get_node"
+
+
+# --- Story 2.4: bản ghi cạnh gộp mang danh sách vai ----------------------------
+
+
+def test_canh_gop_bo_vai_bi_che_khoi_danh_sach_slots():
+    """Đường bốn của `mask`: `slots` giữ lại đúng vai không bị che, không có dấu che thay chỗ."""
+    from core.masking import SLOTS_FIELD
+
+    he = du_lieu_dung_tay.THEO_ID["HE-02"]
+    ban_ghi = {"weight": 2.0, SLOTS_FIELD: ["cause", "subject", "source", "owner"]}
+    ts = mask(ban_ghi, _context("tech_support"), _khoa(he))
+    dev = mask(ban_ghi, _context("devops"), _khoa(he))
+    assert ts[SLOTS_FIELD] == ["subject"]
+    assert dev[SLOTS_FIELD] == ["cause", "subject", "source"], "owner che ở mọi mức"
+    assert ban_ghi[SLOTS_FIELD] == ["cause", "subject", "source", "owner"], "không biến đổi tại chỗ"
+    assert ts["weight"] == 2.0
+
+
+def test_canh_gop_vai_la_trong_slots_la_loi_co_ma():
+    from core.masking import SLOTS_FIELD
+
+    he = du_lieu_dung_tay.THEO_ID["HE-02"]
+    with pytest.raises(SlotRoleUnknown) as loi:
+        mask({SLOTS_FIELD: ["subject", "root_cause"]}, _context("tech_support"), _khoa(he))
+    assert loi.value.code == "SLOT_ROLE_UNKNOWN"
+    with pytest.raises(SlotRoleUnknown):
+        mask({SLOTS_FIELD: "subject"}, _context("tech_support"), _khoa(he))

@@ -18,6 +18,7 @@ spec): đổi bảng không sửa code.
 """
 
 import hashlib
+import json
 import math
 from dataclasses import dataclass
 from pathlib import Path
@@ -42,11 +43,17 @@ VERSION_HO_TRO: int = 1
 KHOA_NCC_API: frozenset[str] = frozenset({"cuc_bo", "base_url", "bien_api_key"})
 KHOA_NCC_CUC_BO: frozenset[str] = frozenset({"cuc_bo", "bien_host"})
 
-# Lược đồ đóng của một model, theo loại.
+# Lược đồ đóng của một model, theo loại. Khóa bắt buộc ở `KHOA_MODEL_CHUNG`;
+# `extra_body` (story 2.4) là khóa **tùy chọn**, chỉ cho model của nhà cung cấp
+# API ngoài: một bảng tham số riêng của provider (ví dụ tắt suy luận của
+# DeepSeek) mà wrapper chuyển nguyên vẹn thành `extra_body=` của SDK OpenAI.
+# Đặt ở danh mục để "tắt suy luận" là đổi YAML, không đổi code.
 KHOA_MODEL_CHUNG: frozenset[str] = frozenset(
     {"loai", "nha_cung_cap", "gia_vao_usd_1m", "gia_ra_usd_1m", "max_token"}
 )
 KHOA_MODEL_EMBEDDING: frozenset[str] = KHOA_MODEL_CHUNG | {"so_chieu"}
+KHOA_EXTRA_BODY: str = "extra_body"
+KHOA_MODEL_TUY_CHON: frozenset[str] = frozenset({KHOA_EXTRA_BODY})
 
 
 class ModelCatalogInvalid(ValueError):
@@ -118,6 +125,9 @@ class MucModel:
     gia_ra_usd_1m: float
     max_token: int
     so_chieu: int | None = None
+    # Tham số riêng của nhà cung cấp gửi kèm mỗi lời gọi chat (`extra_body=` của
+    # SDK OpenAI); `None` là không gửi gì. Chỉ model API ngoài mới có.
+    extra_body: Mapping | None = None
 
     def chi_phi_usd(self, token_vao: int, token_ra: int) -> float:
         """Chi phí một lời gọi theo đơn giá của bảng; đơn vị giá là USD trên 1M token."""
@@ -287,11 +297,11 @@ def _kiem_models(raw, ncc: Mapping[str, NhaCungCap]) -> dict[str, MucModel]:
             raise ModelCatalogInvalid(
                 f"model {ten!r}: `loai` phải là một trong {sorted(CAC_LOAI)}, nhận được {loai!r}"
             )
-        khoa_cho_phep = KHOA_MODEL_EMBEDDING if loai == LOAI_EMBEDDING else KHOA_MODEL_CHUNG
-        la = set(muc) - khoa_cho_phep
+        khoa_bat_buoc = KHOA_MODEL_EMBEDDING if loai == LOAI_EMBEDDING else KHOA_MODEL_CHUNG
+        la = set(muc) - khoa_bat_buoc - KHOA_MODEL_TUY_CHON
         if la:
             raise ModelCatalogInvalid(f"model {ten!r}: khóa lạ {sorted(la)}")
-        thieu = khoa_cho_phep - set(muc)
+        thieu = khoa_bat_buoc - set(muc)
         if thieu:
             raise ModelCatalogInvalid(f"model {ten!r}: thiếu {sorted(thieu)}")
         ten_ncc = muc["nha_cung_cap"]
@@ -306,6 +316,7 @@ def _kiem_models(raw, ncc: Mapping[str, NhaCungCap]) -> dict[str, MucModel]:
             raise ModelCatalogInvalid(
                 f"model {ten!r} chạy trên nhà cung cấp cục bộ {ten_ncc!r} thì giá phải là 0"
             )
+        extra_body = _kiem_extra_body(muc, ten, loai, cuc_bo)
         ket_qua[ten] = MucModel(
             ten=ten,
             loai=loai,
@@ -319,5 +330,47 @@ def _kiem_models(raw, ncc: Mapping[str, NhaCungCap]) -> dict[str, MucModel]:
                 if loai == LOAI_EMBEDDING
                 else None
             ),
+            extra_body=extra_body,
         )
     return ket_qua
+
+
+def _dong_bang(gia_tri):
+    """Bảng lồng nhau thành bản chỉ đọc, để mục danh mục thật sự bất biến."""
+    if isinstance(gia_tri, dict):
+        return MappingProxyType({k: _dong_bang(v) for k, v in gia_tri.items()})
+    if isinstance(gia_tri, list):
+        return tuple(_dong_bang(v) for v in gia_tri)
+    return gia_tri
+
+
+def _kiem_extra_body(muc: dict, ten_model: str, loai: str, cuc_bo: bool):
+    """`extra_body` chỉ hợp lệ cho model `llm` của nhà cung cấp API ngoài.
+
+    Có *khóa* (kể cả `null`) ở model embedding hay ở provider cục bộ là từ chối
+    file: embedding không đi qua `chat.completions`, Ollama không đi qua SDK
+    OpenAI, nên tham số sẽ bị lặng lẽ bỏ qua - một bảng cấu hình nói một điều
+    mà hệ làm điều khác. Giá trị phải là bảng không rỗng và tuần tự hóa được
+    thành JSON (SDK gửi nó trong body request); YAML nạp ra ngày tháng hay tập
+    hợp thì nổ ở đây, không nổ ở lời gọi đầu tiên.
+    """
+    if KHOA_EXTRA_BODY not in muc:
+        return None
+    gia_tri = muc[KHOA_EXTRA_BODY]
+    if loai != LOAI_LLM:
+        raise ModelCatalogInvalid(
+            f"model {ten_model!r} loại {loai!r} không nhận `{KHOA_EXTRA_BODY}`: chỉ model llm của API ngoài"
+        )
+    if cuc_bo:
+        raise ModelCatalogInvalid(
+            f"model {ten_model!r} chạy trên nhà cung cấp cục bộ không nhận `{KHOA_EXTRA_BODY}`"
+        )
+    if not isinstance(gia_tri, dict) or not gia_tri:
+        raise ModelCatalogInvalid(f"model {ten_model!r}: `{KHOA_EXTRA_BODY}` phải là một bảng không rỗng")
+    try:
+        json.dumps(gia_tri, ensure_ascii=False)
+    except (TypeError, ValueError) as loi:
+        raise ModelCatalogInvalid(
+            f"model {ten_model!r}: `{KHOA_EXTRA_BODY}` không tuần tự hóa được thành JSON: {loi}"
+        ) from None
+    return _dong_bang(gia_tri)

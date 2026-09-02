@@ -30,13 +30,16 @@ Sự kiện audit ở tầng **mutation** (`ghi_bien_doi`): nạp và xóa tri t
 thay đổi kho, và mất dấu một lần xóa là mất dấu một thay đổi quyền. Port hỏng
 thì tài liệu đó ghi lỗi, sổ không cập nhật, lần chạy dừng. Re-ingest phát
 `delete_doc` ngay sau khi gỡ xong, trước `ainsert`, để một `ainsert` hỏng sau
-đó vẫn để lại dấu của lần xóa.
+đó vẫn để lại dấu của lần xóa. Riêng `extract_doc` (2.4: số fact thô / hợp lệ
+/ bị loại theo mã) ở tầng **observation**: số liệu đo, mất một hàng không được
+làm hỏng lần nạp.
 """
 
 import errno
 import fcntl
 import hashlib
 import json
+import logging
 import os
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -58,16 +61,21 @@ from adapters.ingest_labels import ingest_label
 from adapters.kv import DUOI_TAM
 from adapters.llm_wrapper import ProviderNotAllowedForSpace, nha_cung_cap_cua
 from adapters.sensitivity_loader import bang_hang_cho
+from adapters.trich_xuat import ThongKeTrichXuat
 from core.audit import (
     EVENT_DELETE_DOC,
     EVENT_DELETE_SPACE,
+    EVENT_EXTRACT_DOC,
     EVENT_INGEST_DOC,
     TIER_MUTATION,
+    TIER_OBSERVATION,
     AuditPort,
     SuKienAudit,
     ghi_bien_doi,
+    ghi_quan_sat,
     thoi_diem_utc,
 )
+from core.facts import MA_LOAI_CHUNK, MA_LOAI_FACT, cau_fact
 from core.ids import la_space_real, validate_space
 from core.ingest_scan import (
     MA_TRUNG_NOI_DUNG,
@@ -82,6 +90,7 @@ from core.permission import use_context
 from core.system_context import system_context
 
 SEP = GRAPH_FIELD_SEP
+logger = logging.getLogger(__name__)
 
 # Trạng thái của một tài liệu trong kết quả một lần chạy.
 TRANG_THAI_DA_NAP: str = "da_nap"
@@ -90,10 +99,10 @@ TRANG_THAI_DA_XOA: str = "da_xoa"
 TRANG_THAI_LOI: str = "loi"
 TRANG_THAI_TU_CHOI: str = "tu_choi"
 
-# Mã lỗi của tài liệu không trích được hyperedge nào: pipeline dọn mọi thứ
-# `ainsert` đã ghi trong đợt (upstream ghi chunk, và có thể cả entity, trước
-# khi biết là không có hyperedge) và đi tiếp. Cảnh báo "0 fact" đúng nghĩa
-# (đếm, báo cáo) thuộc story 2.4.
+# Mã lỗi của tài liệu không có fact hợp lệ nào: pipeline dọn mọi thứ `ainsert`
+# đã ghi trong đợt (chunk vào `chunks_vdb` trước khi trích) và đi tiếp. Từ 2.4
+# `ly_do` phân biệt "LLM trả 0 bản ghi" với "N bản ghi đều bị loại (mã)", số
+# đếm đi vào sự kiện `extract_doc` và `TrangThaiTaiLieu.so_fact_*`.
 MA_KHONG_CO_FACT: str = "KHONG_CO_FACT"
 # `ainsert` return sớm vì doc/chunk đã có trong kho mà sổ tài liệu không biết
 # (dữ liệu nạp trước khi có sổ): đợt rỗng, không có gì để dọn, không nạp được.
@@ -141,6 +150,11 @@ class TrangThaiTaiLieu:
     so_chunk: int = 0
     so_hyperedge: int = 0
     so_entity: int = 0
+    # Story 2.4: số fact hợp lệ / bị loại và số chunk không đọc được của lần
+    # trích xuất (0 khi không trích).
+    so_fact_hop_le: int = 0
+    so_fact_loai: int = 0
+    so_chunk_hong: int = 0
     bat_dau: str = ""
     ket_thuc: str = ""
 
@@ -491,15 +505,23 @@ async def _xoa_theo_so(engine, so: SoTaiLieu, doc_key: str) -> MucTaiLieu:
         h_chung = [h for h in muc.hyperedge if h in h_khac]
         await graph.xoa_node(h_rieng)
         await engine.hyperedges_vdb.xoa([muc.hyperedge[h] for h in h_rieng])
-        payload_h = await engine.hyperedges_vdb.payload_cua([muc.hyperedge[h] for h in h_chung])
         for h in h_chung:
             khoa = _gap_khoa(so.nhan_cua_doc_khac_ke_hyperedge(doc_key, h), hang)
             node = await graph.get_node(h) or {}
             nguon = sorted(set(split_sep(node.get("source_id", ""))) - chunk_rieng)
             await graph.dat_lai_hyperedge(h, source_id=SEP.join(nguon), khoa=khoa)
-            ten = (payload_h.get(muc.hyperedge[h]) or {}).get("hyperedge_name", h)
+            # Story 2.4: `content` nhúng dựng lại từ slot đọc ở cạnh của graph
+            # (`cau_fact`), không từ payload - payload chỉ mang id mờ `h`.
+            content = cau_fact(await graph.slot_cua_hyperedge(h))
+            if not content:
+                logger.warning(
+                    "hyperedge %s không có cạnh mang slot để dựng lại content (dữ liệu trước 2.4);"
+                    " nhúng bằng chính id",
+                    h,
+                )
+                content = h
             await engine.hyperedges_vdb.ghi_thang(
-                muc.hyperedge[h], content=ten, khoa=khoa, meta={"hyperedge_name": ten}
+                muc.hyperedge[h], content=content, khoa=khoa, meta={"hyperedge_name": h}
             )
         # 3. Entity: còn hyperedge nối thì dựng lại từ đóng góp còn lại, không thì xóa.
         payload_e = await engine.entities_vdb.payload_cua([e["vector_id"] for e in muc.entity.values()])
@@ -571,6 +593,80 @@ def _su_kien(event: str, *, space: str, policy_version: str, hyperedge_ids=(), *
         thoi_diem=thoi_diem_utc(),
         hyperedge_ids=tuple(hyperedge_ids),
         chi_tiet=chi_tiet,
+    )
+
+
+async def _phat_extract_doc(
+    audit: AuditPort,
+    *,
+    space: str,
+    policy_version: str,
+    tai_lieu: TaiLieuNguon,
+    doc_id: str,
+    thong_ke: ThongKeTrichXuat,
+    hyperedge_ids,
+) -> None:
+    """Sự kiện `extract_doc` (tầng observation, 2.4): số fact thô / hợp lệ / loại theo mã.
+
+    Observation chứ không mutation: đây là số liệu đo (FR-02), một Postgres
+    chết không được làm hỏng lần nạp - khác `ingest_doc`, thứ ghi dấu một thay
+    đổi kho. Phát cho mọi tài liệu đã chạy trích xuất, kể cả 0 fact hợp lệ.
+    `chi_tiet` chỉ mang số và mã, không mang giá trị slot nào.
+
+    Phát ngay sau `ainsert`, **trước** `doi_chieu_dot` và `ingest_doc`: một
+    lần nạp hỏng giữa đường (lệch đối chiếu, port mutation hỏng) để lại một
+    `extract_doc` không có `ingest_doc` đi kèm. Người đọc `audit_log` ghép hai
+    sự kiện bằng `doc_key` + `space`, và một `extract_doc` lẻ nghĩa là tài liệu
+    đó đã tốn tiền LLM mà chưa vào kho.
+    """
+    await ghi_quan_sat(
+        audit,
+        SuKienAudit(
+            tier=TIER_OBSERVATION,
+            event=EVENT_EXTRACT_DOC,
+            space=space,
+            policy_version=policy_version,
+            thoi_diem=thoi_diem_utc(),
+            hyperedge_ids=tuple(sorted(hyperedge_ids)),
+            chi_tiet=dict(
+                doc_key=tai_lieu.doc_key,
+                doc_id=doc_id,
+                scope=tai_lieu.scope,
+                content_type=tai_lieu.content_type,
+                **thong_ke.chi_tiet(),
+            ),
+        ),
+    )
+
+
+def _ly_do_khong_co_fact(thong_ke: ThongKeTrichXuat) -> str:
+    """Câu lý do cho `KHONG_CO_FACT`, phân biệt ba ca.
+
+    Mã cấp fact (`MA_LOAI_FACT`) đi cùng số bản ghi để tổng khớp N; mã cấp chunk
+    in riêng theo số chunk không đọc được, vì một chunk hỏng không phải một bản
+    ghi.
+    """
+    ma_fact = ", ".join(
+        f"{m}: {n}" for m, n in sorted(thong_ke.loai_theo_ma.items()) if m in MA_LOAI_FACT
+    )
+    ma_chunk = ", ".join(
+        f"{m}: {n}" for m, n in sorted(thong_ke.loai_theo_ma.items()) if m in MA_LOAI_CHUNK
+    )
+    chunk_hong = (
+        f"; {thong_ke.so_chunk_hong}/{thong_ke.so_chunk} chunk không đọc được ({ma_chunk})"
+        if thong_ke.so_chunk_hong
+        else ""
+    )
+    if thong_ke.so_hop_le > 0:
+        return (
+            f"trích được {thong_ke.so_hop_le} fact hợp lệ nhưng đợt không ghi hyperedge nào;"
+            " phần đã ghi trong đợt được dọn"
+        )
+    if thong_ke.so_fact_tho == 0:
+        return f"LLM trả 0 bản ghi{chunk_hong}; phần đã ghi trong đợt được dọn"
+    return (
+        f"{thong_ke.so_fact_tho} bản ghi đều bị loại ({ma_fact}){chunk_hong};"
+        " phần đã ghi trong đợt được dọn"
     )
 
 
@@ -660,17 +756,36 @@ async def nap_tai_lieu(
                 )
             with ingest_label(scope=tai_lieu.scope, content_type=tai_lieu.content_type):
                 with dot_ingest() as so_dot:
-                    await engine.ainsert(tai_lieu.noi_dung)
+                    thong_ke = await engine.ainsert(tai_lieu.noi_dung)
                     if len(so_dot) == 0:
                         tt.ma = MA_DA_CO_TRONG_KHO
                         tt.ly_do = "ainsert không ghi gì: doc/chunk đã có trong kho mà sổ tài liệu không biết"
                         tt.ket_thuc = thoi_diem_utc()
                         return tt
-                    if not _id_theo_kho(so_dot, ten_kho_vector("hyperedges")):
+                    hyperedge_dot = _id_theo_kho(so_dot, ten_kho_vector("hyperedges"))
+                    if thong_ke is not None:
+                        # Trước nhánh 0 fact: tài liệu nào đã chạy trích xuất cũng có số.
+                        tt.so_fact_hop_le, tt.so_fact_loai = thong_ke.so_hop_le, thong_ke.so_loai
+                        tt.so_chunk_hong = thong_ke.so_chunk_hong
+                        await _phat_extract_doc(
+                            audit,
+                            space=space,
+                            policy_version=policy_version,
+                            tai_lieu=tai_lieu,
+                            doc_id=doc_id,
+                            thong_ke=thong_ke,
+                            hyperedge_ids=hyperedge_dot.values(),
+                        )
+                    if not hyperedge_dot:
                         await _don_dot_khong_fact(engine, so, tai_lieu.doc_key, doc_id, so_dot)
                         tt.ma = MA_KHONG_CO_FACT
-                        tt.ly_do = "không trích được hyperedge nào; phần đã ghi trong đợt được dọn"
+                        tt.ly_do = (
+                            _ly_do_khong_co_fact(thong_ke)
+                            if thong_ke is not None
+                            else "không trích được hyperedge nào; phần đã ghi trong đợt được dọn"
+                        )
                         tt.ket_thuc = thoi_diem_utc()
+                        logger.warning("tài liệu %s không có fact hợp lệ: %s", tai_lieu.doc_key, tt.ly_do)
                         return tt
                     await doi_chieu_dot(so_dot, kho=kho_cua_engine(engine))
                     muc = await _muc_tu_so_dot(engine, so, tai_lieu, so_dot)

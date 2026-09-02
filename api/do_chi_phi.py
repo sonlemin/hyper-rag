@@ -10,9 +10,10 @@ Từ story 2.3 script không tự mở ngữ cảnh hệ thống hay đợt nữ
 mỗi tài liệu đọc từ frontmatter `scope`/`content_type` của chính file; file
 hỏng bị từ chối kèm mã, không chặn file kế; re-ingest ghi đè sạch.
 
-In tổng token và USD đọc từ `audit_log` cho **từng tài liệu** (theo mốc thời
-gian bắt đầu/kết thúc mà pipeline ghi lại) rồi cả đợt; ngoại lệ giữa đợt (đối
-chiếu lệch, 429) vẫn in số đã tiêu. Nằm ở `api/` vì `eval/` không import được
+In số fact hợp lệ / bị loại của từng tài liệu (story 2.4, cùng số đi vào sự
+kiện `extract_doc`), rồi tổng token và USD đọc từ `audit_log` cho **từng tài
+liệu** (theo mốc thời gian bắt đầu/kết thúc mà pipeline ghi lại) rồi cả đợt;
+ngoại lệ giữa đợt (đối chiếu lệch, 429) vẫn in số đã tiêu. Nằm ở `api/` vì `eval/` không import được
 hiện thực Postgres. Script tốn tiền thật: chạy sau khi spec được duyệt.
 
 Biến môi trường: bảy khóa kho (`adapters.engine.BIEN_MOI_TRUONG`), năm biến
@@ -83,7 +84,10 @@ def in_ket_qua(kq: KetQuaNap) -> None:
     for tc in kq.tu_choi:
         print(f"TỪ CHỐI {tc.ten}: {tc.ma} - {tc.ly_do}")
     for t in kq.tai_lieu:
-        so = f"{t.so_chunk} chunk, {t.so_hyperedge} hyperedge, {t.so_entity} entity"
+        so = (
+            f"{t.so_chunk} chunk, {t.so_hyperedge} hyperedge, {t.so_entity} entity,"
+            f" {t.so_fact_hop_le} fact hợp lệ, {t.so_fact_loai} fact loại, {t.so_chunk_hong} chunk hỏng"
+        )
         if t.trang_thai == TRANG_THAI_DA_NAP:
             print(f"{'RE-INGEST' if t.re_ingest else 'NẠP'} {t.doc_key}: {so}")
         elif t.trang_thai == TRANG_THAI_DA_XOA:

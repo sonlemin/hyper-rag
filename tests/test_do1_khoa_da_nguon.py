@@ -51,11 +51,13 @@ pytestmark = pytest.mark.usefixtures("ma_hoa_offline")
 
 # --- Fixture (d1): cùng scope, nhạy trước thường sau ----------------------
 #
-# `subject` khác nhau ở hai hyperedge nên tên hyperedge (`{subject} - {loại}`)
-# không mang giá trị entity dùng chung. Nếu để chúng trùng `subject` thì entity
-# dùng chung *cũng* nằm trong tên hyperedge, và một assert "giá trị này không
-# xuất hiện trong ngữ cảnh" sẽ đỏ vì lỗ `hyperedge_name` của story 2.4 chứ
+# `subject` khác nhau ở hai hyperedge nên tên hyperedge fixture
+# (`{subject} - {loại}`) không mang giá trị entity dùng chung. Nếu để chúng
+# trùng `subject` thì entity dùng chung *cũng* nằm trong tên hyperedge, và một
+# assert "giá trị này không xuất hiện trong ngữ cảnh" sẽ đỏ vì tên fixture chứ
 # không vì luật hợp nhất khóa - hai nguyên nhân khác nhau, một thông điệp.
+# Đường trích xuất thật đã đóng lỗ `hyperedge_name` bằng id mờ ở story 2.4;
+# fixture giữ tên riêng nên ghi chú này vẫn đúng cho nó.
 KHOA_QUAN_TRI = "khóa quản trị cụm thanh toán xoay mỗi quý"
 
 HE_NHAY = {

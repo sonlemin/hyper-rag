@@ -144,3 +144,23 @@ def test_in_ket_qua_in_xoa_theo_hang(capsys):
     kq = KetQuaNap(tai_lieu=[TrangThaiTaiLieu(doc_key="a.md", trang_thai=TRANG_THAI_DA_XOA, so_hyperedge=2)])
     mod.in_ket_qua(kq)
     assert "XÓA a.md" in capsys.readouterr().out
+
+
+def test_in_ket_qua_in_so_fact_hop_le_va_loai(capsys):
+    """Story 2.4: dòng NẠP in số fact hợp lệ / bị loại; dòng lỗi `KHONG_CO_FACT` in lý do phân biệt."""
+    from adapters.ingest import MA_KHONG_CO_FACT, TRANG_THAI_DA_NAP, TRANG_THAI_LOI
+
+    kq = KetQuaNap(
+        tai_lieu=[
+            TrangThaiTaiLieu(
+                doc_key="a.md", trang_thai=TRANG_THAI_DA_NAP, so_hyperedge=2, so_fact_hop_le=2, so_fact_loai=1, so_chunk_hong=1
+            ),
+            TrangThaiTaiLieu(
+                doc_key="b.md", trang_thai=TRANG_THAI_LOI, ma=MA_KHONG_CO_FACT, ly_do="3 bản ghi đều bị loại", so_fact_loai=3
+            ),
+        ]
+    )
+    mod.in_ket_qua(kq)
+    ra = capsys.readouterr().out
+    assert "NẠP a.md" in ra and "2 fact hợp lệ" in ra and "1 fact loại" in ra and "1 chunk hỏng" in ra
+    assert "LOI b.md" in ra and "KHONG_CO_FACT" in ra and "3 bản ghi đều bị loại" in ra

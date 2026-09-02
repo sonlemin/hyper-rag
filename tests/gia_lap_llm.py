@@ -154,6 +154,8 @@ DUONG_DAN_DANH_MUC_GIA: Path = (
 MODEL_LLM_GIA: str = "llm-gia"
 MODEL_EMBEDDING_GIA: str = "embedding-gia"
 MODEL_LLM_CUC_BO_GIA: str = "llm-cuc-bo-gia"
+# Model API ngoài giả có `extra_body` (story 2.4, tắt suy luận bằng cấu hình).
+MODEL_LLM_TAT_SUY_LUAN_GIA: str = "llm-gia-tat-suy-luan"
 MODEL_EMBEDDING_CUC_BO_GIA: str = "embedding-cuc-bo-gia"
 NCC_GIA: str = "gia"
 NCC_CUC_BO_GIA: str = "ollama_gia"

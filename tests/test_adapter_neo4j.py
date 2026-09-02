@@ -33,6 +33,7 @@ from adapters.neo4j import (
     NODE_ID_FIELD,
     NodeIdRoleConflict,
     SlotRoleInvalid,
+    SlotRoleMissing,
 )
 from adapters.policy_loader import load_policy
 from core.ids import normalize_id
@@ -144,13 +145,14 @@ def test_vai_slot_ngoai_danh_muc_bi_tu_choi(khong_gian, policy):
     asyncio.run(chay())
 
 
-def test_canh_khong_khai_vai_van_ghi_duoc(khong_gian, policy):
-    """Cạnh chưa có vai vẫn ghi được - upstream hiện chưa gửi vai nào.
+def test_canh_thieu_vai_bi_tu_choi(khong_gian, policy):
+    """Cạnh không khai `slot` là lỗi có mã, không ghi gì (story 2.4).
 
-    `_merge_edges_then_upsert` của upstream chỉ gửi `weight` và `source_id`;
-    prompt trích xuất 8 vai thuộc story 2.4. Cấm cạnh thiếu vai ngay bây giờ là
-    chặn chính đường e2e của cổng M1. Test ghim hiện trạng làm mốc so sánh cho
-    story 2.4, không phải khẳng định đây là hành vi cuối cùng.
+    Đổi kỳ vọng so với story 1.4 (`test_canh_khong_khai_vai_van_ghi_duoc`, ghim
+    hiện trạng "cạnh chưa có vai vẫn ghi được" vì upstream chưa gửi vai). Từ
+    2.4 bộ trích xuất của dự án gắn vai cho mọi cạnh, và một cạnh không vai là
+    một cạnh mà tầng che không tra được luật nào - để nó vào graph là fail-open
+    im lặng ở đường `get_node_edges`.
     """
 
     async def chay():
@@ -160,13 +162,67 @@ def test_canh_khong_khai_vai_van_ghi_duoc(khong_gian, policy):
             with ingest_label(scope="noi_bo", content_type="runbook"):
                 await adapter.upsert_node("rel-X", {"role": "hyperedge"})
                 await adapter.upsert_node("App01", {"role": "entity"})
-                await adapter.upsert_edge("rel-X", "App01", {"weight": 1.0})
-        canh = driver.canh_tho(khong_gian, "rel-X", "App01")
-        assert canh is not None
-        assert canh.props.get("slot") is None
-        assert canh.props[FILTER_KEY_FIELD] == "noi_bo:runbook"
+                driver.xoa_nhat_ky()
+                with pytest.raises(SlotRoleMissing) as loi:
+                    await adapter.upsert_edge("rel-X", "App01", {"weight": 1.0})
+                with pytest.raises(SlotRoleMissing):
+                    await adapter.upsert_edge("rel-X", "App01", {"weight": 1.0, "slot": None})
+        assert loi.value.code == "SLOT_ROLE_MISSING"
+        assert driver.loi_goi == [], "cửa chặn trước khi gửi câu nào đi"
+        assert driver.dem_canh() == 0
 
     asyncio.run(chay())
+
+
+def test_mot_entity_hai_vai_cung_hyperedge_la_hai_canh(khong_gian, policy):
+    """Khóa MERGE của cạnh mang `slot`: một entity điền hai vai là hai cạnh (story 2.4).
+
+    Che theo vai chỉ đúng khi mỗi (hyperedge, entity, vai) là một cạnh; một
+    cạnh chung thì che `source` là che luôn `subject` hoặc bỏ hở. Cùng lúc ghim
+    ba đường đọc: `get_node_edges` một bản ghi mỗi cạnh, `get_edge` gộp mọi
+    cạnh của cặp (weight cộng, source_id hợp, `slots` sắp xếp), `node_degree`
+    đếm distinct lân cận để xếp hạng không đổi so với NetworkX của upstream.
+    """
+
+    async def chay():
+        driver = Neo4jGhiLai()
+        adapter = dung_adapter(driver)
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            with ingest_label(scope="noi_bo", content_type="runbook"):
+                await adapter.upsert_node("rel-X", {"role": "hyperedge"})
+                await adapter.upsert_node("SOP-12", {"role": "entity"})
+                await adapter.upsert_node("mỗi quý", {"role": "entity"})
+                await adapter.upsert_edge(
+                    "rel-X", "SOP-12", {"weight": 1.0, "source_id": "chunk-1", "slot": "subject"}
+                )
+                await adapter.upsert_edge(
+                    "rel-X", "SOP-12", {"weight": 2.0, "source_id": "chunk-2", "slot": "source"}
+                )
+                # Ghi lại cùng slot: vẫn là chính cạnh đó, không sinh cạnh thứ ba.
+                await adapter.upsert_edge(
+                    "rel-X", "SOP-12", {"weight": 2.0, "source_id": "chunk-2", "slot": "source"}
+                )
+                await adapter.upsert_edge(
+                    "rel-X", "mỗi quý", {"weight": 1.0, "source_id": "chunk-1", "slot": "condition"}
+                )
+            cau_merge = {lg.cypher for lg in driver.loi_goi if "MERGE (a)-[" in lg.cypher}
+            with use_context(vai(policy, "devops", khong_gian)):
+                cap = await adapter.get_node_edges("rel-X")
+                canh = await adapter.get_edge("rel-X", "SOP-12")
+                bac = await adapter.node_degree("rel-X")
+                co = await adapter.has_edge("rel-X", "SOP-12")
+        return cau_merge, cap, canh, bac, co
+
+    cau_merge, cap, canh, bac, co = asyncio.run(chay())
+    assert len(cau_merge) == 1 and "{slot: $slot}" in next(iter(cau_merge))
+    assert sorted(c[1] for c in cap) == ["SOP-12", "SOP-12", "mỗi quý"], "một bản ghi mỗi cạnh"
+    assert canh["weight"] == 3.0
+    assert set(canh["source_id"].split("<SEP>")) == {"chunk-1", "chunk-2"}
+    assert canh["slots"] == ["source", "subject"]
+    assert "slot" not in canh
+    assert canh[FILTER_KEY_FIELD] == "noi_bo:runbook"
+    assert bac == 2, "degree đếm distinct lân cận, không đếm 3 cạnh"
+    assert co is True
 
 
 def test_ghi_ngoai_pham_vi_nhan_bi_tu_choi(khong_gian, policy):
@@ -383,8 +439,9 @@ def test_khoa_cua_canh_van_la_khoa_cua_tai_lieu_ghi_no(khong_gian, policy):
     cho nó không thành đường rò là node hyperedge đã mang khóa hợp nhất, nên cả
     ba đường đọc cạnh (đòi *cả hai* đầu qua filter) vẫn không tới được.
 
-    Story 2.4 chạm khóa MERGE của cạnh thì test này nói cho biết mình đang đổi
-    cái gì.
+    Story 2.4 đưa `slot` vào khóa MERGE và quyết định **giữ** cạnh ngoài luật
+    hợp nhất: đọc cạnh đòi cả hai đầu qua filter, nên khóa cạnh nới ra vẫn
+    không mở đường nào. Test này vì thế vẫn đúng nguyên văn.
     """
 
     async def chay():
@@ -791,3 +848,91 @@ def test_moi_lan_can_tra_nguoc_duoc_bang_get_node(khong_gian, policy):
     assert not khong_tra_duoc, f"lân cận không tra ngược được: {khong_tra_duoc}"
 
 
+# --- Vòng review đối kháng 2.4 -------------------------------------------------
+
+
+def test_get_edge_gop_bo_vai_bi_che_khoi_slots(khong_gian, policy):
+    """Bản ghi cạnh gộp không được nói entity điền vào một vai đang bị che.
+
+    `SOP-12` vừa `subject` vừa `source` của một hyperedge `bao_cao_su_co`:
+    `tech_support` (L1, che `source`) nhận `slots == ["subject"]` - vai bị che
+    bỏ hẳn, không thay bằng dấu che để không lộ số vai bị che; `devops` (L2)
+    nhận cả hai. Tên hằng lấy từ `core.masking.SLOTS_FIELD`.
+    """
+    from core.masking import SLOTS_FIELD
+
+    async def chay():
+        driver = Neo4jGhiLai()
+        adapter = dung_adapter(driver)
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            with ingest_label(scope="noi_bo", content_type="bao_cao_su_co"):
+                await adapter.upsert_node("rel-X", {"role": "hyperedge"})
+                await adapter.upsert_node("SOP-12", {"role": "entity"})
+                for vai_slot in ("subject", "source"):
+                    await adapter.upsert_edge("rel-X", "SOP-12", {"weight": 1.0, "slot": vai_slot})
+        ket = {}
+        for ten_vai in ("tech_support", "devops"):
+            with use_context(vai(policy, ten_vai, khong_gian)):
+                ket[ten_vai] = await adapter.get_edge("rel-X", "SOP-12")
+        return ket
+
+    ket = asyncio.run(chay())
+    assert ket["tech_support"][SLOTS_FIELD] == ["subject"]
+    assert ket["devops"][SLOTS_FIELD] == ["source", "subject"]
+    assert "source" not in str(ket["tech_support"])
+
+
+def test_slot_khong_phai_chuoi_la_slot_role_invalid(khong_gian, policy):
+    """List/dict ở `slot` ra mã `SLOT_ROLE_INVALID`, không phải `TypeError: unhashable`."""
+
+    async def chay():
+        driver = Neo4jGhiLai()
+        adapter = dung_adapter(driver)
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            with ingest_label(scope="noi_bo", content_type="runbook"):
+                await adapter.upsert_node("rel-X", {"role": "hyperedge"})
+                await adapter.upsert_node("App01", {"role": "entity"})
+                ma = []
+                for vai_sai in (["subject"], {"subject": 1}, 1):
+                    with pytest.raises(SlotRoleInvalid) as loi:
+                        await adapter.upsert_edge("rel-X", "App01", {"weight": 1.0, "slot": vai_sai})
+                    ma.append(loi.value.code)
+        return ma, driver.dem_canh()
+
+    ma, so_canh = asyncio.run(chay())
+    assert ma == ["SLOT_ROLE_INVALID"] * 3 and so_canh == 0
+
+
+def test_gop_canh_tat_dinh_theo_slot():
+    """`_gop_canh` sắp theo `slot` trước khi gộp: đảo thứ tự đầu vào không đổi kết quả."""
+    from adapters.neo4j import Neo4jACLGraphStorage
+
+    a = {"slot": "subject", "weight": 1.0, "source_id": "c1", "filter_key": "noi_bo:runbook", "space": "s"}
+    b = {"slot": "source", "weight": 2.0, "source_id": "c2", "filter_key": "noi_bo:bao_cao_su_co", "space": "s"}
+    gop_ab = Neo4jACLGraphStorage._gop_canh([a, b])
+    gop_ba = Neo4jACLGraphStorage._gop_canh([b, a])
+    assert gop_ab == gop_ba
+    assert gop_ab["weight"] == 3.0 and gop_ab["slots"] == ["source", "subject"]
+    assert gop_ab["filter_key"] == b["filter_key"], "khóa của cạnh đầu sau sắp theo slot"
+    assert "space" not in gop_ab and "slot" not in gop_ab
+
+
+def test_slot_cua_hyperedge_bo_canh_khong_vai_va_canh_bao(khong_gian, policy, caplog):
+    """Dữ liệu trước 2.4 (cạnh không `slot`) bị bỏ khi dựng lại content, kèm WARNING nêu id và số cạnh."""
+    import logging
+
+    from tests.gia_lap_neo4j import CanhGia
+
+    async def chay():
+        driver, adapter = await graph_da_nap(khong_gian, policy)
+        he = id_hyperedge(THEO_ID["HE-01"])
+        # Cạnh cũ chèn thẳng vào kho giả, không qua adapter (adapter nay từ chối).
+        driver.canh.append(CanhGia(space=khong_gian, src=he, tgt="App01", props={"weight": 1.0, "space": khong_gian}))
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            with caplog.at_level(logging.WARNING, logger="adapters.neo4j"):
+                return he, await adapter.slot_cua_hyperedge(he)
+
+    he, slots = asyncio.run(chay())
+    assert slots == {k: [v] for k, v in THEO_ID["HE-01"]["slots"].items()}
+    canh_bao = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(canh_bao) == 1 and he in canh_bao[0] and "1 cạnh" in canh_bao[0]

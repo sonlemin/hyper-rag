@@ -421,17 +421,17 @@ def test_do1_lop_b_phu_dung_hang_io_matrix(workspace_dir, khong_gian, policy):
 
 
 def test_tripwire_ten_hyperedge_chua_mang_nguyen_van_slot_bi_che(bang):
-    """Tripwire cho lỗ L1 `hyperedge_name` (khoản nợ có địa chỉ story 2.4).
+    """Tripwire cho lỗ L1 `hyperedge_name`, giữ làm canh fixture.
 
     `hyperedge_name` vừa là payload vector vừa là id node hyperedge, và nó đi
     thẳng vào cột `hyperedge` của bảng Relationships gửi LLM
     (`operate.py:952,987`). Tầng che không chạm được nó: đó là văn bản tự do,
     không tách theo slot.
 
-    Hôm nay ca đó vô hại vì fixture đặt tên an toàn (`subject - content_type`).
-    Story 2.4 cho nguyên văn câu fact vào chỗ này thì test này đỏ, và đó đúng
-    là lúc phải quyết. Tripwire ở đây chứ không chỉ một dòng trong ledger vì
-    một dòng ledger không đỏ.
+    Story 2.4 đã đóng lỗ trên đường trích xuất thật bằng id mờ `he-<băm slot>`
+    (`core.facts.id_fact`; kiểm ở `tests/test_trich_xuat.py`). Fixture Epic 1
+    vẫn đặt tên riêng (`subject - content_type`), nên tripwire ở lại để một lần
+    sửa fixture không đưa giá trị slot bị che vào tên.
     """
     for vai in ("tech_support", "devops"):
         for he in HYPEREDGES:

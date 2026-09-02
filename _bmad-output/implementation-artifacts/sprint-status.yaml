@@ -76,7 +76,7 @@
 #   nếu chạy repair thì chép lại khối chú thích từ git history.
 
 generated: 08-31-2026 21:50
-last_updated: 09-02-2026 13:56
+last_updated: 09-02-2026 14:22
 project: hyper_graph_rag
 project_key: NOKEY
 tracking_system: file-system
@@ -100,7 +100,7 @@ development_status:
   2-1-trả-nợ-sàn-t1-hợp-nhất-khóa-đa-nguồn-và-đối-chiếu-hai-kho: done  # 533 test xanh dev + server, 11 marker trên container; 3 lớp review + 30 patch; cách đọc câu frozen chốt theo AD-9/AD-5 (che cứng lân cận không khóa)
   2-2-wrapper-llm-embedding-đếm-chi-phí-qua-audit-port: done  # 665 test xanh dev + server, 16 marker trên container thật (4 postgres); 3 lớp review, 23 patch, 3 defer đóng ngay; đo thô 2 tài liệu 0.234 USD (deepseek-v4-flash xuất 17-23k token ra/lời gọi, 2.4 quyết tắt suy luận hoặc đổi model)
   2-3-import-thư-mục-và-pipeline-ingest-tuần-tự: done  # 767 test xanh dev + server, 19 marker trên container thật; 3 lớp review + 25 patch; nạp thật 4 file 19 phút 0,245 USD, re-ingest 1 file không nhân đôi (110/106/4 khớp cả ba nguồn); 13 khoản ledger 2.3 đóng, 5 khoản mới có địa chỉ
-  2-4-trích-xuất-fact-8-vai-slot-tiếng-việt: backlog  # AT: chốt tiêu chí chấm trích xuất trước khi tinh chỉnh prompt
+  2-4-trích-xuất-fact-8-vai-slot-tiếng-việt: review  # 849 test xanh dev (trước 767; vòng review đối kháng 13 patch áp hết), 20 marker thu thập (1 ca Neo4j thật mới chưa chạy trên máy chủ); còn: sonlm duyệt diff core/ + engine.py, lần nạp thật Ask First (đo token ra sau tắt suy luận, 4 extract_doc, kiểm lỗ L1 và ca owner trên dữ liệu thật)
   2-5-bộ-vàng-trích-xuất: backlog  # bộ vàng chính là red-phase spec cho 2-4/2-6; không cần skill riêng
   2-6-vòng-lặp-precision-và-điểm-quyết-r2: backlog  # đo bằng bộ vàng 2-5; ghi kết quả làm bằng chứng cho NR ở Epic 7
   2-7-màn-nạp-tài-liệu-web-tối-giản: backlog  # QA: E2E màn nạp, làm sau khi TF dựng Playwright ở Epic 4 (hoặc dồn về 4-x)

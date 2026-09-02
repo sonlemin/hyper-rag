@@ -43,12 +43,22 @@ nha_cung_cap:
 models:
   # LLM chính của khóa luận: rẻ nhất trong bảng DeepSeek, đủ cho trích xuất
   # fact có lược đồ (story 2.4). Ngữ cảnh 1M token, xuất tối đa 384K.
+  # `extra_body` tắt chế độ suy luận (thinking) cho mọi lời gọi chat: đo thô
+  # 2.2 cho thấy DeepSeek tính token suy luận vào token ra (17-23k token ra
+  # mỗi lời gọi trích xuất), còn trích xuất có lược đồ ở temperature 0 không
+  # cần suy luận. Tham số theo tài liệu DeepSeek
+  # https://api-docs.deepseek.com/guides/thinking_mode (tra 2026-09-02):
+  # `thinking: {type: disabled}` gửi trong body request. Đổi tham số này là
+  # sửa file, không sửa code.
   deepseek-v4-flash:
     loai: llm
     nha_cung_cap: deepseek
     gia_vao_usd_1m: 0.44
     gia_ra_usd_1m: 1.32
     max_token: 1000000
+    extra_body:
+      thinking:
+        type: disabled
   # LLM dự phòng, cùng cấu hình spike 29/08 (mặc định của upstream).
   gpt-4o-mini:
     loai: llm

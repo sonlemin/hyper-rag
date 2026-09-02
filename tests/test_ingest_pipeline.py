@@ -49,6 +49,7 @@ from core.keys import FILTER_KEY_FIELD, filter_key
 from core.permission import current_context, use_context
 from tests.ngu_canh import ngu_canh_ingest
 from tests.ho_tro_ingest import (
+    KHONG_FACT,
     SEP,
     dung_moi_truong,
     dung_moi_truong_cuc_bo,
@@ -71,19 +72,21 @@ THAN_B = "Báo cáo sự cố INC-1208. App01 trả lỗi 502 vì chỉnh sai gi
 THAN_C = "Runbook khách hàng A. Cổng thanh toán báo hàng đợi đầy thì giãn nhịp gọi API."
 THAN_A_SUA = "Runbook App01 bản mới. Khi traffic cao thì tăng số worker PHP-FPM rồi theo dõi."
 
-FACT_A = "App01 khởi động lại PHP-FPM khi traffic cao"
-FACT_B = "App01 lỗi 502 do sai giới hạn bộ nhớ"
-FACT_C = "Cổng thanh toán A giãn nhịp gọi API khi hàng đợi đầy"
-FACT_A_SUA = "App01 tăng worker PHP-FPM khi traffic cao"
+# Từ story 2.4 fact là dict slot (`core.slots`), entity là giá trị slot, id
+# hyperedge là nhãn mờ `he-…`; `App01` chung giữa A và B.
+FACT_A = {"subject": "App01", "condition": "traffic cao", "remediation": "khởi động lại pool PHP-FPM theo SOP-12"}
+FACT_B = {"subject": "App01", "symptom": "trả lỗi 502", "cause": "chỉnh sai giới hạn bộ nhớ PHP-FPM"}
+FACT_C = {"subject": "Cổng thanh toán A", "condition": "hàng đợi đầy", "remediation": "giãn nhịp gọi API"}
+FACT_A_SUA = {"subject": "App01", "condition": "traffic cao", "remediation": "tăng số worker PHP-FPM"}
 
 BANG_FACT = {
-    THAN_A: [(FACT_A, {"APP01": "app01 theo runbook", "PHP_FPM": "pool php theo runbook"})],
-    THAN_B: [(FACT_B, {"APP01": "app01 theo su co", "GIOI_HAN_BO_NHO": "gioi han theo su co"})],
-    THAN_C: [(FACT_C, {"CONG_THANH_TOAN_A": "cong cua khach hang a"})],
-    THAN_A_SUA: [(FACT_A_SUA, {"APP01": "app01 theo runbook moi", "WORKER": "worker moi"})],
+    THAN_A: [FACT_A],
+    THAN_B: [FACT_B],
+    THAN_C: [FACT_C],
+    THAN_A_SUA: [FACT_A_SUA],
 }
 
-E = ten_entity("APP01")
+E = ten_entity("App01")
 H_A = ten_hyperedge(FACT_A)
 H_B = ten_hyperedge(FACT_B)
 
@@ -159,10 +162,13 @@ def test_nap_lan_dau_ba_tai_lieu_hai_scope(workspace_dir, khong_gian, policy, tm
     assert muc_a.chunk_ids == [id_chunk(THAN_A)]
     assert set(muc_a.hyperedge) == {H_A}
     assert muc_a.hyperedge[H_A] == id_vector_hyperedge(FACT_A)
-    assert set(muc_a.entity) == {E, ten_entity("PHP_FPM")}
-    assert muc_a.entity[E]["vector_id"] == id_vector_entity("APP01")
+    assert set(muc_a.entity) == {ten_entity(v) for v in FACT_A.values()}
+    assert muc_a.entity[E]["vector_id"] == id_vector_entity("App01")
     assert muc_a.entity[E]["chunk_ids"] == [id_chunk(THAN_A)]
-    assert muc_a.entity[E]["mo_ta"] == ['"app01 theo runbook"']
+    # Story 2.4: `description` entity rỗng (giá trị slot chính là tên entity,
+    # mô tả LLM viết lại chỉ nhân đôi và mở thêm mặt rò L2), nên đóng góp mô
+    # tả của mọi tài liệu là danh sách rỗng. Trước 2.4 kỳ vọng là mảnh mô tả.
+    assert muc_a.entity[E]["mo_ta"] == []
     # 3 sự kiện ingest_doc, tầng mutation, mang phiên bản bảng hạng.
     sk = mt.so_audit.cac_su_kien(EVENT_INGEST_DOC)
     assert [s.chi_tiet["doc_key"] for s in sk] == ["a.md", "b.md", "c.txt"]
@@ -186,7 +192,7 @@ def test_nap_thu_muc_fixture_tu_choi_bon_file_va_nap_ba(workspace_dir, khong_gia
 
     corpus = Path(__file__).resolve().parent / "fixtures" / "corpus_2_3"
     than = {p.name: p.read_text(encoding="utf-8").split("---\n")[-1].strip() for p in corpus.glob("0[1-3]-*")}
-    bang = {t: [(f"fact cua {ten}", {f"E_{i}": "mo ta"})] for i, (ten, t) in enumerate(than.items())}
+    bang = {t: [{"subject": f"fact cua {ten}", "source": f"E_{i}"}] for i, (ten, t) in enumerate(than.items())}
     mt = dung_moi_truong(workspace_dir, llm_theo_fact(bang))
     kq = asyncio.run(_nap(mt, corpus, khong_gian, policy))
     assert sorted(tc.ten for tc in kq.tu_choi) == [
@@ -229,7 +235,7 @@ def test_re_ingest_noi_dung_sua_ghi_de_sach(workspace_dir, khong_gian, policy, t
         assert await mt.co_point(khong_gian, "hyperedges", id_vector_hyperedge(FACT_A_SUA))
         # E đúng một point, `entity_name` trỏ về E.
         diem = await mt.points(khong_gian, "entities")
-        cua_e = [p for p in diem.values() if ten_entity(p.get("entity_name", "")) == E]
+        cua_e = [p for p in diem.values() if p.get("entity_name") == E]
         assert len(cua_e) == 1
         assert cua_e[0][FILTER_KEY_FIELD] == filter_key("noi_bo", "bao_cao_su_co")
         # Chunk cũ của A vắng ở KV và `chunks`; chunk mới có mặt.
@@ -244,10 +250,9 @@ def test_re_ingest_noi_dung_sua_ghi_de_sach(workspace_dir, khong_gian, policy, t
     nguon = set(props["source_id"].split(SEP))
     assert id_chunk(THAN_A) not in nguon
     assert {id_chunk(THAN_A_SUA), id_chunk(THAN_B)} <= nguon
-    # Mô tả không nhân đôi, không còn mảnh của bản A cũ.
-    mo_ta = props["description"].split(SEP)
-    assert len(mo_ta) == len(set(mo_ta))
-    assert '"app01 theo runbook"' not in mo_ta and '"app01 theo runbook moi"' in mo_ta
+    # Story 2.4: mô tả entity rỗng ở mọi đường (nạp mới lẫn dựng lại); trước
+    # 2.4 kỳ vọng là mảnh của bản A mới có mặt và mảnh bản A cũ vắng.
+    assert props["description"] == ""
     # Khóa E = hợp nhất khóa các hyperedge còn nối (runbook + bao_cao_su_co cùng scope).
     assert props[FILTER_KEY_FIELD] == filter_key("noi_bo", "bao_cao_su_co")
     kv = mt.kv("text_chunks", khong_gian)
@@ -272,7 +277,7 @@ def test_re_ingest_doi_do_nhay_siet_khoa_entity_chung(workspace_dir, khong_gian,
         viet_tai_lieu(thu_muc, "a.md", scope="noi_bo", content_type="bi_mat_ha_tang", than=THAN_A)
         kq = await _nap(mt, thu_muc, khong_gian, policy)  # đối chiếu sạch: không ném
         diem = await mt.points(khong_gian, "entities")
-        khoa_vector = [p[FILTER_KEY_FIELD] for p in diem.values() if ten_entity(p.get("entity_name", "")) == E]
+        khoa_vector = [p[FILTER_KEY_FIELD] for p in diem.values() if p.get("entity_name") == E]
         return truoc, kq, khoa_vector
 
     truoc, kq, khoa_vector = asyncio.run(chay())
@@ -292,7 +297,7 @@ def test_xoa_tai_lieu_lam_entity_mat_nguon(workspace_dir, khong_gian, policy, tm
     thu_muc = tmp_path / "corpus"
     viet_tai_lieu(thu_muc, "a.md", scope="noi_bo", content_type="runbook", than=THAN_A)
     mt = dung_moi_truong(workspace_dir, llm_theo_fact(BANG_FACT))
-    e_rieng = ten_entity("PHP_FPM")
+    e_rieng = ten_entity(FACT_A["remediation"])
 
     async def chay():
         await _nap(mt, thu_muc, khong_gian, policy)
@@ -300,7 +305,7 @@ def test_xoa_tai_lieu_lam_entity_mat_nguon(workspace_dir, khong_gian, policy, tm
         tt = await xoa_tai_lieu(
             mt.engine, "a.md", space=khong_gian, policy_version=policy.policy_version, audit=mt.so_audit
         )
-        con_e = await mt.co_point(khong_gian, "entities", id_vector_entity("PHP_FPM"))
+        con_e = await mt.co_point(khong_gian, "entities", id_vector_entity(FACT_A["remediation"]))
         con_h = await mt.co_point(khong_gian, "hyperedges", id_vector_hyperedge(FACT_A))
         con_c = await mt.co_point(khong_gian, "chunks", id_chunk(THAN_A))
         return tt, con_e, con_h, con_c
@@ -348,8 +353,8 @@ def test_nap_lan_ba_cung_scope_lan_dau_van_khong_khoa(workspace_dir, khong_gian,
     than_d = "Runbook nội bộ bổ sung. App01 phải được theo dõi bằng dashboard chung."
     bang = {
         THAN_A: BANG_FACT[THAN_A],
-        than_c2: [("App01 báo lỗi thì báo đầu mối khách hàng A", {"APP01": "app01 theo khach hang a"})],
-        than_d: [("App01 theo dõi bằng dashboard chung", {"APP01": "app01 theo runbook bo sung"})],
+        than_c2: [{"subject": "App01", "remediation": "báo cho đầu mối khách hàng A"}],
+        than_d: [{"subject": "App01", "condition": "theo dõi bằng dashboard chung"}],
     }
     mt = dung_moi_truong(workspace_dir, llm_theo_fact(bang))
 
@@ -360,7 +365,7 @@ def test_nap_lan_ba_cung_scope_lan_dau_van_khong_khoa(workspace_dir, khong_gian,
         assert FILTER_KEY_FIELD not in mt.node(khong_gian, E).props, "hai scope: không khóa ở graph"
         viet_tai_lieu(thu_muc, "d.md", scope="noi_bo", content_type="runbook", than=than_d)
         kq = await _nap(mt, thu_muc, khong_gian, policy)  # không ném: đối chiếu sạch
-        con_point = await mt.co_point(khong_gian, "entities", id_vector_entity("APP01"))
+        con_point = await mt.co_point(khong_gian, "entities", id_vector_entity("App01"))
         return kq, con_point
 
     kq, con_point = asyncio.run(chay())
@@ -369,7 +374,7 @@ def test_nap_lan_ba_cung_scope_lan_dau_van_khong_khoa(workspace_dir, khong_gian,
     assert FILTER_KEY_FIELD not in mt.node(khong_gian, E).props
     assert not con_point, "point không khóa vẫn vắng mặt tuyệt đối sau lần nạp thứ ba"
     with use_context(ngu_canh_ingest(khong_gian, policy)):
-        assert id_vector_entity("APP01") in mt.engine.entities_vdb.so_khong_khoa(khong_gian)
+        assert id_vector_entity("App01") in mt.engine.entities_vdb.so_khong_khoa(khong_gian)
 
 
 # --- Hai tiến trình -----------------------------------------------------------
@@ -555,17 +560,15 @@ def test_hai_file_cung_noi_dung_file_sau_bi_tu_choi(workspace_dir, khong_gian, p
 def test_tai_lieu_khong_co_fact_ghi_loi_khong_de_lai_rac(workspace_dir, khong_gian, policy, tmp_path):
     """LLM không trích được fact nào: tài liệu lỗi `KHONG_CO_FACT`, chunk đã ghi vào `chunks` bị dọn, chạy tiếp.
 
-    `ainsert` của upstream ghi `chunks_vdb` *trước* khi trích và return sớm khi
-    không có fact, nên không dọn thì bước đối chiếu báo lệch giả ở mọi tài
-    liệu rỗng fact. Cảnh báo "0 fact" đúng nghĩa thuộc 2.4; ở đây chỉ giữ kho
-    sạch và lần chạy đi tiếp.
+    `ainsert` ghi `chunks_vdb` *trước* khi trích và return sớm khi không có
+    fact hợp lệ, nên không dọn thì bước đối chiếu báo lệch giả ở mọi tài liệu
+    rỗng fact. Phần đếm và lý do "0 bản ghi" / "đều bị loại" là của story 2.4
+    (`tests/test_trich_xuat.py`); ở đây giữ kho sạch và lần chạy đi tiếp.
     """
     thu_muc = tmp_path / "corpus"
     viet_tai_lieu(thu_muc, "a.md", scope="noi_bo", content_type="runbook", than="Đoạn văn không có fact nào.")
     viet_tai_lieu(thu_muc, "b.md", scope="noi_bo", content_type="bao_cao_su_co", than=THAN_B)
-    from tests.gia_lap_llm import CD
-
-    mt = dung_moi_truong(workspace_dir, llm_theo_fact(BANG_FACT, mac_dinh=CD))
+    mt = dung_moi_truong(workspace_dir, llm_theo_fact(BANG_FACT, mac_dinh=KHONG_FACT))
 
     async def chay():
         kq = await _nap(mt, thu_muc, khong_gian, policy)
@@ -692,7 +695,7 @@ def test_hyperedge_ids_cua_su_kien_la_id_vector(workspace_dir, khong_gian, polic
     asyncio.run(_nap(mt, thu_muc, khong_gian, policy))
     sk = mt.so_audit.cac_su_kien(EVENT_INGEST_DOC)[0]
     assert sk.hyperedge_ids == (id_vector_hyperedge(FACT_A),)
-    assert all(h.startswith("rel-") and FACT_A not in h for h in sk.hyperedge_ids)
+    assert all(h.startswith("rel-") and not any(v in h for v in FACT_A.values()) for h in sk.hyperedge_ids)
 
 
 CO_CHUNK = 40
@@ -700,9 +703,9 @@ DOAN_CHUNG = "A" * CO_CHUNK
 DOC_MOT = DOAN_CHUNG + "B" * CO_CHUNK
 DOC_HAI = DOAN_CHUNG + "C" * CO_CHUNK
 BANG_CHUNK = {
-    DOAN_CHUNG: [("fact chung", {"E_CHUNG": "chung"})],
-    "B" * CO_CHUNK: [("fact b", {"E_B": "b"})],
-    "C" * CO_CHUNK: [("fact c", {"E_C": "c"})],
+    DOAN_CHUNG: [{"subject": "fact chung", "source": "E_CHUNG"}],
+    "B" * CO_CHUNK: [{"subject": "fact b", "source": "E_B"}],
+    "C" * CO_CHUNK: [{"subject": "fact c", "source": "E_C"}],
 }
 
 
@@ -735,11 +738,8 @@ def test_chunk_chung_cung_nhan_con_lai_sau_khi_xoa_tai_lieu_dau(workspace_dir, k
 
 THAN_F1 = "Tài liệu nội bộ về App01. App01 chạy trên cụm K8S nội bộ."
 THAN_F2 = "Tài liệu khách hàng A về App01. App01 chạy trên cụm K8S nội bộ, theo hợp đồng."
-FACT_F = "App01 chạy trên cụm K8S nội bộ"
-BANG_F = {
-    THAN_F1: [(FACT_F, {"APP01": "app01 noi bo"})],
-    THAN_F2: [(FACT_F, {"APP01": "app01 khach a"})],
-}
+FACT_F = {"subject": "App01", "condition": "chạy trên cụm K8S nội bộ"}
+BANG_F = {THAN_F1: [FACT_F], THAN_F2: [FACT_F]}
 
 
 def test_hyperedge_chung_hai_scope_dung_lai_khoa_sau_khi_xoa_mot_tai_lieu(workspace_dir, khong_gian, policy, tmp_path):
@@ -764,7 +764,7 @@ def test_hyperedge_chung_hai_scope_dung_lai_khoa_sau_khi_xoa_mot_tai_lieu(worksp
             so_h = mt.engine.hyperedges_vdb.so_khong_khoa(khong_gian)
             so_e = mt.engine.entities_vdb.so_khong_khoa(khong_gian)
             khoa_h = await mt.engine.hyperedges_vdb.khoa_hien_co([id_vector_hyperedge(FACT_F)])
-            khoa_e = await mt.engine.entities_vdb.khoa_hien_co([id_vector_entity("APP01")])
+            khoa_e = await mt.engine.entities_vdb.khoa_hien_co([id_vector_entity("App01")])
         diem_h = await mt.points(khong_gian, "hyperedges")
         return so_h, so_e, khoa_h, khoa_e, diem_h
 
@@ -774,13 +774,18 @@ def test_hyperedge_chung_hai_scope_dung_lai_khoa_sau_khi_xoa_mot_tai_lieu(worksp
     assert mt.node(khong_gian, H).props[FILTER_KEY_FIELD] == khoa_con
     assert set(mt.node(khong_gian, H).props["source_id"].split(SEP)) == {id_chunk(THAN_F1)}
     assert mt.node(khong_gian, E).props[FILTER_KEY_FIELD] == khoa_con
-    assert khoa_h[id_vector_hyperedge(FACT_F)] == khoa_con and khoa_e[id_vector_entity("APP01")] == khoa_con
+    assert khoa_h[id_vector_hyperedge(FACT_F)] == khoa_con and khoa_e[id_vector_entity("App01")] == khoa_con
     assert so_h == set() and so_e == set()
-    assert [p["hyperedge_name"] for p in diem_h.values()] == [f'<hyperedge>"{FACT_F}"'], "tên trong payload giữ nguyên dạng upstream"
+    # Story 2.4: payload `hyperedge_name` là id mờ `he-…`, không còn câu fact.
+    assert [p["hyperedge_name"] for p in diem_h.values()] == [ten_hyperedge(FACT_F)]
 
 
-def test_payload_entity_name_giu_dang_upstream_sau_dung_lai(workspace_dir, khong_gian, policy, tmp_path):
-    """Point dựng lại của E dùng đúng `entity_name` upstream đã ghi (còn dấu nháy), không phải id chuẩn hóa."""
+def test_payload_entity_name_la_gia_tri_slot_sau_dung_lai(workspace_dir, khong_gian, policy, tmp_path):
+    """Point dựng lại của E mang `entity_name` đúng như lúc nạp.
+
+    Đổi kỳ vọng ở story 2.4: entity là giá trị slot đã `normalize_id`, không
+    upper-case, không nháy (trước đó là `"APP01"` theo parser upstream).
+    """
     thu_muc = tmp_path / "corpus"
     _viet_ba_tai_lieu(thu_muc)
     mt = dung_moi_truong(workspace_dir, llm_theo_fact(BANG_FACT))
@@ -789,25 +794,23 @@ def test_payload_entity_name_giu_dang_upstream_sau_dung_lai(workspace_dir, khong
         await _nap(mt, thu_muc, khong_gian, policy)
         await xoa_tai_lieu(mt.engine, "a.md", space=khong_gian, policy_version=policy.policy_version, audit=mt.so_audit)
         diem = await mt.points(khong_gian, "entities")
-        return [p for p in diem.values() if ten_entity(p.get("entity_name", "")) == E]
+        return [p for p in diem.values() if p.get("entity_name") == E]
 
     cua_e = asyncio.run(chay())
-    assert len(cua_e) == 1 and cua_e[0]["entity_name"] == '"APP01"'
+    assert len(cua_e) == 1 and cua_e[0]["entity_name"] == "App01"
 
 
 def test_khong_hyperedge_don_ca_entity_va_khong_cham_tai_lieu_khac(workspace_dir, khong_gian, policy, tmp_path):
     """Đợt không hyperedge dọn mọi kho theo sổ đợt, trừ chunk/entity tài liệu khác đang dùng.
 
-    Parser của upstream không sinh được entity mà không có hyper-relation
-    đứng trước, nên ca này dựng bằng cách chặn `upsert_node` vai hyperedge, cạnh
-    SLOT và `hyperedges_vdb.upsert`: entity và chunk vẫn được ghi (đúng hình
-    dạng "có entity mà không hyperedge" mà finding nêu).
+    Bộ trích xuất không sinh được entity mà không có hyperedge, nên ca này
+    dựng bằng cách chặn `upsert_node` vai hyperedge, cạnh SLOT và
+    `hyperedges_vdb.upsert`: entity và chunk vẫn được ghi (đúng hình dạng "có
+    entity mà không hyperedge" mà finding nêu).
     """
-    from tests.gia_lap_llm import CD
-
     thu_muc = tmp_path / "corpus"
     viet_tai_lieu(thu_muc, "b.md", scope="noi_bo", content_type="bao_cao_su_co", than=THAN_B)
-    mt = dung_moi_truong(workspace_dir, llm_theo_fact(BANG_FACT, mac_dinh=CD))
+    mt = dung_moi_truong(workspace_dir, llm_theo_fact(BANG_FACT, mac_dinh=KHONG_FACT))
 
     async def chay():
         await _nap(mt, thu_muc, khong_gian, policy)  # B vào trước, có APP01
@@ -839,10 +842,12 @@ def test_khong_hyperedge_don_ca_entity_va_khong_cham_tai_lieu_khac(workspace_dir
     kq, chunks, ents = asyncio.run(chay())
     tt = {t.doc_key: t for t in kq.tai_lieu}
     assert tt["a.md"].trang_thai == TRANG_THAI_LOI and tt["a.md"].ma == MA_KHONG_CO_FACT
+    # Nhánh thứ ba của lý do (2.4): có fact hợp lệ mà đợt không ghi hyperedge.
+    assert "fact hợp lệ" in tt["a.md"].ly_do and tt["a.md"].so_fact_hop_le == 1
     assert set(chunks) == {point_id(id_chunk(THAN_B))}, "chunk của A dọn, chunk của B còn"
-    assert mt.node(khong_gian, ten_entity("PHP_FPM")) is None, "entity riêng của A dọn"
-    assert mt.node(khong_gian, E) is not None, "entity APP01 của B không bị dọn"
-    assert {ten_entity(p.get("entity_name", "")) for p in ents.values()} == {E, ten_entity("GIOI_HAN_BO_NHO")}
+    assert mt.node(khong_gian, ten_entity(FACT_A["remediation"])) is None, "entity riêng của A dọn"
+    assert mt.node(khong_gian, E) is not None, "entity App01 của B không bị dọn"
+    assert {p.get("entity_name") for p in ents.values()} == {ten_entity(v) for v in FACT_B.values()}
     assert id_chunk(THAN_A) not in mt.kv("text_chunks", khong_gian)
     assert SoTaiLieu.mo(workspace_dir, khong_gian).cac_doc_key() == ["b.md"]
 
@@ -880,7 +885,7 @@ def test_so_khong_khoa_ben_vung_qua_engine_thu_hai(workspace_dir, khong_gian, po
     """Đường engine thật: engine B trên cùng `working_dir` đọc sổ không khóa mà engine A ghi."""
     thu_muc = tmp_path / "corpus"
     than_c = "Runbook khách hàng A về App01. Khi App01 báo lỗi thì báo cho đầu mối khách hàng."
-    bang = {THAN_A: BANG_FACT[THAN_A], than_c: [("App01 báo lỗi thì báo đầu mối", {"APP01": "app01 khach a"})]}
+    bang = {THAN_A: BANG_FACT[THAN_A], than_c: [{"subject": "App01", "remediation": "báo đầu mối khách hàng"}]}
     viet_tai_lieu(thu_muc, "a.md", scope="noi_bo", content_type="runbook", than=THAN_A)
     viet_tai_lieu(thu_muc, "c.md", scope="khach_hang_a", content_type="runbook", than=than_c)
     a = dung_moi_truong(workspace_dir, llm_theo_fact(bang))
@@ -889,11 +894,11 @@ def test_so_khong_khoa_ben_vung_qua_engine_thu_hai(workspace_dir, khong_gian, po
         await _nap(a, thu_muc, khong_gian, policy)
         b = dung_moi_truong(workspace_dir, llm_theo_fact(bang))
         with use_context(ngu_canh_ingest(khong_gian, policy)):
-            return await b.engine.entities_vdb.khoa_hien_co([id_vector_entity("APP01")])
+            return await b.engine.entities_vdb.khoa_hien_co([id_vector_entity("App01")])
 
     khoa = asyncio.run(chay())
     assert (workspace_dir / f"khong_khoa_{khong_gian}_entities.json").exists()
-    assert khoa[id_vector_entity("APP01")] is KHONG_KHOA
+    assert khoa[id_vector_entity("App01")] is KHONG_KHOA
 
 
 def test_nap_cac_file_giu_thu_tu_va_doc_key_la_ten_file(workspace_dir, khong_gian, policy, tmp_path):

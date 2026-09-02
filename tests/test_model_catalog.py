@@ -232,3 +232,60 @@ def test_model_cuc_bo_gia_0_hop_le(tmp_path):
     )
     assert dm.muc("m-local").cuc_bo is True
     assert dm.muc("m-local").chi_phi_usd(1000, 1000) == 0
+
+
+# --- Story 2.4: `extra_body` tùy chọn, chỉ cho nhà cung cấp API ngoài -------------
+
+
+def test_extra_body_tuy_chon_va_giu_nguyen_hinh_dang(tmp_path):
+    dm = _nap(tmp_path, _thay(GOC, "    max_token: 1000\n", "    max_token: 1000\n    extra_body:\n      thinking:\n        type: disabled\n"))
+    assert dm.muc("m-llm").extra_body == {"thinking": {"type": "disabled"}}
+    assert dm.muc("m-emb").extra_body is None, "model không khai thì không có tham số"
+    with pytest.raises(TypeError):
+        dm.muc("m-llm").extra_body["thinking"] = {}
+
+
+def test_extra_body_trong_danh_muc_gia():
+    from tests.gia_lap_llm import MODEL_LLM_GIA, MODEL_LLM_TAT_SUY_LUAN_GIA
+
+    dm = danh_muc_gia()
+    assert dm.muc(MODEL_LLM_TAT_SUY_LUAN_GIA, loai=LOAI_LLM).extra_body == {"thinking": {"type": "disabled"}}
+    assert dm.muc(MODEL_LLM_GIA).extra_body is None
+
+
+def test_file_mac_dinh_deepseek_tat_suy_luan_bang_extra_body():
+    """Tắt suy luận bằng cấu hình, không bằng code (spec 2.4): model DeepSeek khai `thinking.type = disabled`."""
+    dm = danh_muc_mac_dinh()
+    co = [m for m in dm.models.values() if m.nha_cung_cap == "deepseek" and m.loai == LOAI_LLM]
+    assert co, "danh mục không còn model DeepSeek nào"
+    for m in co:
+        assert m.extra_body == {"thinking": {"type": "disabled"}}
+    van_ban = DUONG_DAN_MAC_DINH.read_text(encoding="utf-8")
+    assert "thinking_mode" in van_ban, "chú thích phải trỏ nguồn tài liệu DeepSeek"
+
+
+@pytest.mark.parametrize(
+    "ten, noi_dung",
+    [
+        (
+            "provider_cuc_bo_co_extra_body",
+            GOC + "  m-local:\n    loai: llm\n    nha_cung_cap: local\n    gia_vao_usd_1m: 0\n"
+            "    gia_ra_usd_1m: 0\n    max_token: 1\n    extra_body: {thinking: {type: disabled}}\n",
+        ),
+        ("extra_body_khong_phai_bang", _thay(GOC, "    max_token: 1000\n", "    max_token: 1000\n    extra_body: [1]\n")),
+        ("extra_body_rong", _thay(GOC, "    max_token: 1000\n", "    max_token: 1000\n    extra_body: {}\n")),
+        # Vòng review 2.4: chỉ model llm của API ngoài; có *khóa* (kể cả null) ở
+        # chỗ khác là từ chối; giá trị phải tuần tự hóa JSON được.
+        ("embedding_co_extra_body", GOC + "    extra_body: {thinking: {type: disabled}}\n"),
+        (
+            "provider_cuc_bo_extra_body_null",
+            GOC + "  m-local:\n    loai: llm\n    nha_cung_cap: local\n    gia_vao_usd_1m: 0\n"
+            "    gia_ra_usd_1m: 0\n    max_token: 1\n    extra_body: null\n",
+        ),
+        ("extra_body_khong_json", _thay(GOC, "    max_token: 1000\n", "    max_token: 1000\n    extra_body: {ngay: 2026-09-02}\n")),
+    ],
+)
+def test_extra_body_sai_la_model_catalog_invalid(tmp_path, ten, noi_dung):
+    with pytest.raises(ModelCatalogInvalid) as loi:
+        _nap(tmp_path, noi_dung)
+    assert loi.value.code == "MODEL_CATALOG_INVALID"
