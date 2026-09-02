@@ -1,0 +1,10 @@
+---
+scope: noi_bo
+content_type: bao_cao_su_co
+---
+Báo cáo sự cố INC-1208 (hạn chế nội bộ).
+Ngày 12/08/2026 lúc 09:20, trang thanh toán của App01 trả lỗi 502 trong 40 phút, khách hàng không hoàn tất được giao dịch.
+Nguyên nhân gốc là kỹ sư trực chỉnh sai giới hạn bộ nhớ của pool PHP-FPM khi tối ưu cấu hình, worker bị kill liên tục khi traffic vượt 5000 request mỗi phút.
+Cách xử lý: trả giới hạn bộ nhớ PHP-FPM về mức cũ rồi nạp lại cấu hình theo SOP-12, dịch vụ phục hồi lúc 10:00.
+Người phụ trách xử lý sự cố là Trần Thị Hạnh, đội Vận hành ứng dụng.
+Bài học: mọi thay đổi cấu hình PHP-FPM trên App01 phải qua bước duyệt của trưởng ca trực và có kế hoạch quay lui trong 5 phút.
