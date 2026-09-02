@@ -1,0 +1,127 @@
+{
+ "version": 1,
+ "vong": "v1-gpt-4o-mini",
+ "model": "gpt-4o-mini",
+ "nha_cung_cap": "openai",
+ "thoi_diem": "2026-09-02T11:22:10.924187+00:00",
+ "danh_muc_version": "f1c91dda1872d0f0409d1ad51f13792049d5c18f966d1d1985284ffabdf614a9",
+ "prompt": "Bạn là bộ trích xuất tri thức vận hành IT nội bộ. Đọc đoạn văn bản tiếng Việt ở cuối và liệt kê mọi fact trong đó thành JSON.\n\nMỗi fact là một object; khóa của object chỉ được lấy từ đúng 8 vai sau, giữ nguyên tên khóa tiếng Anh:\n- \"subject\" (chủ thể): hệ thống, dịch vụ, tài khoản, quy trình hay đối tượng mà fact nói về\n- \"symptom\" (triệu chứng): hiện tượng quan sát được (lỗi, cảnh báo, hành vi bất thường)\n- \"cause\" (nguyên nhân): nguyên nhân gốc được nêu trong văn bản\n- \"condition\" (điều kiện): điều kiện, ngữ cảnh hay ngưỡng để fact áp dụng\n- \"remediation\" (cách xử lý): hành động xử lý, khắc phục hay quy định phải làm\n- \"source\" (nguồn): tài liệu, SOP, ticket hay hệ thống được dẫn làm nguồn\n- \"time\" (thời gian): thời điểm, khoảng thời gian hay tần suất\n- \"owner\" (người phụ trách): người hoặc nhóm chịu trách nhiệm\n\nLuật:\n- Mỗi fact bắt buộc có \"subject\" và ít nhất một vai khác. Quan hệ hai ngôi là một fact hai vai.\n- Chỉ ghi vai có thông tin trong văn bản. Vai không có thì bỏ hẳn khóa, không ghi null, không ghi chuỗi rỗng.\n- Giá trị là chuỗi ngắn (tối đa 300 ký tự), trích sát văn bản, không suy diễn, không thêm lời giải thích.\n- Tách thành nhiều fact khi văn bản nói về nhiều chủ thể hoặc nhiều tình huống khác nhau.\n- Không có fact nào thì trả {\"facts\": []}.\n\nĐầu ra là một object json duy nhất dạng {\"facts\": [...]}, không có văn bản nào khác ngoài JSON.\n\nVí dụ đầu ra:\n{\n  \"facts\": [\n    {\n      \"subject\": \"App01\",\n      \"symptom\": \"trang thanh toán của App01 trả lỗi 502\",\n      \"cause\": \"chỉnh sai giới hạn bộ nhớ của pool PHP-FPM\",\n      \"time\": \"12/08/2026 lúc 09:20\",\n      \"remediation\": \"trả giới hạn bộ nhớ PHP-FPM về mức cũ\",\n      \"owner\": \"Trần Thị Hạnh\"\n    },\n    {\n      \"subject\": \"tài khoản GitLab\",\n      \"condition\": \"không hoạt động 90 ngày\",\n      \"remediation\": \"khóa tự động\"\n    }\n  ]\n}\n\nVăn bản:\n<<VAN_BAN>>\n",
+ "tham_so_llm": {
+  "temperature": 0,
+  "response_format": {
+   "type": "json_object"
+  },
+  "max_tokens": 8192
+ },
+ "chunk": {
+  "chunk_token_size": 1200,
+  "chunk_overlap_token_size": 100,
+  "tiktoken_model_name": "gpt-4o-mini"
+ },
+ "tai_lieu": [
+  {
+   "doc_key": "02-vpn-va-mat-khau.txt",
+   "chunks": [
+    {
+     "stt": 0,
+     "van_ban": "Quy định về VPN và mật khẩu nội bộ.\nTài khoản VPN do phòng IT cấp trong vòng 1 ngày làm việc, yêu cầu gửi qua hệ thống Jira kèm xác nhận của quản lý trực tiếp.\nMật khẩu VPN hết hạn sau 90 ngày và phải đổi qua cổng self-service tại địa chỉ nội bộ portal.it.local.\nKhi nhập sai mật khẩu 5 lần liên tiếp, tài khoản VPN bị khóa 30 phút; muốn mở khóa sớm phải gọi hotline IT số máy lẻ 1088.\nNhân viên nghỉ việc bị thu hồi VPN ngay trong ngày làm việc cuối cùng, do phòng IT thực hiện theo danh sách từ phòng Nhân sự.",
+     "phan_hoi": "{\n  \"facts\": [\n    {\n      \"subject\": \"tài khoản VPN\",\n      \"remediation\": \"gửi qua hệ thống Jira kèm xác nhận của quản lý trực tiếp\",\n      \"time\": \"trong vòng 1 ngày làm việc\",\n      \"owner\": \"phòng IT\"\n    },\n    {\n      \"subject\": \"mật khẩu VPN\",\n      \"condition\": \"hết hạn sau 90 ngày\",\n      \"remediation\": \"phải đổi qua cổng self-service tại địa chỉ nội bộ portal.it.local\"\n    },\n    {\n      \"subject\": \"tài khoản VPN\",\n      \"symptom\": \"bị khóa 30 phút\",\n      \"condition\": \"nhập sai mật khẩu 5 lần liên tiếp\",\n      \"remediation\": \"gọi hotline IT số máy lẻ 1088 để mở khóa sớm\"\n    },\n    {\n      \"subject\": \"tài khoản VPN\",\n      \"remediation\": \"bị thu hồi ngay trong ngày làm việc cuối cùng\",\n      \"cause\": \"do phòng IT thực hiện theo danh sách từ phòng Nhân sự\"\n    }\n  ]\n}",
+     "token_vao": 704,
+     "token_ra": 235,
+     "chi_phi_usd": 0.0002466
+    }
+   ]
+  },
+  {
+   "doc_key": "03-truc-su-co.txt",
+   "chunks": [
+    {
+     "stt": 0,
+     "van_ban": "Quy trình trực và xử lý sự cố máy chủ sản xuất.\nLịch trực sự cố xoay vòng theo tuần giữa các kỹ sư vận hành, công bố trên lịch chung của phòng Kỹ thuật vào thứ Sáu tuần trước.\nSự cố mức nghiêm trọng (P1, dịch vụ ngừng hoàn toàn) phải được báo cho người trực trong 15 phút và mở cầu xử lý trong 30 phút.\nNgười trực được quyền khởi động lại dịch vụ trên máy chủ sản xuất mà không cần phê duyệt, nhưng phải ghi lại thao tác vào nhật ký sự cố trong vòng 24 giờ.\nViệc thay đổi cấu hình hạ tầng trong lúc xử lý sự cố phải có hai người xác nhận, một người thao tác và một người soát lại.",
+     "phan_hoi": "{\n  \"facts\": [\n    {\n      \"subject\": \"quy trình trực và xử lý sự cố máy chủ sản xuất\",\n      \"remediation\": \"báo cho người trực trong 15 phút và mở cầu xử lý trong 30 phút\",\n      \"condition\": \"sự cố mức nghiêm trọng (P1, dịch vụ ngừng hoàn toàn)\"\n    },\n    {\n      \"subject\": \"người trực\",\n      \"remediation\": \"khởi động lại dịch vụ trên máy chủ sản xuất mà không cần phê duyệt\",\n      \"time\": \"trong vòng 24 giờ\",\n      \"symptom\": \"phải ghi lại thao tác vào nhật ký sự cố\"\n    },\n    {\n      \"subject\": \"thay đổi cấu hình hạ tầng\",\n      \"condition\": \"trong lúc xử lý sự cố\",\n      \"remediation\": \"phải có hai người xác nhận, một người thao tác và một người soát lại\"\n    },\n    {\n      \"subject\": \"lịch trực sự cố\",\n      \"owner\": \"các kỹ sư vận hành\",\n      \"time\": \"xoay vòng theo tuần\",\n      \"source\": \"lịch chung của phòng Kỹ thuật vào thứ Sáu tuần trước\"\n    }\n  ]\n}",
+     "token_vao": 725,
+     "token_ra": 264,
+     "chi_phi_usd": 0.00026714999999999996
+    }
+   ]
+  },
+  {
+   "doc_key": "04-sao-luu-du-lieu.txt",
+   "chunks": [
+    {
+     "stt": 0,
+     "van_ban": "Chính sách sao lưu và khôi phục dữ liệu nội bộ.\nCơ sở dữ liệu sản xuất được sao lưu tự động mỗi ngày lúc 2 giờ sáng, bản sao lưu giữ 30 ngày trên hệ thống lưu trữ riêng.\nBản sao lưu tuần (chạy sáng Chủ nhật) giữ 6 tháng, phục vụ yêu cầu đối chiếu số liệu của phòng Kế toán.\nYêu cầu khôi phục dữ liệu phải do trưởng bộ phận sở hữu dữ liệu gửi qua Jira, phòng IT thực hiện và phản hồi trong 4 giờ làm việc.\nMỗi quý phòng IT diễn tập khôi phục một bản sao lưu ngẫu nhiên để kiểm chứng bản sao lưu dùng được thật.",
+     "phan_hoi": "{\n  \"facts\": [\n    {\n      \"subject\": \"Cơ sở dữ liệu sản xuất\",\n      \"remediation\": \"sao lưu tự động\",\n      \"time\": \"mỗi ngày lúc 2 giờ sáng\",\n      \"condition\": \"giữ 30 ngày trên hệ thống lưu trữ riêng\"\n    },\n    {\n      \"subject\": \"Bản sao lưu tuần\",\n      \"time\": \"chạy sáng Chủ nhật\",\n      \"condition\": \"giữ 6 tháng\",\n      \"remediation\": \"phục vụ yêu cầu đối chiếu số liệu của phòng Kế toán\"\n    },\n    {\n      \"subject\": \"Yêu cầu khôi phục dữ liệu\",\n      \"owner\": \"trưởng bộ phận sở hữu dữ liệu\",\n      \"remediation\": \"gửi qua Jira\",\n      \"symptom\": \"phòng IT thực hiện và phản hồi trong 4 giờ làm việc\"\n    },\n    {\n      \"subject\": \"phòng IT\",\n      \"remediation\": \"diễn tập khôi phục một bản sao lưu ngẫu nhiên\",\n      \"time\": \"Mỗi quý\",\n      \"symptom\": \"để kiểm chứng bản sao lưu dùng được thật\"\n    }\n  ]\n}",
+     "token_vao": 708,
+     "token_ra": 253,
+     "chi_phi_usd": 0.000258
+    }
+   ]
+  },
+  {
+   "doc_key": "06-quan-ly-thay-doi.txt",
+   "chunks": [
+    {
+     "stt": 0,
+     "van_ban": "Quy trình quản lý thay đổi trên hệ thống sản xuất.\nMọi thay đổi cấu hình hệ thống sản xuất phải có phiếu thay đổi trên Jira, mô tả phạm vi ảnh hưởng và kế hoạch quay lui, gửi trước 24 giờ.\nThay đổi mức rủi ro cao, tức là chạm cơ sở dữ liệu hoặc cấu hình mạng, do Hội đồng thay đổi họp thứ Ba hàng tuần phê duyệt.\nThay đổi khẩn cấp trong lúc xử lý sự cố được làm trước, nhưng phải bổ sung phiếu thay đổi trong 24 giờ kể từ khi dịch vụ phục hồi.\nCửa sổ triển khai thay đổi là 22 giờ đến 24 giờ các ngày thứ Tư, triển khai ngoài cửa sổ này phải có phê duyệt của Giám đốc Kỹ thuật.\nSau mỗi thay đổi, người thực hiện ghi kết quả vào phiếu và đóng phiếu trong 2 ngày làm việc, phiếu thay đổi quá hạn bị nhắc tự động qua email.",
+     "phan_hoi": "{\n  \"facts\": [\n    {\n      \"subject\": \"hệ thống sản xuất\",\n      \"remediation\": \"có phiếu thay đổi trên Jira, mô tả phạm vi ảnh hưởng và kế hoạch quay lui, gửi trước 24 giờ\"\n    },\n    {\n      \"subject\": \"thay đổi mức rủi ro cao\",\n      \"condition\": \"chạm cơ sở dữ liệu hoặc cấu hình mạng\",\n      \"owner\": \"Hội đồng thay đổi\",\n      \"time\": \"họp thứ Ba hàng tuần\",\n      \"remediation\": \"phê duyệt\"\n    },\n    {\n      \"subject\": \"thay đổi khẩn cấp\",\n      \"condition\": \"trong lúc xử lý sự cố\",\n      \"remediation\": \"bổ sung phiếu thay đổi trong 24 giờ kể từ khi dịch vụ phục hồi\"\n    },\n    {\n      \"subject\": \"cửa sổ triển khai thay đổi\",\n      \"time\": \"22 giờ đến 24 giờ các ngày thứ Tư\",\n      \"remediation\": \"triển khai ngoài cửa sổ này phải có phê duyệt của Giám đốc Kỹ thuật\"\n    },\n    {\n      \"subject\": \"người thực hiện\",\n      \"remediation\": \"ghi kết quả vào phiếu và đóng phiếu trong 2 ngày làm việc\"\n    },\n    {\n      \"subject\": \"phiếu thay đổi\",\n      \"symptom\": \"quá hạn\",\n      \"remediation\": \"bị nhắc tự động qua email\"\n    }\n  ]\n}",
+     "token_vao": 773,
+     "token_ra": 322,
+     "chi_phi_usd": 0.00030914999999999995
+    }
+   ]
+  },
+  {
+   "doc_key": "07-giam-sat-va-canh-bao.txt",
+   "chunks": [
+    {
+     "stt": 0,
+     "van_ban": "Quy trình giám sát hệ thống và xử lý cảnh báo.\nHệ thống giám sát Zabbix quét các máy chủ sản xuất mỗi 60 giây và gửi cảnh báo vào kênh Slack #canh-bao-ha-tang.\nCảnh báo mức nghiêm trọng được gửi kèm cuộc gọi tự động tới người trực khi không có ai xác nhận trong 10 phút.\nNgưỡng cảnh báo dung lượng đĩa là 85 phần trăm, ngưỡng cảnh báo CPU là 90 phần trăm duy trì trong 5 phút.\nNgười trực phải xác nhận cảnh báo trên Zabbix rồi ghi hướng xử lý vào kênh Slack, cảnh báo lặp lại quá 3 lần trong một giờ được nâng lên cho trưởng nhóm Vận hành.\nPhòng IT rà soát danh sách cảnh báo nhiễu vào ngày làm việc đầu tiên mỗi tháng và tắt các luật cảnh báo không còn đúng.",
+     "phan_hoi": "{\n  \"facts\": [\n    {\n      \"subject\": \"Hệ thống giám sát Zabbix\",\n      \"symptom\": \"gửi cảnh báo vào kênh Slack #canh-bao-ha-tang\",\n      \"time\": \"mỗi 60 giây\"\n    },\n    {\n      \"subject\": \"Cảnh báo mức nghiêm trọng\",\n      \"remediation\": \"gửi kèm cuộc gọi tự động tới người trực\",\n      \"condition\": \"không có ai xác nhận trong 10 phút\"\n    },\n    {\n      \"subject\": \"Ngưỡng cảnh báo dung lượng đĩa\",\n      \"condition\": \"85 phần trăm\"\n    },\n    {\n      \"subject\": \"Ngưỡng cảnh báo CPU\",\n      \"condition\": \"90 phần trăm duy trì trong 5 phút\"\n    },\n    {\n      \"subject\": \"Người trực\",\n      \"remediation\": \"xác nhận cảnh báo trên Zabbix rồi ghi hướng xử lý vào kênh Slack\"\n    },\n    {\n      \"subject\": \"Cảnh báo\",\n      \"symptom\": \"lặp lại quá 3 lần trong một giờ\",\n      \"remediation\": \"được nâng lên cho trưởng nhóm Vận hành\"\n    },\n    {\n      \"subject\": \"Phòng IT\",\n      \"remediation\": \"rà soát danh sách cảnh báo nhiễu\",\n      \"time\": \"ngày làm việc đầu tiên mỗi tháng\"\n    }\n  ]\n}",
+     "token_vao": 759,
+     "token_ra": 307,
+     "chi_phi_usd": 0.00029804999999999995
+    }
+   ]
+  },
+  {
+   "doc_key": "08-bao-cao-su-co-inc-1305.txt",
+   "chunks": [
+    {
+     "stt": 0,
+     "van_ban": "Báo cáo sự cố INC-1305 (hạn chế nội bộ).\nNgày 03/09/2026 lúc 01:40, cụm cơ sở dữ liệu DB02 ngừng nhận ghi, các đơn hàng mới không lưu được trong 25 phút.\nNguyên nhân gốc là phân vùng lưu nhật ký giao dịch của DB02 đầy 100 phần trăm do một tiến trình xuất báo cáo ghi tạm vào cùng phân vùng.\nCách xử lý: dừng tiến trình xuất báo cáo, xóa file tạm và mở rộng phân vùng nhật ký thêm 200 GB, dịch vụ ghi phục hồi lúc 02:05.\nNgười phụ trách xử lý sự cố là Lê Quốc Duy, đội Cơ sở dữ liệu.\nBài học: tiến trình xuất báo cáo phải ghi tạm vào phân vùng riêng và cảnh báo dung lượng đĩa của DB02 phải hạ ngưỡng xuống 75 phần trăm.",
+     "phan_hoi": "{\n  \"facts\": [\n    {\n      \"subject\": \"cụm cơ sở dữ liệu DB02\",\n      \"symptom\": \"ngừng nhận ghi, các đơn hàng mới không lưu được trong 25 phút\",\n      \"cause\": \"phân vùng lưu nhật ký giao dịch của DB02 đầy 100 phần trăm do một tiến trình xuất báo cáo ghi tạm vào cùng phân vùng\",\n      \"time\": \"03/09/2026 lúc 01:40\",\n      \"remediation\": \"dừng tiến trình xuất báo cáo, xóa file tạm và mở rộng phân vùng nhật ký thêm 200 GB\",\n      \"owner\": \"Lê Quốc Duy, đội Cơ sở dữ liệu\"\n    },\n    {\n      \"subject\": \"cảnh báo dung lượng đĩa của DB02\",\n      \"condition\": \"phải hạ ngưỡng xuống 75 phần trăm\"\n    },\n    {\n      \"subject\": \"tiến trình xuất báo cáo\",\n      \"remediation\": \"phải ghi tạm vào phân vùng riêng\"\n    }\n  ]\n}",
+     "token_vao": 761,
+     "token_ra": 226,
+     "chi_phi_usd": 0.00024975
+    }
+   ]
+  },
+  {
+   "doc_key": "09-bao-cao-su-co-inc-1417.txt",
+   "chunks": [
+    {
+     "stt": 0,
+     "van_ban": "Báo cáo sự cố INC-1417 (hạn chế nội bộ).\nNgày 18/09/2026 lúc 08:05, toàn bộ nhân viên làm việc từ xa không kết nối được VPN, khoảng 120 người mất truy cập trong 55 phút.\nNguyên nhân gốc là chứng chỉ TLS của cổng VPN hết hạn lúc 08:00 mà lịch gia hạn chỉ ghi trong tệp cá nhân của một kỹ sư đã nghỉ việc.\nCách xử lý: cấp lại chứng chỉ TLS cho cổng VPN và nạp lại cấu hình dịch vụ theo SOP-07, kết nối phục hồi lúc 09:00.\nNgười phụ trách xử lý sự cố là Phạm Minh Tuấn, đội Hạ tầng mạng.\nBài học: mọi chứng chỉ TLS phải được theo dõi hạn trên hệ thống giám sát và cảnh báo trước 30 ngày.",
+     "phan_hoi": "{\n  \"facts\": [\n    {\n      \"subject\": \"VPN\",\n      \"symptom\": \"toàn bộ nhân viên làm việc từ xa không kết nối được VPN\",\n      \"time\": \"18/09/2026 lúc 08:05\",\n      \"condition\": \"khoảng 120 người mất truy cập trong 55 phút\",\n      \"cause\": \"chứng chỉ TLS của cổng VPN hết hạn lúc 08:00\",\n      \"remediation\": \"cấp lại chứng chỉ TLS cho cổng VPN và nạp lại cấu hình dịch vụ theo SOP-07\",\n      \"owner\": \"Phạm Minh Tuấn, đội Hạ tầng mạng\"\n    },\n    {\n      \"subject\": \"chứng chỉ TLS\",\n      \"condition\": \"phải được theo dõi hạn trên hệ thống giám sát và cảnh báo trước 30 ngày\"\n    }\n  ]\n}",
+     "token_vao": 747,
+     "token_ra": 184,
+     "chi_phi_usd": 0.00022244999999999999
+    }
+   ]
+  },
+  {
+   "doc_key": "10-so-tay-ha-tang-noi-bo.txt",
+   "chunks": [
+    {
+     "stt": 0,
+     "van_ban": "Sổ tay hạ tầng nội bộ (tài liệu hạn chế).\nTruy cập quản trị vào máy chủ sản xuất chỉ đi qua máy chủ nhảy bastion.it.local, mọi phiên SSH được ghi lại và giữ 90 ngày.\nKhóa SSH quản trị lưu trong kho khóa Vault tại vault.it.local, cấp theo yêu cầu có thời hạn 8 giờ và do trưởng nhóm Hạ tầng duyệt.\nDải mạng quản trị là 10.20.0.0/24, tách khỏi dải mạng người dùng và chỉ mở từ máy chủ nhảy.\nMật khẩu quản trị cơ sở dữ liệu được xoay vòng mỗi 90 ngày bằng tác vụ tự động của Vault, phòng IT kiểm chứng kết quả xoay vòng mỗi quý.\nTài liệu này chỉ chia sẻ trong nhóm Hạ tầng, gửi ra ngoài phải có phê duyệt của Giám đốc Kỹ thuật.",
+     "phan_hoi": "{\n  \"facts\": [\n    {\n      \"subject\": \"máy chủ sản xuất\",\n      \"condition\": \"truy cập quản trị chỉ đi qua máy chủ nhảy bastion.it.local\",\n      \"remediation\": \"mọi phiên SSH được ghi lại và giữ 90 ngày\"\n    },\n    {\n      \"subject\": \"khóa SSH quản trị\",\n      \"source\": \"kho khóa Vault tại vault.it.local\",\n      \"remediation\": \"cấp theo yêu cầu có thời hạn 8 giờ và do trưởng nhóm Hạ tầng duyệt\"\n    },\n    {\n      \"subject\": \"dải mạng quản trị\",\n      \"condition\": \"10.20.0.0/24, tách khỏi dải mạng người dùng và chỉ mở từ máy chủ nhảy\"\n    },\n    {\n      \"subject\": \"mật khẩu quản trị cơ sở dữ liệu\",\n      \"symptom\": \"được xoay vòng mỗi 90 ngày\",\n      \"remediation\": \"bằng tác vụ tự động của Vault, phòng IT kiểm chứng kết quả xoay vòng mỗi quý\"\n    },\n    {\n      \"subject\": \"tài liệu này\",\n      \"condition\": \"chỉ chia sẻ trong nhóm Hạ tầng\",\n      \"remediation\": \"gửi ra ngoài phải có phê duyệt của Giám đốc Kỹ thuật\"\n    }\n  ]\n}",
+     "token_vao": 750,
+     "token_ra": 284,
+     "chi_phi_usd": 0.0002829
+    }
+   ]
+  }
+ ]
+}

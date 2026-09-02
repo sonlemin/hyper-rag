@@ -66,6 +66,19 @@ models:
     gia_vao_usd_1m: 0.15
     gia_ra_usd_1m: 0.60
     max_token: 128000
+  # Model của bậc 1 đường lùi R2 ("GPT-4o toàn phần", PRD mục 6.1) và của khoản
+  # "GPT-4o dựng cuối" trong ngoại suy FR-30; cũng là judge của Đo 2 (buộc khác
+  # model sinh). Giá mức Standard, cùng nguồn và ngày tra với `gpt-4o-mini`
+  # (https://developers.openai.com/api/docs/pricing, tra 2026-09-02): vào 2.50
+  # USD / 1M token, ra 10.00 USD / 1M token - đắt hơn `deepseek-v4-flash`
+  # khoảng 5,7 lần ở token vào và 7,6 lần ở token ra, nên nó là con số quyết
+  # định của bảng ngoại suy. Vẫn là cận trên chưa đối chiếu hóa đơn.
+  gpt-4o:
+    loai: llm
+    nha_cung_cap: openai
+    gia_vao_usd_1m: 2.50
+    gia_ra_usd_1m: 10.00
+    max_token: 128000
   # Embedding: DeepSeek không có API embedding, nên đường API ngoài dùng OpenAI.
   text-embedding-3-small:
     loai: embedding

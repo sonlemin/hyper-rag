@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from core.ingest_scan import tach_frontmatter
+from eval import nap_bien_tu_env
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = REPO_ROOT / "eval" / "data"
@@ -53,18 +54,12 @@ def buoc(msg: str) -> None:
 
 
 def nap_key_tu_env() -> None:
-    """Đọc OPENAI_API_KEY từ .env gốc repo; chỉ nhận dòng KEY=VALUE."""
-    env_file = REPO_ROOT / ".env"
-    if env_file.exists():
-        for line in env_file.read_text().splitlines():
-            line = line.strip()
-            if line.startswith("export "):
-                line = line[len("export "):].lstrip()
-            if line.startswith("OPENAI_API_KEY="):
-                value = line.split("=", 1)[1].strip().strip("'\"")
-                if value:
-                    os.environ.setdefault("OPENAI_API_KEY", value)
-                    break
+    """Doc OPENAI_API_KEY tu .env goc repo qua cua chung `eval.nap_bien_tu_env`.
+
+    Story 2.6 gom luat doc `.env` ve mot noi: hai ban chep cua cung mot luat doc
+    secret la hai cho de chung lech nhau.
+    """
+    nap_bien_tu_env("OPENAI_API_KEY")
     if not os.environ.get("OPENAI_API_KEY"):
         print(
             "LOI: thieu bien OPENAI_API_KEY (khai trong .env goc repo hoac export truoc khi chay)",

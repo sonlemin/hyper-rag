@@ -19,11 +19,12 @@ Bốn điều quyết định mọi thứ ở đây:
 - **Nhãn viết ở dạng đã chuẩn hóa sẵn.** Mọi fact vàng phải qua
   `core.facts.kiem_fact` mà giá trị *không đổi*, nên `id_fact` của nhãn vàng là
   đúng id node hyperedge mà pipeline sinh ra cho cùng tập slot. Nó chỉ bắt
-  được ca **khớp tuyệt đối**: prompt dạy LLM viết `time` dạng "2026-08-12
-  09:20" trong khi nhãn giữ nguyên văn "12/08/2026 lúc 09:20", và nói chung
-  cách diễn đạt của LLM khó trùng từng chữ với câu trong tài liệu. Ca khớp một
-  phần (đúng `subject`, thiếu hoặc lẫn vai) là luật ghép của story 2.6, không
-  phải việc của module này.
+  được ca **khớp tuyệt đối**, tức cả tập slot trùng từng chữ - hiếm, vì cách
+  diễn đạt của LLM khó trùng nguyên văn ở mọi vai cùng lúc. Ca thường gặp
+  (đúng `subject`, thiếu hoặc lẫn vai, chữ trôi một hai từ) là luật ghép của
+  story 2.6 ở `eval/cham_trich_xuat.py`, không phải việc của module này. Xung
+  đột định dạng `time` giữa prompt và nhãn đã đóng ở 2.6: ví dụ của prompt nay
+  cũng phải là đoạn nguyên văn của thân tài liệu few-shot, cùng luật với nhãn.
 - **Mọi giá trị slot phải là một đoạn có thật trong thân tài liệu.** So sau khi
   NFC, gộp khoảng trắng và `casefold()`, nên nhãn viết thường một chữ hoa đầu
   câu vẫn hợp lệ còn viết lại chữ thì không. Đây là chỗ luật "trích sát câu,

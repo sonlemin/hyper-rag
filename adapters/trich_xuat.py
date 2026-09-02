@@ -90,15 +90,25 @@ GOI_Y_VAI: Mapping[str, str] = {
 # nguồn đều có dấu ngoặc nhọn (JSON, mã cấu hình).
 _CHO_VAN_BAN: str = "<<VAN_BAN>>"
 
+# Ví dụ đầu ra. Mọi giá trị slot ở đây phải là **đoạn có thật, nguyên văn**
+# trong thân `eval/data/01-cap-quyen-gitlab.txt` hoặc
+# `eval/data/05-bao-cao-su-co-inc-1208.txt` (test `test_trich_xuat.py` canh):
+# prompt dạy "trích sát văn bản" nhưng ví dụ mạnh hơn lời dặn, nên một ví dụ
+# viết lại câu dạy LLM chuẩn hóa lại chữ - và bản chuẩn hóa đó không còn khớp
+# nổi nhãn vàng, thứ bị luật nạp 2.5 ép phải trích sát thân tài liệu. Story 2.6
+# đo được chuyện đó ở vai `time`: prompt cũ ghi "2026-08-12 09:20" trong khi
+# tài liệu viết "12/08/2026 lúc 09:20". Hai tài liệu trên vì thế là few-shot và
+# bị loại khỏi mẫu số của R2 (PRD 2.6); đổi ví dụ sang tài liệu khác là đổi cả
+# cờ `few_shot` của bộ vàng.
 VI_DU_DAU_RA: str = json.dumps(
     {
         KHOA_FACTS: [
             {
                 "subject": "App01",
-                "symptom": "trang thanh toán trả lỗi 502",
-                "cause": "chỉnh sai giới hạn bộ nhớ PHP-FPM",
-                "time": "2026-08-12 09:20",
-                "remediation": "trả giới hạn bộ nhớ về mức cũ",
+                "symptom": "trang thanh toán của App01 trả lỗi 502",
+                "cause": "chỉnh sai giới hạn bộ nhớ của pool PHP-FPM",
+                "time": "12/08/2026 lúc 09:20",
+                "remediation": "trả giới hạn bộ nhớ PHP-FPM về mức cũ",
                 "owner": "Trần Thị Hạnh",
             },
             {"subject": "tài khoản GitLab", "condition": "không hoạt động 90 ngày", "remediation": "khóa tự động"},

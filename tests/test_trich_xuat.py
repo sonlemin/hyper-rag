@@ -33,6 +33,7 @@ from adapters.trich_xuat import (
 from core.audit import EVENT_EXTRACT_DOC, EVENT_INGEST_DOC, TIER_OBSERVATION
 from core.facts import (
     GIA_TRI_TOI_DA,
+    KHOA_FACTS,
     MA_GIA_TRI_RONG,
     MA_KHONG_PHAI_JSON,
     MA_THIEU_SUBJECT,
@@ -112,6 +113,40 @@ def test_prompt_dung_tu_danh_muc_vai_co_chu_json_va_vi_du_parse_duoc():
     assert kq.chunk_hong is False and len(kq.facts) >= 2 and not kq.loai_theo_ma
     prompt = dung_prompt("đoạn {văn} bản {có} ngoặc")
     assert "đoạn {văn} bản {có} ngoặc" in prompt
+
+
+def test_moi_gia_tri_cua_vi_du_prompt_la_doan_co_that_trong_than_few_shot():
+    """Ví dụ của prompt phải trích sát văn bản, đúng luật mà nó dạy LLM (story 2.6).
+
+    Prompt bảo "trích sát văn bản, không suy diễn" rồi lại đưa một ví dụ viết
+    lại câu (`time` dạng "2026-08-12 09:20" trong khi tài liệu viết "12/08/2026
+    lúc 09:20"): ví dụ mạnh hơn lời dặn, nên LLM chuẩn hóa theo ví dụ và không
+    còn khớp nổi nhãn vàng - nhãn vàng bị luật nạp 2.5 ép phải là đoạn có thật
+    trong thân. Đây là cùng một luật, áp cho cả hai phía của phép chấm.
+
+    So trên dạng `chuan_so_sanh` (NFC, gộp khoảng trắng, casefold), giống hệt
+    phép canh nhãn vàng.
+    """
+    from eval.bo_vang import chuan_so_sanh, doc_bo_vang
+
+    few = doc_bo_vang().tai_lieu_few_shot()
+    assert few, "phải có tài liệu few-shot để đối chiếu"
+    than = {t.doc_key: chuan_so_sanh(t.than) for t in few}
+    for i, fact in enumerate(json.loads(VI_DU_DAU_RA)[KHOA_FACTS]):
+        nguon = set(than)
+        for vai_slot, gia_tri in fact.items():
+            co = {k for k, t in than.items() if chuan_so_sanh(gia_tri) in t}
+            assert co, (
+                f"ví dụ fact#{i} vai {vai_slot}={gia_tri!r} không phải đoạn có thật"
+                " trong thân tài liệu few-shot nào"
+            )
+            nguon &= co
+        # Cả fact phải đọc được từ *một* tài liệu: một fact trộn chữ của hai
+        # tài liệu là một fact không có thật, và nó dạy LLM ghép chéo nguồn.
+        assert nguon, (
+            f"ví dụ fact#{i} lấy chữ từ nhiều tài liệu khác nhau, không tài liệu"
+            " nào chứa trọn nó"
+        )
 
 
 def test_tham_so_llm_temperature_0_json_object_max_tokens_huu_han():

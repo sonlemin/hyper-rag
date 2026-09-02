@@ -73,9 +73,14 @@ def test_tripwire_few_shot_suy_ra_tu_vi_du_cua_prompt(bo_vang):
     `few_shot`. Đổi ví dụ prompt sang một tài liệu khác mà quên đổi cờ
     `few_shot` là test này đỏ - chính là ca ô nhiễm đánh giá mà PRD F8 sợ.
 
-    So theo token chứ không theo chuỗi con vì ví dụ của prompt *cố ý* viết lại
-    (`time` dạng "2026-08-12 09:20" trong khi tài liệu viết "12/08/2026 lúc
-    09:20"); đó cũng là lý do `id_fact` chỉ bắt được ca khớp tuyệt đối.
+    So theo token chứ không theo chuỗi con vì luật ở đây là "tài liệu nào chứa
+    *phần lớn* chữ của ví dụ", một phép đo mức độ chồng lấn: ví dụ gồm nhiều
+    vai lấy từ nhiều câu khác nhau của cùng một tài liệu, nên không có một
+    chuỗi con nào chứa trọn nó. Từ story 2.6 mọi giá trị của ví dụ đã là đoạn
+    nguyên văn của thân tài liệu (`test_trich_xuat.py::
+    test_moi_gia_tri_cua_vi_du_prompt_la_doan_co_that_trong_than_few_shot`),
+    nên tỉ lệ của tài liệu nguồn là 1.0 - nhưng luật vẫn là token, vì cái test
+    này hỏi "ví dụ lấy từ tài liệu nào", không hỏi "ví dụ có trích sát không".
     """
     from adapters.trich_xuat import VI_DU_DAU_RA
 

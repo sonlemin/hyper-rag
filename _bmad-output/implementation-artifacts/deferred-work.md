@@ -266,7 +266,6 @@
   summary: Che secret trong log ngay cả khi `log_level` bị bật DEBUG.
   evidence: Story 1.7 đóng đường mặc định: `EngineACL.log_level = "INFO"` ghim mức trên chính logger `hypergraphrag`, nên một `logging.basicConfig(level=DEBUG)` ở `api/` không còn kéo `_print_config` (`hypergraphrag.py:178-179`, dựng từ `asdict(self)` nên gồm cả `neo4j_password` và `qdrant_api_key`) ra file log nữa. Ghim bằng một cặp test đối chứng: `test_secret_khong_ra_log_o_muc_mac_dinh` dựng đúng tình huống root ở DEBUG và khẳng định hai secret vắng mặt, `test_doi_chung_bat_debug_thi_secret_ra_that` khẳng định cùng đường đó với `log_level="DEBUG"` thì chúng ra thật - nên test không thể xanh vì đường rò biến mất. Phần còn treo là ca ai đó **cố ý** bật DEBUG: không sửa được trong story 1.7 vì adapter cần giá trị thô để đưa vào driver, nên che phải nằm ở kiểu của chính giá trị (một `Secret` có `__repr__` che) chứ không ở chỗ log. Địa chỉ: story 3.1, lúc khóa ký JWT nhập vào cùng chỗ cấu hình và số secret trong `asdict(self)` tăng lên ba.
 
-
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-1-hop-nhat-khoa-da-nguon-va-doi-chieu-hai-kho.md`
   summary: Kho vector không phân biệt được "point chưa từng ghi" với "point đã hợp nhất ra không khóa", nên lần nạp thứ ba cùng scope với lần đầu cấp lại khóa cho point trong khi node graph vẫn nhớ trạng thái không khóa.
   evidence: Hệ quả cấu trúc của chính AD-5: ca không khóa phải cho point *vắng mặt tuyệt đối*, nên nó bị xóa và Qdrant không còn chỗ nào giữ trạng thái. Graph và KV thì nhớ được (node/bản ghi ở lại với khóa `null`). Hôm nay ca này **không im lặng**: bước đối chiếu cuối đợt bắt được và đợt fail kèm cặp id (`test_nap_lai_lan_ba_lam_hai_kho_lech_va_buoc_doi_chieu_bat_duoc`), đúng luật "lệch là fail, không tự sửa". Cái còn thiếu là đường *chữa*: hôm nay người vận hành phải re-ingest tay. Đường sửa tự nhiên là một sổ id-không-khóa theo `space` bền vững, tức đúng cơ chế bookkeeping mà re-ingest/xóa theo space cần. Địa chỉ: story 2.3.
@@ -345,6 +344,14 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-2-wrapper-llm-embedding-dem-chi-phi-qua-audit-port.md`
   summary: Đơn giá trong `config/danh-muc-model.yaml` do agent tra bảng giá công khai ngày 2026-09-02, sonlm chưa xác nhận số.
   evidence: DeepSeek ghi mức peak và giá cache-miss (cận trên; off-peak bằng nửa, và `usage.prompt_tokens` gộp cả token cache-hit rẻ hơn 30 lần), OpenAI mức Standard. Ước tính vì thế cao hơn hóa đơn thật, an toàn cho mức báo động 60 USD nhưng lệch cho ngoại suy. Trước khi dùng cho ngoại suy FR-30 chính thức, sonlm đối chiếu với hóa đơn thật của đợt đo thô (spec 2.2, mục Kết quả kiểm) rồi chốt số; muốn tính giá cache-hit riêng thì wrapper đọc thêm `usage.prompt_cache_hit_tokens` của DeepSeek. Địa chỉ: story 2.6.
+  tien_do: 2026-09-02 (2.6) - bảng ngoại suy FR-30 đã dựng trên chính đơn giá này
+    (`eval/ngoai_suy.py`, tổng 4,00 USD trên mức báo động 60 USD) và **nói thẳng** rằng
+    đơn giá là cận trên chưa đối chiếu hóa đơn: hằng `GHI_CHU_DON_GIA` in ở cả console
+    lẫn trang HTML, có test canh (`test_ngoai_suy_noi_ro_don_gia_la_can_tren`). Thêm
+    `gpt-4o` (2.50 / 10.00 USD mỗi 1M token, cùng nguồn và ngày tra) cho bậc 1 của R2 và
+    khoản "GPT-4o dựng cuối". Phần còn treo hẹp lại đúng một việc của người: sonlm đối
+    chiếu hóa đơn DeepSeek/OpenAI của các đợt đã chạy rồi chốt số trước khi bảng ngoại
+    suy vào chương 4. Địa chỉ: sonlm, chậm nhất story 7-5.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-2-wrapper-llm-embedding-dem-chi-phi-qua-audit-port.md`
   summary: `OllamaCucBo.hoan_thanh` chuyển thẳng `**kwargs` của upstream vào `AsyncClient.chat`, nhưng Ollama nhận tham số sinh (temperature, max_tokens...) qua `options=` chứ không phải kwargs phẳng.
@@ -390,7 +397,6 @@
   evidence: `tests/test_adapter_neo4j_that.py::test_duong_xoa_va_ghi_thang_hop_le_tren_neo4j_that` (marker `neo4j`) viết sẵn để CI trên máy chủ chạy sau commit; dev không có container. Cùng tình trạng với ca HNSW cập nhật ở Qdrant thật. Đóng khi lượt marker đầu tiên sau commit 2.3 xanh.
   resolved: 2026-09-02 - sonlm chạy `-m "neo4j or qdrant or postgres"` trên máy chủ ngày 2026-09-02: 18 passed, gồm `test_adapter_qdrant_that.py::test_initialize_ap_lai_hnsw_va_strict_mode_len_collection_cu` (HNSW cập nhật) và `test_adapter_neo4j_that.py::test_duong_xoa_va_ghi_thang_hop_le_tren_neo4j_that` (ba câu Cypher xóa/đặt lại). Câu `dat_lai_hyperedge` thêm ở vòng review cùng hình dạng `MATCH ... SET ... RETURN count(n)` đã chạy thật; chạy lại lượt marker sau commit là việc của CI hook.
 
-
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-3-import-thu-muc-va-pipeline-ingest-tuan-tu.md`
   summary: Bỏ một loại nội dung khỏi `config/hang-do-nhay.yaml` khi kho còn dữ liệu của loại đó làm đường xóa/re-ingest nổ `SensitivityRankUnknown` giữa chừng (sau khi đã gỡ hyperedge, trước khi gấp lại khóa entity), mục sổ tài liệu ở lại.
   evidence: Review đối kháng 2.3 (edge-case) chỉ ra `_gap_khoa` và `filter_keys` dưới nhãn đều gọi `hop_nhat_khoa(hang=...)` trên khóa cũ đọc từ kho, mà bảng hạng là file đóng băng chỉ kiểm lúc nạp. Luật "đổi hạng là re-ingest" đúng nhưng chưa có gì chặn việc đổi bảng khi kho chưa rỗng. Chạy lại xóa là idempotent (xóa id vắng không lỗi) nên không mất dữ liệu, chỉ mất một lần chạy. Địa chỉ: story 3.2 (validator bảng hạng/chính sách) thêm kiểm "loại nội dung đang có trong sổ tài liệu của mọi space phải còn trong bảng hạng" trước khi cho phép nạp bảng mới.
@@ -403,6 +409,10 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-4-trich-xuat-fact-8-vai-slot-tieng-viet.md`
   summary: Câu render `core.facts.cau_fact` là dạng "nhãn vai: giá trị; ..." chứ chưa phải câu tiếng Việt tự nhiên; ảnh hưởng tới recall của đường vector `hyperedges` chưa đo.
   evidence: Nội dung nhúng của point hyperedge quyết định nhánh global của truy hồi. Dạng nhãn-giá trị mang đủ mọi giá trị slot và tất định, đủ cho lượt nạp thật đầu và cho bộ test; câu tự nhiên hơn có thể tăng cosine với câu hỏi người dùng nhưng phải đo bằng bộ câu hỏi 2.9 / nhãn truy hồi vàng. Địa chỉ: story 2.6 (vòng lặp precision, cùng chỗ chỉnh prompt) hoặc Epic 7 khi có Đo 2.
+  tien_do: 2026-09-02 (2.6) - không đóng được ở 2.6 và địa chỉ thu về một chỗ: vòng lặp
+    2.6 chấm *fact trích ra* trên bộ vàng trích xuất, không chạm đường truy hồi, nên nó
+    không có thước nào nói được câu render tốt hay tồi. Cần bộ câu hỏi 2.9 và nhãn truy
+    hồi vàng. Địa chỉ: story 2.9 (có nhãn) rồi Epic 7 (Đo 2/Đo 3).
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-4-trich-xuat-fact-8-vai-slot-tieng-viet.md`
   summary: Fixture Epic 1 (`tests/nap_kho.py`, `tests/fixtures/du_lieu_dung_tay.py`) vẫn đặt tên hyperedge `{subject} - {content_type}`, không dùng `core.facts.id_fact`, nên bộ Đo 1 nền chạy trên một hình dạng id khác đường trích xuất thật.
@@ -411,11 +421,30 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-4-trich-xuat-fact-8-vai-slot-tieng-viet.md`
   summary: Phản hồi bị cắt ở `max_tokens=8192` (`finish_reason == "length"`) rơi vào mã `KHONG_PHAI_JSON`, không phân biệt được với LLM trả văn tự do.
   evidence: `KetQuaLLM` chỉ mang nội dung và token, hàm LLM đã bọc trả `str` cho upstream nên `finish_reason` không tới được `adapters/trich_xuat.py`; đưa nó lên là đổi hợp đồng wrapper của 2.2. Lần nạp thật 2.4 đọc tỷ lệ `KHONG_PHAI_JSON`; nếu đáng kể thì story 2.6 (vòng lặp precision, nơi đo tỷ lệ loại theo mã) thêm trường `ket_thuc` vào `KetQuaLLM` và mã `PHAN_HOI_BI_CAT`. Địa chỉ: 2.6.
+  resolved: 2026-09-02 (2.6) - không thêm trường, vì số đo nói tỉ lệ bằng 0. Bốn vòng đo
+    (32 lời gọi trên 3 model: `deepseek-v4-flash`, `gpt-4o-mini`, `gpt-4o`) cho **0 chunk
+    hỏng, 0 bản ghi bị loại, `loai_theo_ma` rỗng ở cả bốn vòng**; token ra cao nhất của
+    một lời gọi là 451 trên trần 8192, tức chưa lời gọi nào tới gần chỗ bị cắt. Đổi hợp
+    đồng wrapper của 2.2 để phân biệt một ca chưa xảy ra là trả giá trước cho một thứ
+    chưa cần. Mở lại khi một vòng đo hay một lần nạp có `KHONG_PHAI_JSON` khác 0 - trang
+    `eval/xem_do_trich_xuat.py` in cột "loại theo mã" của từng vòng nên ca đầu tiên nhìn
+    thấy được ngay.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-4-trich-xuat-fact-8-vai-slot-tieng-viet.md`
   summary: Prompt 8 vai một lượt trích ra ít fact hơn hẳn prompt upstream (3-4 fact mỗi tài liệu `eval/data`, 19 hyperedge / 64 entity cho 5 tài liệu; upstream 2.3 ra 87 hyperedge / 110 entity cho 4 tài liệu), recall trích xuất chưa có mẫu số để đo.
   evidence: Lần nạp thật 2.4 (spec 2.4, mục Lần nạp thật): 0 bản ghi bị loại, 0 chunk hỏng, nên số fact thấp là do LLM gom nhiều câu vào ít fact, không do lược đồ loại. Upstream đếm "knowledge segment" tự do nên hai con số không cùng đơn vị, nhưng chiều lệch đủ lớn để nghi bỏ sót (FR-02 nói tiếng Việt kỹ thuật hay chết ở bỏ sót). Đo bằng bộ vàng 2.5 (đơn vị slot đã điền); nếu recall dưới ngưỡng thì vòng 2.6 chỉnh prompt (tách fact, few-shot theo cẩm nang A13, trích hai lượt) trước khi xét R2. Địa chỉ: 2.5 (mẫu số) rồi 2.6 (vòng lặp).
   tien_do: 2026-09-02 - phần mẫu số đã có: `eval/bo_vang_trich_xuat.json` gán nhãn tay 10 tài liệu lõi (`eval/data/01..10`), `eval/bo_vang.py` kiểm bằng chính `core.facts`/`core.slots` và trả **151 slot đã điền trên 8 tài liệu chấm** (49 fact / 176 slot cả bộ; hai tài liệu few-shot `01-cap-quyen-gitlab.txt` và `05-bao-cao-su-co-inc-1208.txt` bị loại khỏi mẫu số theo PRD 2.6, chốt trước khi có con số nào). Con số so sánh của lần nạp thật 2.4 vẫn là 19 hyperedge cho 5 tài liệu, còn nhãn tay ra 22 fact / 81 slot cho đúng 5 tài liệu đó - nhưng kết luận recall chỉ được rút sau phép chấm của 2.6, không rút từ hai con số này. Phần đo (precision/recall, ma trận lẫn lộn, quyết R2) giữ địa chỉ 2.6.
+  resolved: 2026-09-02 (2.6, viết lại sau vòng review 1) - đo xong, và nghi ngờ "bỏ sót"
+    của khoản này **không đúng**. Trên mẫu số 151 slot của 8 tài liệu chấm, vòng
+    `v1-deepseek` (prompt đã sửa ví dụ) cho precision 70,7% / recall 57,6% / F1 63,5% ở
+    chỉ số ghép cặp và 77,2% / 62,9% / 69,3% ở chỉ số mức tài liệu, tỉ lệ loại schema 0%.
+    Chỉ số mức tài liệu tách 151 slot vàng thành **95 đúng vai, 51 lẫn vai, 2 nhãn tay
+    lặp, 1 ứng viên đã bị tiêu thụ, đúng 2 vắng hẳn**: 149/151 giá trị vàng *có mặt*
+    trong đầu ra. Hệ trích ra gần
+    đủ chữ rồi dán sai vai một phần ba, chứ không bỏ sót. Con số "3-4 fact mỗi tài liệu"
+    của 2.4 vì thế là chuyện *độ hạt* (LLM gom nhiều câu vào ít fact), đo được bằng chênh
+    5,3 điểm recall giữa hai chỉ số. Phần còn lại (lẫn vai dồn vào `remediation`) là một
+    khoản mới có địa chỉ riêng.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-5-bo-vang-trich-xuat.md`
   summary: Bộ vàng chỉ có scope `noi_bo`; không tài liệu lõi nào mang scope `khach_hang_a`, nên biên cách ly hai scope (RT-01, `tech_support` không chạm scope khách hàng) không có ca trên corpus lõi.
@@ -424,6 +453,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-5-bo-vang-trich-xuat.md`
   summary: Chưa có luật ghép nhãn vàng với hyperedge pipeline sinh ra; `FactVang.id_fact` mới cho ca khớp tuyệt đối.
   evidence: Cố ý: bộ vàng giữ dữ liệu và mẫu số, không quyết hộ luật ghép (Design Notes spec 2.5). Ca khớp tuyệt đối là so `id_fact` (băm tập slot đã chuẩn hóa), nhưng ca thường gặp là khớp một phần - đúng `subject`, thiếu vai hoặc lẫn vai - và chính ca đó sinh ra ma trận lẫn lộn giữa các vai. Địa chỉ: story 2.6, cùng chỗ định nghĩa phép chấm.
+  resolved: 2026-09-02 (2.6) - luật ghép nay là `eval/cham_trich_xuat.py`: neo ở `subject`
+    (vai bắt buộc duy nhất, nên luôn có ở cả hai phía), ghép một-một theo điểm chồng lấn
+    giảm dần với trọng tài `id_fact`, trong mỗi cặp thì ghép chặt trước ghép lỏng sau và
+    mỗi giá trị pred tiêu thụ đúng một lần. Fact không ghép được thì mọi slot của nó vào
+    FN hoặc FP, không ca nào rơi ra ngoài sổ (test canh tổng hàng và tổng cột của ma
+    trận). `id_fact` vẫn là ca khớp tuyệt đối, nay là một ca đặc biệt của luật này.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-5-bo-vang-trich-xuat.md`
   summary: Quy ước gán nhãn cho các cặp vai hay lẫn (`condition` vs `cause`, `time` cho thời hạn lưu giữ, `source` chỉ cho tài liệu/hệ thống được dẫn) là quyết định của người gán, chưa được đối chiếu với ma trận lẫn lộn thật.
@@ -433,10 +468,35 @@
     có thật trong thân tài liệu, nên không gán được nhãn viết lại). Phần còn treo là
     phần chỉ đo mới biết: quy ước của người gán có trùng cách prompt hiểu vai không.
     Địa chỉ giữ 2.6.
+  resolved: 2026-09-02 (2.6, viết lại sau vòng review 1) - ma trận lẫn lộn thật (dựng từ
+    chỉ số mức tài liệu) trả lời: cặp `condition`↔`cause` **không lẫn lần nào** ở cả bốn
+    vòng, nên quy ước gán nhãn của 2.5 cho hai vai đó không mâu thuẫn với cách prompt
+    hiểu chúng. Nhưng lẫn vai *nói chung* thì nhiều - 51 slot ở `v1-deepseek` - và nó dồn
+    vào cột khác: `remediation` nhận 27 ca, `subject` 11, `condition` 8; năm cặp nặng nhất
+    là `time`->`remediation` 11, `owner`->`subject` 7, `subject`->`remediation` 6,
+    `owner`->`remediation` 5, `source`->`condition` 3. Quy ước gán nhãn của 2.5 vì thế
+    đúng ở cặp mà A13 lo, còn chỗ lệch thật nằm ở chỗ khác: nhãn tay tách thời hạn, người
+    phụ trách và nguồn thành slot riêng, còn prompt để chúng nằm trong câu hành động.
+    Sửa phản ví dụ theo cặp vai là kỹ thuật A13 số 1, thuộc vòng sau và do sonlm quyết
+    (Ask First của spec 2.6).
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-5-bo-vang-trich-xuat.md`
   summary: Định dạng `time` của prompt và của nhãn vàng xung đột: prompt dạy LLM viết "2026-08-12 09:20" còn nhãn giữ nguyên văn tài liệu "12/08/2026 lúc 09:20".
   evidence: `adapters/trich_xuat.VI_DU_DAU_RA` viết lại mốc thời gian sang dạng ISO-ish, còn luật nạp của bộ vàng bắt mọi giá trị slot phải là đoạn có thật trong thân (nhãn "trích sát câu"), nên hai bên không thể trùng chuỗi ở vai này. `time` chiếm 15,2% mẫu số (23/151 slot), tức một lệch *hệ thống* chứ không phải nhiễu: chấm bằng phép so chuỗi thô sẽ báo trượt gần như toàn bộ vai `time` mà nguyên nhân chỉ là định dạng. Hai đường sửa loại trừ nhau, phải chọn một: chuẩn hóa thời gian trước khi ghép ở harness chấm, hoặc sửa ví dụ prompt cho viết nguyên văn như tài liệu. Địa chỉ: story 2.6.
+  resolved: 2026-09-02 (2.6) - chọn đường thứ hai: sửa ví dụ prompt. `VI_DU_DAU_RA` nay
+    ghi `"12/08/2026 lúc 09:20"` đúng nguyên văn `eval/data/05-*.txt`, và luật rộng hơn
+    được ép bằng test (`tests/test_trich_xuat.py::
+    test_moi_gia_tri_cua_vi_du_prompt_la_doan_co_that_trong_than_few_shot`): *mọi* giá
+    trị slot của ví dụ phải là đoạn có thật trong thân một tài liệu few-shot - cùng luật
+    mà bộ vàng 2.5 ép cho nhãn tay, nay áp cho cả hai phía của phép chấm. Không chuẩn hóa
+    thời gian ở harness: một phép chuẩn hóa riêng cho một vai là một chỗ để giấu lỗi. Đo
+    lại sau khi sửa: xung đột *định dạng* biến mất (không còn ca hai bên viết khác dạng
+    cùng một mốc), nhưng TP của vai `time` gần như không đổi (9/23 slot ở `v0-deepseek-goc`,
+    8/23 ở `v1-deepseek`). Nguyên nhân thật không phải bỏ sót và cũng không phải định
+    dạng: 11 slot `time` hụt của `v1-deepseek` nằm nguyên văn bên trong một giá trị
+    `remediation` dài ("phải bổ sung phiếu thay đổi trong 24 giờ kể từ khi dịch vụ phục
+    hồi"), tức prompt để mốc thời gian nằm trong câu hành động thay vì tách ra. Đó là
+    khoản "`remediation` là hố nuốt" bên dưới.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-5-bo-vang-trich-xuat.md`
   summary: Mẫu số lệch nặng theo vai: `subject` chiếm 28,5% (43/151) mà lược đồ bắt buộc phải có, `cause` 1,3% (2 slot) và `symptom` 2,6% (4 slot).
@@ -446,6 +506,14 @@
     soát nhãn in cả số tuyệt đối lẫn phần của mẫu số. Phần còn treo là quyết định của
     2.6: có dùng mẫu số phụ đã loại `subject` hay không, và nếu `cause`/`symptom` vẫn
     quá mỏng thì 2.8 thêm báo cáo sự cố vào corpus. Địa chỉ giữ 2.6.
+  tien_do: 2026-09-02 (2.6) - nửa của 2.6 đã quyết: **có dùng mẫu số phụ**.
+    `eval/cham_trich_xuat.mau_so_phu()` bỏ `subject` ra (151 -> 108 slot) và cả bảng so
+    vòng lẫn bảng theo vai đều in nó cạnh số tổng; khoảng cách nói đúng điều đã lo -
+    `v1-deepseek` precision 70,7% tổng nhưng 61,4% khi bỏ `subject`, tức hơn 9 điểm của
+    con số tổng là điểm của một vai mà lược đồ bắt buộc phải có. Phần còn treo đúng một
+    câu: `cause` (2 slot) và `symptom` (4 slot) vẫn quá mỏng để đọc hai hàng tương ứng
+    của ma trận - bốn vòng cho TP 1-2 trên `cause`, một con số không kết luận được gì.
+    Đường sửa là thêm báo cáo sự cố vào corpus. Địa chỉ: story 2.8.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-5-bo-vang-trich-xuat.md`
   summary: Trùng `id_fact` giữa hai tài liệu khác nhau chưa có luật; loader chỉ cấm trùng *trong cùng* một tài liệu.
@@ -457,6 +525,13 @@
     hiện trạng: mẫu số cộng cả hai lần). Không cấm, vì hai tài liệu nói cùng một quy
     định là dữ liệu hợp lệ. Phần còn treo hẹp lại đúng một câu: đếm một lần hay đếm
     theo tài liệu, quyết cùng luật ghép. Địa chỉ giữ 2.6/2.8.
+  tien_do: 2026-09-02 (2.6) - nửa "đếm thế nào" đã quyết cùng luật ghép: **đếm theo tài
+    liệu**. `cham_moi_tai_lieu` chấm từng tài liệu một, ghép chỉ trong phạm vi tài liệu
+    đó rồi cộng sổ; hai tài liệu gán cùng một tập slot vì thế góp hai lần vào mẫu số,
+    đúng bằng cách `BoVang.mau_so_slot()` đếm. Lý do: phép chấm đo *trích xuất từ một tài
+    liệu*, nên một fact xuất hiện ở hai tài liệu là hai lần hệ phải trích được nó. Phần
+    còn treo là phía pipeline (một node hyperedge cho hai tài liệu, `source_id` gộp), chỉ
+    thành ca thật khi corpus lớn lên. Địa chỉ: story 2.8.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-5-bo-vang-trich-xuat.md`
   summary: Luật "phủ đủ 8 vai" và "phủ đủ 3 loại nội dung" là điều kiện *nạp* của loader, nên thêm một loại nội dung vào `config/hang-do-nhay.yaml` hay một vai vào `core/slots.py` làm cả bộ test đỏ cho tới khi có người soạn và gán nhãn tài liệu mới.
@@ -467,3 +542,59 @@
     2.5 đã chốt hai luật này là điều kiện nạp. Giảm đau bằng tài liệu thay vì nới luật:
     AGENTS.md mục Running ghi thẳng rằng thêm file vào `eval/data/` mà chưa gán nhãn là
     `uv run pytest` đỏ, và thông điệp lỗi nêu đúng vai hoặc loại còn thiếu.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
+  summary: `remediation` là hố nuốt của lược đồ 8 vai - nó nhận 27 trong 51 ca lẫn vai của `v1-deepseek`, kéo ba vai `time` (8/23 slot đúng vai), `owner` (6/18) và `source` (1/8) xuống đáy.
+  evidence: Chỉ số mức tài liệu cho thấy 149/151 giá trị vàng *có mặt* trong đầu ra: chỉ 2 vắng hẳn, còn 51 slot bị dán sai vai. Lẫn vai dồn vào một cột chứ không rải đều (`remediation` 27, `subject` 11, `condition` 8) và hình dạng đó giống nhau ở cả bốn vòng, kể cả `gpt-4o` (cột `remediation` nhận 21-27 ca ở mọi vòng) - tức **hai model lẫn cùng chỗ**. Theo khung A13 đó chính là ca "nguyên nhân ở lược đồ/prompt, không ở model": đường sửa là phản ví dụ theo cặp vai (kỹ thuật 1) hoặc prompt theo loại tài liệu (kỹ thuật 3), không phải đổi model. Ask First của spec 2.6 cấm chỉnh prompt ngoài việc sửa ví dụ, nên sonlm quyết kỹ thuật nào cho vòng sau. Ngưỡng 60% của R2 chỉ ràng precision nên chuyện này không kích hoạt đường lùi, nhưng nó là con số của FR-02 trong chương 4 và là câu trả lời cho câu hỏi A13. Địa chỉ: vòng sau của 2.6 (sonlm quyết kỹ thuật A13), hoặc 2.8 nếu corpus đổi trước.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
+  summary: Khớp lỏng là quan hệ chuỗi con hai chiều, nên một giá trị pred nuốt cả câu vẫn ăn điểm nếu nó *chứa* nhãn vàng; và ngược lại, một chữ chèn vào giữa làm hai bên trượt hẳn.
+  evidence: I/O Matrix của spec 2.6 chốt "một giá trị là chuỗi con của giá trị kia" và phép chấm làm đúng thế. Hai mép của luật đó chưa đo được cái giá: (a) pred dài gấp ba nhãn vàng vẫn là TP, nên một prompt lười chép cả câu được điểm cao hơn nó xứng đáng - chống một phần bằng luật "mỗi giá trị pred tiêu thụ đúng một lần trong một cặp", nhưng không chặn ca một fact một vai; (b) chèn chữ vào *giữa* thì không còn là chuỗi con ("trả giới hạn bộ nhớ PHP-FPM về mức cũ" so với "trả giới hạn bộ nhớ về mức cũ" - chính ví dụ trong Design Notes của spec), nên ca đó rơi xuống "thiếu" dù vai dán đúng. Đường sửa nếu cần: thêm ràng buộc tỉ lệ độ dài cho khớp lỏng, hoặc dùng một phép khớp theo token (Jaccard trên token, ngưỡng chốt trước). Không đổi ở 2.6 vì đổi luật chấm giữa lúc so bốn vòng là đổi thước giữa lúc đo. Địa chỉ: story 2.8 (khi corpus lớn hơn cho đủ ca), hoặc Epic 7 trước khi số vào chương 4.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
+  summary: Năm trong sáu khoản của bảng ngoại suy FR-30 mang cờ `giả định`; chỉ `nap_corpus` (0,0375 trên tổng 4,00 USD) đứng trọn trên số đo.
+  evidence: `eval/ngoai_suy.GiaDinh` ước 3000 token vào / 500 ra cho một lời gọi sinh và 2500/400 cho một lời gọi judge, vì T7 chưa chạy nên chưa có ngữ cảnh truy hồi thật để đếm; hai khoản GPT-4o (`gpt4o_dung_cuoi`, `ensemble_a13`) áp đơn giá của model này lên token đo được của model khác. Cả năm khoản mang cờ `giả định` và mỗi khoản nêu tên giả định của nó trong cột "giả định có tên"; chúng chiếm 6,73 trên tổng 6,77 USD, tức gần như toàn bộ con số ngoại suy là ước lượng - riêng `judge_do2` là 5,54 sau khi vòng review 2 nhân thêm số vai. Khoảng cách so với mức báo động 60 USD (gần 9 lần) là thứ làm sai số đó không đổi được kết luận, không phải chất lượng của ước lượng. Đo thật ngay lần chạy Đo 2 đầu tiên rồi thay đúng bốn tham số của `GiaDinh`. Địa chỉ: story 7-5 (chạy chính thức 3 phép đo), sớm hơn thì Epic 5 khi có đường sinh câu trả lời.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
+  summary: Sửa ví dụ prompt cho trích sát văn bản làm precision khớp *lỏng* của cổng R2 tăng (64,8% -> 70,7%) nhưng khớp *chặt* giảm (45,3% -> 36,6%).
+  evidence: Ví dụ mới dạy LLM chép nguyên văn đoạn dài của tài liệu ("cụm cơ sở dữ liệu DB02" thay vì "DB02"; "ngừng nhận ghi, các đơn hàng mới không lưu được trong 25 phút" thay vì bản ngắn), trong khi nhãn vàng chọn *cụm tối thiểu* mang nghĩa. Hai bên vì thế thành quan hệ chuỗi con thay vì bằng nhau. Không phải lỗi - số chính của phép chấm là khớp lỏng, và Design Notes của spec 2.6 chốt thế - nhưng nó nói rằng cột khớp chặt đang đo "prompt và người gán có cùng gu cắt cụm không", chứ không đo chất lượng trích xuất. Nếu chương 4 muốn dùng cột khớp chặt làm số phụ thì phải hoặc dạy prompt cắt cụm tối thiểu, hoặc bỏ cột đó khỏi phần kết luận. Địa chỉ: vòng sau của 2.6, hoặc 7-5 khi chốt bảng số của chương 4.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
+  summary: `eval/` nay import thẳng `hypergraphrag` (`chunking_by_token_size`) mà `CAM_IMPORT["eval"]` của import-lint không nói gì; AGENTS.md ghi chiều import vendor chỉ cho `adapters/`.
+  evidence: Vòng review 2 đóng phần chính: luật chia chunk chuyển sang `adapters/chunking.py` (`TRUONG_CHUNK`, `cau_hinh_chunk`, `chia_chunk`) và `eval/do_trich_xuat.py` import từ đó, nên nó không còn chạm `vendor/`. Parity nay được canh bằng cách *quan sát* chunk mà `ainsert` thật ghi vào kho KV chứ không dựng lại lời gọi chuẩn (`test_chia_chunk_khop_chunk_ma_ainsert_that_ghi_ra`). Phần còn treo hẹp lại đúng một chỗ: `eval/smoke_upstream.py` (smoke của story 1.1) vẫn import `hypergraphrag` để chạy engine upstream, và import-lint không có luật nào nói về chiều đó - thêm `hypergraphrag` vào `CAM_IMPORT["eval"]` cùng một dòng danh sách trắng cho smoke, hoặc ghi ngoại lệ vào AGENTS.md. Địa chỉ: story 2.8.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
+  summary: `SO_DO_NAP_THAT` là 6 hằng chép tay từ `audit_log` của máy chủ; script sinh ra nó (`/root/hyper-rag-data/chay_2_6.sh`) không nằm trong repo.
+  evidence: Sáu con số (token vào/ra LLM, token embedding, hai khoản USD, số tài liệu) đọc từ bảng chi phí mà `api/do_chi_phi.py` in ra, rồi chép vào một hằng có ghi ngày và ghi lệnh. Chép tay là chỗ sai được: không ai canh sáu số đó khớp `audit_log`. Đường sửa là một lệnh `--xuat-json` cho `api/do_chi_phi.py` ghi thẳng số đo thành file trong repo, rồi `eval/ngoai_suy.py` đọc file đó; kèm việc đưa `chay_2_6.sh` vào `scripts/`. Địa chỉ: story 2.7 (màn nạp web cũng cần đúng số đó theo đợt) hoặc 7-5 khi bảng ngoại suy vào chương 4.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
+  summary: Chi phí của bốn vòng đo không vào `audit_log`: `GomChiPhi` chỉ giữ sự kiện trong RAM rồi ghi số vào file kết quả.
+  evidence: Đúng thiết kế của story (harness không import `api/`, không cần Postgres để chạy), và số tiền vẫn đi qua đúng seam đo của FR-30 vì wrapper là bên phát sự kiện. Cái mất là lũy kế: bảng ngoại suy trả lời "còn bao nhiêu để tiêu" mà không cộng phần *đã* tiêu từ 2.2 tới 2.6 (đo thô 2.2, nạp thật 2.3/2.4/2.6, bốn vòng đo). Cộng tay hiện được: các lần nạp có trong `audit_log`, bốn vòng đo có trong file kết quả. Đường sửa là một port audit ghi JSONL trong `eval/` rồi hợp nhất, hoặc cho harness nhận `AuditPort` tiêm từ ngoài. Địa chỉ: story 7-5 (số tổng của chương 4), hoặc 6-4 nếu journal audit offline làm trước.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
+  summary: `MODEL_EMBEDDING` và năm hằng tên model khác trong `eval/ngoai_suy.py` là tên chép cứng trong code Python; `test_ten_model_va_gia_khong_nam_trong_code_python` chỉ quét `core/`, `adapters/`, `api/`.
+  evidence: Luật "tên model và giá chỉ ở YAML" (spec 2.2) sinh ra để đổi model là sửa file cấu hình. `eval/` nằm ngoài phạm vi quét nên sáu hằng ở đây không bị canh; chúng *tra* giá từ danh mục chứ không chép giá, nên phần "giá" của luật vẫn giữ, chỉ phần "tên" là chép. Chúng cũng là *tham số của phép ngoại suy* chứ không phải cấu hình vận hành (đổi tên ở đây không đổi `LLM_MODEL` của compose), nên nới luật hay siết luật đều phải quyết cùng lúc với việc bảng ngoại suy lấy tên model từ đâu. Địa chỉ: story 7-5.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
+  summary: Ví dụ prompt mới nhét chủ thể vào giá trị của vai khác ("trang thanh toán của App01 trả lỗi 502"), đúng kiểu nuốt cụm dài mà phép chấm đang phạt.
+  evidence: Ràng buộc frozen của 2.6 đòi mọi giá trị slot của ví dụ là đoạn nguyên văn trong thân tài liệu few-shot, và câu trong `05-*.txt` viết "trang thanh toán của App01 trả lỗi 502" - muốn có `symptom` ngắn hơn thì phải đổi câu trong tài liệu, tức đổi bộ vàng theo đầu ra mong muốn (Never của spec 2.5). Hệ quả đo được: khớp chặt giảm 8,7 điểm, và cột `remediation` thành hố nuốt. Hai đường sửa loại trừ nhau, cần sonlm quyết cùng lúc với kỹ thuật A13 cho vòng sau: hoặc dạy prompt cắt cụm tối thiểu (và chấp nhận ví dụ không còn nguyên văn), hoặc giữ nguyên và đọc khớp chặt như một chỉ số phụ về "gu cắt cụm". Địa chỉ: vòng sau của 2.6.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
+  summary: Neo `subject` khớp lỏng không có ràng buộc độ dài tối thiểu: một `subject` ngắn ("VPN", "IT") ghép được với mọi fact pipeline có chứa chuỗi đó.
+  evidence: Ứng viên ghép cặp là hai fact có `subject` khớp theo `khop_gia_tri`, tức bằng nhau *hoặc* chuỗi con hai chiều. Trên corpus lõi chưa thấy ca sai vì điểm chồng lấn chọn cặp tốt nhất trong số ứng viên, nhưng cửa vào thì rộng: một chủ thể hai ký tự khớp gần như mọi câu. Corpus 40 tài liệu của 2.8 có nhiều tài liệu cùng chủ đề nên ca này thành thường. Cần một ca âm (hai fact khác chủ thể mà ghép được) rồi mới chốt luật: ngưỡng độ dài tối thiểu, hay đòi tỉ lệ trùng token, hay chỉ cho chuỗi con một chiều. Địa chỉ: story 2.8.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
+  summary: `gop()` cộng lẫn sổ đếm của hai chỉ số mà không có hàng rào kiểu; ba bộ đếm phân loại chỉ lặng lẽ thành `None`.
+  evidence: `KetQuaCham` không mang tên chỉ số sinh ra nó, nên `gop([cham_ghep_cap, cham_muc_tai_lieu])` cho một tổng vô nghĩa mà không ai nổ. Hiện không có nơi gọi nào làm thế (`cham_bo` và `cham_bo_muc_tai_lieu` mỗi hàm gấp một loại), và `None` của ba bộ đếm phân loại lan ra làm tổng ít nhất không nói dối về phần đó. Đường sửa: thêm một field `chi_so` vào `KetQuaCham` rồi từ chối cộng hai sổ khác chỉ số. Địa chỉ: story 2.8 hoặc Epic 7, cùng lúc với việc thêm chỉ số thứ ba nếu có.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
+  summary: Runner ghi cứu hộ theo *tài liệu*, không theo chunk: một tài liệu dài hỏng ở chunk cuối là mất phản hồi của mọi chunk trước đó trong cùng tài liệu.
+  evidence: Corpus lõi mỗi tài liệu đúng một chunk nên hiện không mất gì. Corpus 40 tài liệu của 2.8 có tài liệu dài hơn 1200 token thì một tài liệu 5 chunk hỏng ở chunk thứ 5 mất bốn lời gọi đã trả tiền. Ghi sau mỗi chunk là một dòng đổi chỗ vòng lặp, nhưng file cứu hộ khi đó có tài liệu dở dang nên phải quyết luôn hình dạng của nó. Địa chỉ: story 2.8.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
+  summary: Không có `--uoc-tinh`/dry-run trước khi tiêu tiền, và `--ghi-de` không giữ bản `.bak` của file kết quả cũ.
+  evidence: Một vòng hiện tốn ~0,007 USD (DeepSeek) tới ~0,037 USD (GPT-4o) nên rủi ro tiền nhỏ, nhưng `--ghi-de` xóa vĩnh viễn một vòng *đã trả tiền* và không có bước nào cho biết trước "sắp gọi 8 lời gọi trên model X". Dry-run in số lời gọi cùng ước tính chi phí theo đơn giá danh mục là một hàm thuần; `--ghi-de` đổi tên file cũ thành `<vòng>.bak.json` là một dòng. Địa chỉ: story 2.8, khi corpus lớn làm một vòng đắt lên gấp năm.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
+  summary: Runner không có retry hay xử lý 429: một lần rate limit giữa chừng là dừng cả vòng.
+  evidence: Có chủ ý ở mức này - `TaskGroup` của `adapters/trich_xuat.py` cũng hủy anh em khi một lời gọi hỏng, vì mỗi lời gọi là tiền thật và một vòng dở dang dễ đọc nhầm thành một vòng đủ. Bù lại đã có file cứu hộ giữ phần đã trả tiền. Nhưng bốn vòng hiện chạy tuần tự 8 lời gọi, còn corpus 40 tài liệu là 40+ lời gọi liên tiếp trên một key dùng chung: xác suất chạm 429 khác hẳn. Đường sửa: `tenacity` retry theo `Retry-After` cho đúng mã 429 và 5xx, không retry mã 4xx khác. Địa chỉ: story 2.8.
