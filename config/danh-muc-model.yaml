@@ -18,6 +18,15 @@
 #     2026-09-02, mức Standard.
 #   - Ollama (profile `local-llm` của compose): chạy trên máy chủ, 0 USD.
 #
+# Đối chiếu hóa đơn thật, 02/09/2026 (story 2.6): hóa đơn DeepSeek của cả ngày cho
+# `deepseek-v4-flash` là 0,54 USD, còn hệ ước 0,617466 USD cho đúng tập lời gọi đó
+# (0,602700 trong `audit_log` cộng 0,014766 của hai vòng đo). Ước **cao hơn thật
+# 14,3%**, đúng chiều mà cách ghi giá ở trên nhắm tới. Phần lệch: một ít do off-peak
+# (43/46 lời gọi rơi trong khung peak nên chỉ 0,012 USD được hưởng nửa giá), phần lớn
+# do token cache-hit (khớp khi khoảng 74% token vào là cache-hit). **Giữ nguyên đơn
+# giá, không nhân hệ số 0,8745 vào đây**: đó là hệ số của một ngày với một tỉ lệ
+# peak/cache riêng, còn FR-30 cần cận trên chứ không cần ước sát.
+#
 # `max_token` là ngữ cảnh vào tối đa (với embedding nó thành
 # `EmbeddingFunc.max_token_size` của upstream). `so_chieu` chỉ có ở embedding
 # và đi vào `EmbeddingFunc.embedding_dim`, tức kích thước collection Qdrant:

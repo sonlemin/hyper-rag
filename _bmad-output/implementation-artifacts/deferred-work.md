@@ -353,6 +353,33 @@
     chiếu hóa đơn DeepSeek/OpenAI của các đợt đã chạy rồi chốt số trước khi bảng ngoại
     suy vào chương 4. Địa chỉ: sonlm, chậm nhất story 7-5.
 
+  resolved: 2026-09-02 - sonlm đưa hóa đơn thật: **0,54 USD** cho toàn bộ
+    `deepseek-v4-flash` của sản phẩm trong ngày 02/09. Ước tính của hệ cho cùng ngày là
+    **0,617466 USD** = 0,602700 (46 lời gọi trong `audit_log`) + 0,014766 (hai vòng đo
+    deepseek, không vào `audit_log`). Ước **cao hơn thật 14,3%**, hệ số thật/ước 0,8745 -
+    đúng chiều đã thiết kế, vì bảng giá cố ý ghi mức peak và giá cache-miss làm cận trên.
+    Phân rã phần lệch: khung peak của DeepSeek là 01-04 và 06-10 UTC thứ Hai-Sáu, 02/09 là
+    thứ Tư, và 43/46 lời gọi rơi trong khung peak; chỉ 0,023977 USD nằm ngoài (giờ 11 UTC
+    cộng hai vòng đo lúc 11:18-11:22 UTC), off-peak bằng nửa nên chỉ giải thích được
+    0,011988. Phần còn lệch 0,065477 gần như chắc chắn là token cache-hit: tổng token vào
+    207.276 tương ứng 0,091201 USD ở giá cache-miss, nên cần khoảng 74% token vào là
+    cache-hit thì khớp - hợp lý với một prompt trích xuất có tiền tố cố định dài lặp qua
+    hàng chục lời gọi. **Không sửa đơn giá trong YAML**: 0,8745 là hệ số của một ngày với
+    một tỉ lệ peak/cache riêng, nhét nó vào bảng giá là fit một con số vào một ngày, và
+    FR-30 muốn cận trên chứ không muốn ước sát. Kết luận cho chương 4: ước tính bảo thủ
+    khoảng 14%, sai số đó nhỏ so với khoảng cách tới mức báo động 60 USD. Phần đo *riêng*
+    giá cache-hit (đọc `usage.prompt_cache_hit_tokens`) tách thành khoản mới bên dưới.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
+  summary: Phần lệch 12% giữa ước tính và hóa đơn DeepSeek được *suy ra* là token cache-hit, không đo được, vì wrapper không đọc `usage.prompt_cache_hit_tokens`.
+  evidence: Đối chiếu hóa đơn 02/09 (khoản ngay trên) khớp khi giả định khoảng 74% token
+    vào là cache-hit, nhưng đó là số suy ngược từ một con số tổng của một ngày chứ không
+    phải số đo. Muốn biết thật thì `adapters/llm_wrapper.OpenAITuongThich.hoan_thanh` đọc
+    thêm `usage.prompt_cache_hit_tokens` của DeepSeek, `KetQuaLLM` mang thêm một trường, và
+    `MucModel` có thêm `gia_cache_hit_usd_1m`. Chưa làm vì nó đổi hợp đồng wrapper của 2.2
+    và vì ước cận trên đã đủ cho mức báo động 60 USD. Đáng làm khi chi phí thật tiến gần
+    mức báo động, hoặc khi chương 4 cần con số chi phí sát thay vì cận trên.
+    Địa chỉ: story 7.5 (gom bằng chứng NFR) hoặc sớm hơn nếu ngân sách căng.
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-2-wrapper-llm-embedding-dem-chi-phi-qua-audit-port.md`
   summary: `OllamaCucBo.hoan_thanh` chuyển thẳng `**kwargs` của upstream vào `AsyncClient.chat`, nhưng Ollama nhận tham số sinh (temperature, max_tokens...) qua `options=` chứ không phải kwargs phẳng.
   evidence: Đường cục bộ chưa chạy lần nào (profile `local-llm` chưa bật, model chưa pull), nên chưa có ca thật để đo hình dạng kwargs mà `operate.py` gửi. Hàm upstream `ollama_model_if_cache` cũng bỏ `max_tokens` và chuyển phần còn lại phẳng, tức cùng giới hạn. Địa chỉ: story 2.11 (space `real`, bật local-llm lần đầu), kèm test provider giả cho Ollama.
