@@ -27,6 +27,27 @@ WORK_DIR = REPO_ROOT / "eval" / "expr" / "smoke_upstream"
 QUESTION = "Ai phê duyệt quyền ghi vào nhánh chính (main) và điều kiện là gì?"
 
 
+TAI_LIEU_BANG_CHUNG_1_1: tuple[str, ...] = (
+    "01-cap-quyen-gitlab.txt",
+    "02-vpn-va-mat-khau.txt",
+    "03-truc-su-co.txt",
+    "04-sao-luu-du-lieu.txt",
+)
+
+
+def chon_tai_lieu(thu_muc: Path) -> list[Path]:
+    """Bon tai lieu cua lan chay bang chung 1.1, ghim theo ten.
+
+    Story 2.5 mo rong `eval/data/` len 10 file lam bo vang trich xuat, con
+    smoke nay phai tai tao duoc dung lan chay da bao cao o story 1.1 (4 tai
+    lieu; `05-*` them o story 2.4). Ghim ten thay vi cat theo thu tu: mot file
+    `00-*.txt` them vao thu muc se day `01-cap-quyen-gitlab.txt` - tai lieu duy
+    nhat tra loi duoc QUESTION - ra khoi tap nap ma guard "3-5 tai lieu" van
+    qua, tuc smoke xanh tren mot cau tra loi sai.
+    """
+    return [thu_muc / ten for ten in TAI_LIEU_BANG_CHUNG_1_1]
+
+
 def buoc(msg: str) -> None:
     print(f"[{datetime.now(timezone.utc).strftime('%H:%M:%SZ')}] {msg}", flush=True)
 
@@ -58,7 +79,7 @@ def main() -> None:
 
     buoc(f"Buoc 2: doc tai lieu tieng Viet trong {DATA_DIR.relative_to(REPO_ROOT)}")
     docs = []
-    for path in sorted(DATA_DIR.glob("*.txt")):
+    for path in chon_tai_lieu(DATA_DIR):
         # Từ story 2.3 file trong eval/data/ mang frontmatter scope/content_type
         # cho pipeline ingest; smoke upstream chỉ cần phần thân.
         _, text = tach_frontmatter(path.read_text(encoding="utf-8"))

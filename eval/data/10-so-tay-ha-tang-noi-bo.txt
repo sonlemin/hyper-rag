@@ -1,0 +1,10 @@
+---
+scope: noi_bo
+content_type: bi_mat_ha_tang
+---
+Sổ tay hạ tầng nội bộ (tài liệu hạn chế).
+Truy cập quản trị vào máy chủ sản xuất chỉ đi qua máy chủ nhảy bastion.it.local, mọi phiên SSH được ghi lại và giữ 90 ngày.
+Khóa SSH quản trị lưu trong kho khóa Vault tại vault.it.local, cấp theo yêu cầu có thời hạn 8 giờ và do trưởng nhóm Hạ tầng duyệt.
+Dải mạng quản trị là 10.20.0.0/24, tách khỏi dải mạng người dùng và chỉ mở từ máy chủ nhảy.
+Mật khẩu quản trị cơ sở dữ liệu được xoay vòng mỗi 90 ngày bằng tác vụ tự động của Vault, phòng IT kiểm chứng kết quả xoay vòng mỗi quý.
+Tài liệu này chỉ chia sẻ trong nhóm Hạ tầng, gửi ra ngoài phải có phê duyệt của Giám đốc Kỹ thuật.

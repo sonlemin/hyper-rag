@@ -1,0 +1,10 @@
+---
+scope: noi_bo
+content_type: runbook
+---
+Quy trình quản lý thay đổi trên hệ thống sản xuất.
+Mọi thay đổi cấu hình hệ thống sản xuất phải có phiếu thay đổi trên Jira, mô tả phạm vi ảnh hưởng và kế hoạch quay lui, gửi trước 24 giờ.
+Thay đổi mức rủi ro cao, tức là chạm cơ sở dữ liệu hoặc cấu hình mạng, do Hội đồng thay đổi họp thứ Ba hàng tuần phê duyệt.
+Thay đổi khẩn cấp trong lúc xử lý sự cố được làm trước, nhưng phải bổ sung phiếu thay đổi trong 24 giờ kể từ khi dịch vụ phục hồi.
+Cửa sổ triển khai thay đổi là 22 giờ đến 24 giờ các ngày thứ Tư, triển khai ngoài cửa sổ này phải có phê duyệt của Giám đốc Kỹ thuật.
+Sau mỗi thay đổi, người thực hiện ghi kết quả vào phiếu và đóng phiếu trong 2 ngày làm việc, phiếu thay đổi quá hạn bị nhắc tự động qua email.

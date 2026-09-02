@@ -1,0 +1,10 @@
+---
+scope: noi_bo
+content_type: runbook
+---
+Quy trình giám sát hệ thống và xử lý cảnh báo.
+Hệ thống giám sát Zabbix quét các máy chủ sản xuất mỗi 60 giây và gửi cảnh báo vào kênh Slack #canh-bao-ha-tang.
+Cảnh báo mức nghiêm trọng được gửi kèm cuộc gọi tự động tới người trực khi không có ai xác nhận trong 10 phút.
+Ngưỡng cảnh báo dung lượng đĩa là 85 phần trăm, ngưỡng cảnh báo CPU là 90 phần trăm duy trì trong 5 phút.
+Người trực phải xác nhận cảnh báo trên Zabbix rồi ghi hướng xử lý vào kênh Slack, cảnh báo lặp lại quá 3 lần trong một giờ được nâng lên cho trưởng nhóm Vận hành.
+Phòng IT rà soát danh sách cảnh báo nhiễu vào ngày làm việc đầu tiên mỗi tháng và tắt các luật cảnh báo không còn đúng.

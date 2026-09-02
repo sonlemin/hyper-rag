@@ -415,3 +415,55 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-4-trich-xuat-fact-8-vai-slot-tieng-viet.md`
   summary: Prompt 8 vai một lượt trích ra ít fact hơn hẳn prompt upstream (3-4 fact mỗi tài liệu `eval/data`, 19 hyperedge / 64 entity cho 5 tài liệu; upstream 2.3 ra 87 hyperedge / 110 entity cho 4 tài liệu), recall trích xuất chưa có mẫu số để đo.
   evidence: Lần nạp thật 2.4 (spec 2.4, mục Lần nạp thật): 0 bản ghi bị loại, 0 chunk hỏng, nên số fact thấp là do LLM gom nhiều câu vào ít fact, không do lược đồ loại. Upstream đếm "knowledge segment" tự do nên hai con số không cùng đơn vị, nhưng chiều lệch đủ lớn để nghi bỏ sót (FR-02 nói tiếng Việt kỹ thuật hay chết ở bỏ sót). Đo bằng bộ vàng 2.5 (đơn vị slot đã điền); nếu recall dưới ngưỡng thì vòng 2.6 chỉnh prompt (tách fact, few-shot theo cẩm nang A13, trích hai lượt) trước khi xét R2. Địa chỉ: 2.5 (mẫu số) rồi 2.6 (vòng lặp).
+  tien_do: 2026-09-02 - phần mẫu số đã có: `eval/bo_vang_trich_xuat.json` gán nhãn tay 10 tài liệu lõi (`eval/data/01..10`), `eval/bo_vang.py` kiểm bằng chính `core.facts`/`core.slots` và trả **151 slot đã điền trên 8 tài liệu chấm** (49 fact / 176 slot cả bộ; hai tài liệu few-shot `01-cap-quyen-gitlab.txt` và `05-bao-cao-su-co-inc-1208.txt` bị loại khỏi mẫu số theo PRD 2.6, chốt trước khi có con số nào). Con số so sánh của lần nạp thật 2.4 vẫn là 19 hyperedge cho 5 tài liệu, còn nhãn tay ra 22 fact / 81 slot cho đúng 5 tài liệu đó - nhưng kết luận recall chỉ được rút sau phép chấm của 2.6, không rút từ hai con số này. Phần đo (precision/recall, ma trận lẫn lộn, quyết R2) giữ địa chỉ 2.6.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-bo-vang-trich-xuat.md`
+  summary: Bộ vàng chỉ có scope `noi_bo`; không tài liệu lõi nào mang scope `khach_hang_a`, nên biên cách ly hai scope (RT-01, `tech_support` không chạm scope khách hàng) không có ca trên corpus lõi.
+  evidence: Bảng chính sách khai `devops` chạm cả `noi_bo` lẫn `khach_hang_a`. Bộ vàng 2.5 phủ đủ ba *loại nội dung* (đã thêm `bi_mat_ha_tang` để có ca L0 trên dữ liệu thật) nhưng chỉ một scope, vì mẫu số của R2 chỉ hỏi về trích xuất chứ không hỏi về quyền, và trộn thêm scope vào 10 tài liệu lõi làm mỗi loại nội dung mỏng đi. Ca hai scope hiện chạy trên fixture dựng tay của Epic 1. Địa chỉ: story 2.8 (corpus ~40 tài liệu), nơi phần nhiễu và phần đa scope được dựng.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-bo-vang-trich-xuat.md`
+  summary: Chưa có luật ghép nhãn vàng với hyperedge pipeline sinh ra; `FactVang.id_fact` mới cho ca khớp tuyệt đối.
+  evidence: Cố ý: bộ vàng giữ dữ liệu và mẫu số, không quyết hộ luật ghép (Design Notes spec 2.5). Ca khớp tuyệt đối là so `id_fact` (băm tập slot đã chuẩn hóa), nhưng ca thường gặp là khớp một phần - đúng `subject`, thiếu vai hoặc lẫn vai - và chính ca đó sinh ra ma trận lẫn lộn giữa các vai. Địa chỉ: story 2.6, cùng chỗ định nghĩa phép chấm.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-bo-vang-trich-xuat.md`
+  summary: Quy ước gán nhãn cho các cặp vai hay lẫn (`condition` vs `cause`, `time` cho thời hạn lưu giữ, `source` chỉ cho tài liệu/hệ thống được dẫn) là quyết định của người gán, chưa được đối chiếu với ma trận lẫn lộn thật.
+  evidence: Quy ước ghi ở docstring `eval/bo_vang.py` và áp đều cho cả 10 tài liệu: trong runbook mọi mệnh đề "khi/nếu/quá ... trở lên" và mọi ngưỡng số là `condition`, `cause` chỉ dùng cho nguyên nhân gốc nêu thẳng (gần như chỉ có ở báo cáo sự cố). Đây đúng là cặp mà A13 kỹ thuật 1 bảo hay lẫn, nên nếu vòng 2.6 thấy lỗi dồn vào cặp này thì phải phân biệt "prompt lẫn" với "người gán và prompt hiểu vai khác nhau" trước khi sửa phản ví dụ. Địa chỉ: story 2.6.
+  tien_do: 2026-09-02 - quy ước nay không còn là cảm tính từng câu: nó viết ở docstring
+    `eval/bo_vang.py` và được một luật nạp ép một phần (mọi giá trị slot phải là đoạn
+    có thật trong thân tài liệu, nên không gán được nhãn viết lại). Phần còn treo là
+    phần chỉ đo mới biết: quy ước của người gán có trùng cách prompt hiểu vai không.
+    Địa chỉ giữ 2.6.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-bo-vang-trich-xuat.md`
+  summary: Định dạng `time` của prompt và của nhãn vàng xung đột: prompt dạy LLM viết "2026-08-12 09:20" còn nhãn giữ nguyên văn tài liệu "12/08/2026 lúc 09:20".
+  evidence: `adapters/trich_xuat.VI_DU_DAU_RA` viết lại mốc thời gian sang dạng ISO-ish, còn luật nạp của bộ vàng bắt mọi giá trị slot phải là đoạn có thật trong thân (nhãn "trích sát câu"), nên hai bên không thể trùng chuỗi ở vai này. `time` chiếm 15,2% mẫu số (23/151 slot), tức một lệch *hệ thống* chứ không phải nhiễu: chấm bằng phép so chuỗi thô sẽ báo trượt gần như toàn bộ vai `time` mà nguyên nhân chỉ là định dạng. Hai đường sửa loại trừ nhau, phải chọn một: chuẩn hóa thời gian trước khi ghép ở harness chấm, hoặc sửa ví dụ prompt cho viết nguyên văn như tài liệu. Địa chỉ: story 2.6.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-bo-vang-trich-xuat.md`
+  summary: Mẫu số lệch nặng theo vai: `subject` chiếm 28,5% (43/151) mà lược đồ bắt buộc phải có, `cause` 1,3% (2 slot) và `symptom` 2,6% (4 slot).
+  evidence: Đếm trên 8 tài liệu chấm: subject 43, remediation 34, time 23, condition 19, owner 18, source 8, symptom 4, cause 2. `subject` bắt buộc theo `core.facts.kiem_fact` nên mọi fact khớp đều ăn điểm ở vai đó, tức hơn một phần tư mẫu số không phân biệt được prompt tốt với prompt tồi. Ngược lại `cause` và `symptom` mỏng tới mức hai hàng tương ứng của ma trận lẫn lộn A13 không đủ mẫu để kết luận, mà đó lại đúng là cặp vai mang nội dung nhạy cảm của `bao_cao_su_co`. Nguyên nhân gốc là tỉ lệ loại nội dung của corpus lõi (5 runbook / 3 báo cáo sự cố / 1 sổ tay hạ tầng ở phần chấm), không phải lỗi gán nhãn. Story 2.6 phải báo cáo precision/recall *theo từng vai* cạnh số tổng, và cân nhắc một mẫu số phụ đã loại `subject`; nếu vẫn quá mỏng thì 2.8 thêm báo cáo sự cố vào corpus. Địa chỉ: story 2.6.
+  tien_do: 2026-09-02 - nửa "báo cáo theo vai" đã có sẵn trong story này:
+    `BoVang.dem_theo_vai(chi_cham=True)` và bảng "Số fact có điền từng vai" của trang
+    soát nhãn in cả số tuyệt đối lẫn phần của mẫu số. Phần còn treo là quyết định của
+    2.6: có dùng mẫu số phụ đã loại `subject` hay không, và nếu `cause`/`symptom` vẫn
+    quá mỏng thì 2.8 thêm báo cáo sự cố vào corpus. Địa chỉ giữ 2.6.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-bo-vang-trich-xuat.md`
+  summary: Trùng `id_fact` giữa hai tài liệu khác nhau chưa có luật; loader chỉ cấm trùng *trong cùng* một tài liệu.
+  evidence: `id_fact` băm tập slot đã chuẩn hóa, nên hai tài liệu gán cùng một tập slot là một node hyperedge duy nhất phía pipeline trong khi mẫu số của bộ vàng đếm hai slot-set. Trên 10 tài liệu hiện tại không có ca nào (49 id fact đôi một khác nhau), nên cấm ngay bây giờ là cấm một thứ chưa xảy ra và có thể hợp lệ (hai tài liệu nói cùng một quy định). Corpus 40 tài liệu của 2.8 làm ca này thành thường. Phải quyết cùng lúc với luật ghép của 2.6: đếm một lần hay đếm theo tài liệu. Địa chỉ: story 2.8.
+  tien_do: 2026-09-02 - nửa "im lặng" đã đóng: `BoVang.id_fact_trung_cheo_tai_lieu()`
+    liệt kê id xuất hiện ở từ hai tài liệu trở lên, trang soát nhãn in mục "Fact trùng
+    giữa hai tài liệu" (hiện nói rõ "Không có"), và có test cả ca thật lẫn ca dựng
+    (`test_hai_tai_lieu_cung_mot_fact_duoc_bao_ra_chu_khong_bi_tu_choi` ghim đặc tả
+    hiện trạng: mẫu số cộng cả hai lần). Không cấm, vì hai tài liệu nói cùng một quy
+    định là dữ liệu hợp lệ. Phần còn treo hẹp lại đúng một câu: đếm một lần hay đếm
+    theo tài liệu, quyết cùng luật ghép. Địa chỉ giữ 2.6/2.8.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-bo-vang-trich-xuat.md`
+  summary: Luật "phủ đủ 8 vai" và "phủ đủ 3 loại nội dung" là điều kiện *nạp* của loader, nên thêm một loại nội dung vào `config/hang-do-nhay.yaml` hay một vai vào `core/slots.py` làm cả bộ test đỏ cho tới khi có người soạn và gán nhãn tài liệu mới.
+  evidence: Cố ý theo I/O Matrix của spec 2.5 (hai hàng "Vai vắng mặt cả bộ" và "Loại nội dung thiếu"): hàng rỗng trong ma trận lẫn lộn của 2.6 là một con số vô nghĩa im lặng, nên chặn ở cửa nạp. Cái giá là một khớp nối ngược chiều import: một thay đổi ở `core/slots.py` (hợp đồng toàn hệ) hay ở file cấu hình hạng độ nhạy bị chặn bởi dữ liệu đánh giá. Đúng chiều với luật "8 vai là hợp đồng toàn hệ, không phải việc của một story lẻ", nhưng người đổi phải biết trước là mình nợ thêm một tài liệu và một lượt gán nhãn. Địa chỉ: story 2.8, nơi corpus mở rộng và biết được có thêm loại nội dung nào không.
+  resolved: 2026-09-02 - chốt giữ nguyên, không phải nợ. Bộ vàng là mẫu số của R2, nên
+    một loại nội dung hay một vai không có nhãn nào là một lỗ trong mẫu số chứ không
+    phải chuyện nhỏ; đỏ ngay lúc thêm là đúng chỗ để phát hiện, và I/O Matrix của spec
+    2.5 đã chốt hai luật này là điều kiện nạp. Giảm đau bằng tài liệu thay vì nới luật:
+    AGENTS.md mục Running ghi thẳng rằng thêm file vào `eval/data/` mà chưa gán nhãn là
+    `uv run pytest` đỏ, và thông điệp lỗi nêu đúng vai hoặc loại còn thiếu.

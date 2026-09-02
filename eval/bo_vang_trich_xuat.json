@@ -1,0 +1,506 @@
+{
+  "version": 1,
+  "tai_lieu": [
+    {
+      "doc_key": "01-cap-quyen-gitlab.txt",
+      "scope": "noi_bo",
+      "content_type": "runbook",
+      "few_shot": true,
+      "facts": [
+        {
+          "slots": {
+            "subject": "nhân viên mới thuộc phòng Kỹ thuật",
+            "condition": "sau khi trưởng phòng Kỹ thuật phê duyệt",
+            "remediation": "cấp tài khoản GitLab và quyền đọc kho mã nguồn",
+            "owner": "trưởng phòng Kỹ thuật"
+          },
+          "cau_nguon": "Nhân viên mới thuộc phòng Kỹ thuật được cấp tài khoản GitLab và quyền đọc kho mã nguồn sau khi trưởng phòng Kỹ thuật phê duyệt."
+        },
+        {
+          "slots": {
+            "subject": "quyền ghi vào nhánh chính (main)",
+            "condition": "kỹ sư từ cấp Senior trở lên",
+            "owner": "Giám đốc Kỹ thuật (CTO)"
+          },
+          "cau_nguon": "Quyền ghi vào nhánh chính (main) chỉ cấp cho kỹ sư từ cấp Senior trở lên, do Giám đốc Kỹ thuật (CTO) phê duyệt."
+        },
+        {
+          "slots": {
+            "subject": "yêu cầu cấp quyền",
+            "remediation": "gửi qua hệ thống Jira, gắn nhãn \"access-request\"",
+            "source": "hệ thống Jira",
+            "time": "thời hạn xử lý 2 ngày làm việc"
+          },
+          "cau_nguon": "Yêu cầu cấp quyền gửi qua hệ thống Jira, gắn nhãn \"access-request\", thời hạn xử lý 2 ngày làm việc."
+        },
+        {
+          "slots": {
+            "subject": "tài khoản GitLab",
+            "condition": "không hoạt động 90 ngày",
+            "remediation": "khóa tự động và phải xin cấp lại từ đầu"
+          },
+          "cau_nguon": "Tài khoản không hoạt động 90 ngày sẽ bị khóa tự động và phải xin cấp lại từ đầu."
+        }
+      ]
+    },
+    {
+      "doc_key": "02-vpn-va-mat-khau.txt",
+      "scope": "noi_bo",
+      "content_type": "runbook",
+      "few_shot": false,
+      "facts": [
+        {
+          "slots": {
+            "subject": "tài khoản VPN",
+            "condition": "yêu cầu gửi qua hệ thống Jira kèm xác nhận của quản lý trực tiếp",
+            "source": "hệ thống Jira",
+            "time": "trong vòng 1 ngày làm việc",
+            "owner": "phòng IT"
+          },
+          "cau_nguon": "Tài khoản VPN do phòng IT cấp trong vòng 1 ngày làm việc, yêu cầu gửi qua hệ thống Jira kèm xác nhận của quản lý trực tiếp."
+        },
+        {
+          "slots": {
+            "subject": "mật khẩu VPN",
+            "condition": "hết hạn sau 90 ngày",
+            "remediation": "đổi qua cổng self-service tại địa chỉ nội bộ portal.it.local"
+          },
+          "cau_nguon": "Mật khẩu VPN hết hạn sau 90 ngày và phải đổi qua cổng self-service tại địa chỉ nội bộ portal.it.local."
+        },
+        {
+          "slots": {
+            "subject": "tài khoản VPN",
+            "symptom": "bị khóa 30 phút",
+            "condition": "nhập sai mật khẩu 5 lần liên tiếp"
+          },
+          "cau_nguon": "Khi nhập sai mật khẩu 5 lần liên tiếp, tài khoản VPN bị khóa 30 phút; muốn mở khóa sớm phải gọi hotline IT số máy lẻ 1088."
+        },
+        {
+          "slots": {
+            "subject": "tài khoản VPN",
+            "condition": "muốn mở khóa sớm",
+            "remediation": "gọi hotline IT số máy lẻ 1088"
+          },
+          "cau_nguon": "Khi nhập sai mật khẩu 5 lần liên tiếp, tài khoản VPN bị khóa 30 phút; muốn mở khóa sớm phải gọi hotline IT số máy lẻ 1088."
+        },
+        {
+          "slots": {
+            "subject": "nhân viên nghỉ việc",
+            "remediation": "thu hồi VPN",
+            "source": "danh sách từ phòng Nhân sự",
+            "time": "ngay trong ngày làm việc cuối cùng",
+            "owner": "phòng IT"
+          },
+          "cau_nguon": "Nhân viên nghỉ việc bị thu hồi VPN ngay trong ngày làm việc cuối cùng, do phòng IT thực hiện theo danh sách từ phòng Nhân sự."
+        }
+      ]
+    },
+    {
+      "doc_key": "03-truc-su-co.txt",
+      "scope": "noi_bo",
+      "content_type": "runbook",
+      "few_shot": false,
+      "facts": [
+        {
+          "slots": {
+            "subject": "lịch trực sự cố",
+            "condition": "xoay vòng theo tuần giữa các kỹ sư vận hành",
+            "remediation": "công bố trên lịch chung của phòng Kỹ thuật",
+            "time": "thứ Sáu tuần trước"
+          },
+          "cau_nguon": "Lịch trực sự cố xoay vòng theo tuần giữa các kỹ sư vận hành, công bố trên lịch chung của phòng Kỹ thuật vào thứ Sáu tuần trước."
+        },
+        {
+          "slots": {
+            "subject": "sự cố mức nghiêm trọng",
+            "symptom": "dịch vụ ngừng hoàn toàn",
+            "remediation": "báo cho người trực trong 15 phút và mở cầu xử lý trong 30 phút",
+            "owner": "người trực"
+          },
+          "cau_nguon": "Sự cố mức nghiêm trọng (P1, dịch vụ ngừng hoàn toàn) phải được báo cho người trực trong 15 phút và mở cầu xử lý trong 30 phút."
+        },
+        {
+          "slots": {
+            "subject": "khởi động lại dịch vụ trên máy chủ sản xuất",
+            "condition": "không cần phê duyệt",
+            "owner": "người trực"
+          },
+          "cau_nguon": "Người trực được quyền khởi động lại dịch vụ trên máy chủ sản xuất mà không cần phê duyệt, nhưng phải ghi lại thao tác vào nhật ký sự cố trong vòng 24 giờ."
+        },
+        {
+          "slots": {
+            "subject": "người trực",
+            "remediation": "ghi lại thao tác vào nhật ký sự cố",
+            "time": "trong vòng 24 giờ"
+          },
+          "cau_nguon": "Người trực được quyền khởi động lại dịch vụ trên máy chủ sản xuất mà không cần phê duyệt, nhưng phải ghi lại thao tác vào nhật ký sự cố trong vòng 24 giờ."
+        },
+        {
+          "slots": {
+            "subject": "thay đổi cấu hình hạ tầng",
+            "condition": "trong lúc xử lý sự cố",
+            "remediation": "phải có hai người xác nhận, một người thao tác và một người soát lại"
+          },
+          "cau_nguon": "Việc thay đổi cấu hình hạ tầng trong lúc xử lý sự cố phải có hai người xác nhận, một người thao tác và một người soát lại."
+        }
+      ]
+    },
+    {
+      "doc_key": "04-sao-luu-du-lieu.txt",
+      "scope": "noi_bo",
+      "content_type": "runbook",
+      "few_shot": false,
+      "facts": [
+        {
+          "slots": {
+            "subject": "cơ sở dữ liệu sản xuất",
+            "remediation": "sao lưu tự động",
+            "time": "mỗi ngày lúc 2 giờ sáng"
+          },
+          "cau_nguon": "Cơ sở dữ liệu sản xuất được sao lưu tự động mỗi ngày lúc 2 giờ sáng, bản sao lưu giữ 30 ngày trên hệ thống lưu trữ riêng."
+        },
+        {
+          "slots": {
+            "subject": "bản sao lưu",
+            "condition": "trên hệ thống lưu trữ riêng",
+            "time": "giữ 30 ngày"
+          },
+          "cau_nguon": "Cơ sở dữ liệu sản xuất được sao lưu tự động mỗi ngày lúc 2 giờ sáng, bản sao lưu giữ 30 ngày trên hệ thống lưu trữ riêng."
+        },
+        {
+          "slots": {
+            "subject": "bản sao lưu tuần",
+            "time": "chạy sáng Chủ nhật"
+          },
+          "cau_nguon": "Bản sao lưu tuần (chạy sáng Chủ nhật) giữ 6 tháng, phục vụ yêu cầu đối chiếu số liệu của phòng Kế toán."
+        },
+        {
+          "slots": {
+            "subject": "bản sao lưu tuần",
+            "time": "giữ 6 tháng"
+          },
+          "cau_nguon": "Bản sao lưu tuần (chạy sáng Chủ nhật) giữ 6 tháng, phục vụ yêu cầu đối chiếu số liệu của phòng Kế toán."
+        },
+        {
+          "slots": {
+            "subject": "yêu cầu khôi phục dữ liệu",
+            "condition": "do trưởng bộ phận sở hữu dữ liệu gửi qua Jira",
+            "remediation": "phòng IT thực hiện và phản hồi",
+            "source": "Jira",
+            "time": "trong 4 giờ làm việc",
+            "owner": "phòng IT"
+          },
+          "cau_nguon": "Yêu cầu khôi phục dữ liệu phải do trưởng bộ phận sở hữu dữ liệu gửi qua Jira, phòng IT thực hiện và phản hồi trong 4 giờ làm việc."
+        },
+        {
+          "slots": {
+            "subject": "bản sao lưu",
+            "remediation": "diễn tập khôi phục một bản sao lưu ngẫu nhiên",
+            "time": "mỗi quý",
+            "owner": "phòng IT"
+          },
+          "cau_nguon": "Mỗi quý phòng IT diễn tập khôi phục một bản sao lưu ngẫu nhiên để kiểm chứng bản sao lưu dùng được thật."
+        }
+      ]
+    },
+    {
+      "doc_key": "05-bao-cao-su-co-inc-1208.txt",
+      "scope": "noi_bo",
+      "content_type": "bao_cao_su_co",
+      "few_shot": true,
+      "facts": [
+        {
+          "slots": {
+            "subject": "App01",
+            "symptom": "trang thanh toán của App01 trả lỗi 502",
+            "cause": "chỉnh sai giới hạn bộ nhớ của pool PHP-FPM",
+            "condition": "traffic vượt 5000 request mỗi phút",
+            "remediation": "trả giới hạn bộ nhớ PHP-FPM về mức cũ rồi nạp lại cấu hình theo SOP-12",
+            "source": "SOP-12",
+            "time": "12/08/2026 lúc 09:20",
+            "owner": "Trần Thị Hạnh"
+          },
+          "cau_nguon": "Ngày 12/08/2026 lúc 09:20, trang thanh toán của App01 trả lỗi 502 trong 40 phút, khách hàng không hoàn tất được giao dịch."
+        },
+        {
+          "slots": {
+            "subject": "thay đổi cấu hình PHP-FPM trên App01",
+            "remediation": "qua bước duyệt của trưởng ca trực và có kế hoạch quay lui trong 5 phút",
+            "owner": "trưởng ca trực"
+          },
+          "cau_nguon": "Bài học: mọi thay đổi cấu hình PHP-FPM trên App01 phải qua bước duyệt của trưởng ca trực và có kế hoạch quay lui trong 5 phút."
+        }
+      ]
+    },
+    {
+      "doc_key": "06-quan-ly-thay-doi.txt",
+      "scope": "noi_bo",
+      "content_type": "runbook",
+      "few_shot": false,
+      "facts": [
+        {
+          "slots": {
+            "subject": "thay đổi cấu hình hệ thống sản xuất",
+            "remediation": "có phiếu thay đổi trên Jira, mô tả phạm vi ảnh hưởng và kế hoạch quay lui",
+            "source": "Jira",
+            "time": "gửi trước 24 giờ"
+          },
+          "cau_nguon": "Mọi thay đổi cấu hình hệ thống sản xuất phải có phiếu thay đổi trên Jira, mô tả phạm vi ảnh hưởng và kế hoạch quay lui, gửi trước 24 giờ."
+        },
+        {
+          "slots": {
+            "subject": "thay đổi mức rủi ro cao",
+            "condition": "chạm cơ sở dữ liệu hoặc cấu hình mạng",
+            "remediation": "phê duyệt",
+            "time": "thứ Ba hàng tuần",
+            "owner": "Hội đồng thay đổi"
+          },
+          "cau_nguon": "Thay đổi mức rủi ro cao, tức là chạm cơ sở dữ liệu hoặc cấu hình mạng, do Hội đồng thay đổi họp thứ Ba hàng tuần phê duyệt."
+        },
+        {
+          "slots": {
+            "subject": "thay đổi khẩn cấp",
+            "condition": "trong lúc xử lý sự cố",
+            "remediation": "bổ sung phiếu thay đổi",
+            "time": "trong 24 giờ kể từ khi dịch vụ phục hồi"
+          },
+          "cau_nguon": "Thay đổi khẩn cấp trong lúc xử lý sự cố được làm trước, nhưng phải bổ sung phiếu thay đổi trong 24 giờ kể từ khi dịch vụ phục hồi."
+        },
+        {
+          "slots": {
+            "subject": "cửa sổ triển khai thay đổi",
+            "condition": "triển khai ngoài cửa sổ này",
+            "remediation": "phải có phê duyệt của Giám đốc Kỹ thuật",
+            "time": "22 giờ đến 24 giờ các ngày thứ Tư",
+            "owner": "Giám đốc Kỹ thuật"
+          },
+          "cau_nguon": "Cửa sổ triển khai thay đổi là 22 giờ đến 24 giờ các ngày thứ Tư, triển khai ngoài cửa sổ này phải có phê duyệt của Giám đốc Kỹ thuật."
+        },
+        {
+          "slots": {
+            "subject": "phiếu thay đổi",
+            "remediation": "ghi kết quả vào phiếu và đóng phiếu",
+            "time": "trong 2 ngày làm việc",
+            "owner": "người thực hiện"
+          },
+          "cau_nguon": "Sau mỗi thay đổi, người thực hiện ghi kết quả vào phiếu và đóng phiếu trong 2 ngày làm việc, phiếu thay đổi quá hạn bị nhắc tự động qua email."
+        },
+        {
+          "slots": {
+            "subject": "phiếu thay đổi quá hạn",
+            "remediation": "nhắc tự động qua email"
+          },
+          "cau_nguon": "Sau mỗi thay đổi, người thực hiện ghi kết quả vào phiếu và đóng phiếu trong 2 ngày làm việc, phiếu thay đổi quá hạn bị nhắc tự động qua email."
+        }
+      ]
+    },
+    {
+      "doc_key": "07-giam-sat-va-canh-bao.txt",
+      "scope": "noi_bo",
+      "content_type": "runbook",
+      "few_shot": false,
+      "facts": [
+        {
+          "slots": {
+            "subject": "hệ thống giám sát Zabbix",
+            "remediation": "quét các máy chủ sản xuất",
+            "time": "mỗi 60 giây"
+          },
+          "cau_nguon": "Hệ thống giám sát Zabbix quét các máy chủ sản xuất mỗi 60 giây và gửi cảnh báo vào kênh Slack #canh-bao-ha-tang."
+        },
+        {
+          "slots": {
+            "subject": "hệ thống giám sát Zabbix",
+            "remediation": "gửi cảnh báo vào kênh Slack #canh-bao-ha-tang"
+          },
+          "cau_nguon": "Hệ thống giám sát Zabbix quét các máy chủ sản xuất mỗi 60 giây và gửi cảnh báo vào kênh Slack #canh-bao-ha-tang."
+        },
+        {
+          "slots": {
+            "subject": "cảnh báo mức nghiêm trọng",
+            "condition": "không có ai xác nhận trong 10 phút",
+            "remediation": "gửi kèm cuộc gọi tự động tới người trực",
+            "owner": "người trực"
+          },
+          "cau_nguon": "Cảnh báo mức nghiêm trọng được gửi kèm cuộc gọi tự động tới người trực khi không có ai xác nhận trong 10 phút."
+        },
+        {
+          "slots": {
+            "subject": "ngưỡng cảnh báo dung lượng đĩa",
+            "condition": "85 phần trăm"
+          },
+          "cau_nguon": "Ngưỡng cảnh báo dung lượng đĩa là 85 phần trăm, ngưỡng cảnh báo CPU là 90 phần trăm duy trì trong 5 phút."
+        },
+        {
+          "slots": {
+            "subject": "ngưỡng cảnh báo CPU",
+            "condition": "90 phần trăm duy trì trong 5 phút"
+          },
+          "cau_nguon": "Ngưỡng cảnh báo dung lượng đĩa là 85 phần trăm, ngưỡng cảnh báo CPU là 90 phần trăm duy trì trong 5 phút."
+        },
+        {
+          "slots": {
+            "subject": "người trực",
+            "remediation": "xác nhận cảnh báo trên Zabbix rồi ghi hướng xử lý vào kênh Slack",
+            "source": "Zabbix"
+          },
+          "cau_nguon": "Người trực phải xác nhận cảnh báo trên Zabbix rồi ghi hướng xử lý vào kênh Slack, cảnh báo lặp lại quá 3 lần trong một giờ được nâng lên cho trưởng nhóm Vận hành."
+        },
+        {
+          "slots": {
+            "subject": "cảnh báo",
+            "condition": "lặp lại quá 3 lần trong một giờ",
+            "remediation": "nâng lên cho trưởng nhóm Vận hành",
+            "owner": "trưởng nhóm Vận hành"
+          },
+          "cau_nguon": "Người trực phải xác nhận cảnh báo trên Zabbix rồi ghi hướng xử lý vào kênh Slack, cảnh báo lặp lại quá 3 lần trong một giờ được nâng lên cho trưởng nhóm Vận hành."
+        },
+        {
+          "slots": {
+            "subject": "danh sách cảnh báo nhiễu",
+            "remediation": "rà soát",
+            "time": "ngày làm việc đầu tiên mỗi tháng",
+            "owner": "phòng IT"
+          },
+          "cau_nguon": "Phòng IT rà soát danh sách cảnh báo nhiễu vào ngày làm việc đầu tiên mỗi tháng và tắt các luật cảnh báo không còn đúng."
+        },
+        {
+          "slots": {
+            "subject": "các luật cảnh báo không còn đúng",
+            "remediation": "tắt các luật cảnh báo không còn đúng",
+            "owner": "phòng IT"
+          },
+          "cau_nguon": "Phòng IT rà soát danh sách cảnh báo nhiễu vào ngày làm việc đầu tiên mỗi tháng và tắt các luật cảnh báo không còn đúng."
+        }
+      ]
+    },
+    {
+      "doc_key": "08-bao-cao-su-co-inc-1305.txt",
+      "scope": "noi_bo",
+      "content_type": "bao_cao_su_co",
+      "few_shot": false,
+      "facts": [
+        {
+          "slots": {
+            "subject": "DB02",
+            "symptom": "ngừng nhận ghi, các đơn hàng mới không lưu được",
+            "cause": "phân vùng lưu nhật ký giao dịch của DB02 đầy 100 phần trăm",
+            "remediation": "dừng tiến trình xuất báo cáo, xóa file tạm và mở rộng phân vùng nhật ký thêm 200 GB",
+            "time": "03/09/2026 lúc 01:40",
+            "owner": "Lê Quốc Duy"
+          },
+          "cau_nguon": "Ngày 03/09/2026 lúc 01:40, cụm cơ sở dữ liệu DB02 ngừng nhận ghi, các đơn hàng mới không lưu được trong 25 phút."
+        },
+        {
+          "slots": {
+            "subject": "tiến trình xuất báo cáo",
+            "remediation": "ghi tạm vào phân vùng riêng"
+          },
+          "cau_nguon": "Bài học: tiến trình xuất báo cáo phải ghi tạm vào phân vùng riêng và cảnh báo dung lượng đĩa của DB02 phải hạ ngưỡng xuống 75 phần trăm."
+        },
+        {
+          "slots": {
+            "subject": "cảnh báo dung lượng đĩa của DB02",
+            "remediation": "hạ ngưỡng xuống 75 phần trăm"
+          },
+          "cau_nguon": "Bài học: tiến trình xuất báo cáo phải ghi tạm vào phân vùng riêng và cảnh báo dung lượng đĩa của DB02 phải hạ ngưỡng xuống 75 phần trăm."
+        }
+      ]
+    },
+    {
+      "doc_key": "09-bao-cao-su-co-inc-1417.txt",
+      "scope": "noi_bo",
+      "content_type": "bao_cao_su_co",
+      "few_shot": false,
+      "facts": [
+        {
+          "slots": {
+            "subject": "cổng VPN",
+            "symptom": "nhân viên làm việc từ xa không kết nối được VPN",
+            "cause": "chứng chỉ TLS của cổng VPN hết hạn lúc 08:00",
+            "remediation": "cấp lại chứng chỉ TLS cho cổng VPN và nạp lại cấu hình dịch vụ theo SOP-07",
+            "source": "SOP-07",
+            "time": "18/09/2026 lúc 08:05",
+            "owner": "Phạm Minh Tuấn"
+          },
+          "cau_nguon": "Ngày 18/09/2026 lúc 08:05, toàn bộ nhân viên làm việc từ xa không kết nối được VPN, khoảng 120 người mất truy cập trong 55 phút."
+        },
+        {
+          "slots": {
+            "subject": "chứng chỉ TLS",
+            "remediation": "theo dõi hạn trên hệ thống giám sát và cảnh báo trước 30 ngày"
+          },
+          "cau_nguon": "Bài học: mọi chứng chỉ TLS phải được theo dõi hạn trên hệ thống giám sát và cảnh báo trước 30 ngày."
+        }
+      ]
+    },
+    {
+      "doc_key": "10-so-tay-ha-tang-noi-bo.txt",
+      "scope": "noi_bo",
+      "content_type": "bi_mat_ha_tang",
+      "few_shot": false,
+      "facts": [
+        {
+          "slots": {
+            "subject": "truy cập quản trị vào máy chủ sản xuất",
+            "condition": "chỉ đi qua máy chủ nhảy bastion.it.local"
+          },
+          "cau_nguon": "Truy cập quản trị vào máy chủ sản xuất chỉ đi qua máy chủ nhảy bastion.it.local, mọi phiên SSH được ghi lại và giữ 90 ngày."
+        },
+        {
+          "slots": {
+            "subject": "phiên SSH",
+            "remediation": "ghi lại",
+            "time": "giữ 90 ngày"
+          },
+          "cau_nguon": "Truy cập quản trị vào máy chủ sản xuất chỉ đi qua máy chủ nhảy bastion.it.local, mọi phiên SSH được ghi lại và giữ 90 ngày."
+        },
+        {
+          "slots": {
+            "subject": "khóa SSH quản trị",
+            "remediation": "cấp theo yêu cầu",
+            "source": "kho khóa Vault tại vault.it.local",
+            "time": "thời hạn 8 giờ",
+            "owner": "trưởng nhóm Hạ tầng"
+          },
+          "cau_nguon": "Khóa SSH quản trị lưu trong kho khóa Vault tại vault.it.local, cấp theo yêu cầu có thời hạn 8 giờ và do trưởng nhóm Hạ tầng duyệt."
+        },
+        {
+          "slots": {
+            "subject": "dải mạng quản trị",
+            "condition": "10.20.0.0/24",
+            "remediation": "tách khỏi dải mạng người dùng và chỉ mở từ máy chủ nhảy"
+          },
+          "cau_nguon": "Dải mạng quản trị là 10.20.0.0/24, tách khỏi dải mạng người dùng và chỉ mở từ máy chủ nhảy."
+        },
+        {
+          "slots": {
+            "subject": "mật khẩu quản trị cơ sở dữ liệu",
+            "remediation": "xoay vòng",
+            "source": "tác vụ tự động của Vault",
+            "time": "mỗi 90 ngày"
+          },
+          "cau_nguon": "Mật khẩu quản trị cơ sở dữ liệu được xoay vòng mỗi 90 ngày bằng tác vụ tự động của Vault, phòng IT kiểm chứng kết quả xoay vòng mỗi quý."
+        },
+        {
+          "slots": {
+            "subject": "kết quả xoay vòng",
+            "remediation": "kiểm chứng",
+            "time": "mỗi quý",
+            "owner": "phòng IT"
+          },
+          "cau_nguon": "Mật khẩu quản trị cơ sở dữ liệu được xoay vòng mỗi 90 ngày bằng tác vụ tự động của Vault, phòng IT kiểm chứng kết quả xoay vòng mỗi quý."
+        },
+        {
+          "slots": {
+            "subject": "sổ tay hạ tầng nội bộ",
+            "condition": "chỉ chia sẻ trong nhóm Hạ tầng",
+            "remediation": "gửi ra ngoài phải có phê duyệt của Giám đốc Kỹ thuật",
+            "owner": "Giám đốc Kỹ thuật"
+          },
+          "cau_nguon": "Tài liệu này chỉ chia sẻ trong nhóm Hạ tầng, gửi ra ngoài phải có phê duyệt của Giám đốc Kỹ thuật."
+        }
+      ]
+    }
+  ]
+}

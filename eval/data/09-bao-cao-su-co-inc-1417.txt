@@ -1,0 +1,10 @@
+---
+scope: noi_bo
+content_type: bao_cao_su_co
+---
+Báo cáo sự cố INC-1417 (hạn chế nội bộ).
+Ngày 18/09/2026 lúc 08:05, toàn bộ nhân viên làm việc từ xa không kết nối được VPN, khoảng 120 người mất truy cập trong 55 phút.
+Nguyên nhân gốc là chứng chỉ TLS của cổng VPN hết hạn lúc 08:00 mà lịch gia hạn chỉ ghi trong tệp cá nhân của một kỹ sư đã nghỉ việc.
+Cách xử lý: cấp lại chứng chỉ TLS cho cổng VPN và nạp lại cấu hình dịch vụ theo SOP-07, kết nối phục hồi lúc 09:00.
+Người phụ trách xử lý sự cố là Phạm Minh Tuấn, đội Hạ tầng mạng.
+Bài học: mọi chứng chỉ TLS phải được theo dõi hạn trên hệ thống giám sát và cảnh báo trước 30 ngày.

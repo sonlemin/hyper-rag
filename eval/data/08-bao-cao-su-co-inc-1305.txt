@@ -1,0 +1,10 @@
+---
+scope: noi_bo
+content_type: bao_cao_su_co
+---
+Báo cáo sự cố INC-1305 (hạn chế nội bộ).
+Ngày 03/09/2026 lúc 01:40, cụm cơ sở dữ liệu DB02 ngừng nhận ghi, các đơn hàng mới không lưu được trong 25 phút.
+Nguyên nhân gốc là phân vùng lưu nhật ký giao dịch của DB02 đầy 100 phần trăm do một tiến trình xuất báo cáo ghi tạm vào cùng phân vùng.
+Cách xử lý: dừng tiến trình xuất báo cáo, xóa file tạm và mở rộng phân vùng nhật ký thêm 200 GB, dịch vụ ghi phục hồi lúc 02:05.
+Người phụ trách xử lý sự cố là Lê Quốc Duy, đội Cơ sở dữ liệu.
+Bài học: tiến trình xuất báo cáo phải ghi tạm vào phân vùng riêng và cảnh báo dung lượng đĩa của DB02 phải hạ ngưỡng xuống 75 phần trăm.
