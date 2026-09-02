@@ -39,10 +39,18 @@ peak và giá cache-miss, OpenAI mức Standard. Ước cao an toàn hơn ước
 một mức báo động, nhưng mọi con số ở đây phải nói rõ điều đó.
 """
 
+import json
 import math
 from dataclasses import dataclass, fields
+from pathlib import Path
 
-from adapters.model_catalog import LOAI_LLM, DanhMucModel, MucModel, danh_muc_mac_dinh
+from adapters.model_catalog import (
+    LOAI_EMBEDDING,
+    LOAI_LLM,
+    DanhMucModel,
+    MucModel,
+    danh_muc_mac_dinh,
+)
 
 # Mức báo động ngân sách API của PRD mục 4.3: chạm là dừng và tính lại.
 MUC_BAO_DONG_USD: float = 60.0
@@ -91,19 +99,166 @@ class SoDoNap:
     chi_phi_embedding_usd: float
 
 
-# Lần nạp thật 02/09/2026 trên máy chủ, sau khi sửa ví dụ prompt của story 2.6:
-#   /root/hyper-rag-data/chay_2_6.sh nap eval/data --ep-ghi-de
-# 10 tài liệu `eval/data`, mỗi tài liệu một chunk, 43 hyperedge, 0 fact bị loại;
-# `deepseek-v4-flash` cho trích xuất, `text-embedding-3-small` cho embedding,
-# số đọc từ bảng `audit_log` (sự kiện `llm_cost` / `embedding_cost`).
-SO_DO_NAP_THAT: SoDoNap = SoDoNap(
-    so_tai_lieu=10,
-    token_vao_llm=10111,
-    token_ra_llm=3608,
-    chi_phi_llm_usd=0.009211,
-    token_embedding=8794,
-    chi_phi_embedding_usd=0.000176,
+# --- Số đo lần nạp thật: đọc từ file, không chép tay ---------------------------
+
+# Lược đồ file số đo mà `api/do_chi_phi.py --xuat-json` ghi ra. Con số này phải
+# bằng `api.dot_nap.VERSION_SO_DO`; hai bên khai riêng vì chiều import cấm
+# `eval/` gọi sang `api/`, và `tests/test_dot_nap.py` canh chúng bằng nhau.
+VERSION_SO_DO_NAP: int = 1
+
+# File số đo của lần nạp thật, có commit. Trước story 2.7 sáu con số này là hằng
+# chép tay từ bảng chi phí in ra console: không ai canh chúng còn khớp
+# `audit_log`. Nay chúng là đầu ra của chính lần nạp.
+DUONG_DAN_SO_DO_NAP: Path = Path(__file__).resolve().parent / "so_do_nap" / "nap-that.json"
+
+KHOA_BAT_BUOC: tuple[str, ...] = (
+    "version", "ngay", "lenh", "space", "so_tai_lieu", "theo_model", "tong",
 )
+KHOA_DONG_MODEL: tuple[str, ...] = ("model", "loai", "token_vao", "token_ra", "chi_phi_usd")
+KHOA_TONG: tuple[str, ...] = ("so_lan", "token_vao", "token_ra", "chi_phi_usd")
+
+# Hai loại model mà phép ngoại suy biết cộng. Một `loai` lạ **không** được rơi
+# vào nhánh LLM: nó sẽ âm thầm thổi phồng token trích xuất, tức thổi phồng đúng
+# khoản mà cả bảng chương 4 nhân lên 40 lần.
+LOAI_HOP_LE: frozenset[str] = frozenset({LOAI_LLM, LOAI_EMBEDDING})
+
+# Sai số cho phép khi đối chiếu khối `tong` với tổng cộng lại từ `theo_model`.
+# Chỉ để chịu phần dôi của phép cộng dấu phẩy động, không để chịu một con số sai.
+SAI_SO_USD: float = 1e-9
+
+
+class SoDoNapKhongHopLe(ValueError):
+    """File số đo nạp thiếu khóa, sai kiểu, sai giá trị, hoặc mang lược đồ lạ.
+
+    Thông điệp luôn mang **tên file** cùng lý do: bảng ngoại suy của chương 4
+    đọc file này, nên một lỗi ở đây phải chỉ được ngay file nào phải nạp lại.
+
+    Mọi đường thoát của `doc_so_do_nap` đi qua lớp này. Đó không phải chuyện
+    hình thức: `SoDoNapKhongHopLe` là con của `ValueError`, nên một `ValueError`
+    trần lọt ra từ cửa đọc sẽ **không** bị `except SoDoNapKhongHopLe` của
+    `eval/xem_do_trich_xuat.py` bắt, và báo cáo chết bằng traceback.
+    """
+
+    code = "SO_DO_NAP_KHONG_HOP_LE"
+
+
+def _so(gia_tri, ten: str, duong_dan: Path, *, duong: bool = False) -> float:
+    """Một trường số của file: phải là số thật, hữu hạn, không âm.
+
+    `json.loads` nhận `NaN`, `Infinity` và `-Infinity` theo mặc định, và `NaN`
+    cho `False` ở mọi phép so sánh nên nó lọt qua một cửa chỉ hỏi `< 0` rồi đầu
+    độc mọi tổng sau. `bool` bị loại riêng vì `True` là một `int` hợp lệ với
+    `isinstance` mà không phải một con số ai định ghi.
+    """
+    if isinstance(gia_tri, bool) or not isinstance(gia_tri, (int, float)):
+        raise SoDoNapKhongHopLe(
+            f"{duong_dan.name}: trường {ten!r} phải là số, nhận được {gia_tri!r}"
+        )
+    x = float(gia_tri)
+    if not math.isfinite(x):
+        raise SoDoNapKhongHopLe(f"{duong_dan.name}: trường {ten!r} không hữu hạn ({gia_tri!r})")
+    if x < 0:
+        raise SoDoNapKhongHopLe(f"{duong_dan.name}: trường {ten!r} âm ({gia_tri!r})")
+    if duong and x <= 0:
+        raise SoDoNapKhongHopLe(f"{duong_dan.name}: trường {ten!r} phải dương, nhận được {gia_tri!r}")
+    return x
+
+
+def _khop(a: float, b: float) -> bool:
+    return abs(a - b) <= SAI_SO_USD + SAI_SO_USD * abs(b)
+
+
+def doc_so_do_nap(duong_dan: str | Path | None = None) -> SoDoNap:
+    """Đọc file số đo của một lần nạp thật thành `SoDoNap`; không ném `ValueError` trần.
+
+    Cộng theo `loai` của từng dòng model: mọi dòng `embedding` vào khoản
+    embedding, mọi dòng `llm` vào khoản LLM. Nhờ thế đổi model trích xuất hay
+    thêm một model thứ hai trong cùng đợt không phải sửa hàm này.
+
+    Khối `tong` của file được **đối chiếu** với tổng cộng lại từ `theo_model`:
+    hai con số trong cùng một file có commit mà lệch nhau thì ít nhất một cái
+    sai, và không có lý do để đoán cái nào.
+    """
+    duong_dan = DUONG_DAN_SO_DO_NAP if duong_dan is None else Path(duong_dan)
+    try:
+        raw = json.loads(duong_dan.read_text(encoding="utf-8"))
+    except OSError as loi:
+        raise SoDoNapKhongHopLe(f"{duong_dan}: không đọc được file số đo nạp: {loi}") from loi
+    except UnicodeDecodeError as loi:
+        raise SoDoNapKhongHopLe(f"{duong_dan.name}: không phải UTF-8: {loi}") from loi
+    except json.JSONDecodeError as loi:
+        raise SoDoNapKhongHopLe(f"{duong_dan.name}: không phải JSON hợp lệ: {loi}") from loi
+    if not isinstance(raw, dict):
+        raise SoDoNapKhongHopLe(f"{duong_dan.name}: gốc file phải là một object JSON")
+    thieu = [k for k in KHOA_BAT_BUOC if k not in raw]
+    if thieu:
+        raise SoDoNapKhongHopLe(f"{duong_dan.name}: thiếu khóa {thieu}")
+    if raw["version"] != VERSION_SO_DO_NAP:
+        raise SoDoNapKhongHopLe(
+            f"{duong_dan.name}: version {raw['version']!r} lạ, chỉ đọc được {VERSION_SO_DO_NAP}"
+        )
+    if not isinstance(raw["theo_model"], list) or not raw["theo_model"]:
+        raise SoDoNapKhongHopLe(f"{duong_dan.name}: `theo_model` phải là danh sách không rỗng")
+
+    tv_llm = tr_llm = t_emb = 0
+    usd_llm = usd_emb = 0.0
+    tong_lan = tong_vao = tong_ra = 0
+    tong_usd = 0.0
+    for i, dong in enumerate(raw["theo_model"]):
+        if not isinstance(dong, dict):
+            raise SoDoNapKhongHopLe(f"{duong_dan.name}: `theo_model[{i}]` không phải object")
+        thieu = [k for k in KHOA_DONG_MODEL if k not in dong]
+        if thieu:
+            raise SoDoNapKhongHopLe(f"{duong_dan.name}: `theo_model[{i}]` thiếu khóa {thieu}")
+        if dong["loai"] not in LOAI_HOP_LE:
+            raise SoDoNapKhongHopLe(
+                f"{duong_dan.name}: `theo_model[{i}].loai` là {dong['loai']!r},"
+                f" chỉ cộng được {sorted(LOAI_HOP_LE)}"
+            )
+        tv = int(_so(dong["token_vao"], f"theo_model[{i}].token_vao", duong_dan))
+        tr = int(_so(dong["token_ra"], f"theo_model[{i}].token_ra", duong_dan))
+        usd = _so(dong["chi_phi_usd"], f"theo_model[{i}].chi_phi_usd", duong_dan)
+        tong_vao += tv
+        tong_ra += tr
+        tong_usd += usd
+        if "so_lan" in dong:
+            tong_lan += int(_so(dong["so_lan"], f"theo_model[{i}].so_lan", duong_dan))
+        if dong["loai"] == LOAI_EMBEDDING:
+            t_emb += tv
+            usd_emb += usd
+        else:
+            tv_llm += tv
+            tr_llm += tr
+            usd_llm += usd
+
+    tong = raw["tong"]
+    if not isinstance(tong, dict):
+        raise SoDoNapKhongHopLe(f"{duong_dan.name}: `tong` phải là một object JSON")
+    thieu = [k for k in KHOA_TONG if k not in tong]
+    if thieu:
+        raise SoDoNapKhongHopLe(f"{duong_dan.name}: `tong` thiếu khóa {thieu}")
+    lech = []
+    for ten, cong in (("token_vao", tong_vao), ("token_ra", tong_ra)):
+        if int(_so(tong[ten], f"tong.{ten}", duong_dan)) != cong:
+            lech.append(f"tong.{ten}={tong[ten]!r} nhưng cộng theo_model ra {cong}")
+    if not _khop(_so(tong["chi_phi_usd"], "tong.chi_phi_usd", duong_dan), tong_usd):
+        lech.append(f"tong.chi_phi_usd={tong['chi_phi_usd']!r} nhưng cộng theo_model ra {tong_usd}")
+    if tong_lan and int(_so(tong["so_lan"], "tong.so_lan", duong_dan)) != tong_lan:
+        lech.append(f"tong.so_lan={tong['so_lan']!r} nhưng cộng theo_model ra {tong_lan}")
+    if lech:
+        raise SoDoNapKhongHopLe(f"{duong_dan.name}: khối `tong` lệch với `theo_model`: {'; '.join(lech)}")
+
+    return SoDoNap(
+        # `so_tai_lieu` là mẫu số của phép chia "tiền trên một tài liệu"; 0 làm
+        # cả bảng ngoại suy vô nghĩa (hoặc nổ `ZeroDivisionError`), nên nó bị
+        # chặn ở đây chứ không ở `_kiem_so_do` với một `ValueError` trần.
+        so_tai_lieu=int(_so(raw["so_tai_lieu"], "so_tai_lieu", duong_dan, duong=True)),
+        token_vao_llm=tv_llm,
+        token_ra_llm=tr_llm,
+        chi_phi_llm_usd=usd_llm,
+        token_embedding=t_emb,
+        chi_phi_embedding_usd=usd_emb,
+    )
 
 
 @dataclass(frozen=True)
@@ -486,7 +641,10 @@ __all__ = [
     "GHI_CHU_DON_GIA",
     "NGUON_DO",
     "NGUON_GIA_DINH",
-    "SO_DO_NAP_THAT",
+    "VERSION_SO_DO_NAP",
+    "DUONG_DAN_SO_DO_NAP",
+    "SoDoNapKhongHopLe",
+    "doc_so_do_nap",
     "SoDoNap",
     "GiaDinh",
     "Khoan",

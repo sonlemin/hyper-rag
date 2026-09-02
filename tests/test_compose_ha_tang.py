@@ -15,6 +15,9 @@ from adapters.llm_wrapper import BIEN_EMBEDDING_MODEL, BIEN_LLM_MODEL, BIEN_MOI_
 from adapters.model_catalog import LOAI_EMBEDDING, LOAI_LLM, danh_muc_mac_dinh
 from tests.ho_tro_compose import KHO_PHAI_CHO, doc_compose, doc_env
 
+# Hai service chay ma Python cua du an: cung image, cung bien, khac cong.
+SERVICE_PYTHON = ("api", "man-nap")
+
 
 @pytest.fixture(scope="module")
 def compose() -> dict:
@@ -24,21 +27,22 @@ def compose() -> dict:
 # --- Thứ tự khởi động: api chờ đủ ba kho healthy ---------------------------
 
 
-def test_api_cho_du_ba_kho(compose):
-    """`api` khai `depends_on` đủ ba kho, không thiếu cái nào."""
-    depends_on = compose["services"]["api"]["depends_on"]
-    assert set(depends_on) == set(KHO_PHAI_CHO)
+@pytest.mark.parametrize("dv", SERVICE_PYTHON)
+def test_service_python_cho_du_ba_kho(compose, dv):
+    """`api` và `man-nap` khai `depends_on` đủ ba kho, không thiếu cái nào."""
+    assert set(compose["services"][dv]["depends_on"]) == set(KHO_PHAI_CHO)
 
 
+@pytest.mark.parametrize("dv", SERVICE_PYTHON)
 @pytest.mark.parametrize("kho", KHO_PHAI_CHO)
-def test_api_cho_dieu_kien_healthy_chu_khong_chi_started(compose, kho):
+def test_service_python_cho_dieu_kien_healthy_chu_khong_chi_started(compose, dv, kho):
     """Điều kiện phải là `service_healthy`.
 
     `service_started` cũng qua được `compose config` nhưng nó chỉ nói container
     đã chạy, không nói kho đã trả lời được. Đó đúng là ca mà `api` lên trước
     Neo4j trên máy chủ 15 GB RAM.
     """
-    assert compose["services"]["api"]["depends_on"][kho]["condition"] == (
+    assert compose["services"][dv]["depends_on"][kho]["condition"] == (
         "service_healthy"
     )
 
@@ -56,9 +60,10 @@ def test_moi_kho_co_healthcheck(compose, kho):
     assert healthcheck.get("test"), f"healthcheck của {kho!r} rỗng"
 
 
-def test_api_cung_co_healthcheck(compose):
-    """`api` tự nó cũng phải khai healthcheck, `/health` là nguồn của nó."""
-    assert compose["services"]["api"]["healthcheck"]["test"]
+@pytest.mark.parametrize("dv", SERVICE_PYTHON)
+def test_service_python_cung_co_healthcheck(compose, dv):
+    """Hai service của dự án tự chúng cũng phải khai healthcheck."""
+    assert compose["services"][dv]["healthcheck"]["test"]
 
 
 # --- Profile local-llm không bật mặc định ----------------------------------
@@ -84,7 +89,7 @@ def test_khong_service_nao_khac_mang_profile(compose):
 # --- Cổng ra ngoài: chỉ 8000 --------------------------------------------
 
 
-def test_chi_api_publish_cong_ra_ngoai(compose):
+def test_chi_hai_service_python_publish_cong(compose):
     """Ba kho và ollama không bao giờ publish cổng (chốt 31/08/2026).
 
     Cùng một hợp đồng với quyết định phơi cổng trong ledger: 8000 công khai có
@@ -93,8 +98,38 @@ def test_chi_api_publish_cong_ra_ngoai(compose):
     co_ports = {
         ten for ten, dv in compose["services"].items() if dv.get("ports")
     }
-    assert co_ports == {"api"}
+    assert co_ports == set(SERVICE_PYTHON)
     assert compose["services"]["api"]["ports"] == ["8000:8000"]
+
+
+def test_man_nap_chi_bind_loopback_cua_may_chu(compose):
+    """Story 2.7: màn nạp không có xác thực, nên nó không được lộ ra ngoài.
+
+    Ghim cả *danh sách* cổng chứ không chỉ một phần tử: thêm một dòng
+    `"8100:8100"` bên cạnh dòng loopback là phơi màn ra Internet, mà một phép
+    kiểm "có chứa 127.0.0.1:8100:8100" thì vẫn xanh.
+    """
+    assert compose["services"]["man-nap"]["ports"] == ["127.0.0.1:8100:8100"]
+
+
+def test_man_nap_dung_chung_image_bien_va_volume_voi_api(compose):
+    """Cùng image, cùng biến, cùng volume `api_data`: một thư mục làm việc duy nhất.
+
+    Hai `HYPER_RAG_WORKING_DIR` khác nhau là hai sổ tài liệu khác nhau trên
+    cùng Neo4j/Qdrant - nạp qua màn khi sổ trống mà kho đầy ra `DA_CO_TRONG_KHO`
+    hoặc để lại rác, và `KhoaIngest` không còn là chốt chung giữa màn và CLI.
+    """
+    api, man = compose["services"]["api"], compose["services"]["man-nap"]
+    assert man["build"] == api["build"]
+    assert man["environment"] == api["environment"]
+    assert man["volumes"] == api["volumes"] == ["api_data:/data"]
+
+
+def test_man_nap_chay_dung_app_thu_hai(compose):
+    """`command` trỏ `api.man_nap:app`, không phải `api.main:app` của service `api`."""
+    lenh = " ".join(compose["services"]["man-nap"]["command"])
+    assert "api.man_nap:app" in lenh and "8100" in lenh
+    assert "command" not in compose["services"]["api"], "service `api` giữ CMD của image"
 
 
 # --- Story 2.2: biến chọn model có nguồn trong compose và trỏ vào danh mục ---
@@ -102,9 +137,10 @@ def test_chi_api_publish_cong_ra_ngoai(compose):
 FILE_THAM_SO = (".env.server", ".env.laptop")
 
 
-def test_compose_khai_du_bien_chon_model_wrapper_doc(compose):
-    """Mỗi biến mà `adapters/llm_wrapper.py` đọc phải có nguồn trong service `api`."""
-    env = compose["services"]["api"]["environment"]
+@pytest.mark.parametrize("dv", SERVICE_PYTHON)
+def test_compose_khai_du_bien_chon_model_wrapper_doc(compose, dv):
+    """Mỗi biến mà `adapters/llm_wrapper.py` đọc phải có nguồn trong service Python."""
+    env = compose["services"][dv]["environment"]
     thieu = [b for b in BIEN_MOI_TRUONG_MODEL if b not in env]
     assert not thieu, f"biến {thieu} chưa có nguồn trong docker-compose.yml"
 

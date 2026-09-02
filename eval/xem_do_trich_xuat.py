@@ -63,9 +63,10 @@ from eval.cham_trich_xuat import (
 )
 from eval.do_trich_xuat import THU_MUC_KET_QUA, KetQuaDoKhongHopLe, doc_moi_vong
 from eval.ngoai_suy import (
+    DUONG_DAN_SO_DO_NAP,
     GHI_CHU_DON_GIA,
-    SO_DO_NAP_THAT,
     BangNgoaiSuy,
+    doc_so_do_nap,
     dong_bang,
     ngoai_suy,
     so_vn,
@@ -608,6 +609,13 @@ def _tham_so(argv):
         default=None,
         help="thư mục chứa file vòng đo (cùng tên cờ với eval.do_trich_xuat)",
     )
+    p.add_argument(
+        "--so-do-nap",
+        dest="so_do_nap",
+        type=Path,
+        default=None,
+        help="file số đo lần nạp thật (mặc định eval/so_do_nap/nap-that.json)",
+    )
     return p.parse_args(list(argv))
 
 
@@ -615,12 +623,14 @@ def main(
     dich: Path | None = None,
     thu_muc_ket_qua: Path | None = None,
     argv: list[str] | None = None,
+    so_do_nap: Path | None = None,
 ) -> int:
     """Dựng trang và in bảng tổng; thiếu dữ liệu hay bộ vàng hỏng thì trả 1."""
     if argv is not None:
         ts = _tham_so(argv)
         dich = dich or ts.dich
         thu_muc_ket_qua = thu_muc_ket_qua or ts.thu_muc_ket_qua
+        so_do_nap = so_do_nap or ts.so_do_nap
     thu_muc = Path(thu_muc_ket_qua) if thu_muc_ket_qua is not None else THU_MUC_KET_QUA
     try:
         vong = doc_moi_vong(thu_muc)
@@ -652,7 +662,17 @@ def main(
         print("không vòng nào chấm được trên bộ vàng hiện tại", file=sys.stderr)
         return 1
 
-    bang = ngoai_suy(SO_DO_NAP_THAT)
+    try:
+        bang = ngoai_suy(doc_so_do_nap(so_do_nap))
+    except ValueError as loi:
+        # Bảng ngoại suy đứng trên số đo của một lần nạp thật; file hỏng thì
+        # nói tên file và lý do, không dựng bảng bằng số bịa. Bắt cả
+        # `ValueError` chứ không chỉ `SoDoNapKhongHopLe`: `ngoai_suy` kiểm số đo
+        # thêm một lần nữa bằng `ValueError` trần, và một traceback ở đây thì
+        # người chạy báo cáo không biết phải sửa file nào.
+        ten = Path(so_do_nap).name if so_do_nap is not None else DUONG_DAN_SO_DO_NAP.name
+        print(f"không dựng được bảng ngoại suy từ {ten}: {loi}", file=sys.stderr)
+        return 1
     dich = Path(dich) if dich is not None else DUONG_DAN_HTML
     try:
         dich.parent.mkdir(parents=True, exist_ok=True)

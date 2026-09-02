@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "ngay": "2026-09-02T15:56:56.532558+00:00",
+  "lenh": "uv run python -m api.do_chi_phi eval/data --xuat-json eval/so_do_nap/nap-that.json",
+  "space": "synth",
+  "dot_id": "721bba21fa6d4158b7230e80021cab4f",
+  "so_tai_lieu": 10,
+  "theo_model": [
+    {
+      "model": "deepseek-v4-flash",
+      "loai": "llm",
+      "nha_cung_cap": "deepseek",
+      "so_lan": 10,
+      "token_vao": 10111,
+      "token_ra": 3651,
+      "chi_phi_usd": 0.00926816
+    },
+    {
+      "model": "text-embedding-3-small",
+      "loai": "embedding",
+      "nha_cung_cap": "openai",
+      "so_lan": 30,
+      "token_vao": 8874,
+      "token_ra": 0,
+      "chi_phi_usd": 0.00017748000000000002
+    }
+  ],
+  "tong": {
+    "so_lan": 40,
+    "token_vao": 18985,
+    "token_ra": 3651,
+    "chi_phi_usd": 0.00944564
+  }
+}

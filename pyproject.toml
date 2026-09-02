@@ -33,6 +33,10 @@ dependencies = [
     "uvicorn>=0.30",
     # Audit port Postgres (story 2.2, AD-16): async toan tuyen, spine Stack 0.31.
     "asyncpg>=0.31",
+    # Man nap tai lieu (story 2.7) nhan file bang multipart. FastAPI khong keo
+    # goi nay theo: thieu no thi `UploadFile` nem luc *chay* request dau tien
+    # chu khong nem luc import, tuc mot man len xanh roi hong ngay lan nap dau.
+    "python-multipart>=0.0.32",
 ]
 
 [dependency-groups]

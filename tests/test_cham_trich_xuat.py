@@ -1186,11 +1186,237 @@ def test_so_do_nap_khong_huu_han_bi_tu_choi():
     assert "chi_phi_llm_usd" in str(e.value)
 
 
+# --- Số đo nạp đọc từ file, không còn hằng chép tay (story 2.7) ---------------
+
+
+def test_file_so_do_nap_that_trong_repo_doc_duoc():
+    """`eval/so_do_nap/nap-that.json` có commit và là nguồn của khoản 1 và 5.
+
+    File hỏng hay bị xóa thì bảng ngoại suy của chương 4 mất chân đứng, nên nó
+    phải được đọc trong bộ test chứ không chỉ lúc chạy báo cáo.
+    """
+    from eval.ngoai_suy import DUONG_DAN_SO_DO_NAP, doc_so_do_nap
+
+    assert DUONG_DAN_SO_DO_NAP.exists(), "file số đo nạp phải nằm trong repo"
+    do = doc_so_do_nap()
+    assert do.so_tai_lieu > 0
+    assert do.token_vao_llm > 0 and do.token_ra_llm > 0 and do.chi_phi_llm_usd > 0
+    assert do.token_embedding > 0 and do.chi_phi_embedding_usd > 0
+
+
+def test_so_do_nap_that_khop_lan_nap_02_09():
+    """Khóa sáu con số của lần nạp thật: đổi file mà quên cập nhật bảng là đỏ.
+
+    Cùng vai trò với `SO_DO_NAP_THAT` cũ, chỉ khác là nguồn nay là file chứ
+    không phải một hằng trong code - và test này là chỗ nói rõ bảng ngoại suy
+    đang đứng trên số nào.
+    """
+    from eval.ngoai_suy import doc_so_do_nap
+
+    do = doc_so_do_nap()
+    assert (do.so_tai_lieu, do.token_vao_llm, do.token_ra_llm) == (10, 10111, 3651)
+    assert do.chi_phi_llm_usd == pytest.approx(0.00926816)
+    assert do.token_embedding == 8874
+    assert do.chi_phi_embedding_usd == pytest.approx(0.00017748)
+
+
+def _ghi_so_do(tmp_path, *, tu_tinh_tong=True, **thay):
+    """File số đo mẫu; `tong` tự cộng lại từ `theo_model` trừ khi test đặt tay."""
+    import json
+
+    goc = {
+        "version": 1,
+        "ngay": "2026-09-02T11:24:57+00:00",
+        "lenh": "x",
+        "space": "synth",
+        "so_tai_lieu": 2,
+        "theo_model": [
+            {"model": "m", "loai": "llm", "so_lan": 1, "token_vao": 10, "token_ra": 5, "chi_phi_usd": 0.1}
+        ],
+    }
+    goc.update(thay)
+    if tu_tinh_tong and "tong" not in thay:
+        dong = [d for d in goc["theo_model"] if isinstance(d, dict)]
+        goc["tong"] = {
+            "so_lan": sum(d.get("so_lan", 0) for d in dong),
+            "token_vao": sum(d.get("token_vao", 0) for d in dong if isinstance(d.get("token_vao"), (int, float))),
+            "token_ra": sum(d.get("token_ra", 0) for d in dong if isinstance(d.get("token_ra"), (int, float))),
+            "chi_phi_usd": sum(d.get("chi_phi_usd", 0) for d in dong if isinstance(d.get("chi_phi_usd"), (int, float))),
+        }
+    dich = tmp_path / "nap-that.json"
+    dich.write_text(json.dumps(goc), encoding="utf-8")
+    return dich
+
+
+def _dong(**thay):
+    d = {"model": "m", "loai": "llm", "so_lan": 1, "token_vao": 10, "token_ra": 5, "chi_phi_usd": 0.1}
+    d.update(thay)
+    return d
+
+
+@pytest.mark.parametrize(
+    "thay,dau_hieu",
+    [
+        ({"version": 2}, "version"),
+        ({"version": "1"}, "version"),
+        ({"theo_model": []}, "theo_model"),
+        ({"theo_model": [{"model": "m", "loai": "llm"}]}, "thiếu khóa"),
+        ({"so_tai_lieu": "hai"}, "so_tai_lieu"),
+        ({"theo_model": [_dong(token_vao="x")]}, "token_vao"),
+        # Số đo không dùng được, mà trước đây lọt tới `_kiem_so_do` rồi ném
+        # `ValueError` trần - thứ mà `except SoDoNapKhongHopLe` không bắt.
+        ({"so_tai_lieu": 0}, "so_tai_lieu"),
+        ({"so_tai_lieu": -3}, "so_tai_lieu"),
+        ({"theo_model": [_dong(token_vao=-1)]}, "âm"),
+        ({"theo_model": [_dong(chi_phi_usd=float("nan"))]}, "không hữu hạn"),
+        ({"theo_model": [_dong(chi_phi_usd=float("inf"))]}, "không hữu hạn"),
+        # `loai` lạ rơi vào nhánh LLM là âm thầm thổi phồng token trích xuất.
+        ({"theo_model": [_dong(loai="reranker")]}, "loai"),
+        ({"theo_model": [_dong(loai="")]}, "loai"),
+        ({"theo_model": [_dong(token_vao=True)]}, "token_vao"),
+    ],
+)
+def test_so_do_nap_hong_bi_tu_choi_kem_ten_file_va_ly_do(tmp_path, thay, dau_hieu):
+    from eval.ngoai_suy import SoDoNapKhongHopLe, doc_so_do_nap
+
+    dich = _ghi_so_do(tmp_path, **thay)
+    with pytest.raises(SoDoNapKhongHopLe) as e:
+        doc_so_do_nap(dich)
+    assert "nap-that.json" in str(e.value) and dau_hieu in str(e.value)
+
+
+@pytest.mark.parametrize(
+    "tong,dau_hieu",
+    [
+        ({"so_lan": 1, "token_vao": 11, "token_ra": 5, "chi_phi_usd": 0.1}, "tong.token_vao"),
+        ({"so_lan": 1, "token_vao": 10, "token_ra": 6, "chi_phi_usd": 0.1}, "tong.token_ra"),
+        ({"so_lan": 1, "token_vao": 10, "token_ra": 5, "chi_phi_usd": 0.2}, "tong.chi_phi_usd"),
+        ({"so_lan": 9, "token_vao": 10, "token_ra": 5, "chi_phi_usd": 0.1}, "tong.so_lan"),
+        ({"token_vao": 10, "token_ra": 5, "chi_phi_usd": 0.1}, "thiếu khóa"),
+        ("khong-phai-object", "object"),
+    ],
+)
+def test_khoi_tong_lech_theo_model_bi_tu_choi(tmp_path, tong, dau_hieu):
+    """Hai con số trong cùng một file có commit mà lệch nhau thì ít nhất một cái sai.
+
+    Trước đây `so_do_nap` ghi khối `tong` còn `doc_so_do_nap` bỏ qua nó và tự
+    cộng lại, nên không gì đỏ khi chúng rời nhau.
+    """
+    from eval.ngoai_suy import SoDoNapKhongHopLe, doc_so_do_nap
+
+    dich = _ghi_so_do(tmp_path, tong=tong)
+    with pytest.raises(SoDoNapKhongHopLe) as e:
+        doc_so_do_nap(dich)
+    assert "nap-that.json" in str(e.value) and dau_hieu in str(e.value)
+
+
+def test_khoi_tong_khop_thi_doc_duoc(tmp_path):
+    from eval.ngoai_suy import doc_so_do_nap
+
+    assert doc_so_do_nap(_ghi_so_do(tmp_path)).token_vao_llm == 10
+
+
+def test_so_do_nap_khong_phai_utf8_bi_tu_choi(tmp_path):
+    """`read_text` ném `UnicodeDecodeError`, không phải `OSError`: hai nhánh khác nhau."""
+    from eval.ngoai_suy import SoDoNapKhongHopLe, doc_so_do_nap
+
+    dich = tmp_path / "nap-that.json"
+    dich.write_bytes(b"\xff\xfe{}")
+    with pytest.raises(SoDoNapKhongHopLe) as e:
+        doc_so_do_nap(dich)
+    assert "nap-that.json" in str(e.value) and "UTF-8" in str(e.value)
+
+
+def test_moi_duong_thoat_cua_cua_doc_deu_la_so_do_nap_khong_hop_le(tmp_path):
+    """`SoDoNapKhongHopLe` là con của `ValueError`, nên một `ValueError` trần lọt
+    ra sẽ *không* bị `except SoDoNapKhongHopLe` bắt - báo cáo chết bằng traceback."""
+    import json
+
+    from eval.ngoai_suy import SoDoNapKhongHopLe, doc_so_do_nap
+
+    xau = [
+        b"[]",
+        b"{}",
+        b"khong phai json",
+        json.dumps({"version": 1, "ngay": "x", "lenh": "x", "space": "s",
+                    "so_tai_lieu": 0, "theo_model": [_dong()], "tong": {}}).encode(),
+    ]
+    dich = tmp_path / "nap-that.json"
+    for noi_dung in xau:
+        dich.write_bytes(noi_dung)
+        with pytest.raises(SoDoNapKhongHopLe):
+            doc_so_do_nap(dich)
+    dich.unlink()
+    with pytest.raises(SoDoNapKhongHopLe):
+        doc_so_do_nap(dich)
+
+
+def test_bao_cao_tu_choi_file_so_do_hong_thay_vi_chet_bang_traceback(tmp_path, capsys):
+    """Nhánh lỗi của `eval/xem_do_trich_xuat.main` phải có test chạy vào.
+
+    Trước đây `main` gọi `doc_so_do_nap()` không tham số nên mọi test đều đọc
+    file thật trong repo, và nhánh xử lý lỗi chưa từng chạy một lần.
+    """
+    from eval.xem_do_trich_xuat import main
+
+    hong = _ghi_so_do(tmp_path, version=99)
+    ma = main(dich=tmp_path / "t.html", so_do_nap=hong)
+    assert ma == 1
+    assert "nap-that.json" in capsys.readouterr().err
+
+
+def test_so_do_nap_thieu_khoa_goc_bi_tu_choi(tmp_path):
+    import json
+
+    from eval.ngoai_suy import SoDoNapKhongHopLe, doc_so_do_nap
+
+    dich = tmp_path / "nap-that.json"
+    dich.write_text(json.dumps({"version": 1}), encoding="utf-8")
+    with pytest.raises(SoDoNapKhongHopLe) as e:
+        doc_so_do_nap(dich)
+    assert "thiếu khóa" in str(e.value)
+
+
+def test_so_do_nap_file_khong_co_bi_tu_choi_kem_duong_dan(tmp_path):
+    from eval.ngoai_suy import SoDoNapKhongHopLe, doc_so_do_nap
+
+    with pytest.raises(SoDoNapKhongHopLe) as e:
+        doc_so_do_nap(tmp_path / "chua-co.json")
+    assert "chua-co.json" in str(e.value)
+
+
+def test_so_do_nap_khong_phai_json_bi_tu_choi(tmp_path):
+    from eval.ngoai_suy import SoDoNapKhongHopLe, doc_so_do_nap
+
+    dich = tmp_path / "nap-that.json"
+    dich.write_text("khong phai json", encoding="utf-8")
+    with pytest.raises(SoDoNapKhongHopLe):
+        doc_so_do_nap(dich)
+
+
+def test_so_do_nap_cong_theo_loai_khong_theo_ten_model(tmp_path):
+    """Hai model LLM trong cùng một đợt cộng chung; embedding vẫn tách riêng."""
+    from eval.ngoai_suy import doc_so_do_nap
+
+    dich = _ghi_so_do(
+        tmp_path,
+        theo_model=[
+            {"model": "a", "loai": "llm", "token_vao": 10, "token_ra": 5, "chi_phi_usd": 0.1},
+            {"model": "b", "loai": "llm", "token_vao": 20, "token_ra": 7, "chi_phi_usd": 0.2},
+            {"model": "e", "loai": "embedding", "token_vao": 30, "token_ra": 0, "chi_phi_usd": 0.3},
+        ],
+    )
+    do = doc_so_do_nap(dich)
+    assert (do.token_vao_llm, do.token_ra_llm) == (30, 12)
+    assert do.chi_phi_llm_usd == pytest.approx(0.3)
+    assert do.token_embedding == 30 and do.chi_phi_embedding_usd == pytest.approx(0.3)
+
+
 def test_khoan_ap_don_gia_model_khac_len_token_do_duoc_la_gia_dinh():
     """Áp giá GPT-4o lên token đo của DeepSeek là một giả định, phải nêu tên."""
-    from eval.ngoai_suy import NGUON_DO, NGUON_GIA_DINH, SO_DO_NAP_THAT, ngoai_suy
+    from eval.ngoai_suy import NGUON_DO, NGUON_GIA_DINH, doc_so_do_nap, ngoai_suy
 
-    bang = ngoai_suy(SO_DO_NAP_THAT)
+    bang = ngoai_suy(doc_so_do_nap())
     assert bang.khoan_theo_ten("nap_corpus").nguon == NGUON_DO
     for ten in ("gpt4o_dung_cuoi", "ensemble_a13", "sinh_t7", "judge_do2", "vong_so_chunk"):
         k = bang.khoan_theo_ten(ten)
@@ -1528,25 +1754,25 @@ def test_bon_vong_khong_co_ban_ghi_bi_loai():
 
 
 SO_KHOA_NGOAI_SUY = {
-    "nap_corpus": 0.0375,
+    "nap_corpus": 0.0378,
     "sinh_t7": 0.6178,
     "judge_do2": 5.5350,
     "vong_so_chunk": 0.2446,
-    "gpt4o_dung_cuoi": 0.2461,
-    "ensemble_a13": 0.0884,
+    "gpt4o_dung_cuoi": 0.2479,
+    "ensemble_a13": 0.0890,
 }
 
 
 def test_khoa_so_bang_ngoai_suy():
     """Đổi một đơn giá trong danh mục là bảng ngoại suy đổi; phải đỏ, không im."""
-    from eval.ngoai_suy import MUC_BAO_DONG_USD, SO_DO_NAP_THAT, ngoai_suy
+    from eval.ngoai_suy import MUC_BAO_DONG_USD, doc_so_do_nap, ngoai_suy
 
-    bang = ngoai_suy(SO_DO_NAP_THAT)
+    bang = ngoai_suy(doc_so_do_nap())
     for ten, usd in SO_KHOA_NGOAI_SUY.items():
         assert bang.khoan_theo_ten(ten).chi_phi_usd == pytest.approx(usd, abs=5e-5), ten
-    assert bang.tong_usd == pytest.approx(6.7694, abs=5e-5)
+    assert bang.tong_usd == pytest.approx(6.7720, abs=5e-5)
     assert bang.vuot_bao_dong is False
-    assert bang.phan_tram_bao_dong == pytest.approx(100 * 6.7694 / MUC_BAO_DONG_USD, abs=0.01)
+    assert bang.phan_tram_bao_dong == pytest.approx(100 * 6.7720 / MUC_BAO_DONG_USD, abs=0.01)
 
 
 def test_chia_chunk_khop_chunk_ma_ainsert_that_ghi_ra(tmp_path):
