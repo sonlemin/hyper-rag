@@ -1,0 +1,647 @@
+{
+  "version": 1,
+  "cau": [
+    {
+      "id": "n1-01",
+      "nhom": "N1",
+      "cau_hoi": "Khi trang thanh toán App01 trả lỗi 502 quá 3 phút liên tục, người trực được khởi động lại dịch vụ nào trước?",
+      "vai_hoi": "devops",
+      "kich_ban": "web_sap",
+      "bo_vang": true,
+      "dap_an": "Khởi động lại dịch vụ PHP-FPM trước, không khởi động lại Nginx. Đây là thao tác mà runbook vận hành App01 của khách hàng A cho phép người trực làm khi trang thanh toán trả lỗi 502 quá 3 phút liên tục.",
+      "y_chinh": [
+        "khởi động lại PHP-FPM trước",
+        "không khởi động lại Nginx",
+        "điều kiện là lỗi 502 kéo dài quá 3 phút liên tục"
+      ]
+    },
+    {
+      "id": "n1-02",
+      "nhom": "N1",
+      "cau_hoi": "Cảnh báo phân vùng đầy mức cảnh giác bắn khi phân vùng vượt bao nhiêu phần trăm dung lượng?",
+      "vai_hoi": "tech_support",
+      "kich_ban": "day_o_cung",
+      "bo_vang": true,
+      "dap_an": "Vượt 85% dung lượng. Cảnh báo mức cảnh giác gửi vào kênh chat của nhóm Hạ tầng; mức nghiêm trọng thì ở 95% và gọi điện cho kỹ sư trực hạ tầng.",
+      "y_chinh": [
+        "ngưỡng 85% cho mức cảnh giác",
+        "gửi vào kênh chat của nhóm Hạ tầng",
+        "phân biệt với ngưỡng 95% của mức nghiêm trọng"
+      ]
+    },
+    {
+      "id": "n1-03",
+      "nhom": "N1",
+      "cau_hoi": "Máy chủ log01 có ổ đĩa nhật ký dung lượng bao nhiêu và gắn ở đâu?",
+      "vai_hoi": "devops",
+      "kich_ban": "day_o_cung",
+      "bo_vang": false,
+      "dap_an": "",
+      "y_chinh": []
+    },
+    {
+      "id": "n1-04",
+      "nhom": "N1",
+      "cau_hoi": "Nhân viên nhập sai mật khẩu tài khoản nội bộ mấy lần thì bị khóa, và khóa trong bao lâu?",
+      "vai_hoi": "tech_support",
+      "kich_ban": "nhieu",
+      "bo_vang": true,
+      "dap_an": "Sai 5 lần liên tiếp thì tài khoản bị khóa 15 phút. Sai tiếp sau đó thì phải nhờ Tech Support mở khóa.",
+      "y_chinh": [
+        "5 lần liên tiếp",
+        "khóa 15 phút",
+        "sai tiếp phải nhờ Tech Support mở khóa"
+      ]
+    },
+    {
+      "id": "n1-05",
+      "nhom": "N1",
+      "cau_hoi": "App01 chạy trên máy chủ nào, với phiên bản PHP và Nginx nào?",
+      "vai_hoi": "devops",
+      "kich_ban": "web_sap",
+      "bo_vang": false,
+      "dap_an": "",
+      "y_chinh": []
+    },
+    {
+      "id": "n1-06",
+      "nhom": "N1",
+      "cau_hoi": "Yêu cầu cấp VPN cho nhân viên mới gửi qua đâu và ai phê duyệt?",
+      "vai_hoi": "tech_support",
+      "kich_ban": "nhieu",
+      "bo_vang": false,
+      "dap_an": "",
+      "y_chinh": []
+    },
+    {
+      "id": "n2-01",
+      "nhom": "N2",
+      "cau_hoi": "Việc chỉnh giới hạn bộ nhớ PHP-FPM của App01 phải theo quy trình nào, và trong sự cố INC-1208 quy trình đó đã bị bỏ bước nào?",
+      "vai_hoi": "devops",
+      "kich_ban": "web_sap",
+      "bo_vang": true,
+      "dap_an": "Mọi lần chỉnh tham số giới hạn bộ nhớ PHP-FPM phải có phiếu thay đổi theo SOP-12, kể cả khi đang xử lý sự cố. SOP-12 còn bắt phiếu chạm tham số bộ nhớ, tham số tiến trình hoặc cấu hình mạng phải được thử trên môi trường thử nghiệm trước khi duyệt. Trong INC-1208, phiếu được duyệt mà không qua bước thử đó, và postmortem xếp nó là lỗi quy trình chứ không phải lỗi thao tác.",
+      "y_chinh": [
+        "phiếu thay đổi theo SOP-12, không có ngoại lệ khi xử lý sự cố",
+        "SOP-12 bắt thử trên môi trường thử nghiệm trước khi duyệt",
+        "INC-1208 bỏ đúng bước thử đó",
+        "postmortem gọi đó là lỗi quy trình, không phải lỗi thao tác"
+      ]
+    },
+    {
+      "id": "n2-02",
+      "nhom": "N2",
+      "cau_hoi": "Vì sao phân vùng nhật ký của máy chủ log01 đầy, và lỗi đã biết nào là nguyên nhân xa?",
+      "vai_hoi": "devops",
+      "kich_ban": "day_o_cung",
+      "bo_vang": true,
+      "dap_an": "Tác vụ xoay vòng nhật ký ngừng chạy từ ngày 11/08 mà không ai nhận được thông báo, nhật ký dồn lại 7 ngày cho tới khi phân vùng đầy 100% lúc 09 giờ 40 ngày 18/08. Nguyên nhân xa là lỗi đã biết KI-014: công cụ xoay vòng từ bản 3.19 dừng im lặng khi gặp một file nhật ký đang bị tiến trình khác giữ và không ghi dòng lỗi nào.",
+      "y_chinh": [
+        "tác vụ xoay vòng ngừng chạy từ 11/08",
+        "nhật ký dồn 7 ngày, phân vùng đầy 100% ngày 18/08",
+        "KI-014 là nguyên nhân xa",
+        "công cụ xoay vòng bản 3.19 dừng im lặng, không ghi lỗi"
+      ]
+    },
+    {
+      "id": "n2-03",
+      "nhom": "N2",
+      "cau_hoi": "Bốn dịch vụ nào ngừng nhận yêu cầu khi log01 không ghi được nhật ký, và trong sự cố INC-1520 mỗi dịch vụ hỏng ra sao?",
+      "vai_hoi": "tech_support",
+      "kich_ban": "day_o_cung",
+      "bo_vang": true,
+      "dap_an": "Bốn dịch vụ ghi nhật ký trực tiếp vào log01 là cổng nội bộ, hệ thống chấm công, Jira nội bộ và kho ảnh Docker; cả bốn coi việc ghi nhật ký là bắt buộc nên log01 không ghi được thì cả bốn dừng nhận yêu cầu mới. Trong INC-1520, cổng nội bộ không đăng nhập được vì không ghi được phiên, hệ thống chấm công mất bản ghi của buổi sáng, Jira nội bộ chỉ đọc, và kho ảnh Docker từ chối mọi lượt đẩy ảnh mới.",
+      "y_chinh": [
+        "bốn dịch vụ: cổng nội bộ, chấm công, Jira nội bộ, kho ảnh Docker",
+        "ghi nhật ký là bắt buộc nên cả bốn dừng nhận yêu cầu",
+        "bốn kiểu hỏng khác nhau trong INC-1520"
+      ]
+    },
+    {
+      "id": "n2-04",
+      "nhom": "N2",
+      "cau_hoi": "Ba lượt nhắc gia hạn chứng thư của pay.khachhangb.vn bắn theo lịch nào, và vì sao không ai xử lý?",
+      "vai_hoi": "devops",
+      "kich_ban": "ssl_het_han",
+      "bo_vang": false,
+      "dap_an": "",
+      "y_chinh": []
+    },
+    {
+      "id": "n2-05",
+      "nhom": "N2",
+      "cau_hoi": "Một người dùng đã bật VPN mà vẫn không mở được cổng nội bộ thì phải làm gì trước khi mở ticket?",
+      "vai_hoi": "tech_support",
+      "kich_ban": "nhieu",
+      "bo_vang": true,
+      "dap_an": "Làm hết bốn bước của hướng dẫn tự kiểm khi dịch vụ nội bộ chậm hoặc không truy cập được: kiểm kết nối VPN, mở trang trạng thái dịch vụ (đang có sự cố thì không mở ticket mới), nếu đăng nhập được mà thao tác lưu bị lỗi thì báo nhóm Hạ tầng vì khả năng cao hệ ghi nhật ký đang đầy, và nếu chỉ một mình gặp lỗi thì xóa bộ nhớ đệm trình duyệt rồi đăng nhập lại. Ticket mở sau đó phải ghi rõ đã làm tới bước nào.",
+      "y_chinh": [
+        "làm hết bốn bước tự kiểm rồi mới mở ticket",
+        "trang trạng thái báo có sự cố thì không mở ticket mới",
+        "lỗi khi lưu thì báo nhóm Hạ tầng, có thể do hệ ghi nhật ký đầy",
+        "ticket phải ghi rõ đã làm tới bước nào"
+      ]
+    },
+    {
+      "id": "n2-06",
+      "nhom": "N2",
+      "cau_hoi": "Cảnh báo nào lẽ ra phải gọi điện cho kỹ sư trực App01, và trong sự cố INC-1208 điều gì đã xảy ra với nó?",
+      "vai_hoi": "devops",
+      "kich_ban": "web_sap",
+      "bo_vang": false,
+      "dap_an": "",
+      "y_chinh": []
+    },
+    {
+      "id": "n2-07",
+      "nhom": "N2",
+      "cau_hoi": "Ai phụ trách kỹ thuật máy chủ log01, và người đó đã làm gì trong sự cố INC-1520?",
+      "vai_hoi": "devops",
+      "kich_ban": "day_o_cung",
+      "bo_vang": false,
+      "dap_an": "",
+      "y_chinh": []
+    },
+    {
+      "id": "n2-08",
+      "nhom": "N2",
+      "cau_hoi": "Thao tác khẩn cấp không có phiếu thay đổi phải bổ sung phiếu trong bao lâu, và quy định đó xuất hiện ở những tài liệu nào?",
+      "vai_hoi": "tech_support",
+      "kich_ban": "nhieu",
+      "bo_vang": false,
+      "dap_an": "",
+      "y_chinh": []
+    },
+    {
+      "id": "n3-01",
+      "nhom": "N3",
+      "cau_hoi": "Với App01, khi nào người trực được tự khởi động lại dịch vụ, và khi nào thì bắt buộc phải có phiếu thay đổi?",
+      "vai_hoi": "devops",
+      "kich_ban": "web_sap",
+      "bo_vang": true,
+      "dap_an": "Khi trang thanh toán trả lỗi 502 quá 3 phút liên tục thì người trực được khởi động lại dịch vụ PHP-FPM trước, không khởi động lại Nginx. Nhưng mọi lần chỉnh tham số giới hạn bộ nhớ PHP-FPM đều phải có phiếu thay đổi theo SOP-12, kể cả khi đang xử lý sự cố.",
+      "y_chinh": [
+        "khởi động lại PHP-FPM được phép khi 502 quá 3 phút liên tục",
+        "chỉnh tham số giới hạn bộ nhớ thì luôn phải có phiếu theo SOP-12",
+        "không có ngoại lệ cho lúc đang xử lý sự cố"
+      ]
+    },
+    {
+      "id": "n3-02",
+      "nhom": "N3",
+      "cau_hoi": "Cảnh báo tỷ lệ lỗi 502 của App01 bắn ở điều kiện nào?",
+      "vai_hoi": "devops",
+      "kich_ban": "web_sap",
+      "bo_vang": true,
+      "dap_an": "Cảnh báo \"App01 tỷ lệ lỗi 502\" bắn khi tỷ lệ phản hồi 502 vượt 2% trong cửa sổ 5 phút.",
+      "y_chinh": [
+        "ngưỡng 2% phản hồi 502",
+        "cửa sổ 5 phút"
+      ]
+    },
+    {
+      "id": "n3-03",
+      "nhom": "N3",
+      "cau_hoi": "Trên máy chủ log01, ngưỡng cảnh báo dung lượng mức nghiêm trọng là bao nhiêu và vì sao nó khác các máy chủ khác?",
+      "vai_hoi": "tech_support",
+      "kich_ban": "day_o_cung",
+      "bo_vang": true,
+      "dap_an": "Riêng log01, ngưỡng nghiêm trọng hạ xuống 90% vì tốc độ ghi nhật ký ở đó cao hơn các máy chủ khác; các máy chủ còn lại dùng ngưỡng 95%.",
+      "y_chinh": [
+        "log01 dùng ngưỡng 90%",
+        "các máy chủ khác dùng 95%",
+        "lý do là tốc độ ghi nhật ký ở log01 cao hơn"
+      ]
+    },
+    {
+      "id": "n3-04",
+      "nhom": "N3",
+      "cau_hoi": "Nhật ký cũ bao nhiêu ngày thì được nén ngay mà không cần phê duyệt?",
+      "vai_hoi": "tech_support",
+      "kich_ban": "day_o_cung",
+      "bo_vang": true,
+      "dap_an": "Nhật ký cũ hơn 30 ngày trên phân vùng log được nén ngay mà không cần phê duyệt.",
+      "y_chinh": [
+        "cũ hơn 30 ngày",
+        "trên phân vùng log",
+        "nén ngay, không cần phê duyệt"
+      ]
+    },
+    {
+      "id": "n3-05",
+      "nhom": "N3",
+      "cau_hoi": "Điều kiện nào phải thỏa trước khi xóa nhật ký cũ hơn 90 ngày?",
+      "vai_hoi": "tech_support",
+      "kich_ban": "day_o_cung",
+      "bo_vang": true,
+      "dap_an": "Chỉ được xóa sau khi nhật ký đã được chuyển sang kho lưu trữ lạnh, và phải có kỹ sư hạ tầng xác nhận đã chuyển xong.",
+      "y_chinh": [
+        "phải chuyển sang kho lưu trữ lạnh trước",
+        "kỹ sư hạ tầng xác nhận đã chuyển xong"
+      ]
+    },
+    {
+      "id": "n3-06",
+      "nhom": "N3",
+      "cau_hoi": "Khi lưu lượng App01 vượt 5000 req/phút thì kỹ sư trực phải làm gì, và cảnh báo tương ứng bắn khi nào?",
+      "vai_hoi": "devops",
+      "kich_ban": "web_sap",
+      "bo_vang": true,
+      "dap_an": "Kỹ sư trực phải mở thêm hai tiến trình PHP-FPM và theo dõi thời gian đáp ứng trong 15 phút tiếp theo. Cảnh báo \"App01 lưu lượng cao\" bắn khi lưu lượng vượt 5000 req/phút trong 10 phút liên tục.",
+      "y_chinh": [
+        "mở thêm hai tiến trình PHP-FPM",
+        "theo dõi thời gian đáp ứng 15 phút tiếp theo",
+        "cảnh báo cần lưu lượng vượt ngưỡng trong 10 phút liên tục"
+      ]
+    },
+    {
+      "id": "n3-07",
+      "nhom": "N3",
+      "cau_hoi": "Chứng thư số của khách hàng B phải được gia hạn chậm nhất bao lâu trước ngày hết hạn?",
+      "vai_hoi": "devops",
+      "kich_ban": "ssl_het_han",
+      "bo_vang": false,
+      "dap_an": "",
+      "y_chinh": []
+    },
+    {
+      "id": "n3-08",
+      "nhom": "N3",
+      "cau_hoi": "Cảnh báo chứng thư sắp hết hạn của khách hàng B bắt đầu bắn từ mốc nào, và khi nào nó chuyển sang mức nghiêm trọng?",
+      "vai_hoi": "devops",
+      "kich_ban": "ssl_het_han",
+      "bo_vang": false,
+      "dap_an": "",
+      "y_chinh": []
+    },
+    {
+      "id": "n3-09",
+      "nhom": "N3",
+      "cau_hoi": "Cảnh báo dung lượng được phép tắt tiếng tối đa bao lâu, và ngoại lệ do ai duyệt?",
+      "vai_hoi": "tech_support",
+      "kich_ban": "day_o_cung",
+      "bo_vang": true,
+      "dap_an": "Cảnh báo dung lượng không được tắt tiếng quá 30 phút; ngoại lệ phải có phê duyệt của trưởng nhóm Hạ tầng.",
+      "y_chinh": [
+        "tối đa 30 phút",
+        "ngoại lệ cần phê duyệt của trưởng nhóm Hạ tầng"
+      ]
+    },
+    {
+      "id": "n3-10",
+      "nhom": "N3",
+      "cau_hoi": "Ngưỡng cảnh báo CPU của cụm máy chủ web khách hàng A được nới lên bao nhiêu vào hai ngày cuối tháng, và vì sao?",
+      "vai_hoi": "devops",
+      "kich_ban": "nhieu",
+      "bo_vang": false,
+      "dap_an": "",
+      "y_chinh": []
+    },
+    {
+      "id": "n3-11",
+      "nhom": "N3",
+      "cau_hoi": "Phiếu thay đổi loại nào bắt buộc phải thử trên môi trường thử nghiệm trước khi duyệt?",
+      "vai_hoi": "devops",
+      "kich_ban": "web_sap",
+      "bo_vang": false,
+      "dap_an": "",
+      "y_chinh": []
+    },
+    {
+      "id": "n3-12",
+      "nhom": "N3",
+      "cau_hoi": "Khi nào một thay đổi trên hệ thống sản xuất được làm trước rồi mới bổ sung phiếu, và hạn bổ sung là bao lâu?",
+      "vai_hoi": "tech_support",
+      "kich_ban": "nhieu",
+      "bo_vang": false,
+      "dap_an": "",
+      "y_chinh": []
+    },
+    {
+      "id": "n4-01",
+      "nhom": "N4",
+      "cau_hoi": "Đã có sự cố nào khác cũng bắt nguồn từ một phân vùng đầy chưa, và nó khác INC-1520 ở chỗ nào?",
+      "vai_hoi": "devops",
+      "kich_ban": "day_o_cung",
+      "bo_vang": true,
+      "dap_an": "Có: INC-1305 ngày 03/09/2026, cụm cơ sở dữ liệu DB02 ngừng nhận ghi 25 phút vì phân vùng lưu nhật ký giao dịch đầy 100% do một tiến trình xuất báo cáo ghi tạm vào cùng phân vùng. Khác INC-1520 ở nguyên nhân (một tiến trình ghi nhầm chỗ chứ không phải tác vụ xoay vòng ngừng chạy), ở phạm vi (một cụm cơ sở dữ liệu chứ không phải bốn dịch vụ nội bộ) và ở cách xử lý (mở rộng phân vùng thêm 200 GB thay vì nén nhật ký cũ).",
+      "y_chinh": [
+        "INC-1305 là ca tương tự",
+        "nguyên nhân là tiến trình xuất báo cáo ghi tạm sai phân vùng",
+        "phạm vi hẹp hơn INC-1520",
+        "cách xử lý khác: mở rộng phân vùng"
+      ]
+    },
+    {
+      "id": "n4-02",
+      "nhom": "N4",
+      "cau_hoi": "Ngoài INC-1533, hệ thống còn sự cố nào do chứng thư hết hạn không?",
+      "vai_hoi": "devops",
+      "kich_ban": "ssl_het_han",
+      "bo_vang": true,
+      "dap_an": "Có: INC-1417 ngày 18/09/2026, chứng chỉ TLS của cổng VPN hết hạn lúc 08:00 làm khoảng 120 người làm việc từ xa mất truy cập trong 55 phút. Điểm chung với INC-1533 là lịch gia hạn không nằm ở nơi mọi người thấy được: INC-1417 vì lịch chỉ ghi trong tệp cá nhân của một kỹ sư đã nghỉ việc, INC-1533 vì hộp thư nhận nhắc trong bản ghi CMDB chưa cập nhật sau đợt bàn giao.",
+      "y_chinh": [
+        "INC-1417 là ca tương tự",
+        "chứng chỉ TLS cổng VPN hết hạn, 55 phút mất truy cập",
+        "điểm chung: lịch gia hạn không nằm ở nơi ai cũng thấy"
+      ]
+    },
+    {
+      "id": "n4-03",
+      "nhom": "N4",
+      "cau_hoi": "Có lỗi đã biết nào khác cũng làm người dùng không đăng nhập được cổng nội bộ không?",
+      "vai_hoi": "tech_support",
+      "kich_ban": "nhieu",
+      "bo_vang": false,
+      "dap_an": "",
+      "y_chinh": []
+    },
+    {
+      "id": "n4-04",
+      "nhom": "N4",
+      "cau_hoi": "Sự cố nào khác cũng bắt nguồn từ một thay đổi cấu hình, và bài học của hai sự cố khác nhau thế nào?",
+      "vai_hoi": "devops",
+      "kich_ban": "web_sap",
+      "bo_vang": true,
+      "dap_an": "INC-1208 bắt nguồn từ một phiếu thay đổi giới hạn bộ nhớ PHP-FPM được duyệt mà không qua bước thử, bài học là mọi thay đổi cấu hình PHP-FPM trên App01 phải qua duyệt của trưởng ca trực và có kế hoạch quay lui trong 5 phút. INC-1305 bắt nguồn từ một tiến trình xuất báo cáo ghi tạm vào phân vùng nhật ký của DB02, bài học là tiến trình xuất báo cáo phải ghi tạm vào phân vùng riêng và hạ ngưỡng cảnh báo dung lượng của DB02 xuống 75%. Bài học thứ nhất siết quy trình duyệt, bài học thứ hai tách tài nguyên và hạ ngưỡng cảnh báo.",
+      "y_chinh": [
+        "INC-1208 do phiếu thay đổi bỏ bước thử",
+        "INC-1305 do tiến trình ghi tạm sai phân vùng",
+        "bài học 1 siết quy trình duyệt và kế hoạch quay lui",
+        "bài học 2 tách phân vùng và hạ ngưỡng cảnh báo xuống 75%"
+      ]
+    },
+    {
+      "id": "n4-05",
+      "nhom": "N4",
+      "cau_hoi": "Hướng dẫn tự kiểm nào cũng có một nhánh chỉ về dung lượng đầy?",
+      "vai_hoi": "tech_support",
+      "kich_ban": "day_o_cung",
+      "bo_vang": false,
+      "dap_an": "",
+      "y_chinh": []
+    },
+    {
+      "id": "n5-01",
+      "nhom": "N5",
+      "cau_hoi": "Nguyên nhân gốc của sự cố INC-1208 trên App01 là gì?",
+      "vai_hoi": "tech_support",
+      "kich_ban": "web_sap",
+      "bo_vang": true,
+      "dap_an": "Nguyên nhân là chỉnh sai giới hạn bộ nhớ của pool PHP-FPM trong một phiếu thay đổi được duyệt tối hôm trước, làm tiến trình bị hệ điều hành thu hồi hàng loạt khi lưu lượng vượt 5000 req/phút. Postmortem đi thêm một bậc: phiếu đó được duyệt mà không qua bước thử trên môi trường thử nghiệm, nên đây là lỗi quy trình chứ không phải lỗi thao tác.",
+      "y_chinh": [
+        "chỉnh sai giới hạn bộ nhớ PHP-FPM",
+        "tiến trình bị thu hồi khi lưu lượng vượt 5000 req/phút",
+        "phiếu thay đổi được duyệt mà không qua bước thử"
+      ]
+    },
+    {
+      "id": "n5-02",
+      "nhom": "N5",
+      "cau_hoi": "Ai xử lý sự cố INC-1208 và người đó thuộc đội nào?",
+      "vai_hoi": "devops",
+      "kich_ban": "web_sap",
+      "bo_vang": true,
+      "dap_an": "Kỹ sư trực Trần Thị Hạnh, thuộc đội Vận hành ứng dụng.",
+      "y_chinh": [
+        "Trần Thị Hạnh",
+        "đội Vận hành ứng dụng"
+      ]
+    },
+    {
+      "id": "n5-03",
+      "nhom": "N5",
+      "cau_hoi": "Sự cố INC-1208 được xử lý bằng cách nào?",
+      "vai_hoi": "tech_support",
+      "kich_ban": "web_sap",
+      "bo_vang": true,
+      "dap_an": "Trả giới hạn bộ nhớ PHP-FPM về mức cũ rồi nạp lại cấu hình theo SOP-12; dịch vụ phục hồi lúc 10:00.",
+      "y_chinh": [
+        "trả giới hạn bộ nhớ PHP-FPM về mức cũ",
+        "nạp lại cấu hình theo SOP-12",
+        "dịch vụ phục hồi lúc 10:00"
+      ]
+    },
+    {
+      "id": "n5-04",
+      "nhom": "N5",
+      "cau_hoi": "Khóa SSH quản trị của cụm khách hàng A được cấp với thời hạn bao lâu và ai duyệt?",
+      "vai_hoi": "devops",
+      "kich_ban": "nhieu",
+      "bo_vang": false,
+      "dap_an": "",
+      "y_chinh": []
+    },
+    {
+      "id": "n5-05",
+      "nhom": "N5",
+      "cau_hoi": "Truy cập quản trị vào máy chủ sản xuất nội bộ đi qua đâu, và dải mạng quản trị là dải nào?",
+      "vai_hoi": "tech_support",
+      "kich_ban": "nhieu",
+      "bo_vang": true,
+      "dap_an": "Truy cập quản trị chỉ đi qua máy chủ nhảy bastion.it.local, mọi phiên SSH được ghi lại và giữ 90 ngày. Dải mạng quản trị là 10.20.0.0/24, tách khỏi dải mạng người dùng và chỉ mở từ máy chủ nhảy.",
+      "y_chinh": [
+        "máy chủ nhảy bastion.it.local",
+        "phiên SSH được ghi lại, giữ 90 ngày",
+        "dải mạng quản trị 10.20.0.0/24, chỉ mở từ máy chủ nhảy"
+      ]
+    },
+    {
+      "id": "n5-06",
+      "nhom": "N5",
+      "cau_hoi": "Khóa riêng chứng thư số của khách hàng B lưu ở đâu và ai được cấp quyền đọc?",
+      "vai_hoi": "devops",
+      "kich_ban": "ssl_het_han",
+      "bo_vang": false,
+      "dap_an": "",
+      "y_chinh": []
+    },
+    {
+      "id": "n5-07",
+      "nhom": "N5",
+      "cau_hoi": "Nguyên nhân gốc của sự cố INC-1520 là gì?",
+      "vai_hoi": "tech_support",
+      "kich_ban": "day_o_cung",
+      "bo_vang": true,
+      "dap_an": "Tác vụ xoay vòng nhật ký của máy chủ log01 ngừng chạy từ ngày 11/08 mà không ai nhận được thông báo, nhật ký dồn lại 7 ngày và phân vùng đầy 100% lúc 09 giờ 40 ngày 18/08, kéo theo bốn dịch vụ nội bộ hỏng dây chuyền trong 95 phút.",
+      "y_chinh": [
+        "tác vụ xoay vòng nhật ký ngừng chạy từ 11/08",
+        "phân vùng nhật ký log01 đầy 100%",
+        "bốn dịch vụ nội bộ hỏng dây chuyền 95 phút"
+      ]
+    },
+    {
+      "id": "n5-08",
+      "nhom": "N5",
+      "cau_hoi": "Sự cố INC-1520 được khắc phục thế nào và ai đứng ra xử lý?",
+      "vai_hoi": "devops",
+      "kich_ban": "day_o_cung",
+      "bo_vang": false,
+      "dap_an": "",
+      "y_chinh": []
+    },
+    {
+      "id": "n5-09",
+      "nhom": "N5",
+      "cau_hoi": "Vì sao cổng thanh toán của khách hàng B ngừng nhận giao dịch ngày 26/08?",
+      "vai_hoi": "tech_support",
+      "kich_ban": "ssl_het_han",
+      "bo_vang": false,
+      "dap_an": "",
+      "y_chinh": []
+    },
+    {
+      "id": "n5-10",
+      "nhom": "N5",
+      "cau_hoi": "Sau sự cố INC-1208, những hành động khắc phục nào được chốt, hạn hoàn thành khi nào và ai chịu trách nhiệm?",
+      "vai_hoi": "devops",
+      "kich_ban": "web_sap",
+      "bo_vang": false,
+      "dap_an": "",
+      "y_chinh": []
+    },
+    {
+      "id": "n6-01",
+      "nhom": "N6",
+      "cau_hoi": "Chứng thư của pay.khachhangb.vn hết hạn ngày nào, và lịch nhắc gia hạn bắt đầu bắn từ mốc nào?",
+      "vai_hoi": "devops",
+      "kich_ban": "ssl_het_han",
+      "bo_vang": true,
+      "dap_an": "Ngày hết hạn gần nhất của pay.khachhangb.vn là 26/08, chứng thư có chu kỳ 90 ngày. Hệ nhắc gửi thư điện tử trước 30 ngày, trước 14 ngày và trước 7 ngày tới hộp thư của nhóm sở hữu tên miền; cảnh báo bắt đầu bắn khi thời hạn còn dưới 30 ngày và lặp lại mỗi 3 ngày cho tới khi chứng thư được gia hạn.",
+      "y_chinh": [
+        "hết hạn 26/08",
+        "chu kỳ 90 ngày",
+        "nhắc trước 30, 14 và 7 ngày",
+        "cảnh báo lặp mỗi 3 ngày từ mốc còn dưới 30 ngày"
+      ]
+    },
+    {
+      "id": "n6-02",
+      "nhom": "N6",
+      "cau_hoi": "Tính tới ngày 20/08, tên miền nào của khách hàng B gần hết hạn chứng thư nhất?",
+      "vai_hoi": "devops",
+      "kich_ban": "ssl_het_han",
+      "bo_vang": false,
+      "dap_an": "",
+      "y_chinh": []
+    },
+    {
+      "id": "n6-03",
+      "nhom": "N6",
+      "cau_hoi": "Sự cố INC-1208 bắt đầu và kết thúc lúc mấy giờ?",
+      "vai_hoi": "tech_support",
+      "kich_ban": "web_sap",
+      "bo_vang": true,
+      "dap_an": "Bắt đầu lúc 09:20 ngày 12/08/2026 và dịch vụ phục hồi lúc 10:00, tổng gián đoạn 40 phút.",
+      "y_chinh": [
+        "bắt đầu 09:20 ngày 12/08/2026",
+        "phục hồi lúc 10:00",
+        "tổng 40 phút"
+      ]
+    },
+    {
+      "id": "n6-04",
+      "nhom": "N6",
+      "cau_hoi": "Đợt bàn giao tên miền pay.khachhangb.vn diễn ra ngày nào, và nó xảy ra trước hay sau khi cảnh báo hết hạn bắt đầu bắn?",
+      "vai_hoi": "devops",
+      "kich_ban": "ssl_het_han",
+      "bo_vang": false,
+      "dap_an": "",
+      "y_chinh": []
+    },
+    {
+      "id": "n6-05",
+      "nhom": "N6",
+      "cau_hoi": "Tác vụ xoay vòng nhật ký ngừng chạy từ ngày nào cho tới khi sự cố INC-1520 nổ ra ngày 18/08?",
+      "vai_hoi": "tech_support",
+      "kich_ban": "day_o_cung",
+      "bo_vang": false,
+      "dap_an": "",
+      "y_chinh": []
+    },
+    {
+      "id": "n7-01",
+      "nhom": "N7",
+      "cau_hoi": "Chi phí thuê máy chủ web01 mỗi tháng là bao nhiêu?",
+      "vai_hoi": "devops",
+      "kich_ban": "nhieu",
+      "bo_vang": true,
+      "dap_an": "Không trả lời được. Kho tri thức không có tài liệu nào nói về chi phí thuê hay hợp đồng hạ tầng; bản ghi CMDB của web01 chỉ mô tả cấu hình kỹ thuật và nhóm sở hữu.",
+      "y_chinh": [
+        "từ chối trả lời",
+        "nói rõ kho không có thông tin chi phí",
+        "không suy đoán một con số"
+      ]
+    },
+    {
+      "id": "n7-02",
+      "nhom": "N7",
+      "cau_hoi": "Công ty dùng nhà cung cấp dịch vụ đám mây nào cho môi trường sản xuất?",
+      "vai_hoi": "tech_support",
+      "kich_ban": "nhieu",
+      "bo_vang": true,
+      "dap_an": "Không trả lời được. Kho tri thức không nêu nhà cung cấp hạ tầng nào cho môi trường sản xuất.",
+      "y_chinh": [
+        "từ chối trả lời",
+        "nói rõ kho không nêu nhà cung cấp hạ tầng",
+        "không đoán tên một nhà cung cấp"
+      ]
+    },
+    {
+      "id": "n7-03",
+      "nhom": "N7",
+      "cau_hoi": "App01 xử lý bao nhiêu giao dịch mỗi ngày?",
+      "vai_hoi": "devops",
+      "kich_ban": "web_sap",
+      "bo_vang": true,
+      "dap_an": "Không trả lời được. Kho tri thức chỉ có ngưỡng cảnh báo lưu lượng 5000 req/phút, đó là ngưỡng vận hành chứ không phải số giao dịch mỗi ngày, và không tài liệu nào nêu số giao dịch.",
+      "y_chinh": [
+        "từ chối trả lời",
+        "không quy đổi ngưỡng 5000 req/phút thành số giao dịch",
+        "nói rõ kho không có số liệu giao dịch"
+      ]
+    },
+    {
+      "id": "n7-04",
+      "nhom": "N7",
+      "cau_hoi": "Bản sao lưu cơ sở dữ liệu sản xuất được mã hóa bằng thuật toán nào?",
+      "vai_hoi": "tech_support",
+      "kich_ban": "nhieu",
+      "bo_vang": true,
+      "dap_an": "Không trả lời được. Chính sách sao lưu có nói lịch chạy, thời gian giữ bản sao lưu và quy trình khôi phục, nhưng không nói gì về mã hóa bản sao lưu.",
+      "y_chinh": [
+        "từ chối trả lời",
+        "nói rõ chính sách sao lưu không đề cập mã hóa",
+        "không đoán tên thuật toán"
+      ]
+    },
+    {
+      "id": "n7-05",
+      "nhom": "N7",
+      "cau_hoi": "Máy chủ log01 đặt tại trung tâm dữ liệu nào?",
+      "vai_hoi": "devops",
+      "kich_ban": "day_o_cung",
+      "bo_vang": true,
+      "dap_an": "Không trả lời được. Bản ghi CMDB của log01 nêu hệ điều hành, dung lượng ổ nhật ký, các dịch vụ phụ thuộc và nhóm sở hữu, nhưng không nêu vị trí đặt máy.",
+      "y_chinh": [
+        "từ chối trả lời",
+        "nói rõ CMDB của log01 không có trường vị trí",
+        "không đoán một trung tâm dữ liệu"
+      ]
+    },
+    {
+      "id": "n7-06",
+      "nhom": "N7",
+      "cau_hoi": "Tài khoản VPN của nhân viên nghỉ việc được lưu giữ bao lâu trước khi xóa hẳn?",
+      "vai_hoi": "tech_support",
+      "kich_ban": "nhieu",
+      "bo_vang": true,
+      "dap_an": "Không trả lời được. Quy định VPN chỉ nói tài khoản bị thu hồi ngay trong ngày làm việc cuối cùng, không nói gì về thời gian lưu giữ tài khoản đã thu hồi trước khi xóa hẳn.",
+      "y_chinh": [
+        "từ chối trả lời",
+        "phân biệt thu hồi trong ngày cuối với thời gian lưu giữ",
+        "nói rõ kho không có thời gian lưu giữ"
+      ]
+    }
+  ]
+}

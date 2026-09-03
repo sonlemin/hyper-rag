@@ -7,9 +7,15 @@
 #   scripts/chay-may-chu.sh nap eval/data
 #   scripts/chay-may-chu.sh nap eval/data --ep-ghi-de --xuat-json eval/so_do_nap/nap-that.json
 #   scripts/chay-may-chu.sh xoa --xoa-space --space synth
+#   HYPER_RAG_MODULE=eval.chup_do_thi scripts/chay-may-chu.sh chup --space synth
 #
-# Tham so dau la *ten buoc* (chi de doc log), phan con lai di thang vao
-# `api.do_chi_phi`. Chay tren may chu, trong /root/hyper-rag-copilot.
+# Tham so dau la *ten buoc* (chi de doc log), phan con lai di thang vao module
+# diem vao. Chay tren may chu, trong /root/hyper-rag-copilot.
+#
+# DIEM VAO (story 2.9): mac dinh `api.do_chi_phi`, doi duoc bang HYPER_RAG_MODULE.
+# Truoc 2.9 ten module ghim cung trong script, nen `eval.chup_do_thi` - lenh doc
+# do thi de gan nhan truy hoi vang - phai tu dung lai ca khoi moi truong nay.
+# Mot ban sao thu hai cua khoi do la mot bo tham so se troi khoi ban nay.
 #
 # THU MUC LAM VIEC (story 2.7, cho de vo nhat): kho KV va so tai lieu song trong
 # HYPER_RAG_WORKING_DIR. Container `api`/`man-nap` dung volume `hyper_rag_api_data`
@@ -25,6 +31,7 @@ set -euo pipefail
 
 REMOTE_DIR="${HYPER_RAG_REPO:-/root/hyper-rag-copilot}"
 VOLUME_API="${HYPER_RAG_VOLUME:-hyper_rag_api_data}"
+MODULE="${HYPER_RAG_MODULE:-api.do_chi_phi}"
 # Duong dan con ben trong volume, khop HYPER_RAG_WORKING_DIR cua docker-compose.yml
 # (`api_data:/data` + `/data/hyper-rag`).
 DUONG_DAN_CON="hyper-rag"
@@ -82,9 +89,9 @@ export POSTGRES_HOST="$POSTGRES_IP"
 export HYPER_RAG_WORKING_DIR="$MOUNTPOINT/$DUONG_DAN_CON"
 
 buoc="$1"; shift
-echo "[$(date -u +%FT%TZ)] BAT DAU $buoc (working_dir=$HYPER_RAG_WORKING_DIR)"
+echo "[$(date -u +%FT%TZ)] BAT DAU $buoc (module=$MODULE, working_dir=$HYPER_RAG_WORKING_DIR)"
 # `set -e` khong duoc lam mat dong KET THUC: ma thoat cua lan chay la thu can doc.
 rc=0
-uv run python -m api.do_chi_phi "$@" || rc=$?
+uv run python -m "$MODULE" "$@" || rc=$?
 echo "[$(date -u +%FT%TZ)] KET THUC $buoc rc=$rc"
 exit $rc

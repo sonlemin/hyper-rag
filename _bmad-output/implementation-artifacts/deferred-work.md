@@ -449,6 +449,16 @@
     không có thước nào nói được câu render tốt hay tồi. Cần bộ câu hỏi 2.9 và nhãn truy
     hồi vàng. Địa chỉ: story 2.9 (có nhãn) rồi Epic 7 (Đo 2/Đo 3).
 
+    2026-09-03 (2.9) - **nửa "chưa có nhãn" đóng, khoản thu hẹp còn đúng phần đo.**
+    `eval/nhan_truy_hoi_vang.json` nay nói cho 22 câu N3+N5 rằng 41 cặp
+    câu-hyperedge nào phải xuất hiện trong ngữ cảnh, nên thước cho câu render đã
+    tồn tại. Story 2.9 **không** chạy nó: spec cấm dựng harness Đo 2/Đo 3, và
+    chạy truy hồi để so hai dạng câu render là đúng việc của 7-3. Trang soát
+    `eval/expr/bo_cau_hoi.html` in câu render (`cau_fact`) của từng hyperedge kỳ
+    vọng cạnh câu hỏi, nên đọc bằng mắt thì thấy ngay dạng nhãn-giá trị rời rạc
+    thế nào - nhưng "đọc thấy" không phải một con số. Địa chỉ: story 7-3 (harness
+    Đo 3, so recall của hai dạng câu render trên cùng bộ nhãn này).
+
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-4-trich-xuat-fact-8-vai-slot-tieng-viet.md`
   summary: Fixture Epic 1 (`tests/nap_kho.py`, `tests/fixtures/du_lieu_dung_tay.py`) vẫn đặt tên hyperedge `{subject} - {content_type}`, không dùng `core.facts.id_fact`, nên bộ Đo 1 nền chạy trên một hình dạng id khác đường trích xuất thật.
   evidence: Đổi fixture sang id mờ là đổi mọi assert đọc tên hyperedge trong 5 file test của Epic 1 (`ten_hyperedge_trong`, oracle) mà không đổi thứ chúng đo (quyền). Tripwire `test_tripwire_ten_hyperedge_chua_mang_nguyen_van_slot_bi_che` giữ để tên fixture không mang giá trị slot bị che; đường trích xuất thật có bộ test riêng (`tests/test_trich_xuat.py`). Địa chỉ: Epic 7 khi dựng harness Đo 1 trên corpus thật, hoặc chốt giữ.
@@ -560,6 +570,18 @@
     2026-09-02 - nửa "im lặng" đã đóng: `BoVang.id_fact_trung_cheo_tai_lieu()` liệt kê id xuất hiện ở từ hai tài liệu trở lên, trang soát nhãn in mục "Fact trùng giữa hai tài liệu" (hiện nói rõ "Không có"), và có test cả ca thật lẫn ca dựng (`test_hai_tai_lieu_cung_mot_fact_duoc_bao_ra_chu_khong_bi_tu_choi` ghim đặc tả hiện trạng: mẫu số cộng cả hai lần). Không cấm, vì hai tài liệu nói cùng một quy định là dữ liệu hợp lệ. Phần còn treo hẹp lại đúng một câu: đếm một lần hay đếm theo tài liệu, quyết cùng luật ghép. Địa chỉ giữ 2.6/2.8.
 
     2026-09-02 (2.6) - nửa "đếm thế nào" đã quyết cùng luật ghép: **đếm theo tài liệu**. `cham_moi_tai_lieu` chấm từng tài liệu một, ghép chỉ trong phạm vi tài liệu đó rồi cộng sổ; hai tài liệu gán cùng một tập slot vì thế góp hai lần vào mẫu số, đúng bằng cách `BoVang.mau_so_slot()` đếm. Lý do: phép chấm đo *trích xuất từ một tài liệu*, nên một fact xuất hiện ở hai tài liệu là hai lần hệ phải trích được nó. Phần còn treo là phía pipeline (một node hyperedge cho hai tài liệu, `source_id` gộp), chỉ thành ca thật khi corpus lớn lên. Địa chỉ: story 2.8.
+
+  resolved: 2026-09-03 (2.9) - **quyết bằng số đếm trên ảnh chụp, không bằng phỏng
+    đoán nữa.** `eval/anh_do_thi/synth.json` (chụp 03/09 trên space `synth`, 50 tài
+    liệu / 254 hyperedge) mang `so_hyperedge_da_nguon: 0`: không id hyperedge nào
+    xuất hiện ở hai `doc_key`. Nhãn truy hồi vàng của 2.9 xác nhận điều đó từ phía
+    người gán - câu n3-12 hỏi đúng quy định 24 giờ trùng nguyên văn, và nó phải
+    liệt kê **ba** id khác nhau cho ba tài liệu (`k1-07`, `n-05`,
+    `06-quan-ly-thay-doi.txt`) chứ không phải một. Nên luật đếm "theo tài liệu" mà
+    2.6 chốt là luật đúng và nó **không** có ca xung đột nào trên dữ liệu thật:
+    hai tài liệu nói cùng một quy định vẫn ra hai `id_fact` vì `id_fact` băm tập
+    slot, mà LLM trích hai câu giống nhau ra hai tập slot khác nhau. Khoản này
+    đóng; phần "làm sao để có ca thật" là khoản riêng có địa chỉ 2.12.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-5-bo-vang-trich-xuat.md`
   summary: Luật "phủ đủ 8 vai" và "phủ đủ 3 loại nội dung" là điều kiện *nạp* của loader, nên thêm một loại nội dung vào `config/hang-do-nhay.yaml` hay một vai vào `core/slots.py` làm cả bộ test đỏ cho tới khi có người soạn và gán nhãn tài liệu mới.
@@ -768,6 +790,15 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-8-corpus-dung-40-tai-lieu.md`
   summary: Ca "một fact ở hai tài liệu" mà bảng thiết kế dựng sẵn **không xảy ra** trên kho thật: 40 tài liệu cho **0** hyperedge đa nguồn, dù `k1-07` và `n-05` mang cùng một câu quy định nguyên văn.
   evidence: Đếm trên đồ thị sau đợt `2cee4088` (03/09): không node hyperedge nào có `source_id` gộp từ hai chunk, trong khi **46 entity** thì có - tức đường read-merge-write của FR-11 chạy thật, nhưng chỉ ở tầng entity. Nguyên nhân là `id_fact` băm *tập slot đã chuẩn hóa*, mà LLM trích hai câu giống nhau ở hai tài liệu ra hai tập slot khác nhau (khác `subject`, khác số vai điền), nên hai fact thành hai id. Hệ quả: khẳng định "corpus 2.8 dựng sẵn ca đó" trong spec và trong `ghi_chu` của bảng thiết kế **chưa được dữ liệu xác nhận**, và khoản ledger về luật đếm `id_fact` trùng chéo tài liệu vẫn chưa có ca thật để quyết. Câu trùng nguyên văn là điều kiện cần chứ không đủ; muốn ca thật thì phải hoặc chuẩn hóa thực thể (story 2.12) hoặc dựng hai tài liệu mà LLM chắc chắn trích ra cùng tập slot. Địa chỉ: story 2.12 (chuẩn hóa thực thể) và 2.9 khi gán nhãn truy hồi vàng trên chính đồ thị này.
+  tien_do: |-
+    2026-09-03 (2.9) - **xác nhận lại từ một nguồn có commit, và địa chỉ thu về một
+    chỗ.** Ảnh chụp `eval/anh_do_thi/synth.json` mang `so_hyperedge_da_nguon: 0`
+    trên 254 hyperedge của 50 tài liệu, nên khẳng định của 2.8 nay đứng trên một
+    file mà bất kỳ ai cũng đọc lại được chứ không phải một lần đếm tay trên máy
+    chủ. Phía nhãn tay cũng nói cùng một điều: câu n3-12 hỏi đúng câu quy định 24
+    giờ trùng nguyên văn và phải liệt kê ba id cho ba tài liệu. Story 2.9 không
+    làm gì thêm được - dựng hai tài liệu mà LLM chắc chắn trích ra cùng tập slot
+    là việc của chuẩn hóa thực thể. Địa chỉ: story 2.12.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-8-corpus-dung-40-tai-lieu.md`
   summary: Luật phủ loại nội dung của bộ vàng sẽ tự làm `uv run pytest` đỏ ngay khi story 3.2 khai đủ 13 loại trong `config/policy-toi-gian.yaml`.
@@ -800,3 +831,23 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-8-corpus-dung-40-tai-lieu.md`
   summary: Hai thay đổi hành vi của vòng review cần được nhớ chứ không chỉ được vá: `Retry-After` dài nay là **bỏ cuộc** thay vì chờ trần, và `KetQuaCham.__add__` nay ném một lỗi **không** phải `TypeError`.
   evidence: Cả hai đúng cho ngữ cảnh hiện tại và có test, nhưng cả hai lệch khỏi thứ người đọc quen. `goi_llm_co_thu_lai` bỏ cuộc là đúng cho một vòng đo có file cứu hộ; tái dùng nó trên đường sản phẩm (một truy vấn người dùng, không có file cứu hộ để quay lại) thì phải xét lại. `__add__` ném ngoài `TypeError` là cố ý - một `except TypeError` ở trên đường gọi sẽ nuốt đúng hàng rào này - nhưng nó lệch quy ước toán tử của Python, nên người đọc sau cần thấy lý do ở đây chứ không chỉ trong docstring. Địa chỉ: Epic 6 (nếu `redteam/` tái dùng phép thử lại) và Epic 7 (nếu thêm chỉ số chấm thứ ba).
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-9-bo-cau-hoi-52-cau-va-nhan-truy-hoi-vang.md`
+  summary: 21 trong 41 cặp câu-hyperedge của nhãn truy hồi vàng có trần lý thuyết **0** với cả hai vai, nên phát biểu recall(3) > recall(2) chưa đo được trên phần đó cho tới khi bảng chính sách đầy đủ của 3.2 xong.
+  evidence: Đếm bằng `eval.cau_hoi.tran_theo_vai()` trên ba file đã commit: `devops` chạm 20/41 cặp (19 trả lời được), `tech_support` 11/41 (4 trả lời được); 9 câu trần 0 với `devops` và 13 câu với `tech_support`. Hai nguyên nhân, cả hai đúng thiết kế: `config/policy-toi-gian.yaml` mới khai 3 trong 13 loại nội dung nên `canh_bao`, `sop`, `cmdb`, `postmortem`, `log`, `vong_doi_ticket`... là fail-closed L0; và không vai nào chạm scope `khach_hang_b` nên trọn kịch bản 3 vô hình với cả hai (đó chính là biên cách ly RT-01, không phải một lỗ). Nhãn **không** được sửa theo: nó là nhãn ngữ nghĩa, và lọc nó theo mức tiết lộ là làm cả bốn cấu hình Đo 3 ra recall 100%. Hệ quả phải nhớ: chạy Đo 3 *bây giờ* thì recall(2) và recall(3) đều 0 trên 21 cặp đó, tức khoảng cách bằng 0 vì một lý do không liên quan gì tới cơ chế. Địa chỉ: story 3.2 (bảng chính sách đầy đủ, 4 cấu hình đo), rồi 7-3 chạy lại phép tính trần này để lấy khoảng cách của PRD 5.3.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-9-bo-cau-hoi-52-cau-va-nhan-truy-hoi-vang.md`
+  summary: Id hyperedge trong nhãn truy hồi vàng chết theo mỗi lần re-ingest; không có bước di trú tự động, và ảnh chụp phải chụp lại bằng tay trên máy chủ.
+  evidence: `id_fact` băm tập slot đã chuẩn hóa, nên đổi một chữ trong tài liệu hoặc đổi prompt trích xuất là đổi id. Neo hai lớp (`doc_key` + `neo_subject`) hạn chế thiệt hại: `doc_nhan_truy_hoi` ném `NhanTroiId` nêu tên câu, id cũ và **id mới đề xuất** thay vì để nhãn chết im lặng, và nó cố ý *không* tự sửa file - id mới có thể là một fact khác kể một sự thật khác. Nhưng vòng "nạp lại trên máy chủ → chụp lại → scp về → sửa nhãn" vẫn là bốn bước tay. Chấp nhận được ở quy mô khóa luận (corpus đóng băng từ 2.8), rủi ro thật là story 2.12 chuẩn hóa thực thể: nó đổi giá trị slot, tức đổi gần như mọi id. Địa chỉ: story 2.12 (chụp lại và soát nhãn trong cùng story), và 2.11 nếu space `real` cần một ảnh chụp thứ hai.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-9-bo-cau-hoi-52-cau-va-nhan-truy-hoi-vang.md`
+  summary: Neo mô tả không neo được vào những hyperedge dùng chung một giá trị `subject` trong cùng một tài liệu; hai câu N3 đã phải viết lại để tránh, thay vì nhãn được sửa.
+  evidence: `AnhDoThi.tim_theo_neo` khớp bằng trước rồi mới khớp chứa, và loader đòi đúng một ứng viên. Trên ảnh chụp thật có những chỗ điều đó không thỏa được: `k2-01` có hai fact cùng `subject` "hệ giám sát", `k2-06` có ba fact cùng `subject` "lỗi KI-014", `n-14` có hai fact cùng `subject` "cụm máy chủ web của khách hàng A", `k1-05` có năm fact cùng `subject` "App01". Cách xử lý ở 2.9 là soạn câu hỏi nhắm vào fact neo được (n3-09 và n3-10 viết lại), nghĩa là **hình dạng dữ liệu đang uốn bộ câu hỏi** - một thiên lệch nhỏ nhưng có thật, và nó nghiêng về phía fact có chủ thể đặc thù. Đường sửa thật là chuẩn hóa thực thể để `subject` mang đúng một thực thể, hoặc thêm một lớp neo thứ ba (ví dụ một giá trị slot khác). Địa chỉ: story 2.12.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-9-bo-cau-hoi-52-cau-va-nhan-truy-hoi-vang.md`
+  summary: Lớp "recall trả lời được" của trần lý thuyết coi `owner` là **không bị che**, dù tầng che luôn tổng quát hóa nó về mức vai/nhóm (AD-9).
+  evidence: `tran_theo_vai()` chỉ trừ điểm khi một slot đáp án nằm trong `masked_slots` của vai, mà bảng chính sách không cho khai `owner` ở đó (`core.slots.POLICY_MASKABLE_SLOTS`). Lập luận: `owner` ra ở mức vai/nhóm chứ không biến mất, nên câu "ai phụ trách" vẫn có một câu trả lời dùng được. Nhưng nhãn của 2.9 có ba cặp lấy `owner` làm slot đáp án và một trong số đó (n5-02 "Ai xử lý INC-1208 và thuộc đội nào") hỏi đúng cái tên riêng mà AD-9 xóa - tức trần đang đếm là "trả lời được" một câu mà hệ chỉ trả lời được một nửa. Không sửa ở 2.9 vì luật tổng quát hóa `owner` sống ở tầng che của Epic 3 và phép đo thật chưa chạy. Địa chỉ: story 7-3 (khi Đo 3 chạy, chốt xem `owner` tổng quát hóa tính là trả lời được hay không, và ghi đúng một luật ở cả hai chỗ).
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-9-bo-cau-hoi-52-cau-va-nhan-truy-hoi-vang.md`
+  summary: Tiêu chí "N7 từ chối đúng ít nhất 5/6" của PRD 5.2 hiện **quá xác định** với ba trong sáu câu: chúng vừa không có đáp án, vừa nằm trên loại nội dung mà bảng chính sách hiện hành che sạch.
+  evidence: N7 phải đo bịa đặt, không đo phân quyền (FR-16 tách hai đường từ chối). Bốn câu (n7-01, n7-02, n7-04, n7-06) neo vào vùng `runbook` mà cả hai vai đều thấy ở L2, nên một lần từ chối ở đó đúng là từ chối vì thiếu thông tin. Ba câu còn lại yếu hơn: n7-03 và n7-05 hỏi về thuộc tính chỉ có thể nằm ở `cmdb`, mà `cmdb` chưa khai trong `config/policy-toi-gian.yaml` nên ngữ cảnh rỗng vì quyền chứ không vì thiếu. Sau story 3.2 điều này tự hết (bảng đầy đủ khai đủ 13 loại). Việc còn lại là Đo 2 phải **báo cáo tách hai cột** như PRD 5.2 đã đòi - từ chối qua cờ LLM và từ chối qua nhánh ngữ cảnh rỗng - chứ không gộp. Địa chỉ: story 7-4 (Đo 2), kiểm lại sau khi 3.2 xong.

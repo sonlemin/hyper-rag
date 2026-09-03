@@ -146,8 +146,18 @@ MODULE_SYSTEM_CONTEXT = "core.system_context"
 FILE_SYSTEM_CONTEXT = "core/system_context.py"
 # Danh sách trắng: đường dẫn tương đối gốc repo của module ingest được phép.
 # Rỗng ở story 1.2; story 2.2 tạm đặt script đo thô `api/do_chi_phi.py`; story
-# 2.3 thay bằng module pipeline thật và script gọi pipeline. Vẫn đúng một dòng.
-CHO_PHEP_SYSTEM_CONTEXT: frozenset[str] = frozenset({"adapters/ingest.py"})
+# 2.3 thay bằng module pipeline thật và script gọi pipeline.
+#
+# Story 2.9 thêm dòng thứ hai: `eval/chup_do_thi.py` chụp đồ thị thành file có
+# commit để nhãn truy hồi vàng có id để neo vào. Hai method nó gọi
+# (`slot_cua_hyperedge`, `khoa_hien_co`) trả nội dung và bỏ mệnh đề lọc nên
+# adapter đòi cờ hệ thống. Miễn trừ tường minh kèm lý do thay vì nới luật, cùng
+# hình dạng với `CHO_PHEP_VENDOR` và `CHO_PHEP_AINSERT`: nó là **harness đo đọc
+# thuần** chạy ngoài tiến trình phục vụ, không dựng ràng buộc, không nạp, không
+# xóa, và không phải một đường truy vấn người dùng.
+CHO_PHEP_SYSTEM_CONTEXT: frozenset[str] = frozenset(
+    {"adapters/ingest.py", "eval/chup_do_thi.py"}
+)
 
 # Cùng luật với danh sách trắng ở trên nhưng cho *lối vào ghi tri thức*:
 # `ainsert`/`insert` của engine chỉ được gọi từ pipeline (story 2.3). Gọi thẳng

@@ -68,4 +68,15 @@ def test_script_khong_ghi_secret_vao_repo(script):
 
 
 def test_script_goi_dung_diem_vao_cua_du_an(script):
-    assert "python -m api.do_chi_phi" in script
+    """Điểm vào mặc định giữ nguyên `api.do_chi_phi`, đổi được qua một biến.
+
+    Story 2.9 thêm một lệnh thứ hai chạy trên máy chủ (`eval.chup_do_thi`, đọc
+    đồ thị để gán nhãn truy hồi vàng). Nó cần đúng khối môi trường mà script
+    này dựng - IP ba container cộng `HYPER_RAG_WORKING_DIR` lấy từ mountpoint
+    của volume - nên đường ra là một biến, không phải một bản sao thứ hai của
+    script. Mặc định phải bất động: mọi lệnh nạp đã ghi trong AGENTS.md và
+    trong spec 2.7/2.8 không truyền biến nào.
+    """
+    assert 'MODULE="${HYPER_RAG_MODULE:-api.do_chi_phi}"' in script
+    assert 'uv run python -m "$MODULE"' in script
+    assert "python -m api.do_chi_phi" not in script, "điểm vào không được ghim cứng nữa"
