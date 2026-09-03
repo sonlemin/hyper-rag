@@ -17,6 +17,13 @@
 # do thi de gan nhan truy hoi vang - phai tu dung lai ca khoi moi truong nay.
 # Mot ban sao thu hai cua khoi do la mot bo tham so se troi khoi ban nay.
 #
+# Bien doc SAU `source .env.server` (vong review 03/09): gan truoc thi mot khai
+# bao HYPER_RAG_MODULE trong .env.server bi bo qua im lang va nguoi chay tuong
+# minh dang chup trong khi that ra dang nap - tuc dang tieu tien.
+# Danh sach cho phep chu khong phai chuoi tu do: hai module hop le la mot con so
+# dong, va `python -m <chuoi bat ky>` tu moi truong la mot cua chay code khong
+# can den.
+#
 # THU MUC LAM VIEC (story 2.7, cho de vo nhat): kho KV va so tai lieu song trong
 # HYPER_RAG_WORKING_DIR. Container `api`/`man-nap` dung volume `hyper_rag_api_data`
 # mount o /data, va compose dat HYPER_RAG_WORKING_DIR=/data/hyper-rag. Script nay
@@ -31,13 +38,16 @@ set -euo pipefail
 
 REMOTE_DIR="${HYPER_RAG_REPO:-/root/hyper-rag-copilot}"
 VOLUME_API="${HYPER_RAG_VOLUME:-hyper_rag_api_data}"
-MODULE="${HYPER_RAG_MODULE:-api.do_chi_phi}"
+MODULE_MAC_DINH="api.do_chi_phi"
+MODULE_CHO_PHEP="api.do_chi_phi eval.chup_do_thi"
 # Duong dan con ben trong volume, khop HYPER_RAG_WORKING_DIR cua docker-compose.yml
 # (`api_data:/data` + `/data/hyper-rag`).
 DUONG_DAN_CON="hyper-rag"
 
-if [ "$#" -lt 2 ]; then
-    echo "dung: $0 <ten-buoc> <tham so cua api.do_chi_phi...>" >&2
+if [ "$#" -lt 1 ]; then
+    echo "dung: HYPER_RAG_MODULE=<$(echo "$MODULE_CHO_PHEP" | tr ' ' '|')> $0 <ten-buoc> [tham so cua module...]" >&2
+    echo "  vi du: $0 nap eval/corpus --xuat-json eval/so_do_nap/nap-that.json" >&2
+    echo "  vi du: HYPER_RAG_MODULE=eval.chup_do_thi $0 chup --space synth" >&2
     exit 2
 fi
 
@@ -55,6 +65,16 @@ source .env
 # shellcheck disable=SC1091
 source .env.server
 set +a
+
+MODULE="${HYPER_RAG_MODULE:-$MODULE_MAC_DINH}"
+hop_le=0
+for m in $MODULE_CHO_PHEP; do
+    [ "$m" = "$MODULE" ] && hop_le=1
+done
+if [ "$hop_le" -ne 1 ]; then
+    echo "HYPER_RAG_MODULE=$MODULE khong nam trong danh sach cho phep: $MODULE_CHO_PHEP" >&2
+    exit 2
+fi
 
 ip_container() {
     docker inspect -f "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}" "hyper-rag-copilot-$1-1" 2>/dev/null

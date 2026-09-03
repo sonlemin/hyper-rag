@@ -30,10 +30,13 @@ from pathlib import Path
 
 from adapters.policy_loader import load_policy
 from core.facts import TEN_VAI_TIENG_VIET
+from core.policy import PolicyInvalid
 from core.slots import SLOT_ROLES
 from eval.cau_hoi import (
+    HAN_CHE,
     NHOM,
     PHAN_BO,
+    VAI_HOI_CUA_CAU,
     AnhDoThi,
     AnhDoThiKhongHopLe,
     BoCauHoi,
@@ -45,6 +48,7 @@ from eval.cau_hoi import (
     doc_bo_cau_hoi,
     doc_nhan_truy_hoi,
     tran_theo_vai,
+    tran_theo_vai_hoi,
 )
 
 DUONG_DAN_HTML: Path = Path(__file__).resolve().parent / "expr" / "bo_cau_hoi.html"
@@ -78,6 +82,8 @@ code { font-size: 12px; color: #5a6069; }
 .canh-bao { background: #fff8e6; border: 1px solid #f0d48a; border-radius: 6px;
             padding: 10px 12px; margin: 8px 0; font-size: 13px; }
 .khong-khoa { color: #a33; }
+.nhan.han-che { background: #f3d6d6; }
+tr.vai-hoi td { background: #eef7ee; font-weight: 600; }
 """
 
 
@@ -107,18 +113,27 @@ def _bang_phan_bo(bo: BoCauHoi) -> str:
     )
 
 
-def _bang_tran(tran) -> str:
-    hang = "".join(
-        f"<tr><td><code>{html.escape(v)}</code></td><td>{t.tong}</td>"
+def _hang_tran(ten: str, t) -> str:
+    return (
+        f"<tr><td><code>{html.escape(ten)}</code></td><td>{t.tong}</td>"
         f"<td>{t.ton_tai} ({t.ti_le_ton_tai():.1%})</td>"
         f"<td>{t.tra_loi_duoc} ({t.ti_le_tra_loi_duoc():.1%})</td>"
-        f"<td>{len(t.canh_bao())}</td></tr>"
-        for v, t in sorted(tran.items())
+        f"<td>{len(t.cau_tran_khong())}</td><td>{len(t.canh_bao())}</td></tr>"
     )
+
+
+def _bang_tran(tran, tran_hoi) -> str:
+    """Hai bảng trần trong một: mỗi vai trên mọi câu, rồi theo đúng vai hỏi.
+
+    Bảng trên để *so hai vai*; bảng dưới là mẫu số mà Đo 3 sẽ chạy, vì mỗi câu
+    chỉ được hỏi bởi một vai. Chỉ in một bảng thì con số kia bị đọc nhầm.
+    """
+    hang = "".join(_hang_tran(v, t) for v, t in sorted(tran.items()))
+    hang += f'<tr class="vai-hoi">{_hang_tran(VAI_HOI_CUA_CAU, tran_hoi)[4:]}'
     return (
         "<table><tr><th>Vai đo</th><th>Cặp câu-hyperedge</th>"
         "<th>Trần lớp <i>tồn tại</i></th><th>Trần lớp <i>trả lời được</i></th>"
-        f"<th>Câu trần 0</th></tr>{hang}</table>"
+        f"<th>Câu trần 0</th><th>Cảnh báo</th></tr>{hang}</table>"
     )
 
 
@@ -158,12 +173,17 @@ def _khoi_hyperedge(ky_vong, anh: AnhDoThi) -> str:
     )
 
 
-def _khoi_cau(cau, nhan: NhanTruyHoi, anh: AnhDoThi, tran) -> str:
+def _khoi_cau(cau, nhan: NhanTruyHoi, anh: AnhDoThi, tran, tran_hoi) -> str:
     nhan_html = ""
     if cau.bo_vang:
         nhan_html += '<span class="nhan vang">bộ vàng</span>'
     if cau.nhom == "N7":
         nhan_html += '<span class="nhan n7">không có đáp án</span>'
+        nhan_html += (
+            f'<span class="nhan">vùng đáp án: {html.escape(", ".join(cau.neo_loai))}</span>'
+        )
+    for h in cau.han_che:
+        nhan_html += f'<span class="nhan han-che">{html.escape(h)}</span>'
     than = [
         f'<div class="cau" id="cau-{html.escape(cau.id)}">'
         f'<h2><code>{html.escape(cau.id)}</code>{nhan_html}'
@@ -182,7 +202,8 @@ def _khoi_cau(cau, nhan: NhanTruyHoi, anh: AnhDoThi, tran) -> str:
     if muc is not None:
         than.append(f"<p><b>{len(muc.hyperedge)} hyperedge kỳ vọng</b></p>")
         than += [_khoi_hyperedge(k, anh) for k in muc.hyperedge]
-        for vai, t in sorted(tran.items()):
+        bang = list(sorted(tran.items())) + [(f"{VAI_HOI_CUA_CAU} = {cau.vai_hoi}", tran_hoi)]
+        for vai, t in bang:
             tc = next((x for x in t.cau if x.cau_id == cau.id), None)
             if tc is None:
                 continue
@@ -198,16 +219,17 @@ def _khoi_cau(cau, nhan: NhanTruyHoi, anh: AnhDoThi, tran) -> str:
     return "".join(than)
 
 
-def dung_html(bo: BoCauHoi, nhan: NhanTruyHoi, anh: AnhDoThi, tran) -> str:
+def dung_html(bo: BoCauHoi, nhan: NhanTruyHoi, anh: AnhDoThi, tran, tran_hoi) -> str:
     """Dựng toàn bộ trang từ ba file đã kiểm cộng bảng trần đã tính."""
     muc_luc = "".join(
         f'<a href="#cau-{html.escape(c.id)}">{html.escape(c.id)}</a>' for c in bo.cau
     )
     canh_bao = "".join(
-        f'<div class="canh-bao"><b>{html.escape(vai)}</b> - {len(t.canh_bao())} câu trần 0'
+        f'<div class="canh-bao"><b>{html.escape(vai)}</b> - {len(t.cau_tran_khong())} câu'
+        f" trần 0, {len(t.canh_bao())} câu mất điểm"
         + ("<br>" + "<br>".join(html.escape(c) for c in t.canh_bao()) if t.canh_bao() else "")
         + "</div>"
-        for vai, t in sorted(tran.items())
+        for vai, t in list(sorted(tran.items())) + [(VAI_HOI_CUA_CAU, tran_hoi)]
     )
     tong = f"""<div class="tong">
 <h1>Bộ 52 câu, bộ vàng 30 câu và nhãn truy hồi vàng</h1>
@@ -221,12 +243,12 @@ def dung_html(bo: BoCauHoi, nhan: NhanTruyHoi, anh: AnhDoThi, tran) -> str:
 <p>Trần là <b>phép tính</b> từ nhãn cộng ảnh chụp cộng bảng chính sách, không
 phải nhãn tay. Nhãn cố ý <b>không</b> lọc theo mức tiết lộ: mức tiết lộ là biến
 duy nhất của Đo 3.</p>
-{_bang_tran(tran)}
+{_bang_tran(tran, tran_hoi)}
 {canh_bao}
 <h2>Mục lục</h2>
 <p class="muc-luc">{muc_luc}</p>
 </div>"""
-    khoi = "".join(_khoi_cau(c, nhan, anh, tran) for c in bo.cau)
+    khoi = "".join(_khoi_cau(c, nhan, anh, tran, tran_hoi) for c in bo.cau)
     return (
         '<!doctype html>\n<html lang="vi"><head><meta charset="utf-8">'
         "<title>Bộ câu hỏi và nhãn truy hồi vàng</title>"
@@ -238,31 +260,75 @@ def _tham_so(argv: list[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description="Trang soát bộ câu hỏi, bộ vàng 30 câu và nhãn truy hồi vàng"
     )
-    p.add_argument("dich", nargs="?", type=Path, default=None, help="file HTML đích")
-    p.add_argument("--bo-cau-hoi", type=Path, default=None, dest="bo_cau_hoi")
-    p.add_argument("--nhan", type=Path, default=None)
-    p.add_argument("--anh", type=Path, default=None)
-    p.add_argument("--policy", type=Path, default=None)
+    p.add_argument(
+        "dich",
+        nargs="?",
+        type=Path,
+        default=None,
+        help=f"file HTML đích (mặc định {DUONG_DAN_HTML})",
+    )
+    p.add_argument(
+        "--bo-cau-hoi",
+        type=Path,
+        default=None,
+        dest="bo_cau_hoi",
+        metavar="FILE",
+        help="bộ 52 câu (mặc định eval/bo_cau_hoi.json)",
+    )
+    p.add_argument(
+        "--nhan",
+        type=Path,
+        default=None,
+        metavar="FILE",
+        help="nhãn truy hồi vàng (mặc định eval/nhan_truy_hoi_vang.json)",
+    )
+    p.add_argument(
+        "--anh",
+        type=Path,
+        default=None,
+        metavar="FILE",
+        help="ảnh chụp đồ thị (mặc định eval/anh_do_thi/synth.json)",
+    )
+    p.add_argument(
+        "--policy",
+        type=Path,
+        default=None,
+        metavar="FILE",
+        help="bảng chính sách dùng để tính trần (mặc định config/policy-toi-gian.yaml)",
+    )
     return p.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Dựng trang; ba file hỏng hay không ghi được file thì in lý do và trả 1."""
+    """Dựng trang; ba file hỏng, bảng chính sách hỏng hay không ghi được thì in lý do và trả 1.
+
+    `PolicyInvalid` nằm trong danh sách bắt: `load_policy` ném nó, và
+    `tran_theo_vai` cũng ném nó khi một vai của seed danh tính vắng trong bảng
+    chính sách - đúng ca mà người soát dễ gặp nhất khi hoán bảng để thử một
+    cấu hình đo. Một traceback ở đó là một thông điệp không ai đọc được.
+    """
     ts = _tham_so(sys.argv[1:] if argv is None else list(argv))
     try:
         anh = doc_anh_do_thi(ts.anh)
         bo = doc_bo_cau_hoi(ts.bo_cau_hoi)
-        nhan = doc_nhan_truy_hoi(ts.nhan, bo=bo, anh=anh)
-    except (AnhDoThiKhongHopLe, BoCauHoiKhongHopLe, NhanKhongHopLe, NhanTroiId) as loi:
+        policy = load_policy(ts.policy) if ts.policy else None
+        nhan = doc_nhan_truy_hoi(ts.nhan, bo=bo, anh=anh, policy=policy)
+        tran = tran_theo_vai(nhan, anh, policy=policy)
+        tran_hoi = tran_theo_vai_hoi(bo, nhan, anh, policy=policy)
+    except (
+        AnhDoThiKhongHopLe,
+        BoCauHoiKhongHopLe,
+        NhanKhongHopLe,
+        NhanTroiId,
+        PolicyInvalid,
+    ) as loi:
         print(str(loi), file=sys.stderr)
         return 1
-    policy = load_policy(ts.policy) if ts.policy else None
-    tran = tran_theo_vai(nhan, anh, policy=policy)
 
     dich = Path(ts.dich) if ts.dich is not None else DUONG_DAN_HTML
     try:
         dich.parent.mkdir(parents=True, exist_ok=True)
-        dich.write_text(dung_html(bo, nhan, anh, tran), encoding="utf-8")
+        dich.write_text(dung_html(bo, nhan, anh, tran, tran_hoi), encoding="utf-8")
     except OSError as loi:
         print(f"không ghi được {dich}: {loi}", file=sys.stderr)
         return 1
@@ -274,14 +340,18 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(
         f"nhãn: {len(nhan.nhan)} câu N3+N5, {nhan.so_cap()} cặp câu-hyperedge;"
-        f" ảnh chụp {anh.so_hyperedge} hyperedge của space {anh.space}"
+        f" ảnh chụp {anh.so_hyperedge} hyperedge / {anh.so_tai_lieu} tài liệu"
+        f" của space {anh.space}"
     )
-    for vai, t in sorted(tran.items()):
+    for ten, t in list(sorted(tran.items())) + [(VAI_HOI_CUA_CAU, tran_hoi)]:
         print(
-            f"trần {vai}: tồn tại {t.ton_tai}/{t.tong} ({t.ti_le_ton_tai():.1%}),"
+            f"trần {ten}: tồn tại {t.ton_tai}/{t.tong} ({t.ti_le_ton_tai():.1%}),"
             f" trả lời được {t.tra_loi_duoc}/{t.tong} ({t.ti_le_tra_loi_duoc():.1%}),"
-            f" {len(t.canh_bao())} câu trần 0"
+            f" {len(t.cau_tran_khong())} câu trần 0, {len(t.canh_bao())} câu mất điểm"
         )
+    for h in HAN_CHE:
+        ds = [c.id for c in bo.cau if h in c.han_che]
+        print(f"dấu {h}: {len(ds)} câu {ds}")
     print(f"ghi {dich}")
     return 0
 

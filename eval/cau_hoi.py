@@ -60,7 +60,11 @@ DUONG_DAN_NHAN_MAC_DINH: Path = _GOC / "nhan_truy_hoi_vang.json"
 DUONG_DAN_CORPUS_THIET_KE: Path = _GOC / "corpus_thiet_ke.yaml"
 POLICY_MAC_DINH: Path = _GOC.parent / "config" / "policy-toi-gian.yaml"
 
-VERSION_HO_TRO: int = 1
+# Ba lược đồ độc lập, ba hằng (vòng review 03/09): ép chung một số thì nâng
+# version của riêng ảnh chụp làm hai file kia đỏ, dù chúng không đổi một chữ.
+VERSION_ANH: int = 2
+VERSION_BO_CAU_HOI: int = 1
+VERSION_NHAN: int = 1
 
 # Phân bố 7 nhóm của PRD mục 5, khóa cứng. Đây là con số mà chương 4 báo cáo
 # phân rã theo nhóm; một nhóm lệch một câu là một tỉ lệ sai ở bảng kết quả.
@@ -84,13 +88,47 @@ NHOM_CO_NHAN: tuple[str, ...] = ("N3", "N5")
 MAU_ID_CAU = re.compile(r"^n[1-7]-\d{2}$")
 
 KHOA_GOC_ANH: frozenset[str] = frozenset(
-    {"version", "space", "ngay_do", "so_hyperedge", "so_hyperedge_da_nguon", "hyperedge"}
+    {
+        "version",
+        "space",
+        "ngay_do",
+        "policy_version",
+        "so_tai_lieu",
+        "so_hyperedge",
+        "so_hyperedge_da_nguon",
+        "tai_lieu",
+        "hyperedge",
+    }
 )
+KHOA_TAI_LIEU_ANH: frozenset[str] = frozenset({"doc_key", "sha256", "scope", "content_type"})
 KHOA_HYPEREDGE_ANH: frozenset[str] = frozenset({"id", "doc_key", "khoa", "slots"})
 KHOA_GOC_CAU: frozenset[str] = frozenset({"version", "cau"})
 KHOA_CAU: frozenset[str] = frozenset(
-    {"id", "nhom", "cau_hoi", "vai_hoi", "kich_ban", "bo_vang", "dap_an", "y_chinh"}
+    {
+        "id",
+        "nhom",
+        "cau_hoi",
+        "vai_hoi",
+        "kich_ban",
+        "bo_vang",
+        "dap_an",
+        "y_chinh",
+        "neo_loai",
+        "han_che",
+    }
 )
+
+# Vùng khóa lọc mà đáp án của một câu N7 *sẽ* nằm nếu nó có thật. Không suy được
+# từ nhãn (N7 cố ý không có nhãn), nên khai tay - và nhờ khai mà kiểm được bằng
+# máy rằng câu N7 từ chối vì **thiếu thông tin** chứ không vì bị chặn quyền, đúng
+# hai đường mà FR-16 tách ra. Nhóm khác để rỗng: vùng của chúng suy từ nhãn.
+#
+# Danh mục **đóng** các dấu hạn chế. Chúng không phải ghi chú tự do: `kiem_danh_dau`
+# tính lại đúng hai tập này từ bảng chính sách cộng nhãn và bắt chúng khớp từng
+# id, nên một dấu thừa hay thiếu là `uv run pytest` đỏ.
+HAN_CHE_N7_QUA_XAC_DINH: str = "n7_qua_xac_dinh"
+HAN_CHE_VAI_HOI_KHONG_THAY: str = "vai_hoi_khong_thay"
+HAN_CHE: tuple[str, ...] = (HAN_CHE_N7_QUA_XAC_DINH, HAN_CHE_VAI_HOI_KHONG_THAY)
 KHOA_GOC_NHAN: frozenset[str] = frozenset({"version", "nhan"})
 KHOA_NHAN: frozenset[str] = frozenset({"cau_id", "hyperedge"})
 KHOA_HYPEREDGE_NHAN: frozenset[str] = frozenset(
@@ -196,17 +234,44 @@ class HyperedgeAnh:
 
 
 @dataclass(frozen=True)
+class TaiLieuAnh:
+    """Một tài liệu trong sổ tại thời điểm chụp: đủ để đối chiếu với thư mục nguồn.
+
+    `sha256` là băm **thân** tài liệu (sau khi tách frontmatter), đúng thứ
+    `adapters.ingest` ghi vào sổ để nhận ra "không đổi". Nó là dấu vết xuất xứ
+    thật của ảnh chụp: sửa một chữ trong `eval/corpus/` mà quên chụp lại thì
+    `tests/test_bo_cau_hoi.py` đỏ, chứ không phải chờ tới lúc một nhãn chết.
+    """
+
+    doc_key: str
+    sha256: str
+    scope: str
+    content_type: str
+
+
+@dataclass(frozen=True)
 class AnhDoThi:
     """Ảnh chụp đã kiểm. Chỉ dữ liệu, không luật chấm nào."""
 
     version: int
     space: str
     ngay_do: str
+    policy_version: str
+    tai_lieu: tuple[TaiLieuAnh, ...]
     hyperedge: tuple[HyperedgeAnh, ...]
 
     @property
     def so_hyperedge(self) -> int:
         return len(self.hyperedge)
+
+    @property
+    def so_tai_lieu(self) -> int:
+        return len(self.tai_lieu)
+
+    @property
+    def doc_key(self) -> frozenset[str]:
+        """Tập `doc_key` của sổ tài liệu tại thời điểm chụp."""
+        return frozenset(t.doc_key for t in self.tai_lieu)
 
     @property
     def theo_id(self) -> Mapping[str, HyperedgeAnh]:
@@ -255,16 +320,25 @@ def doc_anh_do_thi(duong_dan: str | Path | None = None) -> AnhDoThi:
     if not isinstance(raw, dict):
         raise AnhDoThiKhongHopLe([f"{duong_dan}: gốc file phải là một object"])
     _khoa_dung(raw, KHOA_GOC_ANH, f"{duong_dan} cấp gốc", loi)
-    if raw.get("version") != VERSION_HO_TRO:
-        loi.append(f"version phải là {VERSION_HO_TRO}, nhận được {raw.get('version')!r}")
+    if raw.get("version") != VERSION_ANH:
+        loi.append(f"version phải là {VERSION_ANH}, nhận được {raw.get('version')!r}")
     space = raw.get("space")
     if not isinstance(space, str) or not space.strip():
         loi.append("`space` phải là chuỗi không rỗng")
         space = "?"
-    ngay_do = raw.get("ngay_do")
-    if not isinstance(ngay_do, str) or not ngay_do.strip():
-        loi.append("`ngay_do` phải là chuỗi không rỗng (UTC ISO-8601)")
-        ngay_do = ""
+    chuoi = {"ngay_do": "", "policy_version": ""}
+    for khoa in chuoi:
+        gia_tri = raw.get(khoa)
+        if not isinstance(gia_tri, str) or not gia_tri.strip():
+            loi.append(f"`{khoa}` phải là chuỗi không rỗng")
+        else:
+            chuoi[khoa] = gia_tri
+    cac_tai_lieu = _dung_tai_lieu_anh(raw.get("tai_lieu"), loi)
+    if raw.get("so_tai_lieu") != len(cac_tai_lieu):
+        loi.append(
+            f"`so_tai_lieu` = {raw.get('so_tai_lieu')!r} không khớp"
+            f" {len(cac_tai_lieu)} mục thật trong `tai_lieu`"
+        )
     danh_sach = raw.get("hyperedge")
     if not isinstance(danh_sach, list):
         loi.append("`hyperedge` phải là một danh sách")
@@ -287,9 +361,50 @@ def doc_anh_do_thi(duong_dan: str | Path | None = None) -> AnhDoThi:
             f"`so_hyperedge_da_nguon` = {raw.get('so_hyperedge_da_nguon')!r}"
             f" không khớp {da_nguon} mục thật"
         )
+    thieu_so = sorted({d for h in cac_he for d in h.doc_key} - {t.doc_key for t in cac_tai_lieu})
+    if thieu_so:
+        loi.append(
+            f"hyperedge dẫn `doc_key` không có trong `tai_lieu`: {thieu_so}"
+            " - ảnh chụp tự mâu thuẫn, hai nửa đến từ hai lần đọc sổ khác nhau"
+        )
     if loi:
         raise AnhDoThiKhongHopLe(loi)
-    return AnhDoThi(version=raw["version"], space=space, ngay_do=ngay_do, hyperedge=tuple(cac_he))
+    return AnhDoThi(
+        version=raw["version"],
+        space=space,
+        ngay_do=chuoi["ngay_do"],
+        policy_version=chuoi["policy_version"],
+        tai_lieu=tuple(cac_tai_lieu),
+        hyperedge=tuple(cac_he),
+    )
+
+
+def _dung_tai_lieu_anh(danh_sach, loi: list[str]) -> list[TaiLieuAnh]:
+    """Sổ tài liệu tại thời điểm chụp, đã kiểm hình dạng và không trùng `doc_key`."""
+    if not isinstance(danh_sach, list) or not danh_sach:
+        loi.append("`tai_lieu` phải là một danh sách không rỗng")
+        return []
+    ra: list[TaiLieuAnh] = []
+    da_thay: set[str] = set()
+    for i, muc in enumerate(danh_sach):
+        cho = f"tài liệu thứ {i}"
+        if not isinstance(muc, dict):
+            loi.append(f"{cho} phải là một object, nhận được {type(muc).__name__}")
+            continue
+        if isinstance(muc.get("doc_key"), str) and muc["doc_key"].strip():
+            cho = muc["doc_key"]
+        if not _khoa_dung(muc, KHOA_TAI_LIEU_ANH, cho, loi):
+            continue
+        sai = [k for k in sorted(KHOA_TAI_LIEU_ANH) if not isinstance(muc[k], str) or not muc[k].strip()]
+        if sai:
+            loi.append(f"{cho}: phải là chuỗi không rỗng - {sai}")
+            continue
+        if muc["doc_key"] in da_thay:
+            loi.append(f"{cho}: doc_key khai hai lần trong ảnh chụp")
+            continue
+        da_thay.add(muc["doc_key"])
+        ra.append(TaiLieuAnh(**{k: muc[k] for k in KHOA_TAI_LIEU_ANH}))
+    return ra
 
 
 def _dung_hyperedge_anh(danh_sach: Iterable, loi: list[str]) -> list[HyperedgeAnh]:
@@ -375,6 +490,8 @@ class CauHoi:
     bo_vang: bool
     dap_an: str
     y_chinh: tuple[str, ...]
+    neo_loai: tuple[str, ...]
+    han_che: tuple[str, ...]
 
     @property
     def co_nhan(self) -> bool:
@@ -435,8 +552,8 @@ def doc_bo_cau_hoi(duong_dan: str | Path | None = None) -> BoCauHoi:
     if not isinstance(raw, dict):
         raise BoCauHoiKhongHopLe([f"{duong_dan}: gốc file phải là một object"])
     _khoa_dung(raw, KHOA_GOC_CAU, f"{duong_dan} cấp gốc", loi)
-    if raw.get("version") != VERSION_HO_TRO:
-        loi.append(f"version phải là {VERSION_HO_TRO}, nhận được {raw.get('version')!r}")
+    if raw.get("version") != VERSION_BO_CAU_HOI:
+        loi.append(f"version phải là {VERSION_BO_CAU_HOI}, nhận được {raw.get('version')!r}")
     danh_sach = raw.get("cau")
     if not isinstance(danh_sach, list) or not danh_sach:
         loi.append("`cau` phải là một danh sách không rỗng")
@@ -538,6 +655,35 @@ def _dung_cau_hoi(danh_sach, vai_hop_le, kich_ban_hop_le, loi: list[str]) -> lis
                     " của Đo 2 nở ra mà không ai thấy; bật `bo_vang` hoặc xóa đáp án"
                 )
                 continue
+        neo_loai = muc["neo_loai"]
+        han_che = muc["han_che"]
+        if not isinstance(neo_loai, list) or not all(isinstance(x, str) for x in neo_loai):
+            loi.append(f"{id_cau}: `neo_loai` phải là danh sách khóa lọc `scope:content_type`")
+            continue
+        khoa_hong = []
+        for khoa in neo_loai:
+            try:
+                split_key(khoa)
+            except (TypeError, ValueError) as e:
+                khoa_hong.append(f"{khoa!r} ({e})")
+        if khoa_hong:
+            loi.append(f"{id_cau}: `neo_loai` không đúng dạng scope:content_type - {khoa_hong}")
+            continue
+        if (nhom == NHOM_TU_CHOI) != bool(neo_loai):
+            loi.append(
+                f"{id_cau}: `neo_loai` phải khai cho câu {NHOM_TU_CHOI} và **chỉ** cho"
+                f" nhóm đó (nhóm {nhom}, khai {neo_loai}) - vùng của nhóm khác suy từ nhãn"
+            )
+            continue
+        if not isinstance(han_che, list) or not all(isinstance(x, str) for x in han_che):
+            loi.append(f"{id_cau}: `han_che` phải là một danh sách chuỗi")
+            continue
+        la = sorted(set(han_che) - set(HAN_CHE))
+        if la or len(set(han_che)) != len(han_che):
+            loi.append(
+                f"{id_cau}: dấu hạn chế lạ hoặc trùng {han_che}, danh mục là {list(HAN_CHE)}"
+            )
+            continue
         ra.append(
             CauHoi(
                 id=id_cau,
@@ -548,6 +694,8 @@ def _dung_cau_hoi(danh_sach, vai_hop_le, kich_ban_hop_le, loi: list[str]) -> lis
                 bo_vang=muc["bo_vang"],
                 dap_an=dap_an,
                 y_chinh=tuple(y_chinh),
+                neo_loai=tuple(neo_loai),
+                han_che=tuple(han_che),
             )
         )
     return ra
@@ -621,10 +769,16 @@ class NhanTruyHoi:
 def doc_nhan_truy_hoi(
     duong_dan: str | Path | None = None,
     *,
-    bo: BoCauHoi | None = None,
-    anh: AnhDoThi | None = None,
+    bo: BoCauHoi,
+    anh: AnhDoThi,
+    policy: Policy | None = None,
 ) -> NhanTruyHoi:
     """Đọc và kiểm nhãn; đối chiếu với bộ câu hỏi và ảnh chụp.
+
+    `bo` và `anh` **bắt buộc**, không có mặc định (vòng review 03/09): một mặc
+    định "nạp file thật của repo" làm một nhãn tạm trong `tmp_path` bị chấm bằng
+    bộ câu hỏi và ảnh chụp của repo, và lỗi báo ra nói về một file mà người gọi
+    không hề truyền vào. Ba nguồn phải đến cùng một chỗ.
 
     Hai loại lỗi, hai việc phải làm khác nhau: `NhanKhongHopLe` là nhãn sai (sửa
     nhãn), `NhanTroiId` là đồ thị đã đổi (quyết xem đồ thị mới còn kể cùng một
@@ -632,8 +786,6 @@ def doc_nhan_truy_hoi(
     một file còn sai lược đồ là đuổi theo triệu chứng.
     """
     duong_dan = Path(duong_dan) if duong_dan is not None else DUONG_DAN_NHAN_MAC_DINH
-    bo = doc_bo_cau_hoi() if bo is None else bo
-    anh = doc_anh_do_thi() if anh is None else anh
     raw = _doc_json(duong_dan, NhanKhongHopLe)
 
     loi: list[str] = []
@@ -641,8 +793,8 @@ def doc_nhan_truy_hoi(
     if not isinstance(raw, dict):
         raise NhanKhongHopLe([f"{duong_dan}: gốc file phải là một object"])
     _khoa_dung(raw, KHOA_GOC_NHAN, f"{duong_dan} cấp gốc", loi)
-    if raw.get("version") != VERSION_HO_TRO:
-        loi.append(f"version phải là {VERSION_HO_TRO}, nhận được {raw.get('version')!r}")
+    if raw.get("version") != VERSION_NHAN:
+        loi.append(f"version phải là {VERSION_NHAN}, nhận được {raw.get('version')!r}")
     danh_sach = raw.get("nhan")
     if not isinstance(danh_sach, list) or not danh_sach:
         loi.append("`nhan` phải là một danh sách không rỗng")
@@ -654,7 +806,9 @@ def doc_nhan_truy_hoi(
         raise NhanKhongHopLe(loi)
     if troi:
         raise NhanTroiId(troi)
-    return NhanTruyHoi(version=raw["version"], nhan=tuple(nhan))
+    ket_qua = NhanTruyHoi(version=raw["version"], nhan=tuple(nhan))
+    kiem_danh_dau(bo, ket_qua, anh, policy=policy)
+    return ket_qua
 
 
 def _dung_nhan(
@@ -853,11 +1007,99 @@ class TranVai:
         trạng thái fail-closed đúng cho tới story 3.2; coi nó là lỗi thì bộ test
         đỏ vì một việc chưa tới lượt làm.
         """
-        return tuple(
-            f"{c.cau_id}: trần 0 với vai {c.vai} - " + "; ".join(c.ly_do)
-            for c in self.cau
-            if c.ton_tai == 0
-        )
+        ra = []
+        for c in self.cau:
+            if c.ton_tai == 0:
+                nhan = "trần 0"
+            elif c.tra_loi_duoc < c.ton_tai:
+                # Ca L1 của Đo 3: hyperedge vào được ngữ cảnh mà slot mang đáp
+                # án bị che. Bỏ nó khỏi khối cảnh báo là để người soát đọc bảng
+                # tổng rồi tưởng ba câu mang đúng luận điểm L1 là lành.
+                nhan = f"mất lớp trả lời được ({c.tra_loi_duoc}/{c.ton_tai})"
+            else:
+                continue
+            ra.append(f"{c.cau_id}: {nhan} với vai {c.vai} - " + "; ".join(c.ly_do))
+        return tuple(ra)
+
+    def cau_tran_khong(self) -> tuple[TranCau, ...]:
+        """Chỉ những câu mất sạch lớp tồn tại - con số in ở bảng tổng."""
+        return tuple(c for c in self.cau if c.ton_tai == 0)
+
+
+def _hang_cua_vai(policy: Policy, ten_vai: str):
+    try:
+        return policy.role(ten_vai)
+    except KeyError:
+        raise PolicyInvalid(
+            f"vai {ten_vai!r} có trong seed danh tính mà không có trong bảng"
+            " chính sách: trần lý thuyết của nó không tính được"
+        ) from None
+
+
+def _tran_mot_cau(hang, n: NhanCau, theo_id_he) -> TranCau:
+    """Trần của một câu với một vai. Một bản duy nhất cho cả hai bảng trần.
+
+    Hai lớp, đúng hai định nghĩa của PRD 5.3:
+
+    - **tồn tại** - hyperedge vào được ngữ cảnh của vai: khóa lọc nằm trong
+      `allowed_keys['hyperedges']`, tức scope thuộc `scopes` *và* mức tiết lộ
+      đạt L1 trở lên.
+    - **trả lời được** - thêm điều kiện: không slot nào trong `slot_dap_an` bị
+      `masked_slots` của vai che ở loại nội dung đó.
+
+    `owner` không tính là bị che dù tầng che luôn tổng quát hóa nó (AD-9): nó ra
+    ở mức vai/nhóm chứ không biến mất. Bảng chính sách cũng không cho khai
+    `owner` trong `masked_slots`.
+    """
+    duoc_phep = hang.allowed_keys["hyperedges"]
+    ton_tai = tra_loi = 0
+    ly_do: list[str] = []
+    for he in n.hyperedge:
+        moc = theo_id_he.get(he.id)
+        if moc is None:
+            # Không phải ca AD-5: đây là một nhãn chết, id không có trong ảnh
+            # chụp. Gộp hai thông điệp làm một là nói sai nguyên nhân cho người
+            # đọc trang soát (vòng review 03/09).
+            ly_do.append(f"{he.id} không có trong ảnh chụp - nhãn chết, chụp lại rồi soát")
+            continue
+        if moc.khoa is None:
+            ly_do.append(f"{he.id} không mang khóa lọc (hợp nhất khác scope, AD-5)")
+            continue
+        scope, loai = moc.scope, moc.content_type
+        if scope not in hang.scopes:
+            ly_do.append(f"{he.id} ở scope {scope!r} ngoài scopes của vai")
+            continue
+        muc = hang.level(loai)
+        if muc == "L0":
+            ly_do.append(
+                f"{he.id} mang loại nội dung {loai!r} ở mức {muc}"
+                + (
+                    " (chưa khai trong bảng chính sách, fail-closed)"
+                    if loai not in hang.disclosure
+                    else ""
+                )
+            )
+            continue
+        if moc.khoa not in duoc_phep:
+            ly_do.append(f"{he.id} có khóa {moc.khoa!r} ngoài tập khóa của vai")
+            continue
+        ton_tai += 1
+        bi_che = set(hang.masked_slots.get(loai, ())) & set(he.slot_dap_an)
+        if bi_che:
+            ly_do.append(
+                f"{he.id} vào được ngữ cảnh nhưng slot đáp án {sorted(bi_che)}"
+                f" bị che ở mức {muc}"
+            )
+            continue
+        tra_loi += 1
+    return TranCau(
+        cau_id=n.cau_id,
+        vai=hang.name,
+        tong=len(n.hyperedge),
+        ton_tai=ton_tai,
+        tra_loi_duoc=tra_loi,
+        ly_do=tuple(ly_do),
+    )
 
 
 def tran_theo_vai(
@@ -867,23 +1109,16 @@ def tran_theo_vai(
     policy: Policy | None = None,
     vai: Iterable[str] | None = None,
 ) -> dict[str, TranVai]:
-    """Trần lý thuyết của từng vai đo: hàm thuần từ nhãn cộng ảnh chụp cộng bảng chính sách.
+    """Trần lý thuyết của **mỗi vai đo trên mọi câu**: hàm thuần từ ba nguồn có commit.
 
-    PRD 5.3 đòi *khoảng cách* giữa recall đo được và trần này, nên trần phải
-    tính được lại từ ba nguồn có commit chứ không phải một con số ghi tay.
+    Bảng này trả lời "vai X thấy được bao nhiêu phần của toàn bộ nhãn", tức nó
+    là bảng để *so hai vai với nhau*: chênh giữa hai cột phải đọc ra được từ
+    `scopes` và `disclosure`, không từ nhãn tay (AC của story 2.9).
 
-    Hai lớp, đúng hai định nghĩa của PRD 5.3:
-
-    - **tồn tại** - hyperedge vào được ngữ cảnh của vai. Khóa lọc của nó phải
-      nằm trong `allowed_keys['hyperedges']`, tức scope thuộc `scopes` của vai
-      *và* mức tiết lộ đạt L1 trở lên. Hyperedge không mang khóa (hợp nhất khác
-      scope, AD-5) không vào được với bất kỳ vai nào.
-    - **trả lời được** - thêm điều kiện: không slot nào trong `slot_dap_an` bị
-      `masked_slots` của vai che ở loại nội dung đó.
-
-    `owner` không tính là bị che dù tầng che luôn tổng quát hóa nó (AD-9): nó ra
-    ở mức vai/nhóm chứ không biến mất, nên một câu hỏi "ai phụ trách" vẫn có câu
-    trả lời. Bảng chính sách cũng không cho khai `owner` trong `masked_slots`.
+    Nó **không** phải mẫu số của Đo 3. Mỗi câu chỉ được hỏi bởi đúng một vai,
+    nên phép đo thật chấm từng câu với `vai_hoi` của nó; bảng đó là
+    `tran_theo_vai_hoi()`. Hai bảng trả lời hai câu hỏi khác nhau và cả hai đều
+    được in ra, vì chỉ có một bảng thì con số kia bị đọc nhầm thành con số này.
     """
     policy = load_policy(POLICY_MAC_DINH) if policy is None else policy
     if vai is None:
@@ -894,64 +1129,46 @@ def tran_theo_vai(
     theo_id_he = anh.theo_id
     ket_qua: dict[str, TranVai] = {}
     for ten_vai in vai:
-        try:
-            hang = policy.role(ten_vai)
-        except KeyError:
-            raise PolicyInvalid(
-                f"vai {ten_vai!r} có trong seed danh tính mà không có trong bảng"
-                " chính sách: trần lý thuyết của nó không tính được"
-            ) from None
-        duoc_phep = hang.allowed_keys["hyperedges"]
-        cac_cau: list[TranCau] = []
-        for n in nhan.nhan:
-            ton_tai = tra_loi = 0
-            ly_do: list[str] = []
-            for he in n.hyperedge:
-                moc = theo_id_he.get(he.id)
-                if moc is None or moc.khoa is None:
-                    ly_do.append(
-                        f"{he.id} không mang khóa lọc (hợp nhất khác scope, AD-5)"
-                    )
-                    continue
-                scope, loai = moc.scope, moc.content_type
-                if scope not in hang.scopes:
-                    ly_do.append(f"{he.id} ở scope {scope!r} ngoài scopes của vai")
-                    continue
-                muc = hang.level(loai)
-                if muc == "L0":
-                    ly_do.append(
-                        f"{he.id} mang loại nội dung {loai!r} ở mức {muc}"
-                        + (
-                            " (chưa khai trong bảng chính sách, fail-closed)"
-                            if loai not in hang.disclosure
-                            else ""
-                        )
-                    )
-                    continue
-                if moc.khoa not in duoc_phep:
-                    ly_do.append(f"{he.id} có khóa {moc.khoa!r} ngoài tập khóa của vai")
-                    continue
-                ton_tai += 1
-                bi_che = set(hang.masked_slots.get(loai, ())) & set(he.slot_dap_an)
-                if bi_che:
-                    ly_do.append(
-                        f"{he.id} vào được ngữ cảnh nhưng slot đáp án {sorted(bi_che)}"
-                        f" bị che ở mức {muc}"
-                    )
-                    continue
-                tra_loi += 1
-            cac_cau.append(
-                TranCau(
-                    cau_id=n.cau_id,
-                    vai=ten_vai,
-                    tong=len(n.hyperedge),
-                    ton_tai=ton_tai,
-                    tra_loi_duoc=tra_loi,
-                    ly_do=tuple(ly_do),
-                )
-            )
-        ket_qua[ten_vai] = TranVai(vai=ten_vai, cau=tuple(cac_cau))
+        hang = _hang_cua_vai(policy, ten_vai)
+        ket_qua[ten_vai] = TranVai(
+            vai=ten_vai,
+            cau=tuple(_tran_mot_cau(hang, n, theo_id_he) for n in nhan.nhan),
+        )
     return ket_qua
+
+
+# Nhãn của bảng trần theo vai hỏi. Không phải tên một vai thật: mỗi câu trong
+# bảng này mang `vai_hoi` của chính nó.
+VAI_HOI_CUA_CAU: str = "(vai hỏi của từng câu)"
+
+
+def tran_theo_vai_hoi(
+    bo: BoCauHoi,
+    nhan: NhanTruyHoi,
+    anh: AnhDoThi,
+    *,
+    policy: Policy | None = None,
+) -> TranVai:
+    """Trần lý thuyết **theo đúng vai hỏi của từng câu** - mẫu số mà Đo 3 sẽ chạy.
+
+    `tran_theo_vai()` tính cả hai vai trên cả 41 cặp, nhưng không ai hỏi cùng một
+    câu hai lần bằng hai danh tính: bộ câu hỏi gán cho mỗi câu đúng một `vai_hoi`,
+    và recall của PRD 5.3 tính "theo từng vai người hỏi". Trộn hai bảng là báo
+    một con số lạc quan hơn thực tế, vì mỗi cặp được tính bằng vai *dễ nhất*
+    trong hai vai.
+    """
+    policy = load_policy(POLICY_MAC_DINH) if policy is None else policy
+    theo_id_he = anh.theo_id
+    theo_id_cau = bo.theo_id
+    cac_cau: list[TranCau] = []
+    for n in nhan.nhan:
+        cau = theo_id_cau.get(n.cau_id)
+        if cau is None:
+            raise BoCauHoiKhongHopLe(
+                [f"{n.cau_id}: nhãn trỏ một câu không có trong bộ câu hỏi"]
+            )
+        cac_cau.append(_tran_mot_cau(_hang_cua_vai(policy, cau.vai_hoi), n, theo_id_he))
+    return TranVai(vai=VAI_HOI_CUA_CAU, cau=tuple(cac_cau))
 
 
 # --------------------------------------------------------------------------
@@ -980,3 +1197,63 @@ def _khoa_dung(muc: Mapping, khoa: frozenset[str], cho: str, loi: list[str]) -> 
         loi.append(f"{cho}: khóa thiếu {thieu}, khóa lạ {la}")
         return False
     return True
+
+
+def kiem_danh_dau(
+    bo: BoCauHoi, nhan: NhanTruyHoi, anh: AnhDoThi, *, policy: Policy | None = None
+) -> None:
+    """Hai dấu `han_che` phải khớp *đúng* thứ tính lại được từ bảng chính sách.
+
+    Dấu hạn chế không phải một ghi chú tự do mà là một khẳng định kiểm được:
+
+    - `n7_qua_xac_dinh` - câu N7 mà vai hỏi **không** thấy mọi vùng khai trong
+      `neo_loai` ở mức L2. Với những câu đó, một lần từ chối không phân biệt
+      được "không có đáp án" với "bị chặn quyền", mà FR-16 tách đúng hai thứ đó
+      thành hai phép đo. Câu N7 sạch là câu neo vào vùng vai hỏi thấy hết.
+    - `vai_hoi_khong_thay` - câu N3/N5 mà trần lớp *tồn tại* tính theo **vai
+      hỏi của chính nó** bằng 0. Với câu bộ vàng, Đo 2 sẽ chấm "đủ ý" và "đúng
+      trích dẫn" ra 0 vì một lý do không liên quan tới chất lượng sinh; với câu
+      còn lại, Đo 3 mất một hàng.
+
+    Thừa một dấu cũng đỏ như thiếu một dấu: một dấu để lại sau khi story 3.2 mở
+    bảng chính sách là một câu bị coi là hỏng trong khi nó đã lành.
+    """
+    policy = load_policy(POLICY_MAC_DINH) if policy is None else policy
+    loi: list[str] = []
+
+    khoa_co_that = {h.khoa for h in anh.hyperedge if h.khoa is not None}
+    n7_can: set[str] = set()
+    for c in bo.cau:
+        if c.nhom != NHOM_TU_CHOI:
+            continue
+        la = sorted(set(c.neo_loai) - khoa_co_that)
+        if la:
+            loi.append(
+                f"{c.id}: `neo_loai` khai vùng {la} không có hyperedge nào trong ảnh"
+                " chụp - vùng đó không tồn tại thì câu N7 không neo vào đâu cả"
+            )
+            continue
+        hang = _hang_cua_vai(policy, c.vai_hoi)
+        if not all(
+            split_key(k)[0] in hang.scopes and hang.level(split_key(k)[1]) == "L2"
+            for k in c.neo_loai
+        ):
+            n7_can.add(c.id)
+
+    tran = tran_theo_vai_hoi(bo, nhan, anh, policy=policy)
+    khong_thay_can = {t.cau_id for t in tran.cau if t.ton_tai == 0}
+
+    for ten, can in (
+        (HAN_CHE_N7_QUA_XAC_DINH, n7_can),
+        (HAN_CHE_VAI_HOI_KHONG_THAY, khong_thay_can),
+    ):
+        khai = {c.id for c in bo.cau if ten in c.han_che}
+        thieu = sorted(can - khai)
+        thua = sorted(khai - can)
+        if thieu or thua:
+            loi.append(
+                f"dấu {ten!r} lệch: thiếu ở {thieu}, thừa ở {thua} - dấu hạn chế"
+                " là khẳng định tính lại được từ bảng chính sách, không phải ghi chú"
+            )
+    if loi:
+        raise BoCauHoiKhongHopLe(loi)

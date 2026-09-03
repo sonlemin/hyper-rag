@@ -1,9 +1,313 @@
 {
-  "version": 1,
+  "version": 2,
   "space": "synth",
-  "ngay_do": "2026-09-03T03:26:08.992179+00:00",
+  "ngay_do": "2026-09-03T04:07:47.393406+00:00",
+  "policy_version": "fd8a92df457321e625bf16a08fb3dc244dc4bbcbfe87b45cd11465807446fd87",
+  "so_tai_lieu": 50,
   "so_hyperedge": 254,
   "so_hyperedge_da_nguon": 0,
+  "tai_lieu": [
+    {
+      "doc_key": "01-cap-quyen-gitlab.txt",
+      "sha256": "b72cfd3be1667e0e698f203ff5fe021569c4a6f0f54000059817dd78ea26ddd0",
+      "scope": "noi_bo",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "02-vpn-va-mat-khau.txt",
+      "sha256": "0849a52d41045874f14f0fc164b479b10e7af7070a05861ec54e1a5799b71ab2",
+      "scope": "noi_bo",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "03-truc-su-co.txt",
+      "sha256": "e3919286281d58e9cb0a3ca7ed0ef652eddf2ce9ac1846704c68395c31baae7c",
+      "scope": "noi_bo",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "04-sao-luu-du-lieu.txt",
+      "sha256": "3673c6d20aa3d422854d0b0c36b30c901f4851b3316b87ffca3da98b2259e181",
+      "scope": "noi_bo",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "05-bao-cao-su-co-inc-1208.txt",
+      "sha256": "0f647634248f2eefd9dc617ce385b30fa21142f36b3ce16b43ef668087d077c3",
+      "scope": "noi_bo",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "06-quan-ly-thay-doi.txt",
+      "sha256": "e23c07a483ae2a93201041b0b514034d194b7e75a9c76b0b6662bec28c975e70",
+      "scope": "noi_bo",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "07-giam-sat-va-canh-bao.txt",
+      "sha256": "8489ec0bb60fb9c9e0f94be8072978f249286892de5dc4e8d52fbabdb32b8e2f",
+      "scope": "noi_bo",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "08-bao-cao-su-co-inc-1305.txt",
+      "sha256": "833554ece18f076b7ff00353e56808e31e05208e423e95aaee567c5bd9ecaf21",
+      "scope": "noi_bo",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "09-bao-cao-su-co-inc-1417.txt",
+      "sha256": "f74d769285d8bb376da15d0731e7436965e08f230f8babf602968421cbe30460",
+      "scope": "noi_bo",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "10-so-tay-ha-tang-noi-bo.txt",
+      "sha256": "60161fa986a5ee1afafea3b4f8fd2d577be20d75ce370f2de4a14051f694db08",
+      "scope": "noi_bo",
+      "content_type": "bi_mat_ha_tang"
+    },
+    {
+      "doc_key": "k1-01-runbook-app01-khoi-dong-lai.md",
+      "sha256": "41be9675c2b3b3a0acdd12b10805f118742183773dffb9544d42bf49e954ba8a",
+      "scope": "khach_hang_a",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "k1-02-canh-bao-app01-502.md",
+      "sha256": "87ee4caf60f65b1907b4f424b1610b3e139cb148912e0fd3d072eb1cf8f2399e",
+      "scope": "khach_hang_a",
+      "content_type": "canh_bao"
+    },
+    {
+      "doc_key": "k1-03-bao-cao-su-co-inc-1208.md",
+      "sha256": "2957f502924c9af7900b9ebea83b749920ca026fe14ee03594506151243e769a",
+      "scope": "khach_hang_a",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "k1-04-postmortem-inc-1208.md",
+      "sha256": "a241e2be7451faf26ee9ca8a5172bf7e9b1dd0b7e945d6791fff06452fa9e356",
+      "scope": "khach_hang_a",
+      "content_type": "postmortem"
+    },
+    {
+      "doc_key": "k1-05-cmdb-app01.md",
+      "sha256": "d31c0d72fe94aaf454c0793cb1cf20bd2fef6dc48b3145b1ab21a9de8b0382a8",
+      "scope": "khach_hang_a",
+      "content_type": "cmdb"
+    },
+    {
+      "doc_key": "k1-06-log-app01-ngay-12-08.md",
+      "sha256": "59f4ae2d93c4b932a5f3e0d620213508e2361af5d812e9d1909dded5de101776",
+      "scope": "khach_hang_a",
+      "content_type": "log"
+    },
+    {
+      "doc_key": "k1-07-sop-12-quan-ly-thay-doi.md",
+      "sha256": "f7edf31872ff2a1e0cc0ce92641fefb65bac138f0e65de27920b67d7ae5bcbf8",
+      "scope": "noi_bo",
+      "content_type": "sop"
+    },
+    {
+      "doc_key": "k2-01-canh-bao-day-o-dia-log01.md",
+      "sha256": "802630a1735cf5ec3b479bba4a2c028b1d8afcdeb8cd30e2c2def6e5e8fc6652",
+      "scope": "noi_bo",
+      "content_type": "canh_bao"
+    },
+    {
+      "doc_key": "k2-02-runbook-xu-ly-day-o-dia.md",
+      "sha256": "b3316eb5e3f6d20f7b10cf003b425fc6d5a8bf6c8a1a8a8f551a77972a03e6aa",
+      "scope": "noi_bo",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "k2-03-bao-cao-su-co-inc-1520.md",
+      "sha256": "e8f6358b1568048f6c0c658491a986598c2375b1cdaaf6dd5a4f1fea1ffe1dd4",
+      "scope": "noi_bo",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "k2-04-vong-doi-ticket-inc-1520.md",
+      "sha256": "7638fb556747621b4f83624862bcc7dc60a19ad267a3916615f31654b1453b92",
+      "scope": "noi_bo",
+      "content_type": "vong_doi_ticket"
+    },
+    {
+      "doc_key": "k2-05-cmdb-may-chu-log01.md",
+      "sha256": "266138d156ca3292278f3feb9fa6e16780fac0a5a08d720fe408cc9a98be6bb0",
+      "scope": "noi_bo",
+      "content_type": "cmdb"
+    },
+    {
+      "doc_key": "k2-06-known-issue-xoay-vong-log.md",
+      "sha256": "d346f6dffe15d4642430525fddecc421305e1982228c89d658fe824a33e7985a",
+      "scope": "noi_bo",
+      "content_type": "known_issue"
+    },
+    {
+      "doc_key": "k2-07-troubleshooting-dich-vu-cham.md",
+      "sha256": "4f462a226eecbd80ed470eccd30bfc3021f13726d709b5d4dbfd125cdc815668",
+      "scope": "noi_bo",
+      "content_type": "troubleshooting"
+    },
+    {
+      "doc_key": "k3-01-tai-lieu-san-pham-cong-thanh-toan-b.md",
+      "sha256": "7d268afbb52cc921fc3752aba8e1b395358a8f830a0eab7c3b42e2d378ad9489",
+      "scope": "khach_hang_b",
+      "content_type": "tai_lieu_san_pham"
+    },
+    {
+      "doc_key": "k3-02-runbook-gia-han-chung-thu-so.md",
+      "sha256": "ebd729acbda481dbeef7e51677a127ee998ce54e73900bf16e621dcd93990c25",
+      "scope": "khach_hang_b",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "k3-03-canh-bao-chung-thu-sap-het-han.md",
+      "sha256": "318a171d03fc4f9cc0958c0d42f5844653b3afc68163140d893302677869bf06",
+      "scope": "khach_hang_b",
+      "content_type": "canh_bao"
+    },
+    {
+      "doc_key": "k3-04-bao-cao-su-co-inc-1533.md",
+      "sha256": "fd0f1d08d76b2982e420463369c6e8e9136d23f11a417ccf424de6e3e51244da",
+      "scope": "khach_hang_b",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "k3-05-postmortem-inc-1533.md",
+      "sha256": "e3d82194d25737a6c1fa095906d39145a15d44390c587412e1ec7f869f276bc7",
+      "scope": "khach_hang_b",
+      "content_type": "postmortem"
+    },
+    {
+      "doc_key": "k3-06-cmdb-chung-thu-so-khach-hang-b.md",
+      "sha256": "aae5af0a82ebb2d5512f4fc90c83afb557fb70bc706d097e76e56cc9a500fe4f",
+      "scope": "khach_hang_b",
+      "content_type": "cmdb"
+    },
+    {
+      "doc_key": "k3-07-vong-doi-ticket-inc-1533.md",
+      "sha256": "098229c2377c25ba26de93f2b14c05b1065c202fa6cd6a148bf66c8ff01564bf",
+      "scope": "khach_hang_b",
+      "content_type": "vong_doi_ticket"
+    },
+    {
+      "doc_key": "n-01-faq-dat-lai-mat-khau.md",
+      "sha256": "44dafcdd385b6f1ff0cd2c3cd5d17b5889650a07e736c001ced7f570027a9552",
+      "scope": "noi_bo",
+      "content_type": "faq"
+    },
+    {
+      "doc_key": "n-02-faq-vpn-cho-nhan-vien-moi.md",
+      "sha256": "1f298c8be0a6e2734cd22d1a5f846a81c87ad0b0efb451d3c7d186475e5e8942",
+      "scope": "noi_bo",
+      "content_type": "faq"
+    },
+    {
+      "doc_key": "n-03-faq-cong-thanh-toan-khach-hang-a.md",
+      "sha256": "1546959995f3677baeb776d09efe2b44a8678b3b1effa5647774cea3122aa4c4",
+      "scope": "khach_hang_a",
+      "content_type": "faq"
+    },
+    {
+      "doc_key": "n-04-sop-tiep-nhan-yeu-cau-ho-tro.md",
+      "sha256": "b7a401d42908cb77ecdaacfafdfcc823eedc1a1e52672ad8802642c52de9dd28",
+      "scope": "noi_bo",
+      "content_type": "sop"
+    },
+    {
+      "doc_key": "n-05-sop-ban-giao-ca-truc.md",
+      "sha256": "994de65e42c736c7a76f5aec6dbc6f90aa3429e3d914aa24904f1632e39e6054",
+      "scope": "noi_bo",
+      "content_type": "sop"
+    },
+    {
+      "doc_key": "n-06-troubleshooting-may-in-mang.md",
+      "sha256": "c2d525dfb2f8c121850bec5a890cf6dc97211b2bd239f6957e1c7482881dcea9",
+      "scope": "noi_bo",
+      "content_type": "troubleshooting"
+    },
+    {
+      "doc_key": "n-07-troubleshooting-email-khong-gui-duoc.md",
+      "sha256": "3d6afae579533a0b5a8e069340b8c2b8feae39881e4111c065c18ecceb2b1054",
+      "scope": "noi_bo",
+      "content_type": "troubleshooting"
+    },
+    {
+      "doc_key": "n-08-known-issue-trinh-duyet-cu-loi-dang-nhap.md",
+      "sha256": "72d2e7ca1931db0bfb0b693a6714871e97d46abd64198082a148f46518022fc0",
+      "scope": "noi_bo",
+      "content_type": "known_issue"
+    },
+    {
+      "doc_key": "n-09-known-issue-bao-cao-thang-cham.md",
+      "sha256": "ee19d3195dfb303c849726ce03bd40302d6f353f6363a390952c00fe2d1199dc",
+      "scope": "khach_hang_a",
+      "content_type": "known_issue"
+    },
+    {
+      "doc_key": "n-10-tai-lieu-san-pham-cong-noi-bo.md",
+      "sha256": "6c6bbfcb9b4fbee6fba6d1880c90cc4672f075697caa0eefeff18e6df5bcf9a4",
+      "scope": "noi_bo",
+      "content_type": "tai_lieu_san_pham"
+    },
+    {
+      "doc_key": "n-11-tai-lieu-san-pham-app02-khach-hang-a.md",
+      "sha256": "160a79e5bc13436e992660ee51df7b83d7c750f365078e2563424bc60a7e8393",
+      "scope": "khach_hang_a",
+      "content_type": "tai_lieu_san_pham"
+    },
+    {
+      "doc_key": "n-12-runbook-sao-luu-co-so-du-lieu.md",
+      "sha256": "d4138fcf3e59eeda33a7c71480acd193eb8df1fd7d92a89e8c1cbf6cfebbbf90",
+      "scope": "noi_bo",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "n-13-runbook-trien-khai-ban-va-thang.md",
+      "sha256": "21ee7523e8046f9e5a8ed84756b8ff29b8c451f74834930eb2b59d7f276ac3c7",
+      "scope": "khach_hang_b",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "n-14-canh-bao-tai-cpu-may-chu-web.md",
+      "sha256": "a153d35dab662e5af6e8fd2426115a2a3c89207ccc1c4e58b47b8433f16a32b7",
+      "scope": "khach_hang_a",
+      "content_type": "canh_bao"
+    },
+    {
+      "doc_key": "n-15-log-tuong-lua-ngay-20-08.md",
+      "sha256": "7c459e23d73c1159bda934adfc257d717b882c2a7475a2934ceb65eef615dc1b",
+      "scope": "noi_bo",
+      "content_type": "log"
+    },
+    {
+      "doc_key": "n-16-vong-doi-ticket-yeu-cau-cap-quyen.md",
+      "sha256": "8987c12c5a76687c8bd9eb74a39d8fe07170f13cb96e844996953a916ec6ab13",
+      "scope": "noi_bo",
+      "content_type": "vong_doi_ticket"
+    },
+    {
+      "doc_key": "n-17-cmdb-thiet-bi-mang-van-phong.md",
+      "sha256": "6b6480649130281b1da8552ad72330b56ca743f2a8a463036d8397b07cfbf21c",
+      "scope": "noi_bo",
+      "content_type": "cmdb"
+    },
+    {
+      "doc_key": "n-18-bi-mat-ha-tang-duong-vao-khach-hang-a.md",
+      "sha256": "c17fdaf25419843867f7cf0f47174190a059a908ab7ba36464386b44b8dd8180",
+      "scope": "khach_hang_a",
+      "content_type": "bi_mat_ha_tang"
+    },
+    {
+      "doc_key": "n-19-bi-mat-ha-tang-kho-khoa-khach-hang-b.md",
+      "sha256": "789bbc1472bc17e9ab880ce9080a616594de7595fd0599d2e8656467daa6f4f4",
+      "scope": "khach_hang_b",
+      "content_type": "bi_mat_ha_tang"
+    }
+  ],
   "hyperedge": [
     {
       "id": "he-00465dc349588ae60f5c2f0b",

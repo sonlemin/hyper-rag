@@ -1,6 +1,7 @@
 """Chụp ảnh đồ thị một space thành file JSON có commit (story 2.9).
 
     HYPER_RAG_MODULE=eval.chup_do_thi scripts/chay-may-chu.sh chup --space synth
+    HYPER_RAG_MODULE=eval.chup_do_thi scripts/chay-may-chu.sh chup --space synth --ghi-de
 
 Nhãn truy hồi vàng của Đo 3 gán tay theo *id hyperedge*, mà id chỉ sống trong
 Neo4j trên máy chủ. Gán nhãn thẳng vào một kho đang chạy là gán vào một thứ
@@ -26,6 +27,12 @@ Ba nguồn hợp lại thành một mục ảnh chụp:
 không xóa. Đây là script `eval/` đầu tiên chạm kho thật, nên nó chỉ được phép
 đọc; mọi đường ghi vẫn đi qua `api/`.
 
+**Ba rào ở phía ghi file**, vì ảnh chụp là file có commit và là neo của mọi id
+trong nhãn truy hồi vàng: chỉ space trong `SPACE_GHI_TRONG_REPO` được ghi vào
+cây repo (dữ liệu thật phải `--dich` ra ngoài); file đã có thì đòi `--ghi-de` và
+bản cũ giữ thành `.bak.json`; và loader phải nhận file **trước khi** nó thay bản
+cũ, không phải sau.
+
 Chạy dưới cờ ngữ cảnh hệ thống: hai method trên đều đòi cờ đó
 (`bat_buoc_ngu_canh_he_thong`) vì chúng trả nội dung và bỏ mệnh đề lọc. Đây là
 một harness đo chạy ngoài tiến trình phục vụ, cùng hạng với pipeline ingest,
@@ -39,6 +46,7 @@ import argparse
 import asyncio
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -54,7 +62,8 @@ from core.slots import SLOT_ROLES
 from core.system_context import system_context
 from eval.cau_hoi import (
     DUONG_DAN_ANH_MAC_DINH,
-    VERSION_HO_TRO,
+    VERSION_ANH,
+    AnhDoThiKhongHopLe,
     AnhDoThiRong,
     doc_anh_do_thi,
 )
@@ -64,6 +73,19 @@ POLICY_MAC_DINH = REPO_ROOT / "config" / "policy-toi-gian.yaml"
 
 # Namespace graph của upstream; cùng chuỗi mà `EngineACL` truyền xuống adapter.
 NAMESPACE_GRAPH: str = "chunk_entity_relation"
+
+# Space được phép ghi ảnh chụp vào cây repo. **Danh sách cho phép, không danh
+# sách cấm** (vòng review 03/09): script chạy dưới cờ system và dump nguyên văn
+# giá trị mọi slot của mọi hyperedge, gồm cả `bi_mat_ha_tang`. Một
+# `--space real` ghi vào `eval/anh_do_thi/real.json` là đưa dữ liệu công ty vào
+# lịch sử git, đúng thứ Policy của AGENTS.md cấm. Muốn chụp space khác thì phải
+# `--dich` ra ngoài cây repo, và khi đó người chạy đã tự khai là mình biết mình
+# đang cầm cái gì.
+SPACE_GHI_TRONG_REPO: frozenset[str] = frozenset({"synth"})
+
+# Đuôi bản lưu khi `--ghi-de`, cùng khuôn với `eval/ket_qua_do/<vòng>.bak.json`
+# của story 2.6: rác của một lần chạy, đã vào `.gitignore`, không commit.
+DUOI_BAN_CU: str = ".bak.json"
 
 # Ba biến môi trường không có mặc định nào an toàn. Thiếu chúng thì lỗi nổ ở
 # tầng driver ("không phân giải được tên máy") hoặc ở tầng file ("không có sổ
@@ -82,10 +104,60 @@ def thieu_bien_moi_truong(moi_truong=None) -> list[str]:
     return [ten for ten in BIEN_BAT_BUOC if not str(nguon.get(ten) or "").strip()]
 
 
+def ly_do_tu_choi_dich(space: str, dich: Path, goc_repo: Path | None = None) -> str | None:
+    """Lý do từ chối ghi ảnh chụp của `space` vào `dich`, hoặc `None` nếu được.
+
+    Chặn đúng một ca: space ngoài danh sách cho phép mà đích lại nằm trong cây
+    repo. Ảnh chụp là file **có commit**, còn thân của nó là nguyên văn mọi giá
+    trị slot; hai thứ đó cộng lại thì một lần `--space real` là một lần rò dữ
+    liệu công ty vào git, không có bước nào ở giữa để ai đó kịp nhận ra.
+    """
+    if space in SPACE_GHI_TRONG_REPO:
+        return None
+    goc = (REPO_ROOT if goc_repo is None else Path(goc_repo)).resolve()
+    try:
+        Path(dich).resolve().relative_to(goc)
+    except ValueError:
+        return None
+    return (
+        f"từ chối ghi ảnh chụp của space {space!r} vào {dich} (trong cây repo):"
+        f" chỉ {sorted(SPACE_GHI_TRONG_REPO)} được commit. Ảnh chụp mang nguyên văn"
+        " giá trị mọi slot, gồm cả tài liệu hạn chế, nên một space dữ liệu thật"
+        " phải ghi ra ngoài repo bằng --dich"
+    )
+
+
+def khoa_da_kiem(ids, khoa_tho) -> dict[str, str | None]:
+    """Khóa lọc theo id, sau khi tách hai trạng thái mà kho trả về.
+
+    `CHUA_GHI` và `KHONG_KHOA` **không** phải một thứ, và gộp chúng thành
+    `khoa: null` là để trần lý thuyết giải thích một nhãn chết bằng câu "hợp
+    nhất khác scope (AD-5)" - một câu nói sai nguyên nhân (vòng review 03/09).
+
+    - `KHONG_KHOA` (`None`) là ca AD-5 thật: node ở lại, không vai nào chạm tới.
+      Nó vào ảnh chụp, vì trần lý thuyết tụt đúng vì những ca này.
+    - `CHUA_GHI` là sổ tài liệu nói có mà graph nói không: hoặc một đợt nạp chết
+      giữa chừng, hoặc sổ và kho không cùng một `HYPER_RAG_WORKING_DIR`. Ghi một
+      ảnh chụp thiếu là để nhãn trỏ vào chỗ trống, nên **từ chối cả đợt**.
+    """
+    vang = [i for i in ids if khoa_tho.get(i, CHUA_GHI) is CHUA_GHI]
+    if vang:
+        raise AnhDoThiKhongHopLe(
+            [
+                f"{len(vang)} hyperedge có trong sổ tài liệu mà không có trong graph:"
+                f" {vang[:5]}{' ...' if len(vang) > 5 else ''} - sổ và kho lệch nhau"
+                " (đợt nạp chết giữa chừng, hoặc hai HYPER_RAG_WORKING_DIR khác nhau)"
+            ]
+        )
+    return {i: khoa_tho[i] for i in ids}
+
+
 def dung_anh(
     *,
     space: str,
     ngay_do: str,
+    policy_version: str,
+    tai_lieu,
     doc_key_theo_id,
     slots_theo_id,
     khoa_theo_id,
@@ -94,6 +166,11 @@ def dung_anh(
 
     Tách khỏi phần chạm kho để bộ test canh được hình dạng file mà không cần
     Neo4j: hình dạng này là hợp đồng của nhãn tay, và nó phải có test riêng.
+
+    `tai_lieu` là sổ tại thời điểm chụp (`doc_key`, `sha256` thân, `scope`,
+    `content_type`). Nó là dấu vết xuất xứ: không có nó thì sau này không ai
+    đối chiếu được ảnh chụp với bản corpus nào sinh ra nó, và một lần sửa tài
+    liệu mà quên chụp lại đi qua im lặng.
 
     Sắp xếp mọi thứ (id, `doc_key`, id entity trong từng vai, thứ tự vai theo
     `SLOT_ROLES`) để hai lần chụp trên cùng một kho cho **cùng một file**: một
@@ -117,32 +194,51 @@ def dung_anh(
             " chưa nạp gì thì không có gì để chụp, và một ảnh chụp rỗng ghi đè"
             " lên ảnh cũ là mất nguồn chuẩn của mọi id trong nhãn truy hồi vàng"
         )
+    muc_tai_lieu = sorted(
+        (dict(m) for m in tai_lieu), key=lambda m: m["doc_key"]
+    )
     return {
-        "version": VERSION_HO_TRO,
+        "version": VERSION_ANH,
         "space": space,
         "ngay_do": ngay_do,
+        "policy_version": policy_version,
+        "so_tai_lieu": len(muc_tai_lieu),
         "so_hyperedge": len(hyperedge),
         "so_hyperedge_da_nguon": sum(1 for h in hyperedge if len(h["doc_key"]) > 1),
+        "tai_lieu": muc_tai_lieu,
         "hyperedge": hyperedge,
     }
 
 
-def doc_so_tai_lieu(working_dir, space: str) -> tuple[dict[str, set[str]], list[str]]:
-    """`{id hyperedge: {doc_key}}` cộng danh sách `doc_key` đã đọc, từ sổ tài liệu."""
+def doc_so_tai_lieu(working_dir, space: str) -> tuple[dict[str, set[str]], list[dict]]:
+    """`({id hyperedge: {doc_key}}, [mục tài liệu])` đọc từ sổ tài liệu của space.
+
+    `MucTaiLieu.hyperedge` là `{id graph: id vector}`, nên chiều `doc_key` lấy
+    từ **khóa** của dict đó chứ không phải giá trị. Đọc nhầm một chiều là ảnh
+    chụp gán sai tài liệu cho mọi hyperedge mà vẫn tự khớp với chính nó.
+    """
     so = SoTaiLieu.mo(working_dir, space)
     theo_id: dict[str, set[str]] = {}
-    doc_keys = so.cac_doc_key()
-    for doc_key in doc_keys:
+    tai_lieu: list[dict] = []
+    for doc_key in so.cac_doc_key():
         muc = so.muc(doc_key)
+        tai_lieu.append(
+            {
+                "doc_key": doc_key,
+                "sha256": muc.sha256,
+                "scope": muc.scope,
+                "content_type": muc.content_type,
+            }
+        )
         for id_he in muc.hyperedge:
             theo_id.setdefault(id_he, set()).add(doc_key)
-    return theo_id, doc_keys
+    return theo_id, tai_lieu
 
 
 async def chup(space: str, policy_version: str, cau_hinh: dict) -> dict:
     """Đọc graph rồi trả dict ảnh chụp; đóng driver dù hỏng ở đâu."""
     working_dir = cau_hinh[WORKING_DIR_KEY]
-    doc_key_theo_id, doc_keys = doc_so_tai_lieu(working_dir, space)
+    doc_key_theo_id, tai_lieu = doc_so_tai_lieu(working_dir, space)
     ids = sorted(doc_key_theo_id)
 
     graph = Neo4jACLGraphStorage(
@@ -155,33 +251,47 @@ async def chup(space: str, policy_version: str, cau_hinh: dict) -> dict:
     finally:
         await graph.close()
 
-    vang_khoi_graph = [i for i in ids if khoa_tho.get(i) is CHUA_GHI]
-    if vang_khoi_graph:
-        # Sổ nói có, graph nói không: hoặc một đợt nạp chết giữa chừng, hoặc
-        # sổ và kho không cùng một `HYPER_RAG_WORKING_DIR`. Cả hai đều làm nhãn
-        # trỏ vào chỗ trống, nên nói ra ngay chứ không ghi một ảnh chụp thiếu.
-        print(
-            f"CẢNH BÁO: {len(vang_khoi_graph)} hyperedge có trong sổ tài liệu mà"
-            f" không có trong graph: {vang_khoi_graph[:5]}",
-            file=sys.stderr,
-        )
-    khoa_theo_id = {i: (None if khoa_tho.get(i) is CHUA_GHI else khoa_tho.get(i)) for i in ids}
-
-    print(f"{len(doc_keys)} tài liệu trong sổ, {len(ids)} hyperedge")
+    print(f"{len(tai_lieu)} tài liệu trong sổ, {len(ids)} hyperedge")
     return dung_anh(
         space=space,
         ngay_do=thoi_diem_utc(),
+        policy_version=policy_version,
+        tai_lieu=tai_lieu,
         doc_key_theo_id=doc_key_theo_id,
         slots_theo_id=slots_theo_id,
-        khoa_theo_id=khoa_theo_id,
+        khoa_theo_id=khoa_da_kiem(ids, khoa_tho),
     )
 
 
-def ghi_anh(dich: Path, anh: dict) -> Path:
-    """Ghi ảnh chụp, `indent=2` và `ensure_ascii=False` để diff git đọc được."""
+def ghi_anh(dich: Path, anh: dict, *, ghi_de: bool = False) -> Path:
+    """Ghi ảnh chụp **sau khi** loader đã nhận nó, và chỉ khi được phép ghi đè.
+
+    Hai rào, cả hai theo khuôn story 2.6/2.7 đã đặt cho file đo có commit:
+
+    - **Kiểm trước, thay sau.** Ghi ra file tạm rồi `doc_anh_do_thi` trên chính
+      file tạm đó; chỉ khi loader nhận thì mới `os.replace`. Trước đó thứ tự
+      ngược lại, nên một ảnh chụp hỏng mà không rỗng đè mất bản tốt rồi mới nổ.
+    - **Không ghi đè lặng.** File đã có mà không `--ghi-de` là từ chối; có
+      `--ghi-de` thì bản cũ giữ lại thành `<tên>.bak.json` trước khi thay. Ảnh
+      chụp là neo của 41 cặp nhãn tay, một lần chạy nhầm không được phép làm
+      mất nó.
+    """
     dich = Path(dich)
+    if dich.exists() and not ghi_de:
+        raise FileExistsError(
+            f"{dich} đã có: thêm --ghi-de để thay nó. Ảnh chụp là nguồn chuẩn của"
+            " mọi id trong nhãn truy hồi vàng, nên nó không bị ghi đè lặng lẽ"
+        )
     dich.parent.mkdir(parents=True, exist_ok=True)
-    dich.write_text(json.dumps(anh, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    tam = dich.with_name(dich.name + ".tam")
+    try:
+        tam.write_text(json.dumps(anh, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        doc_anh_do_thi(tam)
+        if dich.exists():
+            shutil.copy2(dich, dich.with_name(dich.name + DUOI_BAN_CU))
+        os.replace(tam, dich)
+    finally:
+        tam.unlink(missing_ok=True)
     return dich
 
 
@@ -195,14 +305,20 @@ def _tham_so(argv: list[str]) -> argparse.Namespace:
         type=Path,
         default=None,
         metavar="FILE",
-        help=f"file ảnh chụp (mặc định {DUONG_DAN_ANH_MAC_DINH.name} theo space)",
+        help=f"file ảnh chụp (mặc định {DUONG_DAN_ANH_MAC_DINH.parent}/<space>.json)",
     )
+    p.add_argument("--ghi-de", action="store_true", dest="ghi_de", help="thay ảnh chụp đã có")
     p.add_argument("--policy", type=Path, default=POLICY_MAC_DINH, help="bảng chính sách")
     return p.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     ts = _tham_so(sys.argv[1:] if argv is None else list(argv))
+    dich = ts.dich or DUONG_DAN_ANH_MAC_DINH.with_name(f"{ts.space}.json")
+    ly_do = ly_do_tu_choi_dich(ts.space, dich)
+    if ly_do:
+        print(ly_do, file=sys.stderr)
+        return 1
     thieu = thieu_bien_moi_truong()
     if thieu:
         print(
@@ -211,21 +327,25 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 1
-    dich = ts.dich or DUONG_DAN_ANH_MAC_DINH.with_name(f"{ts.space}.json")
+    if dich.exists() and not ts.ghi_de:
+        print(
+            f"{dich} đã có: thêm --ghi-de để thay nó (bản cũ giữ thành"
+            f" {dich.name}{DUOI_BAN_CU})",
+            file=sys.stderr,
+        )
+        return 1
     policy = load_policy(ts.policy)
     cau_hinh = cau_hinh_kho_tu_moi_truong()
     try:
         anh = asyncio.run(chup(ts.space, policy.policy_version, cau_hinh))
-    except AnhDoThiRong as loi:
+        ghi_anh(dich, anh, ghi_de=ts.ghi_de)
+    except (AnhDoThiKhongHopLe, FileExistsError) as loi:
         print(str(loi), file=sys.stderr)
         return 1
-    ghi_anh(dich, anh)
-    # Đọc lại bằng chính loader mà nhãn dùng: một file ghi ra mà loader từ chối
-    # là một file không dùng được, và biết điều đó ngay tại đây rẻ hơn nhiều so
-    # với biết nó lúc CI đỏ trên máy dev.
     da_doc = doc_anh_do_thi(dich)
     print(
-        f"{da_doc.so_hyperedge} hyperedge, {len(da_doc.da_nguon())} đa nguồn,"
+        f"{da_doc.so_tai_lieu} tài liệu, {da_doc.so_hyperedge} hyperedge,"
+        f" {len(da_doc.da_nguon())} đa nguồn,"
         f" {sum(1 for h in da_doc.hyperedge if h.khoa is None)} không khóa"
     )
     print(f"ghi {dich}")

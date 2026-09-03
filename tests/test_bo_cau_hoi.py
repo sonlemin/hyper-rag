@@ -18,6 +18,7 @@ Bộ test không chạm kho, không gọi LLM, không cần mạng: nó đọc �
 commit chứ không đọc Neo4j.
 """
 
+import html
 import json
 import subprocess
 import sys
@@ -27,14 +28,19 @@ import pytest
 
 from adapters.identity_seed import nap_danh_tinh
 from adapters.policy_loader import load_policy
+from core.ingest_scan import quet_thu_muc
 from core.keys import filter_key
 from core.slots import SLOT_ROLES, SLOT_ROLE_SET
 from eval.cau_hoi import (
+    HAN_CHE,
+    HAN_CHE_N7_QUA_XAC_DINH,
+    HAN_CHE_VAI_HOI_KHONG_THAY,
     NHOM,
     NHOM_CO_NHAN,
     PHAN_BO,
     SO_CAU_BO_VANG,
     TONG_CAU,
+    VERSION_ANH,
     AnhDoThiKhongHopLe,
     AnhDoThiRong,
     BoCauHoiKhongHopLe,
@@ -44,10 +50,33 @@ from eval.cau_hoi import (
     doc_bo_cau_hoi,
     doc_nhan_truy_hoi,
     tran_theo_vai,
+    tran_theo_vai_hoi,
 )
+
+# Bốn con số trần khóa cứng (vòng review 03/09). AGENTS.md đòi mọi số đi vào
+# spec/ledger/sprint-status phải có một chỗ khóa trong bộ test: cho `owner` vào
+# diện bị che, hay story 3.2 mở bảng chính sách, là cả bảng đổi - và khi đó bộ
+# test phải đỏ chứ không phải ba tài liệu lặng lẽ nói sai.
+#
+# Hai bảng, hai câu hỏi khác nhau: `theo_vai` so hai vai trên **mọi** câu,
+# `theo_vai_hoi` chấm mỗi câu bằng **vai hỏi của chính nó** - đó mới là mẫu số
+# mà Đo 3 chạy.
+SO_KHOA_TRAN = {
+    "so_cap": 41,
+    "so_cau_co_nhan": 22,
+    "theo_vai": {
+        "devops": {"ton_tai": 20, "tra_loi_duoc": 19, "cau_tran_khong": 9},
+        "tech_support": {"ton_tai": 11, "tra_loi_duoc": 4, "cau_tran_khong": 13},
+    },
+    "theo_vai_hoi": {"ton_tai": 16, "tra_loi_duoc": 11, "cau_tran_khong": 10},
+}
+
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 POLICY = REPO_ROOT / "config" / "policy-toi-gian.yaml"
+
+# Ảnh chụp phải khớp một-một với hai thư mục tài liệu nạp vào space `synth`.
+THU_MUC_TAI_LIEU = (REPO_ROOT / "eval" / "corpus", REPO_ROOT / "eval" / "data")
 
 # Hai vai của `config/danh-tinh-demo.yaml`. Hằng này là thứ *được kiểm*
 # (`test_hai_vai_do_lay_tu_seed_danh_tinh`), không phải nguồn: seed là nguồn.
@@ -81,14 +110,29 @@ def _ghi(tmp_path: Path, ten: str, du_lieu) -> Path:
     return dich
 
 
-def _anh(tmp_path: Path, hyperedge=None, **doi) -> Path:
+def _tai_lieu(doc_key: str, khoa: str = "noi_bo:runbook") -> dict:
+    scope, _, content_type = khoa.partition(":")
+    return {
+        "doc_key": doc_key,
+        "sha256": "0" * 64,
+        "scope": scope,
+        "content_type": content_type,
+    }
+
+
+def _anh(tmp_path: Path, hyperedge=None, tai_lieu=None, **doi) -> Path:
     he = [_he("he-aaa", ["t1.md"], "App01")] if hyperedge is None else hyperedge
+    if tai_lieu is None:
+        tai_lieu = [_tai_lieu(d) for d in sorted({d for h in he for d in h["doc_key"]})]
     du_lieu = {
-        "version": 1,
+        "version": VERSION_ANH,
         "space": "synth",
         "ngay_do": "2026-09-03T00:00:00+00:00",
+        "policy_version": "0" * 64,
+        "so_tai_lieu": len(tai_lieu),
         "so_hyperedge": len(he),
         "so_hyperedge_da_nguon": sum(1 for h in he if len(h["doc_key"]) > 1),
+        "tai_lieu": tai_lieu,
         "hyperedge": he,
     }
     du_lieu.update(doi)
@@ -105,6 +149,8 @@ def _mot_cau(i: int, nhom: str, bo_vang: bool) -> dict:
         "bo_vang": bo_vang,
         "dap_an": "Đáp án tay." if bo_vang else "",
         "y_chinh": ["ý chính"] if bo_vang else [],
+        "neo_loai": ["noi_bo:runbook"] if nhom == "N7" else [],
+        "han_che": [],
     }
 
 
@@ -342,7 +388,7 @@ def test_nhan_khong_loc_theo_muc_tiet_lo(nhan, anh):
 
 def test_anh_chup_rong_bi_tu_choi(tmp_path):
     """Hàng "Ảnh chụp rỗng": nêu space và số 0, không trả một ảnh chụp trống."""
-    duong_dan = _anh(tmp_path, hyperedge=[], so_hyperedge=0)
+    duong_dan = _anh(tmp_path, hyperedge=[], tai_lieu=[_tai_lieu("t1.md")], so_hyperedge=0)
     with pytest.raises(AnhDoThiRong) as loi:
         doc_anh_do_thi(duong_dan)
     assert "synth" in str(loi.value) and "0" in str(loi.value)
@@ -678,19 +724,33 @@ def test_tran_khong_bao_gio_vuot_tong_va_tra_loi_duoc_khong_vuot_ton_tai(nhan, a
             assert 0 <= c.tra_loi_duoc <= c.ton_tai <= c.tong
 
 
+def _bo_ba_tran(tmp_path: Path, he, dau=(HAN_CHE_VAI_HOI_KHONG_THAY,)):
+    """Ba file khớp nhau quanh một tập hyperedge cho trước, kèm dấu hạn chế đúng.
+
+    `doc_nhan_truy_hoi` kiểm dấu `han_che` bằng chính bảng chính sách, nên khuôn
+    của ca trần phải khai dấu mà phép tính sinh ra - đó chính là điều làm cho
+    dấu thành một khẳng định kiểm được chứ không phải ghi chú.
+    """
+    cau = _cac_cau()
+    for c in cau:
+        if c["nhom"] in NHOM_CO_NHAN:
+            c["han_che"] = list(dau)
+    # Một hyperedge độn ở `noi_bo:runbook` để vùng `neo_loai` của các câu N7
+    # tồn tại trong ảnh chụp. Nó ở một tài liệu khác và không nhãn nào trỏ tới,
+    # nên nó không đụng vào con số trần đang được đo.
+    he = list(he) + [_he("he-zzz", ["t9.md"], "Bộ lọc độn")]
+    duong_anh = _anh(tmp_path, he)
+    anh = doc_anh_do_thi(duong_anh)
+    bo = doc_bo_cau_hoi(_bo_cau(tmp_path, cau))
+    nhan = doc_nhan_truy_hoi(_nhan(tmp_path, _cac_nhan(cau)), bo=bo, anh=anh)
+    return bo, nhan, anh
+
+
 def test_tran_bang_khong_la_canh_bao_chu_khong_phai_loi(tmp_path):
     """Hàng "Trần lý thuyết bằng 0": tính ra 0 và in cảnh báo, không ném."""
-    cau = _cac_cau()
     he = [_he("he-aaa", ["t1.md"], "App01", cause="x", khoa=filter_key("noi_bo", "log"))]
-    tran = tran_theo_vai(
-        doc_nhan_truy_hoi(
-            _nhan(tmp_path, _cac_nhan(cau)),
-            bo=doc_bo_cau_hoi(_bo_cau(tmp_path, cau)),
-            anh=doc_anh_do_thi(_anh(tmp_path, he)),
-        ),
-        doc_anh_do_thi(_anh(tmp_path, he)),
-        policy=load_policy(POLICY),
-    )
+    _, nhan, anh = _bo_ba_tran(tmp_path, he)
+    tran = tran_theo_vai(nhan, anh, policy=load_policy(POLICY))
     for vai, t in tran.items():
         assert t.ton_tai == 0, vai
         assert t.canh_bao(), f"{vai}: trần 0 mà không có cảnh báo nào"
@@ -698,18 +758,11 @@ def test_tran_bang_khong_la_canh_bao_chu_khong_phai_loi(tmp_path):
 
 
 def test_hyperedge_khong_khoa_khong_vao_tran_cua_vai_nao(tmp_path):
-    cau = _cac_cau()
     he = [_he("he-aaa", ["t1.md", "t2.md"], "App01", cause="x", khoa=None)]
-    tran = tran_theo_vai(
-        doc_nhan_truy_hoi(
-            _nhan(tmp_path, _cac_nhan(cau)),
-            bo=doc_bo_cau_hoi(_bo_cau(tmp_path, cau)),
-            anh=doc_anh_do_thi(_anh(tmp_path, he)),
-        ),
-        doc_anh_do_thi(_anh(tmp_path, he)),
-        policy=load_policy(POLICY),
-    )
+    _, nhan, anh = _bo_ba_tran(tmp_path, he)
+    tran = tran_theo_vai(nhan, anh, policy=load_policy(POLICY))
     assert all(t.ton_tai == 0 for t in tran.values())
+    assert all("AD-5" in " ".join(c.ly_do) for t in tran.values() for c in t.cau)
 
 
 def test_slot_bi_che_lam_mat_lop_tra_loi_duoc_chu_khong_mat_lop_ton_tai(tmp_path):
@@ -719,7 +772,6 @@ def test_slot_bi_che_lam_mat_lop_tra_loi_duoc_chu_khong_mat_lop_ton_tai(tmp_path
     hyperedge vẫn *tồn tại* trong ngữ cảnh nhưng slot mang đáp án bị che, nên
     lớp "trả lời được" mất còn lớp "tồn tại" thì không.
     """
-    cau = _cac_cau()
     he = [
         _he(
             "he-aaa",
@@ -729,15 +781,8 @@ def test_slot_bi_che_lam_mat_lop_tra_loi_duoc_chu_khong_mat_lop_ton_tai(tmp_path
             khoa=filter_key("noi_bo", "bao_cao_su_co"),
         )
     ]
-    tran = tran_theo_vai(
-        doc_nhan_truy_hoi(
-            _nhan(tmp_path, _cac_nhan(cau)),
-            bo=doc_bo_cau_hoi(_bo_cau(tmp_path, cau)),
-            anh=doc_anh_do_thi(_anh(tmp_path, he)),
-        ),
-        doc_anh_do_thi(_anh(tmp_path, he)),
-        policy=load_policy(POLICY),
-    )
+    _, nhan, anh = _bo_ba_tran(tmp_path, he, dau=())
+    tran = tran_theo_vai(nhan, anh, policy=load_policy(POLICY))
     ts = tran["tech_support"]
     assert ts.ton_tai == ts.tong > 0
     assert ts.tra_loi_duoc == 0
@@ -758,17 +803,53 @@ def _chay_xem(*args):
     )
 
 
-def test_trang_soat_dung_duoc_va_in_phan_bo(tmp_path):
+def test_trang_soat_dung_duoc_va_in_ca_hai_bang_tran(tmp_path):
     dich = tmp_path / "bo_cau_hoi.html"
     kq = _chay_xem(str(dich))
     assert kq.returncode == 0, kq.stderr
     assert "52" in kq.stdout and "30" in kq.stdout
-    trang = dich.read_text(encoding="utf-8")
-    assert "<html" in trang
-    for nhom in NHOM:
-        assert nhom in trang
     for vai in HAI_VAI:
-        assert vai in trang
+        assert f"trần {vai}:" in kq.stdout
+    assert "vai hỏi của từng câu" in kq.stdout
+    for h in HAN_CHE:
+        assert f"dấu {h}:" in kq.stdout
+    assert dich.read_text(encoding="utf-8").startswith("<!doctype html>")
+
+
+def test_than_trang_soat_mang_dung_fact_va_dung_o_dap_an(bo, nhan, anh):
+    """Gọi thẳng `dung_html` - nó là hàm thuần - và soi *thân* trang, không chỉ vỏ.
+
+    Bản trước chỉ assert rc=0, có `<html`, có tên 7 nhóm và 2 vai; cả bốn thứ
+    đó vẫn thỏa kể cả khi thân trang biến mất, vì tên nhóm đã nằm ở bảng phân
+    bố đầu trang. Trang này là **cửa duy nhất** để soát 41 cặp nhãn tay bằng
+    mắt, nên nó phải được canh ở đúng ba chỗ mà người soát đọc: id hyperedge,
+    câu render, và ô nào được đánh dấu là slot mang đáp án.
+    """
+    from eval.cau_hoi import tran_theo_vai_hoi
+    from eval.xem_cau_hoi import dung_html
+
+    policy = load_policy(POLICY)
+    trang = dung_html(
+        bo,
+        nhan,
+        anh,
+        tran_theo_vai(nhan, anh, policy=policy),
+        tran_theo_vai_hoi(bo, nhan, anh, policy=policy),
+    )
+    theo_id = anh.theo_id
+    for n in nhan.nhan:
+        for he in n.hyperedge:
+            assert he.id in trang, f"{n.cau_id}: thiếu id {he.id}"
+            assert html.escape(theo_id[he.id].cau()) in trang, f"{n.cau_id}: thiếu câu fact"
+    # Mỗi ô `class="dap"` là một slot đáp án của một cặp; đổi luật tô (ví dụ tô
+    # theo "vai đã điền" thay vì "vai mang đáp án") là con số này lệch ngay.
+    assert trang.count('<td class="dap">') == sum(
+        len(he.slot_dap_an) for n in nhan.nhan for he in n.hyperedge
+    )
+    for c in bo.cau:
+        assert html.escape(c.cau_hoi) in trang
+        for h in c.han_che:
+            assert h in trang
 
 
 def test_trang_soat_thieu_file_thi_neu_ten_file_va_thoat_mot(tmp_path):
@@ -778,6 +859,24 @@ def test_trang_soat_thieu_file_thi_neu_ten_file_va_thoat_mot(tmp_path):
     assert kq.returncode == 1
     assert "khong-co.json" in kq.stderr
     assert not (tmp_path / "x.html").exists()
+
+
+def test_trang_soat_bang_chinh_sach_hong_thi_khong_do_traceback(tmp_path):
+    """`load_policy` và `tran_theo_vai` đều ném `PolicyInvalid`; docstring hứa in lý do."""
+    policy = tmp_path / "policy.yaml"
+    policy.write_text("version: 1\nroles: {}\n", encoding="utf-8")
+    kq = _chay_xem(str(tmp_path / "x.html"), "--policy", str(policy))
+    assert kq.returncode == 1
+    assert "Traceback" not in kq.stderr
+    assert str(policy) in kq.stderr
+
+
+def test_trang_soat_khai_help_cho_bon_duong_dan():
+    kq = _chay_xem("--help")
+    assert kq.returncode == 0
+    for co in ("--bo-cau-hoi", "--nhan", "--anh", "--policy"):
+        assert co in kq.stdout
+    assert "eval/anh_do_thi/synth.json" in kq.stdout
 
 
 # --------------------------------------------------------------------------
@@ -791,10 +890,14 @@ def test_dung_anh_gom_doc_key_va_dem_da_nguon():
     anh = dung_anh(
         space="synth",
         ngay_do="2026-09-03T00:00:00+00:00",
+        policy_version="0" * 64,
+        tai_lieu=[_tai_lieu(d) for d in ("t2.md", "t1.md", "t0.md")],
         doc_key_theo_id={"he-b": {"t2.md"}, "he-a": {"t1.md", "t0.md"}},
         slots_theo_id={"he-a": {"cause": ["x"], "subject": ["App01"]}, "he-b": {"subject": ["Log01"]}},
         khoa_theo_id={"he-a": "noi_bo:runbook", "he-b": None},
     )
+    assert [t["doc_key"] for t in anh["tai_lieu"]] == ["t0.md", "t1.md", "t2.md"]
+    assert anh["so_tai_lieu"] == 3 and anh["policy_version"] == "0" * 64
     assert [h["id"] for h in anh["hyperedge"]] == ["he-a", "he-b"]
     assert anh["hyperedge"][0]["doc_key"] == ["t0.md", "t1.md"]
     assert list(anh["hyperedge"][0]["slots"]) == ["subject", "cause"], "thứ tự SLOT_ROLES"
@@ -808,6 +911,8 @@ def test_dung_anh_rong_thi_nem_anh_do_thi_rong():
         dung_anh(
             space="synth",
             ngay_do="2026-09-03T00:00:00+00:00",
+            policy_version="0" * 64,
+            tai_lieu=[],
             doc_key_theo_id={},
             slots_theo_id={},
             khoa_theo_id={},
@@ -823,3 +928,373 @@ def test_chup_thieu_bien_moi_truong_neu_ten_bien():
     assert thieu == list(BIEN_BAT_BUOC)
     assert "NEO4J_URI" in thieu and "HYPER_RAG_WORKING_DIR" in thieu
     assert thieu_bien_moi_truong({b: "x" for b in BIEN_BAT_BUOC}) == []
+
+# --------------------------------------------------------------------------
+# Số khóa: bốn con số trần đi vào spec/ledger/sprint-status
+# --------------------------------------------------------------------------
+
+
+def test_so_cap_va_so_cau_co_nhan_khop_so_khoa(bo, nhan):
+    assert nhan.so_cap() == SO_KHOA_TRAN["so_cap"]
+    assert len(nhan.nhan) == SO_KHOA_TRAN["so_cau_co_nhan"]
+
+
+def test_tran_theo_vai_khop_so_khoa(nhan, anh):
+    """Khóa **giá trị**, không chỉ khóa quan hệ.
+
+    Trước vòng review chỉ có `devops >= tech_support` và chặn trên dưới, nên cho
+    `owner` vào diện bị che hay đổi bảng chính sách là bốn con số trong spec,
+    ledger và `sprint-status.yaml` sai mà không assert nào đỏ. AGENTS.md đòi
+    đúng điều ngược lại.
+    """
+    tran = tran_theo_vai(nhan, anh, policy=load_policy(POLICY))
+    thay = {
+        vai: {
+            "ton_tai": t.ton_tai,
+            "tra_loi_duoc": t.tra_loi_duoc,
+            "cau_tran_khong": len(t.cau_tran_khong()),
+        }
+        for vai, t in tran.items()
+    }
+    assert thay == SO_KHOA_TRAN["theo_vai"]
+
+
+def test_tran_theo_vai_hoi_khop_so_khoa(bo, nhan, anh):
+    """Mẫu số mà Đo 3 thật sự chạy: mỗi câu chấm bằng `vai_hoi` của chính nó.
+
+    `tran_theo_vai` tính cả hai vai trên cả 41 cặp, tức mỗi cặp được tính bằng
+    vai *dễ nhất* trong hai vai - một con số lạc quan hơn phép đo. Hai bảng
+    phải cùng có số khóa, nếu không người đọc lấy nhầm bảng.
+    """
+    t = tran_theo_vai_hoi(bo, nhan, anh, policy=load_policy(POLICY))
+    assert {
+        "ton_tai": t.ton_tai,
+        "tra_loi_duoc": t.tra_loi_duoc,
+        "cau_tran_khong": len(t.cau_tran_khong()),
+    } == SO_KHOA_TRAN["theo_vai_hoi"]
+    assert t.ton_tai <= tran_theo_vai(nhan, anh, policy=load_policy(POLICY))["devops"].ton_tai
+
+
+def test_canh_bao_neu_ca_mat_mot_phan_chu_khong_chi_ca_tran_khong(nhan, anh):
+    """Ca L1 của Đo 3 phải lên khối cảnh báo, dù `ton_tai > 0`.
+
+    n5-01, n5-03 và n5-07 với `tech_support` là đúng ba câu mang luận điểm
+    "biết tồn tại nhưng không đọc được nội dung"; bỏ chúng khỏi cảnh báo là để
+    người soát đọc bảng tổng rồi tưởng chúng lành.
+    """
+    ts = tran_theo_vai(nhan, anh, policy=load_policy(POLICY))["tech_support"]
+    mat_mot_phan = {c.cau_id for c in ts.cau if c.ton_tai > 0 and c.tra_loi_duoc == 0}
+    assert {"n5-01", "n5-03", "n5-07"} <= mat_mot_phan
+    van_ban = " ".join(ts.canh_bao())
+    for cau_id in mat_mot_phan:
+        assert cau_id in van_ban
+    assert len(ts.canh_bao()) > len(ts.cau_tran_khong())
+
+
+# --------------------------------------------------------------------------
+# Ảnh chụp khớp một-một với hai thư mục tài liệu
+# --------------------------------------------------------------------------
+
+
+def test_anh_chup_khop_mot_mot_voi_hai_thu_muc_tai_lieu(anh):
+    """Cùng luật một-một mà 2.5 đặt cho bộ vàng và 2.8 đặt cho corpus.
+
+    Space `synth` nạp đúng `eval/corpus/` cộng `eval/data/`. Không canh thì xóa
+    hay đổi tên một tài liệu corpus vẫn để `uv run pytest` xanh, trong khi ảnh
+    chụp - nguồn chuẩn của mọi id nhãn - đã nói về một kho không còn tồn tại.
+    """
+    tren_dia = {}
+    for thu_muc in THU_MUC_TAI_LIEU:
+        for t in quet_thu_muc(thu_muc).chap_nhan:
+            tren_dia[t.doc_key] = t
+    trong_anh = {t.doc_key: t for t in anh.tai_lieu}
+    assert set(trong_anh) == set(tren_dia), (
+        f"thừa trong ảnh {sorted(set(trong_anh) - set(tren_dia))},"
+        f" thiếu {sorted(set(tren_dia) - set(trong_anh))}"
+    )
+
+
+def test_sha256_va_nhan_quyen_cua_anh_chup_khop_file_tren_dia(anh):
+    """Dấu vết xuất xứ phải còn đúng: sửa một chữ trong corpus là phải chụp lại."""
+    import hashlib
+
+    tren_dia = {}
+    for thu_muc in THU_MUC_TAI_LIEU:
+        for t in quet_thu_muc(thu_muc).chap_nhan:
+            tren_dia[t.doc_key] = t
+    lech = [
+        t.doc_key
+        for t in anh.tai_lieu
+        if hashlib.sha256(tren_dia[t.doc_key].noi_dung.encode("utf-8")).hexdigest() != t.sha256
+        or (tren_dia[t.doc_key].scope, tren_dia[t.doc_key].content_type)
+        != (t.scope, t.content_type)
+    ]
+    assert not lech, f"tài liệu đã đổi sau lần chụp gần nhất: {lech} - chụp lại"
+
+
+def test_anh_chup_mang_du_dau_vet_xuat_xu(anh):
+    assert anh.so_tai_lieu == len(anh.tai_lieu) == 50
+    assert len(anh.policy_version) == 64
+    assert anh.doc_key >= {t.doc_key for t in anh.tai_lieu}
+
+
+# --------------------------------------------------------------------------
+# Nhánh khớp-chứa của neo mô tả
+# --------------------------------------------------------------------------
+
+
+def test_neo_mo_ta_noi_sang_khop_chua_khi_khong_khop_bang(tmp_path):
+    """Bậc hai của `tim_theo_neo` phải có ca chạy vào.
+
+    41/41 cặp thật khớp ở bậc "khớp bằng", nên nếu không có test này thì thay ba
+    dòng cuối của `tim_theo_neo` bằng `return ()` mà cả bộ test vẫn xanh - trong
+    khi đó là **đường cứu nhãn duy nhất** sau khi một lần re-ingest đổi id, và
+    là thứ story 2.12 sẽ phải dựa vào.
+    """
+    he = [_he("he-aaa", ["t1.md"], "trang thanh toán của App01", cause="x")]
+    anh = doc_anh_do_thi(_anh(tmp_path, he))
+    assert anh.tim_theo_neo("t1.md", "trang thanh toán của App01")[0].id == "he-aaa"
+    # `App01` không trùng *bằng* giá trị `subject` nào, nên phải rơi xuống bậc chứa.
+    (ung_vien,) = anh.tim_theo_neo("t1.md", "App01")
+    assert ung_vien.id == "he-aaa"
+    assert anh.tim_theo_neo("t1.md", "App02") == ()
+
+
+def test_khop_bang_thang_khop_chua_khi_ca_hai_deu_co(tmp_path):
+    """Bậc một chặn bậc hai: neo ngắn đúng bằng một `subject` không thành mơ hồ."""
+    he = [
+        _he("he-aaa", ["t1.md"], "App01", cause="x"),
+        _he("he-bbb", ["t1.md"], "trang thanh toán của App01", cause="y"),
+    ]
+    anh = doc_anh_do_thi(_anh(tmp_path, he))
+    assert [h.id for h in anh.tim_theo_neo("t1.md", "App01")] == ["he-aaa"]
+
+
+# --------------------------------------------------------------------------
+# Đường đọc sổ tài liệu và ba rào ghi file của `eval/chup_do_thi.py`
+# --------------------------------------------------------------------------
+
+
+def _so_tai_lieu(tmp_path: Path):
+    """Sổ tài liệu thật trong `tmp_path`: hai tài liệu chia nhau một hyperedge."""
+    from adapters.ingest import MucTaiLieu, SoTaiLieu
+
+    so = SoTaiLieu.mo(tmp_path, "synth")
+    so.dat(
+        "a.md",
+        MucTaiLieu(
+            doc_id="doc-a",
+            sha256="a" * 64,
+            scope="noi_bo",
+            content_type="runbook",
+            chunk_ids=["chunk-a"],
+            hyperedge={"he-chung": "rel-1", "he-rieng-a": "rel-2"},
+        ),
+    )
+    so.dat(
+        "b.md",
+        MucTaiLieu(
+            doc_id="doc-b",
+            sha256="b" * 64,
+            scope="noi_bo",
+            content_type="sop",
+            chunk_ids=["chunk-b"],
+            hyperedge={"he-chung": "rel-3"},
+        ),
+    )
+    so.luu()
+    return so
+
+
+def test_doc_so_tai_lieu_lay_doc_key_tu_khoa_khong_phai_gia_tri(tmp_path):
+    """`MucTaiLieu.hyperedge` là `{id graph: id vector}`.
+
+    Đọc nhầm chiều (`.values()`) thì ảnh chụp gán sai tài liệu cho **mọi**
+    hyperedge mà vẫn tự khớp với chính nó, và `so_hyperedge_da_nguon` - con số
+    đang đóng một khoản ledger - vẫn ra một số trông hợp lý. Không cần Neo4j để
+    bắt lỗi đó.
+    """
+    from eval.chup_do_thi import doc_so_tai_lieu, dung_anh
+
+    _so_tai_lieu(tmp_path)
+    theo_id, tai_lieu = doc_so_tai_lieu(tmp_path, "synth")
+    assert theo_id == {
+        "he-chung": {"a.md", "b.md"},
+        "he-rieng-a": {"a.md"},
+    }, "doc_key phải lấy từ khóa của `hyperedge`, không phải từ id vector"
+    assert [t["doc_key"] for t in tai_lieu] == ["a.md", "b.md"]
+    assert [t["sha256"] for t in tai_lieu] == ["a" * 64, "b" * 64]
+    assert [t["content_type"] for t in tai_lieu] == ["runbook", "sop"]
+
+    anh = dung_anh(
+        space="synth",
+        ngay_do="2026-09-03T00:00:00+00:00",
+        policy_version="0" * 64,
+        tai_lieu=tai_lieu,
+        doc_key_theo_id=theo_id,
+        slots_theo_id={i: {"subject": ["X"]} for i in theo_id},
+        khoa_theo_id={i: "noi_bo:runbook" for i in theo_id},
+    )
+    assert anh["so_hyperedge_da_nguon"] == 1
+    assert anh["so_tai_lieu"] == 2
+
+
+def test_khoa_da_kiem_tach_chua_ghi_khoi_khong_khoa():
+    """`CHUA_GHI` là sổ và graph lệch nhau; `KHONG_KHOA` là ca AD-5. Hai thứ khác nhau."""
+    from core.keys import CHUA_GHI, KHONG_KHOA
+    from eval.chup_do_thi import khoa_da_kiem
+
+    assert khoa_da_kiem(
+        ["a", "b"], {"a": "noi_bo:runbook", "b": KHONG_KHOA}
+    ) == {"a": "noi_bo:runbook", "b": None}
+    with pytest.raises(AnhDoThiKhongHopLe) as loi:
+        khoa_da_kiem(["a", "b"], {"a": "noi_bo:runbook", "b": CHUA_GHI})
+    assert "b" in str(loi.value) and "sổ" in str(loi.value)
+
+
+def test_khong_ghi_anh_chup_space_khac_synth_vao_cay_repo(tmp_path):
+    """Rào dữ liệu thật: ảnh chụp dump nguyên văn mọi giá trị slot, và nó có commit."""
+    from eval.chup_do_thi import REPO_ROOT as GOC, ly_do_tu_choi_dich
+
+    trong_repo = GOC / "eval" / "anh_do_thi" / "real.json"
+    ly_do = ly_do_tu_choi_dich("real", trong_repo)
+    assert ly_do and "real" in ly_do and str(trong_repo) in ly_do
+    assert ly_do_tu_choi_dich("synth", trong_repo) is None
+    assert ly_do_tu_choi_dich("real", tmp_path / "real.json") is None
+
+
+def test_ghi_anh_kiem_truoc_khi_thay_ban_cu(tmp_path):
+    """Ảnh chụp hỏng mà không rỗng **không** được đè mất bản tốt."""
+    from eval.chup_do_thi import ghi_anh
+
+    dich = tmp_path / "synth.json"
+    tot = json.loads(_anh(tmp_path).read_text(encoding="utf-8"))
+    ghi_anh(dich, tot)
+    hong = json.loads(json.dumps(tot))
+    hong["hyperedge"][0]["slots"] = {}
+    with pytest.raises(AnhDoThiKhongHopLe):
+        ghi_anh(dich, hong, ghi_de=True)
+    assert json.loads(dich.read_text(encoding="utf-8")) == tot
+    assert not list(tmp_path.glob("*.tam")), "file tạm phải được dọn"
+
+
+def test_ghi_anh_tu_choi_ghi_de_lang_va_giu_ban_cu(tmp_path):
+    from eval.chup_do_thi import DUOI_BAN_CU, ghi_anh
+
+    dich = tmp_path / "synth.json"
+    tot = json.loads(_anh(tmp_path).read_text(encoding="utf-8"))
+    ghi_anh(dich, tot)
+    with pytest.raises(FileExistsError) as loi:
+        ghi_anh(dich, tot)
+    assert "--ghi-de" in str(loi.value)
+
+    moi = json.loads(json.dumps(tot))
+    moi["ngay_do"] = "2026-09-04T00:00:00+00:00"
+    ghi_anh(dich, moi, ghi_de=True)
+    assert json.loads(dich.read_text(encoding="utf-8"))["ngay_do"] == moi["ngay_do"]
+    ban_cu = dich.with_name(dich.name + DUOI_BAN_CU)
+    assert json.loads(ban_cu.read_text(encoding="utf-8")) == tot
+
+
+def test_ban_cu_cua_anh_chup_da_gitignore():
+    """`.bak.json` là rác của một lần chạy, cùng luật với `eval/ket_qua_do/`."""
+    noi_dung = (REPO_ROOT / ".gitignore").read_text(encoding="utf-8")
+    assert "eval/anh_do_thi/*.bak.json" in noi_dung
+
+
+# --------------------------------------------------------------------------
+# Dấu hạn chế: khẳng định tính lại được, không phải ghi chú
+# --------------------------------------------------------------------------
+
+
+def test_moi_cau_n7_khai_vung_dap_an_va_chi_n7_khai(bo):
+    for c in bo.cau:
+        assert bool(c.neo_loai) == (c.nhom == "N7"), c.id
+
+
+def test_dau_han_che_khop_dung_thu_tinh_lai_duoc(bo, nhan, anh):
+    """Đây là phép kiểm bằng máy cho tính chất then chốt của N7 (FR-16).
+
+    "Câu N7 từ chối vì không có đáp án chứ không phải vì bị chặn quyền" là một
+    khẳng định kiểm được: vai hỏi phải thấy mọi vùng khai trong `neo_loai` ở mức
+    L2. `kiem_danh_dau` tính lại đúng hai tập dấu và `doc_nhan_truy_hoi` gọi nó,
+    nên test này chỉ cần chứng minh nó không nhắm mắt cho qua.
+    """
+    from eval.cau_hoi import kiem_danh_dau
+
+    kiem_danh_dau(bo, nhan, anh, policy=load_policy(POLICY))
+    assert {c.id for c in bo.cau if HAN_CHE_N7_QUA_XAC_DINH in c.han_che} == {
+        "n7-01",
+        "n7-02",
+        "n7-03",
+        "n7-05",
+    }
+    assert {c.id for c in bo.cau if HAN_CHE_VAI_HOI_KHONG_THAY in c.han_che} == {
+        "n3-02",
+        "n3-03",
+        "n3-07",
+        "n3-08",
+        "n3-09",
+        "n3-10",
+        "n3-11",
+        "n5-05",
+        "n5-06",
+        "n5-09",
+    }
+    # Bốn câu bộ vàng trong số đó: Đo 2 chấm "đủ ý" ra 0 vì quyền, không vì
+    # chất lượng sinh. Chúng phải mang dấu, không phải nằm im.
+    vang_khong_thay = {
+        c.id
+        for c in bo.bo_vang()
+        if HAN_CHE_VAI_HOI_KHONG_THAY in c.han_che
+    }
+    assert vang_khong_thay == {"n3-02", "n3-03", "n3-09", "n5-05"}
+
+
+def test_dau_han_che_thua_hay_thieu_deu_bi_tu_choi(tmp_path):
+    """Thừa một dấu cũng đỏ như thiếu: dấu để lại sau 3.2 là một câu bị coi là hỏng."""
+    cau = _cac_cau()
+    cau[0]["han_che"] = [HAN_CHE_VAI_HOI_KHONG_THAY]
+    he = [_he("he-aaa", ["t1.md"], "App01", cause="x")]
+    he = he + [_he("he-zzz", ["t9.md"], "Bộ lọc độn")]
+    with pytest.raises(BoCauHoiKhongHopLe) as loi:
+        doc_nhan_truy_hoi(
+            _nhan(tmp_path, _cac_nhan(cau)),
+            bo=doc_bo_cau_hoi(_bo_cau(tmp_path, cau)),
+            anh=doc_anh_do_thi(_anh(tmp_path, he)),
+        )
+    assert HAN_CHE_VAI_HOI_KHONG_THAY in str(loi.value)
+    assert cau[0]["id"] in str(loi.value)
+
+
+def test_neo_loai_tro_vung_khong_co_trong_anh_chup_bi_tu_choi(tmp_path):
+    cau = _cac_cau()
+    for c in cau:
+        if c["nhom"] == "N7":
+            c["neo_loai"] = ["noi_bo:khong_co_loai_nay"]
+    with pytest.raises(BoCauHoiKhongHopLe) as loi:
+        doc_nhan_truy_hoi(
+            _nhan(tmp_path, _cac_nhan(cau)),
+            bo=doc_bo_cau_hoi(_bo_cau(tmp_path, cau)),
+            anh=doc_anh_do_thi(_anh(tmp_path)),
+        )
+    assert "khong_co_loai_nay" in str(loi.value)
+
+
+def test_nhom_khac_n7_khai_neo_loai_bi_tu_choi(tmp_path):
+    cau = _cac_cau()
+    cau[0]["neo_loai"] = ["noi_bo:runbook"]
+    with pytest.raises(BoCauHoiKhongHopLe) as loi:
+        doc_bo_cau_hoi(_bo_cau(tmp_path, cau))
+    assert cau[0]["id"] in str(loi.value)
+
+
+def test_dau_han_che_ngoai_danh_muc_bi_tu_choi(tmp_path):
+    cau = _cac_cau()
+    cau[0]["han_che"] = ["mot_dau_la"]
+    with pytest.raises(BoCauHoiKhongHopLe) as loi:
+        doc_bo_cau_hoi(_bo_cau(tmp_path, cau))
+    assert "mot_dau_la" in str(loi.value)
+    for h in HAN_CHE:
+        assert h in str(loi.value)
+

@@ -13,3 +13,7 @@ hypergraphrag.log
 # `--ghi-de` để lại bản cũ, và một vòng hỏng giữa chừng để lại phần đã trả tiền.
 *.bak.json
 eval/ket_qua_do/chua-xong/
+
+# Bản lưu của `eval/chup_do_thi.py --ghi-de`: rác của một lần chạy, không commit
+# (cùng luật với `eval/ket_qua_do/*.bak.json` của story 2.6).
+eval/anh_do_thi/*.bak.json

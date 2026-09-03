@@ -77,6 +77,34 @@ def test_script_goi_dung_diem_vao_cua_du_an(script):
     script. Mặc định phải bất động: mọi lệnh nạp đã ghi trong AGENTS.md và
     trong spec 2.7/2.8 không truyền biến nào.
     """
-    assert 'MODULE="${HYPER_RAG_MODULE:-api.do_chi_phi}"' in script
+    assert _gan(script, "MODULE_MAC_DINH") == "api.do_chi_phi"
+    assert 'MODULE="${HYPER_RAG_MODULE:-$MODULE_MAC_DINH}"' in script
     assert 'uv run python -m "$MODULE"' in script
     assert "python -m api.do_chi_phi" not in script, "điểm vào không được ghim cứng nữa"
+
+
+def test_module_diem_vao_la_danh_sach_cho_phep(script):
+    """Danh sách cho phép, không chuỗi tự do: `python -m <gì cũng được>` từ môi
+    trường là một cửa chạy code mà script này không cần đến. Hai module hợp lệ
+    là một con số đóng, khai thẳng rẻ hơn."""
+    assert _gan(script, "MODULE_CHO_PHEP") == "api.do_chi_phi eval.chup_do_thi"
+    assert "khong nam trong danh sach cho phep" in script
+
+
+def test_module_doc_sau_khi_source_env(script):
+    """`MODULE=` phải nằm **sau** hai lệnh `source`.
+
+    Gán trước thì một khai báo `HYPER_RAG_MODULE` trong `.env.server` bị bỏ qua
+    im lặng, và người chạy tưởng mình đang chụp (đọc thuần) trong khi thật ra
+    đang nạp - tức đang tiêu tiền LLM.
+    """
+    assert script.index("source .env.server") < script.index(
+        'MODULE="${HYPER_RAG_MODULE:-$MODULE_MAC_DINH}"'
+    )
+
+
+def test_lenh_khong_kem_tham_so_van_chay_duoc(script):
+    """`chup` không kèm tham số là một lệnh hợp lệ, nên cửa đếm tham số là `-lt 1`."""
+    assert '[ "$#" -lt 1 ]' in script
+    assert '[ "$#" -lt 2 ]' not in script
+    assert "tham so cua api.do_chi_phi" not in script, "dòng usage còn ghim module cũ"

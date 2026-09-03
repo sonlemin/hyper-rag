@@ -13,7 +13,9 @@
         "khởi động lại PHP-FPM trước",
         "không khởi động lại Nginx",
         "điều kiện là lỗi 502 kéo dài quá 3 phút liên tục"
-      ]
+      ],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n1-02",
@@ -27,7 +29,9 @@
         "ngưỡng 85% cho mức cảnh giác",
         "gửi vào kênh chat của nhóm Hạ tầng",
         "phân biệt với ngưỡng 95% của mức nghiêm trọng"
-      ]
+      ],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n1-03",
@@ -37,7 +41,9 @@
       "kich_ban": "day_o_cung",
       "bo_vang": false,
       "dap_an": "",
-      "y_chinh": []
+      "y_chinh": [],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n1-04",
@@ -51,7 +57,9 @@
         "5 lần liên tiếp",
         "khóa 15 phút",
         "sai tiếp phải nhờ Tech Support mở khóa"
-      ]
+      ],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n1-05",
@@ -61,7 +69,9 @@
       "kich_ban": "web_sap",
       "bo_vang": false,
       "dap_an": "",
-      "y_chinh": []
+      "y_chinh": [],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n1-06",
@@ -71,7 +81,9 @@
       "kich_ban": "nhieu",
       "bo_vang": false,
       "dap_an": "",
-      "y_chinh": []
+      "y_chinh": [],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n2-01",
@@ -86,7 +98,9 @@
         "SOP-12 bắt thử trên môi trường thử nghiệm trước khi duyệt",
         "INC-1208 bỏ đúng bước thử đó",
         "postmortem gọi đó là lỗi quy trình, không phải lỗi thao tác"
-      ]
+      ],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n2-02",
@@ -101,7 +115,9 @@
         "nhật ký dồn 7 ngày, phân vùng đầy 100% ngày 18/08",
         "KI-014 là nguyên nhân xa",
         "công cụ xoay vòng bản 3.19 dừng im lặng, không ghi lỗi"
-      ]
+      ],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n2-03",
@@ -115,7 +131,9 @@
         "bốn dịch vụ: cổng nội bộ, chấm công, Jira nội bộ, kho ảnh Docker",
         "ghi nhật ký là bắt buộc nên cả bốn dừng nhận yêu cầu",
         "bốn kiểu hỏng khác nhau trong INC-1520"
-      ]
+      ],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n2-04",
@@ -125,7 +143,9 @@
       "kich_ban": "ssl_het_han",
       "bo_vang": false,
       "dap_an": "",
-      "y_chinh": []
+      "y_chinh": [],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n2-05",
@@ -140,7 +160,9 @@
         "trang trạng thái báo có sự cố thì không mở ticket mới",
         "lỗi khi lưu thì báo nhóm Hạ tầng, có thể do hệ ghi nhật ký đầy",
         "ticket phải ghi rõ đã làm tới bước nào"
-      ]
+      ],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n2-06",
@@ -150,7 +172,9 @@
       "kich_ban": "web_sap",
       "bo_vang": false,
       "dap_an": "",
-      "y_chinh": []
+      "y_chinh": [],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n2-07",
@@ -160,7 +184,9 @@
       "kich_ban": "day_o_cung",
       "bo_vang": false,
       "dap_an": "",
-      "y_chinh": []
+      "y_chinh": [],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n2-08",
@@ -170,7 +196,9 @@
       "kich_ban": "nhieu",
       "bo_vang": false,
       "dap_an": "",
-      "y_chinh": []
+      "y_chinh": [],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n3-01",
@@ -184,7 +212,9 @@
         "khởi động lại PHP-FPM được phép khi 502 quá 3 phút liên tục",
         "chỉnh tham số giới hạn bộ nhớ thì luôn phải có phiếu theo SOP-12",
         "không có ngoại lệ cho lúc đang xử lý sự cố"
-      ]
+      ],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n3-02",
@@ -197,6 +227,10 @@
       "y_chinh": [
         "ngưỡng 2% phản hồi 502",
         "cửa sổ 5 phút"
+      ],
+      "neo_loai": [],
+      "han_che": [
+        "vai_hoi_khong_thay"
       ]
     },
     {
@@ -211,6 +245,10 @@
         "log01 dùng ngưỡng 90%",
         "các máy chủ khác dùng 95%",
         "lý do là tốc độ ghi nhật ký ở log01 cao hơn"
+      ],
+      "neo_loai": [],
+      "han_che": [
+        "vai_hoi_khong_thay"
       ]
     },
     {
@@ -225,7 +263,9 @@
         "cũ hơn 30 ngày",
         "trên phân vùng log",
         "nén ngay, không cần phê duyệt"
-      ]
+      ],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n3-05",
@@ -238,7 +278,9 @@
       "y_chinh": [
         "phải chuyển sang kho lưu trữ lạnh trước",
         "kỹ sư hạ tầng xác nhận đã chuyển xong"
-      ]
+      ],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n3-06",
@@ -252,7 +294,9 @@
         "mở thêm hai tiến trình PHP-FPM",
         "theo dõi thời gian đáp ứng 15 phút tiếp theo",
         "cảnh báo cần lưu lượng vượt ngưỡng trong 10 phút liên tục"
-      ]
+      ],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n3-07",
@@ -262,7 +306,11 @@
       "kich_ban": "ssl_het_han",
       "bo_vang": false,
       "dap_an": "",
-      "y_chinh": []
+      "y_chinh": [],
+      "neo_loai": [],
+      "han_che": [
+        "vai_hoi_khong_thay"
+      ]
     },
     {
       "id": "n3-08",
@@ -272,7 +320,11 @@
       "kich_ban": "ssl_het_han",
       "bo_vang": false,
       "dap_an": "",
-      "y_chinh": []
+      "y_chinh": [],
+      "neo_loai": [],
+      "han_che": [
+        "vai_hoi_khong_thay"
+      ]
     },
     {
       "id": "n3-09",
@@ -285,6 +337,10 @@
       "y_chinh": [
         "tối đa 30 phút",
         "ngoại lệ cần phê duyệt của trưởng nhóm Hạ tầng"
+      ],
+      "neo_loai": [],
+      "han_che": [
+        "vai_hoi_khong_thay"
       ]
     },
     {
@@ -295,7 +351,11 @@
       "kich_ban": "nhieu",
       "bo_vang": false,
       "dap_an": "",
-      "y_chinh": []
+      "y_chinh": [],
+      "neo_loai": [],
+      "han_che": [
+        "vai_hoi_khong_thay"
+      ]
     },
     {
       "id": "n3-11",
@@ -305,7 +365,11 @@
       "kich_ban": "web_sap",
       "bo_vang": false,
       "dap_an": "",
-      "y_chinh": []
+      "y_chinh": [],
+      "neo_loai": [],
+      "han_che": [
+        "vai_hoi_khong_thay"
+      ]
     },
     {
       "id": "n3-12",
@@ -315,7 +379,9 @@
       "kich_ban": "nhieu",
       "bo_vang": false,
       "dap_an": "",
-      "y_chinh": []
+      "y_chinh": [],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n4-01",
@@ -330,7 +396,9 @@
         "nguyên nhân là tiến trình xuất báo cáo ghi tạm sai phân vùng",
         "phạm vi hẹp hơn INC-1520",
         "cách xử lý khác: mở rộng phân vùng"
-      ]
+      ],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n4-02",
@@ -344,7 +412,9 @@
         "INC-1417 là ca tương tự",
         "chứng chỉ TLS cổng VPN hết hạn, 55 phút mất truy cập",
         "điểm chung: lịch gia hạn không nằm ở nơi ai cũng thấy"
-      ]
+      ],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n4-03",
@@ -354,7 +424,9 @@
       "kich_ban": "nhieu",
       "bo_vang": false,
       "dap_an": "",
-      "y_chinh": []
+      "y_chinh": [],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n4-04",
@@ -369,7 +441,9 @@
         "INC-1305 do tiến trình ghi tạm sai phân vùng",
         "bài học 1 siết quy trình duyệt và kế hoạch quay lui",
         "bài học 2 tách phân vùng và hạ ngưỡng cảnh báo xuống 75%"
-      ]
+      ],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n4-05",
@@ -379,7 +453,9 @@
       "kich_ban": "day_o_cung",
       "bo_vang": false,
       "dap_an": "",
-      "y_chinh": []
+      "y_chinh": [],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n5-01",
@@ -393,7 +469,9 @@
         "chỉnh sai giới hạn bộ nhớ PHP-FPM",
         "tiến trình bị thu hồi khi lưu lượng vượt 5000 req/phút",
         "phiếu thay đổi được duyệt mà không qua bước thử"
-      ]
+      ],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n5-02",
@@ -406,7 +484,9 @@
       "y_chinh": [
         "Trần Thị Hạnh",
         "đội Vận hành ứng dụng"
-      ]
+      ],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n5-03",
@@ -420,7 +500,9 @@
         "trả giới hạn bộ nhớ PHP-FPM về mức cũ",
         "nạp lại cấu hình theo SOP-12",
         "dịch vụ phục hồi lúc 10:00"
-      ]
+      ],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n5-04",
@@ -430,7 +512,9 @@
       "kich_ban": "nhieu",
       "bo_vang": false,
       "dap_an": "",
-      "y_chinh": []
+      "y_chinh": [],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n5-05",
@@ -444,6 +528,10 @@
         "máy chủ nhảy bastion.it.local",
         "phiên SSH được ghi lại, giữ 90 ngày",
         "dải mạng quản trị 10.20.0.0/24, chỉ mở từ máy chủ nhảy"
+      ],
+      "neo_loai": [],
+      "han_che": [
+        "vai_hoi_khong_thay"
       ]
     },
     {
@@ -454,7 +542,11 @@
       "kich_ban": "ssl_het_han",
       "bo_vang": false,
       "dap_an": "",
-      "y_chinh": []
+      "y_chinh": [],
+      "neo_loai": [],
+      "han_che": [
+        "vai_hoi_khong_thay"
+      ]
     },
     {
       "id": "n5-07",
@@ -468,7 +560,9 @@
         "tác vụ xoay vòng nhật ký ngừng chạy từ 11/08",
         "phân vùng nhật ký log01 đầy 100%",
         "bốn dịch vụ nội bộ hỏng dây chuyền 95 phút"
-      ]
+      ],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n5-08",
@@ -478,7 +572,9 @@
       "kich_ban": "day_o_cung",
       "bo_vang": false,
       "dap_an": "",
-      "y_chinh": []
+      "y_chinh": [],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n5-09",
@@ -488,7 +584,11 @@
       "kich_ban": "ssl_het_han",
       "bo_vang": false,
       "dap_an": "",
-      "y_chinh": []
+      "y_chinh": [],
+      "neo_loai": [],
+      "han_che": [
+        "vai_hoi_khong_thay"
+      ]
     },
     {
       "id": "n5-10",
@@ -498,7 +598,9 @@
       "kich_ban": "web_sap",
       "bo_vang": false,
       "dap_an": "",
-      "y_chinh": []
+      "y_chinh": [],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n6-01",
@@ -513,7 +615,9 @@
         "chu kỳ 90 ngày",
         "nhắc trước 30, 14 và 7 ngày",
         "cảnh báo lặp mỗi 3 ngày từ mốc còn dưới 30 ngày"
-      ]
+      ],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n6-02",
@@ -523,7 +627,9 @@
       "kich_ban": "ssl_het_han",
       "bo_vang": false,
       "dap_an": "",
-      "y_chinh": []
+      "y_chinh": [],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n6-03",
@@ -537,7 +643,9 @@
         "bắt đầu 09:20 ngày 12/08/2026",
         "phục hồi lúc 10:00",
         "tổng 40 phút"
-      ]
+      ],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n6-04",
@@ -547,7 +655,9 @@
       "kich_ban": "ssl_het_han",
       "bo_vang": false,
       "dap_an": "",
-      "y_chinh": []
+      "y_chinh": [],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n6-05",
@@ -557,7 +667,9 @@
       "kich_ban": "day_o_cung",
       "bo_vang": false,
       "dap_an": "",
-      "y_chinh": []
+      "y_chinh": [],
+      "neo_loai": [],
+      "han_che": []
     },
     {
       "id": "n7-01",
@@ -571,6 +683,12 @@
         "từ chối trả lời",
         "nói rõ kho không có thông tin chi phí",
         "không suy đoán một con số"
+      ],
+      "neo_loai": [
+        "khach_hang_a:cmdb"
+      ],
+      "han_che": [
+        "n7_qua_xac_dinh"
       ]
     },
     {
@@ -585,6 +703,12 @@
         "từ chối trả lời",
         "nói rõ kho không nêu nhà cung cấp hạ tầng",
         "không đoán tên một nhà cung cấp"
+      ],
+      "neo_loai": [
+        "noi_bo:cmdb"
+      ],
+      "han_che": [
+        "n7_qua_xac_dinh"
       ]
     },
     {
@@ -599,6 +723,13 @@
         "từ chối trả lời",
         "không quy đổi ngưỡng 5000 req/phút thành số giao dịch",
         "nói rõ kho không có số liệu giao dịch"
+      ],
+      "neo_loai": [
+        "khach_hang_a:cmdb",
+        "khach_hang_a:tai_lieu_san_pham"
+      ],
+      "han_che": [
+        "n7_qua_xac_dinh"
       ]
     },
     {
@@ -613,7 +744,11 @@
         "từ chối trả lời",
         "nói rõ chính sách sao lưu không đề cập mã hóa",
         "không đoán tên thuật toán"
-      ]
+      ],
+      "neo_loai": [
+        "noi_bo:runbook"
+      ],
+      "han_che": []
     },
     {
       "id": "n7-05",
@@ -627,6 +762,12 @@
         "từ chối trả lời",
         "nói rõ CMDB của log01 không có trường vị trí",
         "không đoán một trung tâm dữ liệu"
+      ],
+      "neo_loai": [
+        "noi_bo:cmdb"
+      ],
+      "han_che": [
+        "n7_qua_xac_dinh"
       ]
     },
     {
@@ -641,7 +782,11 @@
         "từ chối trả lời",
         "phân biệt thu hồi trong ngày cuối với thời gian lưu giữ",
         "nói rõ kho không có thời gian lưu giữ"
-      ]
+      ],
+      "neo_loai": [
+        "noi_bo:runbook"
+      ],
+      "han_che": []
     }
   ]
 }
