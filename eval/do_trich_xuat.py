@@ -41,11 +41,19 @@ import json
 import math
 import os
 import re
+import socket
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
 from typing import Mapping, Sequence
+
+from tenacity import (
+    AsyncRetrying,
+    retry_if_exception,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from adapters.chunking import TRUONG_CHUNK, cau_hinh_chunk, chia_chunk
 from adapters.llm_wrapper import (
@@ -88,6 +96,38 @@ _TEN_VONG_HOP_LE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 # Tên có mốc thời gian nên hai lần hỏng cùng tên vòng không đè lên nhau.
 THU_MUC_CHUA_XONG: str = "chua-xong"
 
+# Đuôi của bản lưu file kết quả cũ khi `--ghi-de` (story 2.8). `doc_moi_vong`
+# **bỏ qua** đuôi này: một bản cũ nằm cạnh mà bị đọc như một vòng nữa thì trang
+# báo cáo có hai cột mang cùng tên vòng, và không ai biết cột nào là bản mới.
+DUOI_BAN_CU: str = ".bak" + DUOI_FILE
+
+# Số lần thử một lời gọi LLM trước khi bỏ cuộc, kể cả lần đầu. Bốn vòng của 2.6
+# chạy 8 lời gọi tuần tự nên 429 gần như không xảy ra; corpus 40 tài liệu là
+# 40+ lời gọi liên tiếp trên một key dùng chung, xác suất chạm 429 khác hẳn.
+SO_LAN_THU: int = 4
+# Trần thời gian chờ giữa hai lần thử. `Retry-After` của provider được tôn
+# trọng nhưng vẫn bị cắt ở đây: một header 3600 giây làm vòng đo treo cả giờ mà
+# không in ra dòng nào.
+TRAN_CHO_GIAY: float = 60.0
+# Mã HTTP đáng thử lại: 429 (rate limit) và mọi 5xx (lỗi phía provider). Mã 4xx
+# khác **không** thử lại - prompt sai, key sai hay model sai thì thử lại chỉ
+# tốn thêm thời gian và vẫn hỏng y như cũ.
+MA_RATE_LIMIT: int = 429
+
+# Ước lượng token ra cho mỗi lời gọi, dùng ở `--uoc-tinh`. Không phải số đo:
+# token ra chỉ biết được sau khi model trả lời. Giá trị lấy trần trên bốn vòng
+# đã đo của story 2.6 (262-363 token ra mỗi chunk), làm tròn lên.
+#
+# Đừng đọc hằng này thành "ước tính luôn nói quá": chiều của *tổng* không bảo
+# đảm, vì token **vào** lại đếm thiếu phần bọc hội thoại của provider khoảng
+# 25-30%. Hai sai số ngược chiều nhau, nên `--uoc-tinh` cho một con số cùng bậc
+# chứ không cho một trần chi - `dong_in()` nói thẳng điều đó ở đầu ra.
+TOKEN_RA_UOC_MOI_CHUNK: int = 400
+
+# Cờ dòng lệnh của bước ước tính; nêu tên trong thông điệp để người dùng biết
+# đường xem trước trước khi tiêu tiền.
+CO_UOC_TINH: str = "--uoc-tinh"
+
 # Lược đồ đóng ba cấp. Khóa lạ bị từ chối cùng một lý do với bộ vàng 2.5: một
 # khóa viết sai chính tả mà file vẫn nạp được nghĩa là một con số lặng lẽ sai.
 KHOA_GOC: frozenset[str] = frozenset(
@@ -105,6 +145,11 @@ KHOA_GOC: frozenset[str] = frozenset(
     }
 )
 KHOA_TAI_LIEU: frozenset[str] = frozenset({"doc_key", "chunks"})
+# Khóa **chỉ có trong file cứu hộ**: tài liệu đang chạy dở lúc vòng hỏng. Cố ý
+# nằm ngoài `KHOA_TAI_LIEU`, nên `doc_ket_qua` từ chối một file cứu hộ bị đổi
+# tên thành file kết quả - đó đúng là điều phải xảy ra, vì tài liệu đó thiếu
+# chunk và mọi tổng tính trên nó đều sai.
+KHOA_DANG_DO: str = "dang_do"
 KHOA_CHUNK: frozenset[str] = frozenset(
     {"stt", "van_ban", "phan_hoi", "token_vao", "token_ra", "chi_phi_usd"}
 )
@@ -354,21 +399,55 @@ def _kiem_khoa(muc: Mapping, cho_phep: frozenset[str], o_dau: str, loi) -> None:
 
 
 def doc_moi_vong(thu_muc: str | Path = THU_MUC_KET_QUA) -> list[KetQuaVong]:
-    """Mọi vòng trong một thư mục, sắp theo tên file (v0 trước v1)."""
+    """Mọi vòng trong một thư mục, sắp theo tên file (v0 trước v1).
+
+    Bỏ qua bản lưu `*.bak.json` mà `--ghi-de` để lại: nó là *bản cũ* của một
+    vòng đã bị thay, nên đọc nó lên thành một vòng nữa là dựng một cột báo cáo
+    trùng tên với cột bên cạnh.
+    """
     thu_muc = Path(thu_muc)
     if not thu_muc.is_dir():
         return []
-    return [doc_ket_qua(p) for p in sorted(thu_muc.glob(f"*{DUOI_FILE}"))]
+    return [
+        doc_ket_qua(p)
+        for p in sorted(thu_muc.glob(f"*{DUOI_FILE}"))
+        if not p.name.endswith(DUOI_BAN_CU)
+    ]
+
+
+def duong_dan_ban_cu(duong_dan: Path) -> Path:
+    """Tên bản lưu của một file kết quả: `<vòng>.json` -> `<vòng>.bak.json`."""
+    ten = duong_dan.name
+    goc = ten[: -len(DUOI_FILE)] if ten.endswith(DUOI_FILE) else ten
+    return duong_dan.with_name(goc + DUOI_BAN_CU)
 
 
 def ghi_ket_qua(duong_dan: str | Path, du_lieu: Mapping, ghi_de: bool = False) -> Path:
-    """Ghi một vòng; file đã có mà không có cờ ghi đè là `KetQuaDoDaCo`."""
+    """Ghi một vòng; file đã có mà không có cờ ghi đè là `KetQuaDoDaCo`.
+
+    Ghi đè **giữ bản cũ** thành `<vòng>.bak.json` trước khi thay (story 2.8):
+    `--ghi-de` xóa vĩnh viễn một vòng đã trả tiền, và cái giá của một bản lưu là
+    vài chục KB. Sao lưu hỏng thì không ghi đè - lỗi lan lên nguyên trạng, file
+    cũ còn nguyên.
+    """
     duong_dan = Path(duong_dan)
-    if duong_dan.exists() and not ghi_de:
-        raise KetQuaDoDaCo(
-            f"{duong_dan.name} đã có trong {duong_dan.parent}: một vòng là tiền đã"
-            f" tiêu, không ghi đè lặng lẽ. Đổi tên vòng, hoặc chạy lại với {CO_GHI_DE}"
-        )
+    if duong_dan.exists():
+        if not ghi_de:
+            raise KetQuaDoDaCo(
+                f"{duong_dan.name} đã có trong {duong_dan.parent}: một vòng là tiền đã"
+                f" tiêu, không ghi đè lặng lẽ. Đổi tên vòng, hoặc chạy lại với {CO_GHI_DE}"
+            )
+        ban_cu = duong_dan_ban_cu(duong_dan)
+        if ban_cu.exists():
+            # Lần `--ghi-de` thứ hai đè luôn bản lưu của lần thứ nhất, tức chính
+            # cơ chế chống mất "một vòng là tiền đã tiêu" tự hỏng ở lần thứ hai.
+            # Không tự đặt tên thứ ba (`.bak2`, mốc thời gian): người chạy phải
+            # nhìn thấy mình đang có hai bản và quyết bỏ bản nào.
+            raise KetQuaDoDaCo(
+                f"{ban_cu} đã có: một lần {CO_GHI_DE} trước đã lưu bản cũ ở đó, và"
+                f" ghi đè tiếp sẽ xóa nó. Dọn hoặc đổi tên {ban_cu.name} rồi chạy lại."
+            )
+        os.replace(duong_dan, ban_cu)
     duong_dan.parent.mkdir(parents=True, exist_ok=True)
     _ghi_nguyen_tu(duong_dan, du_lieu)
     return duong_dan
@@ -426,12 +505,191 @@ class GomChiPhi:
         return moi[0]
 
 
+# ---------------------------------------------------------------------------
+# Thử lại khi provider chặn nhịp (story 2.8)
+# ---------------------------------------------------------------------------
+
+
+# Ba tên mà các SDK khác nhau dùng cho cùng một thứ. `openai` phơi
+# `status_code`, `httpx`/`ollama` có nơi dùng `status`, và một số lớp lỗi bọc lại
+# dùng `code`. Đọc cả ba thay vì chọn một: bỏ sót tên nghĩa là mọi 429 của
+# provider đó rơi vào nhánh "không thử lại" mà không có dấu hiệu gì.
+TEN_TRUONG_MA_HTTP: tuple[str, ...] = ("status_code", "status", "code")
+
+
+def ma_http_cua(loi: BaseException) -> int | None:
+    """Mã HTTP của một ngoại lệ provider, nếu đọc được; không thì `None`.
+
+    Đọc theo *hình dạng* chứ không theo lớp: `eval/` không import SDK của
+    provider nào (openai, ollama, httpx) - một harness đo mà biết tên lớp ngoại
+    lệ của từng SDK là một chỗ nữa phải sửa mỗi lần đổi provider.
+    """
+    for doi_tuong in (loi, getattr(loi, "response", None)):
+        for ten in TEN_TRUONG_MA_HTTP:
+            ma = getattr(doi_tuong, ten, None)
+            if isinstance(ma, bool):
+                continue
+            if isinstance(ma, int):
+                return ma
+            # `code` của nhiều SDK là chuỗi ("429"); một chuỗi không phải số thì
+            # bỏ qua chứ không nổ, vì `code` cũng hay mang tên lỗi ("timeout").
+            if isinstance(ma, str) and ma.strip().isdigit():
+                return int(ma.strip())
+    return None
+
+
+# Lỗi mạng tạm thời: kết nối bị reset, timeout đọc, DNS trượt. Chúng **không**
+# mang mã HTTP nào - lời gọi chưa bao giờ tới được tầng HTTP - nên luật "chỉ thử
+# lại khi có mã 429/5xx" bỏ sót trọn nhóm này, và một trục trặc mạng thoáng qua
+# giết cả một vòng 40 lời gọi đã trả tiền được nửa. Bắt theo kiểu chuẩn của
+# stdlib chứ không theo tên lớp SDK: `httpx.ConnectError` và
+# `openai.APIConnectionError` đều bọc một `OSError` hoặc một `TimeoutError`.
+LOI_MANG_TAM_THOI: tuple[type[BaseException], ...] = (
+    ConnectionError,  # gồm ConnectionReset/Aborted/Refused
+    TimeoutError,  # gồm asyncio.TimeoutError từ Python 3.11
+    socket.gaierror,  # DNS trượt
+    socket.timeout,  # bí danh của TimeoutError, giữ cho rõ ý
+)
+
+
+def la_loi_mang_tam_thoi(loi: BaseException) -> bool:
+    """Lỗi mạng thoáng qua, kể cả khi nó bị SDK bọc trong `__cause__`.
+
+    Duyệt cả chuỗi nguyên nhân: `openai.APIConnectionError` không phải
+    `OSError`, nhưng `raise ... from` giữ `ConnectionResetError` gốc ở
+    `__cause__`, và đó là chỗ duy nhất đọc được mà không import SDK.
+    """
+    da_qua: set[int] = set()
+    hien_tai: BaseException | None = loi
+    while hien_tai is not None and id(hien_tai) not in da_qua:
+        da_qua.add(id(hien_tai))
+        if isinstance(hien_tai, LOI_MANG_TAM_THOI):
+            return True
+        hien_tai = hien_tai.__cause__ or hien_tai.__context__
+    return False
+
+
+def nen_thu_lai(loi: BaseException) -> bool:
+    """429, 5xx và lỗi mạng tạm thời đáng thử lại; 4xx khác thì không.
+
+    Một 400 vì prompt sai hay 401 vì key sai lặp lại y nguyên ở lần thử thứ
+    hai, nên thử lại chỉ làm người chạy chờ lâu hơn để nhận cùng một lỗi.
+    """
+    if isinstance(loi, asyncio.CancelledError):
+        return False
+    ma = ma_http_cua(loi)
+    if ma is not None:
+        return ma == MA_RATE_LIMIT or 500 <= ma < 600
+    return la_loi_mang_tam_thoi(loi)
+
+
+def giay_cho_lai(loi: BaseException) -> float | None:
+    """`Retry-After` của provider, tính bằng giây; không có hay xấu thì `None`.
+
+    Chỉ nhận dạng số giây. Dạng ngày HTTP cũng hợp lệ theo RFC nhưng phân tích
+    nó cần biết lệch đồng hồ giữa hai máy, và đoán sai chiều thì hoặc chờ vô
+    ích hàng giờ, hoặc gọi lại ngay và ăn tiếp một 429.
+    """
+    phan_hoi = getattr(loi, "response", None)
+    headers = getattr(phan_hoi, "headers", None)
+    if headers is None:
+        return None
+    try:
+        raw = headers.get("retry-after") or headers.get("Retry-After")
+    except Exception:
+        return None
+    if raw is None:
+        return None
+    try:
+        giay = float(str(raw).strip())
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(giay) or giay < 0:
+        return None
+    return giay
+
+
+class ChanNhipQuaLau(RuntimeError):
+    """Provider đòi chờ lâu hơn trần; vòng đo bỏ cuộc thay vì thử lại sớm.
+
+    Kẹp `Retry-After` xuống trần rồi thử lại ngay là điều tệ hơn cả không thử
+    lại: bốn lần thử đốt hết trong ba phút vào một endpoint còn đang chặn, nên
+    vòng vừa hỏng vừa làm cửa sổ chặn dài thêm.
+    """
+
+    code = "CHAN_NHIP_QUA_LAU"
+
+
+def _cho_bao_lau(retry_state) -> float:
+    """Chờ theo `Retry-After` nếu provider nói, không thì lùi lũy thừa."""
+    loi = retry_state.outcome.exception() if retry_state.outcome else None
+    giay = giay_cho_lai(loi) if loi is not None else None
+    if giay is not None:
+        if giay > TRAN_CHO_GIAY:
+            raise ChanNhipQuaLau(
+                f"provider đòi chờ {giay:.0f} giây, quá trần {TRAN_CHO_GIAY:.0f} giây"
+                " của vòng đo. Không thử lại sớm hơn: chờ ngắn hơn provider yêu cầu"
+                " chỉ ăn tiếp một lần chặn nhịp. Chạy lại vòng sau khi cửa sổ chặn"
+                " hết; phần đã trả tiền nằm ở file cứu hộ."
+            ) from loi
+        return giay
+    return _LUI_LUY_THUA(retry_state)
+
+
+_LUI_LUY_THUA = wait_exponential(multiplier=1, min=1, max=TRAN_CHO_GIAY)
+
+
+async def goi_llm_co_thu_lai(
+    llm,
+    prompt: str,
+    *,
+    so_lan_thu: int = SO_LAN_THU,
+    sleep=None,
+    in_ra=print,
+    **tham_so,
+) -> str:
+    """Gọi LLM, thử lại đúng 429 và 5xx, ném nguyên lỗi cuối cùng.
+
+    Ném nguyên lỗi (`reraise=True`) chứ không bọc thành `RetryError`: nơi gọi
+    và `main` đang bắt theo loại lỗi thật, và một `RetryError` che mất mã HTTP
+    là che mất thứ duy nhất nói được vì sao vòng dừng.
+
+    Lời gọi hỏng **không** ghi sự kiện chi phí (wrapper chỉ ghi khi thành công),
+    nên mốc `audit.moc()` chụp trước vòng thử lại vẫn neo đúng đúng một sự kiện
+    của lần thử thành công.
+    """
+    lan = 0
+    async for thu in AsyncRetrying(
+        stop=stop_after_attempt(so_lan_thu),
+        wait=_cho_bao_lau,
+        retry=retry_if_exception(nen_thu_lai),
+        reraise=True,
+        **({"sleep": sleep} if sleep is not None else {}),
+    ):
+        with thu:
+            lan += 1
+            if lan > 1:
+                in_ra(f"    thử lại lần {lan}/{so_lan_thu}", flush=True)
+            return await llm(prompt, **tham_so)
+    raise AssertionError("AsyncRetrying thoát mà không trả kết quả và không ném")
+
+
 def kiem_ten_vong(vong: str) -> str:
     """Tên vòng phải là một tên file an toàn; trả lại chính nó."""
     if not isinstance(vong, str) or not _TEN_VONG_HOP_LE.match(vong):
         raise KetQuaDoKhongHopLe(
             f"tên vòng {vong!r} không hợp lệ: bắt đầu bằng chữ hoặc số, sau đó chỉ"
             " chữ, số, dấu chấm, gạch ngang và gạch dưới (tên vòng là tên file)"
+        )
+    if vong.endswith(DUOI_BAN_CU[: -len(DUOI_FILE)]):
+        # Hình dạng tên cho phép dấu chấm, nên `--vong v1.bak` ghi ra
+        # `v1.bak.json` - đúng đuôi mà `doc_moi_vong` bỏ qua. Một vòng đã trả
+        # tiền vắng mặt khỏi mọi báo cáo mà không ai biết là kiểu hỏng tệ nhất
+        # của một harness đo: nó không đỏ, nó chỉ thiếu.
+        raise KetQuaDoKhongHopLe(
+            f"tên vòng {vong!r} kết thúc bằng {DUOI_BAN_CU[: -len(DUOI_FILE)]!r}:"
+            f" file sinh ra sẽ mang đuôi {DUOI_BAN_CU} mà `doc_moi_vong` bỏ qua,"
+            " nên vòng này sẽ không bao giờ xuất hiện trong báo cáo. Đổi tên vòng."
         )
     return vong
 
@@ -447,12 +705,18 @@ async def chay_vong(
     ghi_de: bool = False,
     in_ra=print,
     dung_llm=None,
+    sleep=None,
 ) -> Path:
     """Chạy một vòng trên mọi tài liệu chấm của bộ vàng, ghi file kết quả, trả đường dẫn.
 
     `dung_llm` là seam tiêm: nhận `(muc_model, danh_muc, audit)` và trả hàm LLM
     đã bọc. Mặc định dựng provider thật từ môi trường (tốn tiền); test tiêm một
     provider giả để chạy được toàn bộ đường đi mà không có key và không có mạng.
+
+    `sleep` là seam tiêm thứ hai, **không phải một tùy chọn vận hành**: nó đi
+    thẳng vào `tenacity.AsyncRetrying` để test chạy được nhánh thử lại mà không
+    ngủ thật. Không có cờ dòng lệnh nào đặt nó, và không nên có - đường chạy
+    thật phải chờ đúng thời gian provider yêu cầu.
     """
     kiem_ten_vong(vong)
     dich = Path(thu_muc_ket_qua) / f"{vong}{DUOI_FILE}"
@@ -504,10 +768,18 @@ async def chay_vong(
         with use_context(ngu_canh):
             for t in bo.tai_lieu_cham():
                 chunks: list[dict] = []
+                # Mục của tài liệu vào danh sách **trước** lời gọi đầu tiên và
+                # mang cờ `dang_do`, để file cứu hộ ghi ra giữa chừng nói được
+                # tài liệu nào đang dở. Cờ bị gỡ khi tài liệu chạy xong, nên
+                # file kết quả cuối cùng không bao giờ mang nó.
+                muc_tai_lieu = {"doc_key": t.doc_key, "chunks": chunks, KHOA_DANG_DO: True}
+                tai_lieu.append(muc_tai_lieu)
                 for i, dp in enumerate(chia_chunk(t.than, cau_hinh)):
                     van_ban = dp["content"]
                     moc = audit.moc()
-                    phan_hoi = await llm(dung_prompt(van_ban), **THAM_SO_LLM)
+                    phan_hoi = await goi_llm_co_thu_lai(
+                        llm, dung_prompt(van_ban), sleep=sleep, in_ra=in_ra, **THAM_SO_LLM
+                    )
                     chi_tiet = audit.su_kien_cua_loi_goi(moc).chi_tiet
                     chunks.append(
                         {
@@ -517,6 +789,10 @@ async def chay_vong(
                             **_so_chi_phi(chi_tiet, t.doc_key, i),
                         }
                     )
+                    # Ghi tăng dần sau *mỗi chunk*, không phải sau mỗi tài liệu
+                    # (story 2.8): một tài liệu 5 chunk hỏng ở chunk thứ 5 từng
+                    # làm bay mất bốn lời gọi đã trả tiền.
+                    _ghi_nguyen_tu(tam, dung_du_lieu(tai_lieu))
                     kq = phan_tich_phan_hoi(phan_hoi)
                     in_ra(
                         f"  {t.doc_key} chunk {i}: {len(kq.facts)} fact hợp lệ /"
@@ -529,21 +805,36 @@ async def chay_vong(
                     raise KetQuaDoKhongHopLe(
                         f"{t.doc_key}: chia chunk ra 0 chunk (thân rỗng?), không có gì để đo"
                     )
-                tai_lieu.append({"doc_key": t.doc_key, "chunks": chunks})
-                # Ghi tăng dần sau *mỗi tài liệu*: một lần chạy hỏng ở tài liệu
-                # thứ sáu không được làm bay mất năm tài liệu đã trả tiền.
-                _ghi_nguyen_tu(tam, dung_du_lieu(tai_lieu))
+                del muc_tai_lieu[KHOA_DANG_DO]
     except BaseException:
-        if tai_lieu:
+        xong = [m for m in tai_lieu if not m.get(KHOA_DANG_DO)]
+        dang_do = [m for m in tai_lieu if m.get(KHOA_DANG_DO)]
+        if any(m["chunks"] for m in tai_lieu):
+            # Ghi lần cuối trước khi in: ca 0 chunk ném *trước* một lần ghi nào
+            # của tài liệu đó, và một lỗi lúc ghi cứu hộ không được che mất lỗi
+            # gốc đã làm vòng dừng.
+            try:
+                _ghi_nguyen_tu(tam, dung_du_lieu(tai_lieu))
+            except Exception:
+                in_ra(f"LỖI: không ghi được file cứu hộ {tam}", flush=True)
+            # Luôn nêu tên tài liệu đang dở, kể cả khi nó hỏng ngay ở chunk
+            # đầu (`chunks` rỗng) - đó là ca thường gặp nhất, và bỏ nó đi thì
+            # thông điệp hứa "nói được vòng dừng ở đâu" mà không nói.
+            do_dang = (
+                f" cộng {dang_do[0]['doc_key']} đang dở ở"
+                f" {len(dang_do[0]['chunks'])} chunk đã trả tiền"
+                if dang_do
+                else ""
+            )
             # Không hứa "chạy tiếp phần còn lại": chưa có cờ nào làm việc đó, và
             # chạy lại là trả tiền lại cho cả tập.
             in_ra(
-                f"LỖI giữa chừng: phản hồi đã trả tiền của {len(tai_lieu)}/"
-                f"{len(bo.tai_lieu_cham())} tài liệu nằm ở {tam}. Đó *không* phải"
-                " file kết quả hợp lệ (thiếu tài liệu) và không có đường chạy tiếp"
-                " phần còn lại: chạy lại vòng này là trả tiền lại cho cả tập. Giữ"
-                " file đó làm bằng chứng, hoặc bổ sung tay phần thiếu rồi đổi tên"
-                " thành một tên vòng mới.",
+                f"LỖI giữa chừng: phản hồi đã trả tiền của {len(xong)}/"
+                f"{len(bo.tai_lieu_cham())} tài liệu{do_dang} nằm ở {tam}. Đó *không*"
+                " phải file kết quả hợp lệ (thiếu tài liệu, và tài liệu dở dang mang"
+                f" cờ `{KHOA_DANG_DO}`) và không có đường chạy tiếp phần còn lại: chạy"
+                " lại vòng này là trả tiền lại cho cả tập. Giữ file đó làm bằng chứng,"
+                " hoặc bổ sung tay phần thiếu rồi đổi tên thành một tên vòng mới.",
                 flush=True,
             )
         raise
@@ -588,6 +879,87 @@ def _so_chi_phi(chi_tiet: Mapping, doc_key: str, stt: int) -> dict:
     return {"token_vao": int(tv), "token_ra": int(tr), "chi_phi_usd": float(gia)}
 
 
+# ---------------------------------------------------------------------------
+# Ước tính trước khi tiêu tiền (story 2.8)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class UocTinhVong:
+    """Ước tính của một vòng: hàm thuần, không gọi LLM, không tốn tiền.
+
+    Token *vào* đếm trên chính chuỗi prompt sắp gửi, bằng bộ tách token mà
+    `adapters/chunking.py` dùng. Nó **thấp hơn** số provider tính khoảng 25-30%
+    vì provider còn cộng phần bọc hội thoại của riêng nó (đối chứng: bốn vòng
+    của 2.6 cho 741-1015 token vào mỗi chunk, ước tính ở đây cho ~734). Token
+    *ra* là ước lượng có tên (`TOKEN_RA_UOC_MOI_CHUNK`), lấy trần trên bốn vòng
+    đó vì nó chỉ biết được sau khi model trả lời.
+
+    Nói cách khác đây là một con số *cùng bậc*, đủ để trả lời "sắp gọi bao nhiêu
+    lời và tốn khoảng bao nhiêu", không phải một hóa đơn.
+    """
+
+    model: str
+    so_tai_lieu: int
+    so_loi_goi: int
+    token_vao: int
+    token_ra_uoc: int
+    chi_phi_usd: float
+
+    def dong_in(self) -> str:
+        return (
+            f"ước tính vòng trên {self.model}: {self.so_tai_lieu} tài liệu chấm,"
+            f" {self.so_loi_goi} lời gọi (số đếm chính xác),"
+            f" {self.token_vao} token vào + {self.token_ra_uoc} token ra,"
+            f" khoảng {self.chi_phi_usd:.6f} USD theo đơn giá danh mục.\n"
+            "  Con số tiền là **cùng bậc, không bảo đảm chiều**: token vào đếm"
+            " thiếu phần bọc hội thoại của provider (~25-30%), token ra là ước"
+            f" lượng {TOKEN_RA_UOC_MOI_CHUNK}/chunk. Đừng đọc nó như một trần chi."
+        )
+
+
+def dem_token(van_ban: str, cau_hinh: Mapping[str, object] | None = None) -> int:
+    """Số token của một đoạn văn bản theo đúng bộ tách của đường nạp thật.
+
+    Dùng `chia_chunk` với trần chunk rất lớn và overlap 0 để cả đoạn ra đúng
+    một mảnh: `adapters/chunking` đã là chỗ duy nhất nối `eval/` với luật của
+    vendor, nên đếm token ở đây không mở thêm một cửa thứ hai sang `vendor/`.
+    """
+    goc = dict(cau_hinh_chunk() if cau_hinh is None else cau_hinh)
+    goc["chunk_token_size"] = 10**7
+    goc["chunk_overlap_token_size"] = 0
+    return sum(int(d["tokens"]) for d in chia_chunk(van_ban, goc))
+
+
+def uoc_tinh_vong(model: str, *, bo=None, danh_muc=None) -> UocTinhVong:
+    """Số lời gọi và tiền dự kiến của một vòng; **không** gọi LLM."""
+    bo = doc_bo_vang() if bo is None else bo
+    if not bo.tai_lieu_cham():
+        # "0 lời gọi, 0,000000 USD" rồi thoát 0 đọc y như một vòng miễn phí, và
+        # đó là câu trả lời sai cho câu hỏi duy nhất mà cờ này trả lời.
+        raise KetQuaDoKhongHopLe(
+            "bộ vàng không còn tài liệu chấm nào: ước tính sẽ là 0 lời gọi và"
+            " 0 USD, đọc y như một vòng miễn phí thay vì một bộ vàng hỏng"
+        )
+    danh_muc = danh_muc_mac_dinh() if danh_muc is None else danh_muc
+    muc = danh_muc.muc(model, loai=LOAI_LLM)
+    cau_hinh = cau_hinh_chunk()
+    so_loi_goi = token_vao = 0
+    for t in bo.tai_lieu_cham():
+        for dp in chia_chunk(t.than, cau_hinh):
+            so_loi_goi += 1
+            token_vao += dem_token(dung_prompt(dp["content"]), cau_hinh)
+    token_ra = so_loi_goi * TOKEN_RA_UOC_MOI_CHUNK
+    return UocTinhVong(
+        model=muc.ten,
+        so_tai_lieu=len(bo.tai_lieu_cham()),
+        so_loi_goi=so_loi_goi,
+        token_vao=token_vao,
+        token_ra_uoc=token_ra,
+        chi_phi_usd=muc.chi_phi_usd(token_vao, token_ra),
+    )
+
+
 def _llm_that(muc, danh_muc, audit):
     """Provider thật từ môi trường - đường tốn tiền, mặc định của `chay_vong`."""
     ncc = danh_muc.nha_cung_cap_cua(muc)
@@ -615,13 +987,28 @@ def _tham_so(argv: Sequence[str]) -> argparse.Namespace:
     p.add_argument("--vai", default=VAI_MAC_DINH)
     p.add_argument("--policy", type=Path, default=POLICY_MAC_DINH)
     p.add_argument("--thu-muc", type=Path, default=THU_MUC_KET_QUA)
-    p.add_argument(CO_GHI_DE, action="store_true", help="ghi đè file kết quả đã có")
+    p.add_argument(
+        CO_GHI_DE,
+        action="store_true",
+        help=f"ghi đè file kết quả đã có (bản cũ giữ lại thành `<vòng>{DUOI_BAN_CU}`)",
+    )
+    p.add_argument(
+        CO_UOC_TINH,
+        action="store_true",
+        help="in số lời gọi và tiền dự kiến rồi thoát; không gọi LLM, không tốn tiền",
+    )
     return p.parse_args(list(argv))
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     ts = _tham_so(sys.argv[1:] if argv is None else argv)
     try:
+        if ts.uoc_tinh:
+            # Nhánh không tốn tiền: in rồi thoát 0, không chạm thư mục kết quả
+            # và không kiểm `--ghi-de`. Xem trước phải chạy được cả khi file
+            # kết quả đã có, vì đó đúng là lúc người ta muốn xem trước nhất.
+            print(uoc_tinh_vong(ts.model).dong_in())
+            return 0
         asyncio.run(
             chay_vong(
                 vong=ts.vong,
@@ -633,7 +1020,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 ghi_de=ts.ghi_de,
             )
         )
-    except (KetQuaDoDaCo, KetQuaDoKhongHopLe) as loi:
+    except (KetQuaDoDaCo, KetQuaDoKhongHopLe, ChanNhipQuaLau) as loi:
         print(f"{type(loi).__name__}: {loi}", file=sys.stderr)
         return 1
     except ModelUnknown as loi:

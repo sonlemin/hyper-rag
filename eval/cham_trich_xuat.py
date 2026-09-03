@@ -340,6 +340,17 @@ class KetQuaCham:
     so_vang_han: int | None = None
     so_trung_nhan: int | None = None
     so_ung_vien_da_dung: int | None = None
+    # Tên chỉ số đã sinh ra sổ này (story 2.8). `KetQuaCham` không mang tên chỉ
+    # số thì `gop([cham_ghep_cap, cham_muc_tai_lieu])` cho một tổng vô nghĩa mà
+    # không ai nổ: hai chỉ số đếm hai thứ khác nhau trên cùng một bộ vàng, cộng
+    # chúng lại là cộng hai đơn vị đo. Chuỗi rỗng là "chưa gán" - sổ rỗng của
+    # `gop()` và sổ dựng tay trong test - và nó cộng được với mọi chỉ số, vì nó
+    # không mang khẳng định nào để mâu thuẫn.
+    #
+    # Tên field là `ten_chi_so` chứ không phải `chi_so`: `chi_so` đã là property
+    # trả bốn bộ đếm gộp (`ChiSo`), và đổi nghĩa của nó là đổi hợp đồng của mọi
+    # nơi đọc báo cáo.
+    ten_chi_so: str = ""
 
     def __post_init__(self):
         for ten in ("vang_theo_vai", "pred_theo_vai", "chat_theo_vai", "long_theo_vai"):
@@ -375,6 +386,7 @@ class KetQuaCham:
         return sum(n for (h, c), n in self.o_ma_tran.items() if c == VAI_THIEU)
 
     def __add__(self, khac: "KetQuaCham") -> "KetQuaCham":
+        ten = hop_nhat_ten_chi_so(self.ten_chi_so, khac.ten_chi_so)
         o = dict(self.o_ma_tran)
         for k, n in khac.o_ma_tran.items():
             o[k] = o.get(k, 0) + n
@@ -398,7 +410,33 @@ class KetQuaCham:
             so_vang_han=cong(self.so_vang_han, khac.so_vang_han),
             so_trung_nhan=cong(self.so_trung_nhan, khac.so_trung_nhan),
             so_ung_vien_da_dung=cong(self.so_ung_vien_da_dung, khac.so_ung_vien_da_dung),
+            ten_chi_so=ten,
         )
+
+
+class ChiSoKhongCongDuoc(Exception):
+    """Cộng hai sổ đếm của hai chỉ số khác nhau.
+
+    Kế thừa thẳng `Exception`, **không** `TypeError`: một `except TypeError` ở
+    trên đường gọi - thứ rất hay có quanh phép cộng và phép gộp - sẽ nuốt im
+    lặng đúng cái mà hàng rào này sinh ra để chặn, và tổng vô nghĩa lại chạy
+    tiếp. Cũng không `ValueError`, vì `BoVangKhongHopLe` và
+    `SoDoNapKhongHopLe` đều là con của `ValueError` và trộn ba thứ vào một
+    nhánh bắt là mất đúng khả năng phân biệt mà chúng có.
+    """
+
+    code = "CHI_SO_KHONG_CONG_DUOC"
+
+
+def hop_nhat_ten_chi_so(a: str, b: str) -> str:
+    """Tên chỉ số của tổng; khác nhau là từ chối, chưa gán thì nhường bên kia."""
+    if a and b and a != b:
+        raise ChiSoKhongCongDuoc(
+            f"không cộng được sổ của chỉ số {a!r} với sổ của chỉ số {b!r}:"
+            " hai chỉ số đếm hai thứ khác nhau trên cùng một bộ vàng, tổng của"
+            " chúng không có đơn vị nào"
+        )
+    return a or b
 
 
 def _cong_vai(a: Mapping[str, int], b: Mapping[str, int]) -> dict[str, int]:
@@ -597,6 +635,7 @@ def _so_dem_cap(
         so_cap=len(cap),
         so_fact_vang_khong_ghep=len(vang_le),
         so_fact_pred_khong_ghep=len(pred_le),
+        ten_chi_so=CHI_SO_GHEP_CAP,
     )
 
 
@@ -761,6 +800,7 @@ def cham_muc_tai_lieu(vang: Iterable, pred: Iterable, doc_key: str = "") -> Cham
             so_vang_han=len(vang_han),
             so_trung_nhan=len(trung),
             so_ung_vien_da_dung=len(ung_vien_da_dung),
+            ten_chi_so=CHI_SO_MUC_TAI_LIEU,
         ),
     )
 

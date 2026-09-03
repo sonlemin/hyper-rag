@@ -996,11 +996,16 @@ def test_chay_vong_hong_giua_chung_van_giu_phan_hoi_da_tra_tien(tmp_path):
     cuu_ho = sorted((tmp_path / THU_MUC_CHUA_XONG).glob("v-hong-*.json"))
     assert len(cuu_ho) == 1
     du_lieu = json.loads(cuu_ho[0].read_text(encoding="utf-8"))
-    assert len(du_lieu["tai_lieu"]) == 3
+    from eval.do_trich_xuat import KHOA_DANG_DO, doc_moi_vong
+
+    xong = [m for m in du_lieu["tai_lieu"] if not m.get(KHOA_DANG_DO)]
+    dang_do = [m for m in du_lieu["tai_lieu"] if m.get(KHOA_DANG_DO)]
+    assert len(xong) == 3
+    # Tài liệu thứ tư hỏng ngay ở chunk đầu nên nó có mặt với 0 chunk và mang
+    # cờ `dang_do`: file cứu hộ nói được vòng dừng ở đâu, không chỉ dừng lúc nào.
+    assert len(dang_do) == 1 and dang_do[0]["chunks"] == []
     # File cứu hộ không được lọt vào danh sách vòng: một lần chạy hỏng làm chết
     # cả trang báo cáo là mất luôn số của những vòng đã trả tiền.
-    from eval.do_trich_xuat import doc_moi_vong
-
     assert doc_moi_vong(tmp_path) == []
 
 
@@ -1204,20 +1209,22 @@ def test_file_so_do_nap_that_trong_repo_doc_duoc():
     assert do.token_embedding > 0 and do.chi_phi_embedding_usd > 0
 
 
-def test_so_do_nap_that_khop_lan_nap_02_09():
+def test_so_do_nap_that_khop_lan_nap_03_09():
     """Khóa sáu con số của lần nạp thật: đổi file mà quên cập nhật bảng là đỏ.
 
     Cùng vai trò với `SO_DO_NAP_THAT` cũ, chỉ khác là nguồn nay là file chứ
     không phải một hằng trong code - và test này là chỗ nói rõ bảng ngoại suy
-    đang đứng trên số nào.
+    đang đứng trên số nào. Từ story 2.8 nguồn là lần nạp **corpus 40 tài liệu**
+    (03/09), không còn là lần nạp 10 tài liệu bộ vàng của 2.7: khoản
+    `nap_corpus` vì thế là số đo trực tiếp chứ không phải phép nhân 4 lần.
     """
     from eval.ngoai_suy import doc_so_do_nap
 
     do = doc_so_do_nap()
-    assert (do.so_tai_lieu, do.token_vao_llm, do.token_ra_llm) == (10, 10111, 3651)
-    assert do.chi_phi_llm_usd == pytest.approx(0.00926816)
-    assert do.token_embedding == 8874
-    assert do.chi_phi_embedding_usd == pytest.approx(0.00017748)
+    assert (do.so_tai_lieu, do.token_vao_llm, do.token_ra_llm) == (40, 41074, 15608)
+    assert do.chi_phi_llm_usd == pytest.approx(0.03867512)
+    assert do.token_embedding == 37282
+    assert do.chi_phi_embedding_usd == pytest.approx(0.00074564)
 
 
 def _ghi_so_do(tmp_path, *, tu_tinh_tong=True, **thay):
@@ -1754,12 +1761,12 @@ def test_bon_vong_khong_co_ban_ghi_bi_loai():
 
 
 SO_KHOA_NGOAI_SUY = {
-    "nap_corpus": 0.0378,
+    "nap_corpus": 0.0394,
     "sinh_t7": 0.6178,
     "judge_do2": 5.5350,
     "vong_so_chunk": 0.2446,
-    "gpt4o_dung_cuoi": 0.2479,
-    "ensemble_a13": 0.0890,
+    "gpt4o_dung_cuoi": 0.2595,
+    "ensemble_a13": 0.0932,
 }
 
 
@@ -1770,9 +1777,9 @@ def test_khoa_so_bang_ngoai_suy():
     bang = ngoai_suy(doc_so_do_nap())
     for ten, usd in SO_KHOA_NGOAI_SUY.items():
         assert bang.khoan_theo_ten(ten).chi_phi_usd == pytest.approx(usd, abs=5e-5), ten
-    assert bang.tong_usd == pytest.approx(6.7720, abs=5e-5)
+    assert bang.tong_usd == pytest.approx(6.7894, abs=5e-5)
     assert bang.vuot_bao_dong is False
-    assert bang.phan_tram_bao_dong == pytest.approx(100 * 6.7720 / MUC_BAO_DONG_USD, abs=0.01)
+    assert bang.phan_tram_bao_dong == pytest.approx(100 * 6.7894 / MUC_BAO_DONG_USD, abs=0.01)
 
 
 def test_chia_chunk_khop_chunk_ma_ainsert_that_ghi_ra(tmp_path):
@@ -1822,3 +1829,701 @@ def test_chia_chunk_khop_chunk_ma_ainsert_that_ghi_ra(tmp_path):
     that = sorted(c["content"] for c in chunk_kho.values())
     assert len(that) > 1, "tài liệu phải dài hơn một chunk thì parity mới có nghĩa"
     assert sorted(c["content"] for c in chia_chunk(than)) == that
+
+
+# ---------------------------------------------------------------------------
+# Hàng rào `ten_chi_so` (story 2.8, khoản ledger 2.6)
+# ---------------------------------------------------------------------------
+
+
+def test_hai_chi_so_mang_dung_ten_cua_minh():
+    """Sổ đếm biết chỉ số nào sinh ra nó; trước 2.8 nó không biết."""
+    from eval.cham_trich_xuat import (
+        CHI_SO_GHEP_CAP,
+        CHI_SO_MUC_TAI_LIEU,
+        cham_muc_tai_lieu,
+        cham_tai_lieu,
+    )
+
+    vang = [{"subject": "App01", "remediation": "khởi động lại dịch vụ"}]
+    pred = [{"subject": "App01", "remediation": "khởi động lại dịch vụ"}]
+    assert cham_tai_lieu(vang, pred).ket_qua.ten_chi_so == CHI_SO_GHEP_CAP
+    assert cham_muc_tai_lieu(vang, pred).ket_qua.ten_chi_so == CHI_SO_MUC_TAI_LIEU
+
+
+def test_cong_hai_so_khac_chi_so_bi_tu_choi():
+    """`gop([ghép cặp, mức tài liệu])` là cộng hai đơn vị đo; phải nổ, không im."""
+    from eval.cham_trich_xuat import (
+        ChiSoKhongCongDuoc,
+        cham_muc_tai_lieu,
+        cham_tai_lieu,
+        gop,
+    )
+
+    vang = [{"subject": "App01", "remediation": "khởi động lại dịch vụ"}]
+    pred = [{"subject": "App01", "remediation": "khởi động lại dịch vụ"}]
+    a = cham_tai_lieu(vang, pred).ket_qua
+    b = cham_muc_tai_lieu(vang, pred).ket_qua
+    with pytest.raises(ChiSoKhongCongDuoc) as loi:
+        a + b
+    assert loi.value.code == "CHI_SO_KHONG_CONG_DUOC"
+    assert "ghép cặp" in str(loi.value) and "mức tài liệu" in str(loi.value)
+    with pytest.raises(ChiSoKhongCongDuoc):
+        gop([a, b])
+
+
+def test_cong_cung_chi_so_van_chay_va_giu_ten():
+    from eval.cham_trich_xuat import CHI_SO_GHEP_CAP, cham_tai_lieu, gop
+
+    vang = [{"subject": "App01", "remediation": "khởi động lại dịch vụ"}]
+    pred = [{"subject": "App01", "remediation": "khởi động lại dịch vụ"}]
+    a = cham_tai_lieu(vang, pred).ket_qua
+    tong = gop([a, a])
+    assert tong.ten_chi_so == CHI_SO_GHEP_CAP
+    assert tong.chi_so.so_vang == 2 * a.chi_so.so_vang
+
+
+def test_so_chua_gan_ten_cong_duoc_voi_moi_chi_so():
+    """Sổ rỗng của `gop()` và sổ dựng tay trong test không mang khẳng định nào."""
+    from eval.cham_trich_xuat import CHI_SO_MUC_TAI_LIEU, KetQuaCham, cham_muc_tai_lieu
+
+    b = cham_muc_tai_lieu(
+        [{"subject": "App01"}], [{"subject": "App01"}]
+    ).ket_qua
+    assert (KetQuaCham() + b).ten_chi_so == CHI_SO_MUC_TAI_LIEU
+    assert (b + KetQuaCham()).ten_chi_so == CHI_SO_MUC_TAI_LIEU
+
+
+def test_hai_ham_cham_ca_bo_moi_ham_gap_dung_mot_chi_so():
+    """`cham_bo` và `cham_bo_muc_tai_lieu` không được lẫn nguồn của nhau."""
+    from eval.cham_trich_xuat import (
+        CHI_SO_GHEP_CAP,
+        CHI_SO_MUC_TAI_LIEU,
+        cham_bo,
+        cham_bo_muc_tai_lieu,
+    )
+    from eval.bo_vang import doc_bo_vang
+
+    bo = doc_bo_vang()
+    rong = {t.doc_key: [] for t in bo.tai_lieu_cham()}
+    assert cham_bo(bo, rong).ten_chi_so == CHI_SO_GHEP_CAP
+    assert cham_bo_muc_tai_lieu(bo, rong).ten_chi_so == CHI_SO_MUC_TAI_LIEU
+
+
+# ---------------------------------------------------------------------------
+# Runner 2.8: cứu hộ theo chunk, `--uoc-tinh`, `.bak.json`, thử lại 429
+# ---------------------------------------------------------------------------
+
+
+class _LoiHttp(RuntimeError):
+    """Ngoại lệ hình dạng SDK provider: có `status_code` và có thể có `Retry-After`."""
+
+    class _PhanHoi:
+        def __init__(self, status_code, retry_after=None):
+            self.status_code = status_code
+            self.headers = {} if retry_after is None else {"retry-after": retry_after}
+
+    def __init__(self, status_code, retry_after=None):
+        super().__init__(f"HTTP {status_code}")
+        self.status_code = status_code
+        self.response = self._PhanHoi(status_code, retry_after)
+
+
+def _tai_lieu_nhieu_chunk(bo_vang):
+    """Thân đủ dài để `chia_chunk` cắt ra hơn một chunk."""
+    from adapters.chunking import chia_chunk
+
+    than = " ".join(
+        f"Máy chủ App{i:03d} chạy dịch vụ thanh toán số {i} và ghi nhật ký vào phân"
+        f" vùng riêng theo quy định vận hành nội bộ số {i} của phòng Kỹ thuật."
+        for i in range(220)
+    )
+    assert len(chia_chunk(than)) > 1
+    return than
+
+
+def test_cuu_ho_ghi_sau_moi_chunk_khong_phai_sau_moi_tai_lieu(tmp_path, bo_vang, monkeypatch):
+    """Khoản ledger 2.6: một tài liệu 5 chunk hỏng ở chunk cuối mất 4 lời gọi đã trả tiền."""
+    import asyncio
+    import json
+
+    from adapters.chunking import chia_chunk
+    from eval.do_trich_xuat import KHOA_DANG_DO, THU_MUC_CHUA_XONG, chay_vong
+
+    import dataclasses
+
+    from eval.bo_vang import BoVang
+
+    than = _tai_lieu_nhieu_chunk(bo_vang)
+    so_chunk = len(chia_chunk(than))
+    dau = dataclasses.replace(bo_vang.tai_lieu_cham()[0], than=than)
+    # Bộ vàng một tài liệu, thân dài: vòng chỉ chạy đúng tài liệu đó nên số
+    # chunk kỳ vọng không phụ thuộc mấy tài liệu còn lại.
+    monkeypatch.setattr(
+        "eval.do_trich_xuat.doc_bo_vang",
+        lambda *a, **k: BoVang(version=1, tai_lieu=(dau,)),
+    )
+
+    class HongOChunkCuoi(_NhaCungCapGia):
+        async def hoan_thanh(self, model, messages, **kwargs):
+            if self.so_lan >= so_chunk - 1:
+                raise RuntimeError("hỏng ở chunk cuối")
+            return await super().hoan_thanh(model, messages, **kwargs)
+
+    ncc = HongOChunkCuoi()
+    with pytest.raises(RuntimeError):
+        asyncio.run(
+            chay_vong(
+                vong="v-chunk",
+                model="deepseek-v4-flash",
+                thu_muc_ket_qua=tmp_path,
+                dung_llm=_llm_gia(ncc),
+                in_ra=lambda *a, **k: None,
+            )
+        )
+    cuu_ho = sorted((tmp_path / THU_MUC_CHUA_XONG).glob("v-chunk-*.json"))
+    assert len(cuu_ho) == 1
+    du_lieu = json.loads(cuu_ho[0].read_text(encoding="utf-8"))
+    (dang_do,) = [m for m in du_lieu["tai_lieu"] if m.get(KHOA_DANG_DO)]
+    assert dang_do["doc_key"] == dau.doc_key
+    assert len(dang_do["chunks"]) == so_chunk - 1, "chunk đã trả tiền phải còn"
+
+
+def test_file_cuu_ho_co_co_dang_do_thi_khong_doc_duoc_thanh_ket_qua(tmp_path):
+    """Đổi tên file cứu hộ thành file kết quả phải bị từ chối, không lặng lẽ nhận."""
+    import json
+
+    from eval.do_trich_xuat import KHOA_DANG_DO, KetQuaDoKhongHopLe, doc_ket_qua
+
+    goc = json.loads((REPO_ROOT / "eval" / "ket_qua_do" / "v1-deepseek.json").read_text("utf-8"))
+    goc["tai_lieu"][0][KHOA_DANG_DO] = True
+    dich = tmp_path / "v1-deepseek.json"
+    dich.write_text(json.dumps(goc), encoding="utf-8")
+    with pytest.raises(KetQuaDoKhongHopLe) as loi:
+        doc_ket_qua(dich)
+    assert KHOA_DANG_DO in str(loi.value)
+
+
+def test_ghi_de_giu_ban_cu_thanh_bak_json(tmp_path):
+    """`--ghi-de` xóa vĩnh viễn một vòng đã trả tiền; bản lưu là cái giá vài chục KB."""
+    from eval.do_trich_xuat import (
+        DUOI_BAN_CU,
+        doc_moi_vong,
+        duong_dan_ban_cu,
+        ghi_ket_qua,
+    )
+
+    dich = tmp_path / "v1-deepseek.json"
+    goc = json.loads((REPO_ROOT / "eval" / "ket_qua_do" / "v1-deepseek.json").read_text("utf-8"))
+    ghi_ket_qua(dich, goc)
+    moi = dict(goc, thoi_diem="2026-09-03T00:00:00+00:00")
+    ghi_ket_qua(dich, moi, ghi_de=True)
+
+    ban_cu = duong_dan_ban_cu(dich)
+    assert ban_cu.name == "v1-deepseek" + DUOI_BAN_CU
+    assert json.loads(ban_cu.read_text("utf-8"))["thoi_diem"] == goc["thoi_diem"]
+    assert json.loads(dich.read_text("utf-8"))["thoi_diem"] == moi["thoi_diem"]
+    # Bản cũ nằm cạnh file kết quả nhưng không được đọc lên thành một vòng nữa.
+    assert [v.vong for v in doc_moi_vong(tmp_path)] == [goc["vong"]]
+
+
+def test_thu_muc_ket_qua_that_khong_co_ban_cu_bo_quen():
+    """Bản `.bak.json` là rác của một lần ghi đè, không phải thứ có commit."""
+    from eval.do_trich_xuat import DUOI_BAN_CU, THU_MUC_KET_QUA
+
+    assert not list(THU_MUC_KET_QUA.glob("*" + DUOI_BAN_CU))
+
+
+@pytest.mark.parametrize(
+    "loi,mong_doi",
+    [
+        (_LoiHttp(429), True),
+        (_LoiHttp(500), True),
+        (_LoiHttp(503), True),
+        (_LoiHttp(400), False),
+        (_LoiHttp(401), False),
+        (_LoiHttp(404), False),
+        (RuntimeError("không có mã HTTP"), False),
+    ],
+)
+def test_chi_thu_lai_429_va_5xx(loi, mong_doi):
+    from eval.do_trich_xuat import nen_thu_lai
+
+    assert nen_thu_lai(loi) is mong_doi
+
+
+def test_khong_thu_lai_khi_bi_huy():
+    """`CancelledError` là phép hủy, không phải lỗi provider."""
+    import asyncio
+
+    from eval.do_trich_xuat import nen_thu_lai
+
+    assert nen_thu_lai(asyncio.CancelledError()) is False
+
+
+@pytest.mark.parametrize(
+    "raw,mong_doi",
+    [("7", 7.0), (" 2.5 ", 2.5), ("0", 0.0), (None, None), ("mai", None), ("-3", None)],
+)
+def test_doc_retry_after(raw, mong_doi):
+    from eval.do_trich_xuat import giay_cho_lai
+
+    assert giay_cho_lai(_LoiHttp(429, retry_after=raw)) == mong_doi
+
+
+def test_retry_after_vuot_tran_thi_bo_cuoc_kem_so_giay_provider_doi():
+    """Kẹp `Retry-After` xuống trần rồi thử lại ngay còn tệ hơn không thử lại.
+
+    Bốn lần thử đốt hết trong ba phút vào một endpoint còn đang chặn: vòng vừa
+    hỏng vừa làm cửa sổ chặn dài thêm.
+    """
+    import asyncio
+
+    from eval.do_trich_xuat import ChanNhipQuaLau, goi_llm_co_thu_lai
+
+    da_cho: list[float] = []
+
+    async def ngu(giay):
+        da_cho.append(giay)
+
+    lan = {"n": 0}
+
+    async def llm(prompt, **kw):
+        lan["n"] += 1
+        raise _LoiHttp(429, retry_after="3600")
+
+    with pytest.raises(ChanNhipQuaLau) as loi:
+        asyncio.run(goi_llm_co_thu_lai(llm, "p", sleep=ngu, in_ra=lambda *a, **k: None))
+    assert loi.value.code == "CHAN_NHIP_QUA_LAU"
+    assert "3600" in str(loi.value)
+    assert da_cho == [], "không được chờ lần nào rồi mới bỏ cuộc"
+    assert lan["n"] == 1
+
+
+def test_retry_after_trong_tran_thi_cho_dung_so_giay_provider_doi():
+    import asyncio
+
+    from eval.do_trich_xuat import goi_llm_co_thu_lai
+
+    da_cho: list[float] = []
+
+    async def ngu(giay):
+        da_cho.append(giay)
+
+    lan = {"n": 0}
+
+    async def llm(prompt, **kw):
+        lan["n"] += 1
+        if lan["n"] == 1:
+            raise _LoiHttp(429, retry_after="7")
+        return "xong"
+
+    kq = asyncio.run(goi_llm_co_thu_lai(llm, "p", sleep=ngu, in_ra=lambda *a, **k: None))
+    assert kq == "xong" and da_cho == [7.0]
+
+
+def test_het_lan_thu_thi_nem_nguyen_loi_cuoi():
+    """Ném nguyên lỗi provider, không bọc thành `RetryError` che mất mã HTTP."""
+    import asyncio
+
+    from eval.do_trich_xuat import SO_LAN_THU, goi_llm_co_thu_lai
+
+    lan = {"n": 0}
+
+    async def llm(prompt, **kw):
+        lan["n"] += 1
+        raise _LoiHttp(429, retry_after="0")
+
+    async def ngu(giay):
+        return None
+
+    with pytest.raises(_LoiHttp) as loi:
+        asyncio.run(goi_llm_co_thu_lai(llm, "p", sleep=ngu, in_ra=lambda *a, **k: None))
+    assert loi.value.status_code == 429
+    assert lan["n"] == SO_LAN_THU
+
+
+def test_loi_4xx_khac_khong_thu_lai_lan_nao():
+    import asyncio
+
+    from eval.do_trich_xuat import goi_llm_co_thu_lai
+
+    lan = {"n": 0}
+
+    async def llm(prompt, **kw):
+        lan["n"] += 1
+        raise _LoiHttp(400)
+
+    with pytest.raises(_LoiHttp):
+        asyncio.run(goi_llm_co_thu_lai(llm, "p", in_ra=lambda *a, **k: None))
+    assert lan["n"] == 1
+
+
+def test_vong_that_di_qua_duong_thu_lai_va_van_neo_dung_chi_phi(tmp_path):
+    """429 giữa vòng không được làm lệch token của chunk nào.
+
+    Lời gọi hỏng không ghi sự kiện chi phí, nên mốc chụp trước vòng thử lại vẫn
+    neo đúng một sự kiện của lần thử thành công.
+    """
+    import asyncio
+
+    from eval.do_trich_xuat import chay_vong, doc_ket_qua
+
+    class ChanNhipMotLan(_NhaCungCapGia):
+        def __init__(self):
+            super().__init__()
+            self.da_chan = False
+
+        async def hoan_thanh(self, model, messages, **kwargs):
+            if not self.da_chan:
+                self.da_chan = True
+                raise _LoiHttp(429, retry_after="0")
+            return await super().hoan_thanh(model, messages, **kwargs)
+
+    async def ngu(giay):
+        return None
+
+    ncc = ChanNhipMotLan()
+    dich = asyncio.run(
+        chay_vong(
+            vong="v-429",
+            model="deepseek-v4-flash",
+            thu_muc_ket_qua=tmp_path,
+            dung_llm=_llm_gia(ncc),
+            in_ra=lambda *a, **k: None,
+            sleep=ngu,
+        )
+    )
+    kq = doc_ket_qua(dich)
+    assert len(kq.tai_lieu) == 8
+    assert kq.token_vao() == 800 and kq.token_ra() == 160
+
+
+def test_uoc_tinh_khong_goi_llm_va_dem_dung_so_loi_goi(bo_vang):
+    """Hàng "Ước tính trước khi tiêu tiền": số lời gọi bằng tổng chunk của tài liệu chấm."""
+    from adapters.chunking import chia_chunk
+    from eval.do_trich_xuat import uoc_tinh_vong
+
+    u = uoc_tinh_vong("deepseek-v4-flash")
+    cho_doi = sum(len(chia_chunk(t.than)) for t in bo_vang.tai_lieu_cham())
+    assert u.so_loi_goi == cho_doi
+    assert u.so_tai_lieu == len(bo_vang.tai_lieu_cham())
+    assert u.token_vao > 0 and u.chi_phi_usd > 0
+
+
+def test_uoc_tinh_cung_bac_voi_vong_da_do_that():
+    """Ước tính phải cùng bậc với hóa đơn thật, nếu không nó vô dụng.
+
+    Lặp theo **từng file vòng**, không gộp theo `model`: gộp thì `v1-deepseek`
+    đè `v0-deepseek-goc` và chỉ 3 trong 4 vòng được chấm, trong khi spec nói cả
+    bốn. Sai lệch cho phép rộng vì phần bọc hội thoại của provider không đếm
+    được ở phía mình.
+    """
+    from eval.do_trich_xuat import DUOI_FILE, THU_MUC_KET_QUA, doc_moi_vong, uoc_tinh_vong
+
+    vong = doc_moi_vong(THU_MUC_KET_QUA)
+    so_file = len(list(THU_MUC_KET_QUA.glob("*" + DUOI_FILE)))
+    assert len(vong) == so_file >= 4, (len(vong), so_file)
+    da_cham = 0
+    for v in vong:
+        u = uoc_tinh_vong(v.model)
+        assert u.so_loi_goi == v.so_chunk(), v.vong
+        assert 0.4 <= u.chi_phi_usd / v.chi_phi_usd() <= 2.5, (v.vong, u.chi_phi_usd)
+        da_cham += 1
+    assert da_cham == so_file, "mọi file vòng phải được chấm, không gộp theo model"
+
+
+def test_uoc_tinh_tren_bo_vang_rong_thi_nem_chu_khong_in_0_usd(bo_vang):
+    """"0 lời gọi, 0,000000 USD" rồi thoát 0 đọc y như một vòng miễn phí."""
+    import dataclasses
+
+    from eval.bo_vang import BoVang
+    from eval.do_trich_xuat import KetQuaDoKhongHopLe, uoc_tinh_vong
+
+    chi_few_shot = BoVang(
+        version=1,
+        tai_lieu=tuple(dataclasses.replace(t, few_shot=True) for t in bo_vang.tai_lieu),
+    )
+    assert chi_few_shot.tai_lieu_cham() == ()
+    with pytest.raises(KetQuaDoKhongHopLe) as loi:
+        uoc_tinh_vong("deepseek-v4-flash", bo=chi_few_shot)
+    assert "tài liệu chấm" in str(loi.value)
+
+
+def test_dong_in_uoc_tinh_noi_ro_khong_bao_dam_chieu():
+    """Một cờ xem trước không được tạo ảo giác an toàn về số tiền sắp tiêu."""
+    from eval.do_trich_xuat import uoc_tinh_vong
+
+    dong = uoc_tinh_vong("deepseek-v4-flash").dong_in()
+    assert "không bảo đảm chiều" in dong
+    assert "trần chi" in dong
+
+
+def test_co_uoc_tinh_thoat_0_va_khong_ghi_file(tmp_path, capsys):
+    from eval.do_trich_xuat import main
+
+    ma = main(
+        ["--vong", "v-xem-truoc", "--model", "deepseek-v4-flash", "--thu-muc",
+         str(tmp_path), "--uoc-tinh"]
+    )
+    assert ma == 0
+    assert "lời gọi" in capsys.readouterr().out
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_so_tai_lieu_corpus_khop_bang_thiet_ke():
+    """Khoản `nap_corpus` nhân theo số tài liệu corpus; số đó phải là số thật.
+
+    Bảng thiết kế `eval/corpus_thiet_ke.yaml` là nguồn chuẩn của corpus, nên nó
+    cũng là nguồn chuẩn của mẫu số này. Thêm một tài liệu vào corpus mà quên
+    bảng ngoại suy là một khoản chương 4 nhỏ đi mà không ai thấy.
+    """
+    import yaml
+
+    from eval.ngoai_suy import GiaDinh
+
+    bang = yaml.safe_load(
+        (REPO_ROOT / "eval" / "corpus_thiet_ke.yaml").read_text(encoding="utf-8")
+    )
+    assert GiaDinh().so_tai_lieu_corpus == len(bang["tai_lieu"]) == 40
+
+
+# --- Vòng review 2.8: ba lỗ của phép thử lại, hai lỗ của cơ chế chống mất ---
+
+
+class _LoiMaKhac(RuntimeError):
+    """SDK phơi mã HTTP ở `.status` hoặc `.code` thay vì `.status_code`."""
+
+    def __init__(self, **truong):
+        super().__init__("lỗi provider")
+        for k, v in truong.items():
+            setattr(self, k, v)
+
+
+@pytest.mark.parametrize(
+    "truong,mong_doi",
+    [
+        ({"status_code": 429}, 429),
+        ({"status": 429}, 429),
+        ({"code": 429}, 429),
+        ({"code": "503"}, 503),
+        # `code` cũng hay mang tên lỗi; chuỗi không phải số thì bỏ qua, không nổ.
+        ({"code": "rate_limit_exceeded"}, None),
+        ({"status": True}, None),
+        ({}, None),
+    ],
+)
+def test_doc_ma_http_theo_ca_ba_ten_truong(truong, mong_doi):
+    from eval.do_trich_xuat import ma_http_cua
+
+    assert ma_http_cua(_LoiMaKhac(**truong)) == mong_doi
+
+
+@pytest.mark.parametrize(
+    "loi",
+    [
+        ConnectionResetError("peer reset"),
+        ConnectionRefusedError("refused"),
+        TimeoutError("đọc quá lâu"),
+        __import__("socket").gaierror("không phân giải được tên miền"),
+    ],
+)
+def test_loi_mang_tam_thoi_duoc_thu_lai(loi):
+    """Một trục trặc mạng thoáng qua không được giết cả vòng 40 lời gọi."""
+    from eval.do_trich_xuat import nen_thu_lai
+
+    assert nen_thu_lai(loi) is True
+
+
+def test_loi_mang_bi_sdk_boc_van_duoc_nhan_ra():
+    """`openai.APIConnectionError` không phải `OSError`, nhưng nó giữ nguyên nhân gốc."""
+    from eval.do_trich_xuat import nen_thu_lai
+
+    class LoiSdk(RuntimeError):
+        pass
+
+    try:
+        try:
+            raise ConnectionResetError("peer reset")
+        except ConnectionResetError as goc:
+            raise LoiSdk("kết nối tới provider hỏng") from goc
+    except LoiSdk as boc:
+        assert nen_thu_lai(boc) is True
+
+
+def test_loi_thuong_khong_mang_ma_va_khong_phai_loi_mang_thi_khong_thu_lai():
+    from eval.do_trich_xuat import nen_thu_lai
+
+    assert nen_thu_lai(ValueError("prompt sai lược đồ")) is False
+
+
+def test_vong_that_song_qua_mot_lan_reset_ket_noi(tmp_path):
+    """Ca thật của P6a: lời gọi đầu bị reset, vòng vẫn chạy hết."""
+    import asyncio
+
+    from eval.do_trich_xuat import chay_vong, doc_ket_qua
+
+    class ResetMotLan(_NhaCungCapGia):
+        def __init__(self):
+            super().__init__()
+            self.da_reset = False
+
+        async def hoan_thanh(self, model, messages, **kwargs):
+            if not self.da_reset:
+                self.da_reset = True
+                raise ConnectionResetError("peer reset")
+            return await super().hoan_thanh(model, messages, **kwargs)
+
+    async def ngu(giay):
+        return None
+
+    dich = asyncio.run(
+        chay_vong(
+            vong="v-reset",
+            model="deepseek-v4-flash",
+            thu_muc_ket_qua=tmp_path,
+            dung_llm=_llm_gia(ResetMotLan()),
+            in_ra=lambda *a, **k: None,
+            sleep=ngu,
+        )
+    )
+    assert len(doc_ket_qua(dich).tai_lieu) == 8
+
+
+def test_ghi_de_lan_hai_khong_de_ban_bak_cua_lan_mot(tmp_path):
+    """Cơ chế chống mất "một vòng là tiền đã tiêu" không được tự hỏng ở lần thứ hai."""
+    from eval.do_trich_xuat import KetQuaDoDaCo, duong_dan_ban_cu, ghi_ket_qua
+
+    dich = tmp_path / "v1-deepseek.json"
+    goc = json.loads((REPO_ROOT / "eval" / "ket_qua_do" / "v1-deepseek.json").read_text("utf-8"))
+    ghi_ket_qua(dich, goc)
+    ghi_ket_qua(dich, dict(goc, thoi_diem="2026-09-03T00:00:00+00:00"), ghi_de=True)
+    with pytest.raises(KetQuaDoDaCo) as loi:
+        ghi_ket_qua(dich, dict(goc, thoi_diem="2026-09-04T00:00:00+00:00"), ghi_de=True)
+    assert duong_dan_ban_cu(dich).name in str(loi.value)
+    # Bản lưu đầu tiên còn nguyên, và file vòng cũng không bị đụng.
+    assert json.loads(duong_dan_ban_cu(dich).read_text("utf-8"))["thoi_diem"] == goc["thoi_diem"]
+    assert json.loads(dich.read_text("utf-8"))["thoi_diem"] == "2026-09-03T00:00:00+00:00"
+
+
+@pytest.mark.parametrize("ten", ["v1.bak", "vong-cuoi.bak"])
+def test_ten_vong_ket_thuc_bang_bak_bi_tu_choi(ten):
+    """`--vong v1.bak` ghi ra `v1.bak.json`, đúng đuôi mà `doc_moi_vong` bỏ qua.
+
+    Một vòng đã trả tiền vắng mặt khỏi mọi báo cáo mà không ai biết là kiểu hỏng
+    tệ nhất của một harness đo: nó không đỏ, nó chỉ thiếu.
+    """
+    from eval.do_trich_xuat import KetQuaDoKhongHopLe, kiem_ten_vong
+
+    with pytest.raises(KetQuaDoKhongHopLe) as loi:
+        kiem_ten_vong(ten)
+    assert ".bak" in str(loi.value)
+
+
+def test_ten_vong_co_chu_bak_o_giua_van_duoc_nhan():
+    """Chỉ cấm *kết thúc* bằng `.bak`, không cấm chữ `bak` xuất hiện."""
+    from eval.do_trich_xuat import kiem_ten_vong
+
+    assert kiem_ten_vong("v1.bak-thu-nghiem") == "v1.bak-thu-nghiem"
+
+
+def test_sao_luu_hong_thi_khong_ghi_de(tmp_path, monkeypatch):
+    """Hàng I/O Matrix "lỗi lúc sao lưu thì không ghi đè", nay có test.
+
+    Trước đó luật này chỉ nằm trong docstring: `os.replace` không bao giờ hỏng
+    trong test nên nhánh đó chưa từng chạy.
+    """
+    import os as _os
+
+    from eval.do_trich_xuat import duong_dan_ban_cu, ghi_ket_qua
+
+    dich = tmp_path / "v1-deepseek.json"
+    goc = json.loads((REPO_ROOT / "eval" / "ket_qua_do" / "v1-deepseek.json").read_text("utf-8"))
+    ghi_ket_qua(dich, goc)
+    truoc = dich.read_text("utf-8")
+
+    that = _os.replace
+
+    def replace_hong(a, b):
+        if str(b) == str(duong_dan_ban_cu(dich)):
+            raise OSError("kho đầy, không sao lưu được")
+        return that(a, b)
+
+    monkeypatch.setattr("eval.do_trich_xuat.os.replace", replace_hong)
+    with pytest.raises(OSError):
+        ghi_ket_qua(dich, dict(goc, thoi_diem="2026-09-03T00:00:00+00:00"), ghi_de=True)
+    assert dich.read_text("utf-8") == truoc, "file vòng cũ phải còn nguyên nội dung"
+    assert not duong_dan_ban_cu(dich).exists()
+
+
+def test_so_do_nap_dung_bang_corpus_dich():
+    """Hệ số nhân của khoản `nap_corpus` phải bằng 1, nếu không nó không còn là số đo.
+
+    Corpus lớn lên và `GiaDinh.so_tai_lieu_corpus` sửa theo, mà file số đo vẫn
+    đo 40 tài liệu, thì khoản 1 lặng lẽ quay về ngoại suy trong khi bảng vẫn in
+    cờ `đo` và mọi tài liệu vẫn gọi nó là số đo.
+    """
+    from eval.ngoai_suy import GiaDinh, doc_so_do_nap
+
+    assert doc_so_do_nap().so_tai_lieu == GiaDinh().so_tai_lieu_corpus
+
+
+def test_khoan_nap_corpus_khong_con_gia_dinh_ve_co_tai_lieu():
+    """Hệ số bằng 1 nên câu "40 tài liệu cùng cỡ với 10 tài liệu đã đo" phải biến mất."""
+    from eval.ngoai_suy import NGUON_DO, doc_so_do_nap, ngoai_suy
+
+    khoan = ngoai_suy(doc_so_do_nap()).khoan_theo_ten("nap_corpus")
+    assert khoan.nguon == NGUON_DO
+    assert khoan.gia_dinh == ()
+    assert "đo trực tiếp" in khoan.mo_ta
+    assert "suy từ" not in khoan.mo_ta
+
+
+def test_khoan_nap_corpus_noi_lai_gia_dinh_khi_he_so_khac_1():
+    """Ngược lại: corpus đích lớn hơn số đo thì câu giả định phải quay lại.
+
+    Không có ca này thì nhánh `ti_le == 1` có thể là một hằng `True` mà không ai
+    thấy.
+    """
+    import dataclasses
+
+    from eval.ngoai_suy import NGUON_DO, GiaDinh, doc_so_do_nap, ngoai_suy
+
+    do = doc_so_do_nap()
+    gd = dataclasses.replace(GiaDinh(), so_tai_lieu_corpus=do.so_tai_lieu * 2)
+    khoan = ngoai_suy(do, gia_dinh=gd).khoan_theo_ten("nap_corpus")
+    assert khoan.nguon == NGUON_DO
+    assert khoan.gia_dinh and "cùng cỡ" in khoan.gia_dinh[0]
+    assert "suy từ" in khoan.mo_ta
+
+
+def test_thong_diep_cuu_ho_neu_ten_tai_lieu_du_no_hong_ngay_chunk_dau(tmp_path):
+    """Ca thường gặp nhất - hỏng ở chunk đầu - trước đây rơi khỏi nhánh nêu tên."""
+    import asyncio
+
+    from eval.do_trich_xuat import chay_vong
+
+    class HongOTaiLieuThuTu(_NhaCungCapGia):
+        async def hoan_thanh(self, model, messages, **kwargs):
+            if self.so_lan >= 3:
+                raise RuntimeError("hỏng ngay chunk đầu của tài liệu thứ tư")
+            return await super().hoan_thanh(model, messages, **kwargs)
+
+    dong: list[str] = []
+    with pytest.raises(RuntimeError):
+        asyncio.run(
+            chay_vong(
+                vong="v-do-dang",
+                model="deepseek-v4-flash",
+                thu_muc_ket_qua=tmp_path,
+                dung_llm=_llm_gia(HongOTaiLieuThuTu()),
+                in_ra=lambda *a, **k: dong.append(str(a[0]) if a else ""),
+            )
+        )
+    from eval.bo_vang import doc_bo_vang
+
+    thu_tu = doc_bo_vang().tai_lieu_cham()[3].doc_key
+    loi = [d for d in dong if "LỖI giữa chừng" in d]
+    assert len(loi) == 1, dong
+    assert thu_tu in loi[0], loi[0]
+    assert "0 chunk đã trả tiền" in loi[0], loi[0]

@@ -5,7 +5,9 @@ Quy tắc canh giữ:
 - ``adapters/`` không import ``api``, ``redteam``.
 - ``redteam/`` không import ``api``.
 - ``eval/`` (harness Đo 1-3) không import ``api``: nó chạy ngoài tiến trình phục
-  vụ, tiêm engine và audit port như ``tests/`` (AD-15).
+  vụ, tiêm engine và audit port như ``tests/`` (AD-15). Từ story 2.8 nó cũng
+  không import ``vendor``: luật chia chunk của upstream đi qua
+  ``adapters/chunking.py``, ngoại lệ duy nhất là smoke của story 1.1.
 - Không tầng nào import ``tests`` hay ``vendor`` trực tiếp ngoài luật cho phép
   (``adapters`` được import ``hypergraphrag`` từ vendor).
 - Chỉ module ingest trong danh sách trắng được import ``core.system_context``
@@ -33,8 +35,25 @@ CAM_IMPORT = {
     "adapters": {"api", "redteam", "web", "tests"},
     "api": {"web", "tests"},
     "redteam": {"api", "web", "tests"},
-    "eval": {"api", "web", "tests"},
+    # `eval/` không import `vendor/` (story 2.8, khoản ledger 2.6). Luật chia
+    # chunk của vendor đi qua `adapters/chunking.py`, đó là chỗ duy nhất parity
+    # với upstream được canh; một `eval/` tự import `hypergraphrag` là một bản
+    # sao thứ hai của luật đó trôi tự do.
+    "eval": {"api", "web", "tests", "hypergraphrag", "vendor"},
 }
+
+# Miễn trừ tường minh kèm lý do, thay vì nới luật ở trên. Đúng một dòng, cùng
+# hình dạng với `CHO_PHEP_SYSTEM_CONTEXT` và `CHO_PHEP_AINSERT`:
+# `eval/smoke_upstream.py` là smoke của story 1.1, chạy *engine upstream* trên
+# storage mặc định để chứng minh vendor còn chạy được - nó không phải một đường
+# đo, không dùng luật chunk của dự án, và AGENTS.md đã ghi nó là ngoại lệ duy
+# nhất của chiều import `eval/`.
+CHO_PHEP_VENDOR: frozenset[str] = frozenset({"eval/smoke_upstream.py"})
+
+# Miễn trừ chỉ áp cho **đúng các gốc vendor**, không phải cho mọi luật chiều
+# import của package. Không có hàng rào này thì một dòng danh sách trắng thêm vào
+# vì lý do vendor cũng lặng lẽ mở luôn `api`, `web` và `tests` cho chính file đó.
+GOC_VENDOR: frozenset[str] = frozenset({"hypergraphrag", "vendor"})
 
 
 def _goc_import_tuyet_doi(package: str) -> list[tuple[str, Path]]:
@@ -62,15 +81,62 @@ def test_core_chi_stdlib():
 
 
 def test_khong_import_nguoc():
-    """adapters/api/redteam không import ngược tầng bị cấm."""
+    """adapters/api/redteam/eval không import ngược tầng bị cấm."""
     vi_pham = []
     for package, cam in CAM_IMPORT.items():
         if package == "core":
             continue
         for root, py in _goc_import_tuyet_doi(package):
-            if root in cam:
-                vi_pham.append(f"{py.relative_to(REPO_ROOT)}: import {root}")
+            duong_dan = py.relative_to(REPO_ROOT).as_posix()
+            duoc_mien = root in GOC_VENDOR and duong_dan in CHO_PHEP_VENDOR
+            if root in cam and not duoc_mien:
+                vi_pham.append(f"{duong_dan}: import {root}")
     assert not vi_pham, "Vi phạm chiều import:\n" + "\n".join(vi_pham)
+
+
+def test_danh_sach_trang_vendor_dung_mot_dong_va_van_con_that():
+    """Miễn trừ vendor của `eval/` phải đúng một dòng, và dòng đó phải trỏ file có thật.
+
+    Một danh sách trắng trỏ vào file đã xóa là một luật đã hết tác dụng mà
+    không ai biết; một danh sách trắng dài ra là luật đã bị nới bằng cách thêm
+    dòng thay vì bằng một quyết định.
+    """
+    assert len(CHO_PHEP_VENDOR) == 1
+    for duong_dan in CHO_PHEP_VENDOR:
+        assert (REPO_ROOT / duong_dan).is_file(), duong_dan
+
+
+def test_mien_tru_vendor_khong_mo_cua_cho_luat_khac(tmp_path, monkeypatch):
+    """File trong danh sách trắng vẫn phải bị bắt khi nó import `api`.
+
+    Danh sách trắng là miễn trừ cho *một luật*, không phải một tấm vé đi qua mọi
+    luật chiều import của package.
+    """
+    goc = tmp_path / "eval"
+    goc.mkdir()
+    (goc / "smoke_upstream.py").write_text(
+        "import hypergraphrag" + chr(10) + "import api" + chr(10), encoding="utf-8"
+    )
+    monkeypatch.setattr("tests.test_import_lint.REPO_ROOT", tmp_path)
+    monkeypatch.setitem(CAM_IMPORT, "eval", {"api", "hypergraphrag", "vendor"})
+    with pytest.raises(AssertionError) as loi:
+        test_khong_import_nguoc()
+    thong_diep = str(loi.value)
+    assert "import api" in thong_diep
+    # ...và đúng dòng vendor thì vẫn được miễn, nếu không test trên xanh vì lý do sai.
+    assert "import hypergraphrag" not in thong_diep
+
+
+def test_eval_ngoai_smoke_khong_cham_vendor():
+    """Mọi file `eval/` trừ smoke phải đi qua `adapters/chunking.py` để chạm luật vendor."""
+    cham = sorted(
+        {
+            py.relative_to(REPO_ROOT).as_posix()
+            for root, py in _goc_import_tuyet_doi("eval")
+            if root in {"hypergraphrag", "vendor"}
+        }
+    )
+    assert cham == sorted(CHO_PHEP_VENDOR), cham
 
 
 # 1.2-UNIT-004: constructor context hệ thống là cửa duy nhất mở cờ bỏ-filter,

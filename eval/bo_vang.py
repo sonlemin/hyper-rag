@@ -49,9 +49,10 @@ Quy ước gán nhãn (viết ra để lần soát sau đọc cùng một luật
 - Một câu nói hai việc thì thành hai fact, không ghép chữ của hai mệnh đề rời
   nhau thành một giá trị.
 
-Module thuần: đọc hai file trên đĩa, không chạm kho, không gọi LLM, không tốn
-tiền. Chỉ import `core/` và `adapters/sensitivity_loader` (bảng ba loại nội
-dung), không import `api/` (import-lint).
+Module thuần: đọc file trên đĩa, không chạm kho, không gọi LLM, không tốn tiền.
+Chỉ import `core/`, `adapters/sensitivity_loader` (bảng hạng độ nhạy) và
+`adapters/policy_loader` (bảng chính sách, cho luật phủ loại nội dung của story
+2.8), không import `api/` (import-lint).
 """
 
 import json
@@ -61,12 +62,20 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Iterable, Mapping, Sequence
 
+from adapters.policy_loader import load_policy
 from adapters.sensitivity_loader import SensitivityRanksInvalid, bang_hang_mac_dinh
 from core import facts
 from core.ingest_scan import MA_DINH_DANG_LA, TaiLieuNguon, quet_thu_muc
+from core.policy import PolicyInvalid
 from core.slots import SLOT_ROLES
 
 _GOC = Path(__file__).resolve().parent
+
+# Bảng chính sách hiện hành của repo. Từ story 2.8 luật phủ loại nội dung của bộ
+# vàng hỏi bảng *chính sách* chứ không hỏi bảng hạng độ nhạy: bảng hạng có 13
+# loại để story 3.2 dựng được bảng đầy đủ, còn bộ vàng chỉ nợ những loại đang
+# thật sự có ca đo.
+POLICY_MAC_DINH: Path = _GOC.parent / "config" / "policy-toi-gian.yaml"
 
 DUONG_DAN_MAC_DINH: Path = _GOC / "bo_vang_trich_xuat.json"
 THU_MUC_DATA_MAC_DINH: Path = _GOC / "data"
@@ -437,7 +446,7 @@ def _kiem_toan_bo(
     nguon: Mapping[str, TaiLieuNguon],
     loi: list[str],
 ) -> None:
-    """Năm luật ở mức cả bộ: khớp thư mục, trần few-shot, còn tài liệu chấm, phủ vai, phủ loại."""
+    """Sáu luật ở mức cả bộ: khớp thư mục, trần few-shot, còn tài liệu chấm, phủ vai, và hai phép bao hàm về loại nội dung (story 2.8)."""
     thieu = sorted(set(nguon) - da_khai)
     if thieu:
         loi.append(f"file trong thư mục dữ liệu chưa có mục vàng: {thieu}")
@@ -460,14 +469,59 @@ def _kiem_toan_bo(
             " - ma trận lẫn lộn của 2.6 sẽ có hàng rỗng"
         )
 
+    _kiem_loai_noi_dung(tai_lieu, loi)
+
+
+def loai_cua_bang_chinh_sach(path: str | Path = POLICY_MAC_DINH) -> set[str]:
+    """Tập loại nội dung được *khai* trong một bảng chính sách.
+
+    Hợp của cột `disclosure` qua mọi vai. Loại không có mặt ở đây là fail-closed
+    L0 với mọi vai (`core.policy.RolePolicy.level`), tức bảng chính sách không
+    có ca nào cho nó và bộ vàng không nợ nó một tài liệu.
+    """
+    policy = load_policy(path)
+    return {loai for vai in policy.roles.values() for loai in vai.disclosure}
+
+
+def _kiem_loai_noi_dung(tai_lieu: Sequence[TaiLieuVang], loi: list[str]) -> None:
+    """Hai phép bao hàm, không phải một đẳng thức (story 2.8).
+
+    Từ 2.8 bảng hạng có 13 loại còn bộ vàng vẫn 10 tài liệu ba loại, nên luật cũ
+    ("bộ vàng phủ *mọi* loại của bảng hạng") biến một lần mở bảng hạng thành một
+    bộ vàng không hợp lệ và một lượt gán nhãn 10 tài liệu mới. Hai luật thay nó,
+    mỗi luật trả lời một câu hỏi khác nhau:
+
+    - **Phủ đủ bảng chính sách.** Loại nội dung mà bảng chính sách *đang khai*
+      phải có tài liệu vàng, nếu không phép đo mất ca tương ứng trên dữ liệu
+      thật. Loại chưa khai là L0 im lặng, không có ca nào để mất.
+    - **Mọi loại của bộ vàng phải có hạng.** Chiều ngược lại vẫn bắt buộc: một
+      tài liệu vàng mang loại không có hạng độ nhạy là một tài liệu không nạp
+      được (`SensitivityRankUnknown` từ chối cả lô lúc ingest).
+    """
+    cua_bo = {t.content_type for t in tai_lieu}
     try:
-        moi_loai = set(bang_hang_mac_dinh().hang)
+        co_hang = set(bang_hang_mac_dinh().hang)
     except SensitivityRanksInvalid as e:
+        # Không `return` ở đây: bảng hạng hỏng không được nuốt luôn phép kiểm
+        # phủ theo bảng chính sách bên dưới. Gom hết lỗi rồi ném một lần là luật
+        # của cả module (`BoVangKhongHopLe.loi` là một danh sách).
         loi.append(f"không nạp được bảng hạng độ nhạy để đối chiếu loại nội dung: {e}")
+        co_hang = None
+    if co_hang is not None:
+        khong_hang = sorted(cua_bo - co_hang)
+        if khong_hang:
+            loi.append(
+                f"loại nội dung của bộ vàng không có hạng độ nhạy: {khong_hang}"
+                " - ingest sẽ từ chối cả lô bằng SensitivityRankUnknown"
+            )
+    try:
+        cua_policy = loai_cua_bang_chinh_sach()
+    except (PolicyInvalid, OSError) as e:
+        loi.append(f"không nạp được bảng chính sách để đối chiếu loại nội dung: {e}")
         return
-    loai_thieu = sorted(moi_loai - {t.content_type for t in tai_lieu})
+    loai_thieu = sorted(cua_policy - cua_bo)
     if loai_thieu:
         loi.append(
-            f"loại nội dung không có tài liệu nào trong bộ vàng: {loai_thieu}"
-            " - bảng chính sách mất ca tương ứng trên dữ liệu thật"
+            f"loại nội dung có trong bảng chính sách mà không có tài liệu nào trong"
+            f" bộ vàng: {loai_thieu} - bảng chính sách mất ca tương ứng trên dữ liệu thật"
         )

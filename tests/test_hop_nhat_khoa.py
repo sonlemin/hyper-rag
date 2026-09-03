@@ -322,11 +322,38 @@ def test_file_khong_phai_utf8(tmp_path):
 
 
 def test_hang_cua_file_mac_dinh_doi_mot_chieu():
-    """Ba loại nội dung của corpus xếp đúng chiều: runbook < báo cáo < bí mật.
+    """13 loại nội dung của corpus xếp đúng một chiều, từ FAQ tới bí mật hạ tầng.
 
     Kỳ vọng viết tay ở đây, không suy từ chính file: đó là điều làm cho một lần
     sửa nhầm thứ tự trong YAML thành một test đỏ chứ không thành một chính sách
-    mới không ai duyệt.
+    mới không ai duyệt. Chuỗi này là thứ tự mà bảng chính sách đầy đủ của story
+    3.2 phải đơn điệu theo (AD-5), nên nó được viết ra đủ 13 mắt chứ không rút
+    gọn thành "min < max".
     """
     hang = tai_hang_do_nhay(DUONG_DAN_MAC_DINH).hang
-    assert hang["runbook"] < hang["bao_cao_su_co"] < hang["bi_mat_ha_tang"]
+    assert (
+        hang["faq"]
+        < hang["tai_lieu_san_pham"]
+        < hang["sop"]
+        < hang["troubleshooting"]
+        < hang["runbook"]
+        < hang["known_issue"]
+        < hang["vong_doi_ticket"]
+        < hang["canh_bao"]
+        < hang["bao_cao_su_co"]
+        < hang["postmortem"]
+        < hang["log"]
+        < hang["cmdb"]
+        < hang["bi_mat_ha_tang"]
+    )
+    assert len(hang) == 13, "bảng 13 hạng của story 2.8; thêm loại là thêm một mắt ở trên"
+
+
+def test_ba_hang_da_dong_bang_giu_nguyen_so():
+    """10/20/30 là số của story 2.1; đổi chúng là re-ingest 10 tài liệu bộ vàng.
+
+    Khóa quyền đã ghi của bộ vàng được tính bằng đúng ba số này. Thêm loại mới
+    vào khoảng trống không đụng chúng, và test này là chỗ nói ra điều đó.
+    """
+    hang = tai_hang_do_nhay(DUONG_DAN_MAC_DINH).hang
+    assert (hang["runbook"], hang["bao_cao_su_co"], hang["bi_mat_ha_tang"]) == (10, 20, 30)

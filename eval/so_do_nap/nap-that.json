@@ -1,34 +1,34 @@
 {
   "version": 1,
-  "ngay": "2026-09-02T15:56:56.532558+00:00",
-  "lenh": "uv run python -m api.do_chi_phi eval/data --xuat-json eval/so_do_nap/nap-that.json",
+  "ngay": "2026-09-03T01:05:39.112595+00:00",
+  "lenh": "uv run python -m api.do_chi_phi eval/corpus --ep-ghi-de --xuat-json eval/so_do_nap/nap-that.json",
   "space": "synth",
-  "dot_id": "721bba21fa6d4158b7230e80021cab4f",
-  "so_tai_lieu": 10,
+  "dot_id": "2cee40883c0d45399954001b4aef7cc1",
+  "so_tai_lieu": 40,
   "theo_model": [
     {
       "model": "deepseek-v4-flash",
       "loai": "llm",
       "nha_cung_cap": "deepseek",
-      "so_lan": 10,
-      "token_vao": 10111,
-      "token_ra": 3651,
-      "chi_phi_usd": 0.00926816
+      "so_lan": 40,
+      "token_vao": 41074,
+      "token_ra": 15608,
+      "chi_phi_usd": 0.03867512
     },
     {
       "model": "text-embedding-3-small",
       "loai": "embedding",
       "nha_cung_cap": "openai",
-      "so_lan": 30,
-      "token_vao": 8874,
+      "so_lan": 189,
+      "token_vao": 37282,
       "token_ra": 0,
-      "chi_phi_usd": 0.00017748000000000002
+      "chi_phi_usd": 0.00074564
     }
   ],
   "tong": {
-    "so_lan": 40,
-    "token_vao": 18985,
-    "token_ra": 3651,
-    "chi_phi_usd": 0.00944564
+    "so_lan": 229,
+    "token_vao": 78356,
+    "token_ra": 15608,
+    "chi_phi_usd": 0.03942076
   }
 }

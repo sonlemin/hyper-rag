@@ -258,7 +258,7 @@ Các giả định đang mở, kèm địa chỉ chốt:
 1. Rubric Đo 2 chưa chốt từng tiêu chí; ngưỡng N7 5/6 và đồng thuận 80% là giá trị mặc định - chốt cùng khung phương pháp luận với GVHD cuối T2 (mục 5.2).
 2. 7 nhóm người dùng công ty ánh xạ được về 4 vai người dùng của khóa luận - kiểm khi dựng bảng chính sách T3 (mục 1.5).
 3. Adapter Qdrant/Neo4j ước 2-4 ngày công, chưa kiểm chứng bằng code - kiểm ở T1 (R3).
-4. Số đỉnh của hyperedge demo (5 hay 6, tài liệu nguồn lệch nhau) - chốt khi dựng corpus T2 (addendum A8).
+4. Số đỉnh của hyperedge demo (5 hay 6, tài liệu nguồn lệch nhau) - **ĐÃ CHỐT 03/09/2026 ở story 2.8: 8 đỉnh.** Đếm trên đồ thị đã nạp thật chứ không chọn theo tài liệu nguồn, và số đo được lớn hơn cả hai ứng viên: hyperedge demo điền đủ cả 8 vai slot. Tài liệu nguồn là `eval/corpus/k1-03-bao-cao-su-co-inc-1208.md` (App01 sập 40 phút ngày 12/08); hyperedge mang id `he-1052ab379974d65544056533`, nối 8 đỉnh theo các vai `subject`, `symptom`, `cause`, `condition`, `time`, `owner`, `remediation`, `source`. Đây là số của một cấu hình trích xuất cụ thể, không phải hằng số của lược đồ - hyperedge thứ hai của cùng tài liệu chỉ 4 đỉnh - nên chương 4 trình bày nó kèm câu đó. Con số cùng bằng chứng ghi ở khóa `so_dinh_hyperedge_demo` của `eval/corpus_thiet_ke.yaml`.
 5. `full_scan_threshold` mặc định ~10KB của Qdrant là claim chưa verify - kiểm trước khi cấu hình ở T1 (addendum A3).
 6. Model sinh câu trả lời (DeepSeek) và judge Đo 2 (GPT-4o) là mặc định - chốt cùng rubric với GVHD cuối T2 (mục 5.2, bảng Stack 4.3).
 7. Thứ tự độ nhạy cố định trên trục loại nội dung và ràng buộc đơn điệu của bảng chính sách hợp lệ (điều kiện để "khóa của nguồn hạn chế nhất" tính được lúc ingest) - chốt hình thức ở bước kiến trúc (FR-05, NFR-06).

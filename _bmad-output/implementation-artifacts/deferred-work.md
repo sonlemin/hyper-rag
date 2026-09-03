@@ -26,26 +26,30 @@
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-2-ngu-canh-quyen-fail-closed-va-chinh-sach-dang-du-lieu.md`
   summary: Nối `adapters/policy_loader.py` vào runtime API - `api/Dockerfile` chưa COPY `config/`, và chưa có biến môi trường trỏ đường dẫn file policy mặc định.
-  resolved: 2026-09-01 (một phần) - `api/Dockerfile` COPY `config/`; đã build image trên máy chủ và chạy `load_policy("config/policy-toi-gian.yaml")` trong container, trả đúng hai vai và `policy_version`. Phần còn treo là biến môi trường trỏ file policy mặc định: chọn bảng nào là quyết định của Epic 3 (bốn cấu hình đo của story 3.2), không phải của tầng đóng gói.
   evidence: Review story 1.2 chỉ ra loader chạy trong container sẽ không tìm thấy `config/policy-*.yaml`. Story 1.2 cố ý không chạm handler hay endpoint (Never của spec), nhưng Epic 3 dựng ngữ cảnh quyền ở đầu request thì phải có đường nạp policy thật.
+  resolved: 2026-09-01 (một phần) - `api/Dockerfile` COPY `config/`; đã build image trên máy chủ và chạy `load_policy("config/policy-toi-gian.yaml")` trong container, trả đúng hai vai và `policy_version`. Phần còn treo là biến môi trường trỏ file policy mặc định: chọn bảng nào là quyết định của Epic 3 (bốn cấu hình đo của story 3.2), không phải của tầng đóng gói.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-2-ngu-canh-quyen-fail-closed-va-chinh-sach-dang-du-lieu.md`
   summary: Chặn `use_context` lồng nhau đưa ngữ cảnh hệ thống vào giữa một request người dùng.
-  resolved: 2026-09-01 - `use_context` từ chối mở ngữ cảnh hệ thống khi đang ở trong ngữ cảnh vai (`SystemContextNested`, code `SYSTEM_CONTEXT_NESTED`); chiều ngược lại vẫn được vì nó thu hẹp quyền. Diff `core/` đã trình sonlm. Việc từ chối `kind=system` *đến từ ngoài* trên đường truy vấn vẫn thuộc tầng handler Epic 3 - hai lớp khác nhau, không thay thế nhau.
   evidence: `use_context(system_context(...))` lồng trong ngữ cảnh vai hiện không có gì cản, là đường leo quyền im lặng. NFR-10 giao việc từ chối `kind=system` trên đường truy vấn cho tầng handler API, nên chốt ở Epic 3 cùng test tầng handler.
+  resolved: 2026-09-01 - `use_context` từ chối mở ngữ cảnh hệ thống khi đang ở trong ngữ cảnh vai (`SystemContextNested`, code `SYSTEM_CONTEXT_NESTED`); chiều ngược lại vẫn được vì nó thu hẹp quyền. Diff `core/` đã trình sonlm. Việc từ chối `kind=system` *đến từ ngoài* trên đường truy vấn vẫn thuộc tầng handler Epic 3 - hai lớp khác nhau, không thay thế nhau.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-2-ngu-canh-quyen-fail-closed-va-chinh-sach-dang-du-lieu.md`
   summary: Tripwire buộc story 1.6 phải chạm ruột hàm che, tránh CI xanh trong khi `mask()` vẫn no-op sau khi adapter đã gọi nó.
-  resolved: 2026-09-01 - `test_tripwire_ruot_ham_che_phai_thay_that` trong `tests/test_che_stub.py`, đánh `xfail(strict=True)`: hôm nay nó xfail vì `mask` còn là stub, và khi story 1.6 viết ruột thật nó XPASS - `strict=True` biến XPASS thành đỏ, buộc 1.6 gỡ marker. Kỳ vọng lấy từ oracle nên nó không tự đúng theo code.
-  resolved: 2026-09-01 - story 1.6 đóng nốt: `core.masking.mask` có ruột thật, marker `xfail` đã gỡ và file đổi tên thành `tests/test_tang_che.py` vì nó không còn nói về stub. Tripwire cũ nay là `test_1_6_unit_001_vai_l1_che_dung_slot_bang_khai` cộng `test_moi_hyperedge_moi_vai_khop_oracle`, đối chiếu với `oracle.ban_ghi_slot_ky_vong`. Không còn `xfail` nào trong `tests/`.
   evidence: Từ story 1.3 adapter gọi `mask()` trong đường trả về; stub trả nguyên trạng nên suite vẫn xanh dù không che gì. `test_grant_rong_tra_nguyen_trang` khóa hình dạng chứ không khóa hành vi.
+  resolved: |-
+    2026-09-01 - `test_tripwire_ruot_ham_che_phai_thay_that` trong `tests/test_che_stub.py`, đánh `xfail(strict=True)`: hôm nay nó xfail vì `mask` còn là stub, và khi story 1.6 viết ruột thật nó XPASS - `strict=True` biến XPASS thành đỏ, buộc 1.6 gỡ marker. Kỳ vọng lấy từ oracle nên nó không tự đúng theo code.
+
+    2026-09-01 - story 1.6 đóng nốt: `core.masking.mask` có ruột thật, marker `xfail` đã gỡ và file đổi tên thành `tests/test_tang_che.py` vì nó không còn nói về stub. Tripwire cũ nay là `test_1_6_unit_001_vai_l1_che_dung_slot_bang_khai` cộng `test_moi_hyperedge_moi_vai_khop_oracle`, đối chiếu với `oracle.ban_ghi_slot_ky_vong`. Không còn `xfail` nào trong `tests/`.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-2-ngu-canh-quyen-fail-closed-va-chinh-sach-dang-du-lieu.md`
   summary: Test phản chiếu cho các method đọc ngoài danh sách đóng (`node_degree`, `edge_degree`, `has_node`, `has_edge`) - hiện chỉ được giải thích trong comment.
-  resolved: 2026-09-01 - `tests/test_phan_chieu_che.py` quét *mọi* method public của từng adapter (không chỉ method override interface, vì ca nguy hiểm nhất là một method đọc mới toanh) và bắt buộc mỗi cái nằm trong đúng một nhóm: phải che, xử lý riêng kèm lý do, ghi, vòng đời, hoặc ngoài hợp đồng. Thêm nhóm assert rằng method trong danh sách đóng thật sự có đường tới `mask`. Story 1.5 thêm một dòng cho adapter KV.
   evidence: AD-9 giao test phản chiếu phủ cả 3 adapter cho story 1.7, nhưng cách xử lý riêng của 4 method này chưa có gì ghim, story 1.3-1.5 dễ bỏ quên.
   tien_do: 2026-09-01 - story 1.4 ghim hành vi của cả 4 method trên adapter graph (`tests/test_adapter_neo4j.py`: degree co theo quyền, `has_*` trả False ngoài quyền), kèm bản chạy trên Neo4j thật. Phần còn treo là test *phản chiếu* phủ cả 3 adapter, chỉ viết được khi adapter KV của story 1.5 tồn tại; địa chỉ vẫn là story 1.7.
-  resolved: 2026-09-01 - story 1.5 đóng nốt: `JsonACLKVStorage` vào `CAC_ADAPTER` nên test phản chiếu chạy trên đủ ba adapter, và `all_keys`/`filter_keys` của đường KV được khai vào `XU_LY_RIENG` kèm câu nói cơ chế quyền thay thế (lọc theo tập khóa, mục ngoài quyền tính là chưa tồn tại). Không còn phần treo cho story 1.7.
+  resolved: |-
+    2026-09-01 - `tests/test_phan_chieu_che.py` quét *mọi* method public của từng adapter (không chỉ method override interface, vì ca nguy hiểm nhất là một method đọc mới toanh) và bắt buộc mỗi cái nằm trong đúng một nhóm: phải che, xử lý riêng kèm lý do, ghi, vòng đời, hoặc ngoài hợp đồng. Thêm nhóm assert rằng method trong danh sách đóng thật sự có đường tới `mask`. Story 1.5 thêm một dòng cho adapter KV.
+
+    2026-09-01 - story 1.5 đóng nốt: `JsonACLKVStorage` vào `CAC_ADAPTER` nên test phản chiếu chạy trên đủ ba adapter, và `all_keys`/`filter_keys` của đường KV được khai vào `XU_LY_RIENG` kèm câu nói cơ chế quyền thay thế (lọc theo tập khóa, mục ngoài quyền tính là chưa tồn tại). Không còn phần treo cho story 1.7.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-3-adapter-qdrant-voi-pre-filter-theo-khoa.md`
   summary: Gọi `QdrantVectorDBStorage.initialize()` ở bước khởi động engine (story 1.7), và tiêm một `AsyncQdrantClient` dùng chung cho cả ba namespace vector.
@@ -54,8 +58,8 @@
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-3-adapter-qdrant-voi-pre-filter-theo-khoa.md`
   summary: Chạy lại đúng cặp assert của `tests/test_adapter_qdrant.py` trên Qdrant thật (container) ở cổng M1 story 1.7.
-  resolved: 2026-09-01 - `tests/test_adapter_qdrant_that.py` (marker `qdrant`) chạy trên Qdrant 1.19.0 của compose: payload index keyword + `is_tenant`, `hnsw_config` m=16/payload_m=16, strict mode bật với `filter_max_conditions=1`, upsert bị từ chối khi chưa `initialize()`, hai vai ra hai tập khóa và hai kết quả đúng oracle, và filter hai điều kiện bị server từ chối. `QdrantGhiLai.noi_toi()` bọc client thật và tắt sổ index giả. Hook CI chạy cả hai bộ marker sau bộ chính.
   evidence: Local mode duyệt vét cạn và bỏ qua payload index, nên nó chứng minh được ngữ nghĩa lọc chứ không chứng minh được pre-filter chạy trong HNSW có index. Lớp bọc `tests/gia_lap_qdrant.py` bù phần `payload_schema` cho nhánh kiểm index; phần còn lại chỉ Qdrant thật mới trả lời được.
+  resolved: 2026-09-01 - `tests/test_adapter_qdrant_that.py` (marker `qdrant`) chạy trên Qdrant 1.19.0 của compose: payload index keyword + `is_tenant`, `hnsw_config` m=16/payload_m=16, strict mode bật với `filter_max_conditions=1`, upsert bị từ chối khi chưa `initialize()`, hai vai ra hai tập khóa và hai kết quả đúng oracle, và filter hai điều kiện bị server từ chối. `QdrantGhiLai.noi_toi()` bọc client thật và tắt sổ index giả. Hook CI chạy cả hai bộ marker sau bộ chính.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-2-ngu-canh-quyen-fail-closed-va-chinh-sach-dang-du-lieu.md`
   summary: Khoản nợ "kiểm contextvar quyền sống qua pipeline async thật của upstream" chuyển điểm kiểm từ story 1.3 sang story 1.7.
@@ -134,8 +138,8 @@
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-4-adapter-neo4j-voi-where-injection-va-cau-truc-hai-phia.md`
   summary: Cả hai adapter cho phép ghi dưới ngữ cảnh vai người dùng, không chỉ dưới ngữ cảnh hệ thống của ingest.
-  resolved: 2026-09-01 - `adapters/ingest_labels.ingest_key_for_write()` là cửa chung của cả hai đường ghi: sai ngữ cảnh là `IngestOutsideSystemContext` (code `INGEST_OUTSIDE_SYSTEM_CONTEXT`). `current_ingest_key()` giữ nguyên nghĩa "nhãn nào đang mở" cho fixture canh rò nhãn. Có test ở cả hai adapter.
   evidence: `upsert_node`/`upsert_edge` (graph) và `upsert` (vector) chỉ đòi có ngữ cảnh cộng nhãn ingest đang mở; một ngữ cảnh vai cũng qua được, và khi đó `space` lấy theo ngữ cảnh đó. AD-3 nói ingest chạy dưới ngữ cảnh hệ thống tường minh, nhưng chưa chỗ nào ép. Chốt một luật cho *cả hai* adapter cùng lúc (thêm cửa `bypass_filter` ở đường ghi, hoặc quyết định tường minh là không thêm) thuộc story 2.3 khi pipeline ingest thật ra đời; sửa lệch một adapter là tạo ra hai luật.
+  resolved: 2026-09-01 - `adapters/ingest_labels.ingest_key_for_write()` là cửa chung của cả hai đường ghi: sai ngữ cảnh là `IngestOutsideSystemContext` (code `INGEST_OUTSIDE_SYSTEM_CONTEXT`). `current_ingest_key()` giữ nguyên nghĩa "nhãn nào đang mở" cho fixture canh rò nhãn. Có test ở cả hai adapter.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-4-adapter-neo4j-voi-where-injection-va-cau-truc-hai-phia.md`
   summary: Cạnh graph định danh theo cặp (hyperedge, entity), chưa tính vai slot; một entity điền hai vai của cùng một hyperedge thì vai ghi sau đè vai ghi trước.
@@ -232,8 +236,10 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-7-cong-m1-hai-tai-khoan-hai-ket-qua.md`
   summary: Nguyên văn slot `owner` vẫn ra khỏi hệ qua kho vector `entities` khi vai đạt L2, dù tầng che đã tổng quát hóa nó ở đường graph.
   evidence: Thấy được lần đầu trên ngữ cảnh e2e thật của cổng M1: với `tech_support`, HE-01 là runbook ở L2 nên entity `Nguyễn Văn Minh` (giá trị slot `owner`) nằm trong `allowed_keys["entities"]` và `entities_vdb.query` trả nó về, rồi `operate.py:779` ghép thẳng `entity_name` vào bảng Entities. Tầng che không chạm được: bản ghi vector không mang trường nào tên là vai slot (spec 1.6 đã ghi "mask là phép đồng nhất trên `query`"), nên nhìn từ một point lẻ không biết nó điền vào vai nào. Cùng đường đó, nguyên văn chunk L2 cũng chứa tên người phụ trách. Một phần là tạo tác của fixture (id node entity đặt bằng chính giá trị slot); story 2.4 trích xuất thật sẽ cho entity name là tên thực thể chứ không phải câu slot, nên phải đo lại ở đó trước khi quyết. Địa chỉ: story 2.4, và nó chồng lên khoản "owner mới bị che, chưa được tổng quát hóa" đang treo ở story 3.1. Bộ Đo 1 lớp (b) của story 1.7 vì thế assert đúng phạm vi các hyperedge ở **mức L1** - phạm vi mà che là cơ chế quyền - và nói thẳng lý do trong docstring thay vì thu hẹp im lặng.
-  tien_do: 2026-09-02 - đo lại ở 2.4 với trích xuất thật (trên LLM giả cùng hình dạng dữ liệu): entity của vai `owner` là *tên người* (`normalize_id` của giá trị slot, không upper-case), nên ở L2 nó vẫn ra nguyên văn qua bảng Entities dù đường graph tổng quát hóa (`[owner:group]` có mặt cùng lúc). Ghim làm đặc tả hiện trạng ở `tests/test_trich_xuat.py::test_lo_l1_dong_tech_support_thay_id_mo_va_dau_che_khong_thay_cause` (hai assert cuối, docstring nói rõ). Không phải tạo tác fixture: hình dạng thật của đường trích xuất giống fixture ở điểm này. Địa chỉ giữ 3.1 (tổng quát hóa `owner` về nhóm; hướng xét: point entity của vai `owner` mang tên nhóm hoặc không vào collection `entities`). Phần đọc payload `entities` trên máy chủ thuộc lần nạp thật Ask First của 2.4.
-  tien_do: 2026-09-02 - đo trên máy chủ sau lần nạp thật 2.4 (tài liệu `05-bao-cao-su-co-inc-1208.txt`, owner `Trần Thị Hạnh`): collection `synth_entities` có point `entity_name` = tên người; ngữ cảnh `only_need_context` của `devops` (L2 với `bao_cao_su_co`) chứa tên đó nguyên văn *cùng lúc* với dấu `[owner:group]` của đường graph; `tech_support` (L1) không thấy. Kết luận đo: lỗ có thật trên dữ liệu thật, đúng như đặc tả hiện trạng trong test. Địa chỉ 3.1 giữ.
+  tien_do: |-
+    2026-09-02 - đo lại ở 2.4 với trích xuất thật (trên LLM giả cùng hình dạng dữ liệu): entity của vai `owner` là *tên người* (`normalize_id` của giá trị slot, không upper-case), nên ở L2 nó vẫn ra nguyên văn qua bảng Entities dù đường graph tổng quát hóa (`[owner:group]` có mặt cùng lúc). Ghim làm đặc tả hiện trạng ở `tests/test_trich_xuat.py::test_lo_l1_dong_tech_support_thay_id_mo_va_dau_che_khong_thay_cause` (hai assert cuối, docstring nói rõ). Không phải tạo tác fixture: hình dạng thật của đường trích xuất giống fixture ở điểm này. Địa chỉ giữ 3.1 (tổng quát hóa `owner` về nhóm; hướng xét: point entity của vai `owner` mang tên nhóm hoặc không vào collection `entities`). Phần đọc payload `entities` trên máy chủ thuộc lần nạp thật Ask First của 2.4.
+
+    2026-09-02 - đo trên máy chủ sau lần nạp thật 2.4 (tài liệu `05-bao-cao-su-co-inc-1208.txt`, owner `Trần Thị Hạnh`): collection `synth_entities` có point `entity_name` = tên người; ngữ cảnh `only_need_context` của `devops` (L2 với `bao_cao_su_co`) chứa tên đó nguyên văn *cùng lúc* với dấu `[owner:group]` của đường graph; `tech_support` (L1) không thấy. Kết luận đo: lỗ có thật trên dữ liệu thật, đúng như đặc tả hiện trạng trong test. Địa chỉ 3.1 giữ.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-7-cong-m1-hai-tai-khoan-hai-ket-qua.md`
   summary: `aquery` với `param.mode` khác `"hybrid"` cho `UnboundLocalError` trần từ `vendor/`, không phải một mã lỗi của dự án.
@@ -380,6 +386,7 @@
     và vì ước cận trên đã đủ cho mức báo động 60 USD. Đáng làm khi chi phí thật tiến gần
     mức báo động, hoặc khi chương 4 cần con số chi phí sát thay vì cận trên.
     Địa chỉ: story 7.5 (gom bằng chứng NFR) hoặc sớm hơn nếu ngân sách căng.
+
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-2-wrapper-llm-embedding-dem-chi-phi-qua-audit-port.md`
   summary: `OllamaCucBo.hoan_thanh` chuyển thẳng `**kwargs` của upstream vào `AsyncClient.chat`, nhưng Ollama nhận tham số sinh (temperature, max_tokens...) qua `options=` chứ không phải kwargs phẳng.
   evidence: Đường cục bộ chưa chạy lần nào (profile `local-llm` chưa bật, model chưa pull), nên chưa có ca thật để đo hình dạng kwargs mà `operate.py` gửi. Hàm upstream `ollama_model_if_cache` cũng bỏ `max_tokens` và chuyển phần còn lại phẳng, tức cùng giới hạn. Địa chỉ: story 2.11 (space `real`, bật local-llm lần đầu), kèm test provider giả cho Ollama.
@@ -477,6 +484,14 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-5-bo-vang-trich-xuat.md`
   summary: Bộ vàng chỉ có scope `noi_bo`; không tài liệu lõi nào mang scope `khach_hang_a`, nên biên cách ly hai scope (RT-01, `tech_support` không chạm scope khách hàng) không có ca trên corpus lõi.
   evidence: Bảng chính sách khai `devops` chạm cả `noi_bo` lẫn `khach_hang_a`. Bộ vàng 2.5 phủ đủ ba *loại nội dung* (đã thêm `bi_mat_ha_tang` để có ca L0 trên dữ liệu thật) nhưng chỉ một scope, vì mẫu số của R2 chỉ hỏi về trích xuất chứ không hỏi về quyền, và trộn thêm scope vào 10 tài liệu lõi làm mỗi loại nội dung mỏng đi. Ca hai scope hiện chạy trên fixture dựng tay của Epic 1. Địa chỉ: story 2.8 (corpus ~40 tài liệu), nơi phần nhiễu và phần đa scope được dựng.
+  resolved: 2026-09-03 (2.8) - `eval/corpus/` có 11 tài liệu scope `khach_hang_a`
+    và 9 tài liệu scope `khach_hang_b`, gồm hai tài liệu `bi_mat_ha_tang` (một mỗi
+    scope khách hàng). Biên cách ly RT-01 nay có ca trên dữ liệu thật: `devops`
+    chạm `khach_hang_a` chứ không chạm `khach_hang_b`, và thứ nằm sau biên là
+    `n-19-bi-mat-ha-tang-kho-khoa-khach-hang-b.md` (hạng cao nhất của bảng), không
+    phải một tài liệu vô thưởng vô phạt. `tests/test_corpus.py::test_ba_scope_va_it_nhat_hai_khach_hang`
+    và `::test_bien_cach_ly_khach_hang_co_ca_tai_lieu_han_che_nhat` canh cả hai.
+    Bộ vàng vẫn một scope và **không đổi** (Never của spec 2.8: mẫu số 151 slot giữ nguyên).
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-5-bo-vang-trich-xuat.md`
   summary: Chưa có luật ghép nhãn vàng với hyperedge pipeline sinh ra; `FactVang.id_fact` mới cho ca khớp tuyệt đối.
@@ -529,55 +544,45 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-5-bo-vang-trich-xuat.md`
   summary: Mẫu số lệch nặng theo vai: `subject` chiếm 28,5% (43/151) mà lược đồ bắt buộc phải có, `cause` 1,3% (2 slot) và `symptom` 2,6% (4 slot).
   evidence: Đếm trên 8 tài liệu chấm: subject 43, remediation 34, time 23, condition 19, owner 18, source 8, symptom 4, cause 2. `subject` bắt buộc theo `core.facts.kiem_fact` nên mọi fact khớp đều ăn điểm ở vai đó, tức hơn một phần tư mẫu số không phân biệt được prompt tốt với prompt tồi. Ngược lại `cause` và `symptom` mỏng tới mức hai hàng tương ứng của ma trận lẫn lộn A13 không đủ mẫu để kết luận, mà đó lại đúng là cặp vai mang nội dung nhạy cảm của `bao_cao_su_co`. Nguyên nhân gốc là tỉ lệ loại nội dung của corpus lõi (5 runbook / 3 báo cáo sự cố / 1 sổ tay hạ tầng ở phần chấm), không phải lỗi gán nhãn. Story 2.6 phải báo cáo precision/recall *theo từng vai* cạnh số tổng, và cân nhắc một mẫu số phụ đã loại `subject`; nếu vẫn quá mỏng thì 2.8 thêm báo cáo sự cố vào corpus. Địa chỉ: story 2.6.
-  tien_do: 2026-09-02 - nửa "báo cáo theo vai" đã có sẵn trong story này:
-    `BoVang.dem_theo_vai(chi_cham=True)` và bảng "Số fact có điền từng vai" của trang
-    soát nhãn in cả số tuyệt đối lẫn phần của mẫu số. Phần còn treo là quyết định của
-    2.6: có dùng mẫu số phụ đã loại `subject` hay không, và nếu `cause`/`symptom` vẫn
-    quá mỏng thì 2.8 thêm báo cáo sự cố vào corpus. Địa chỉ giữ 2.6.
-  tien_do: 2026-09-02 (2.6) - nửa của 2.6 đã quyết: **có dùng mẫu số phụ**.
-    `eval/cham_trich_xuat.mau_so_phu()` bỏ `subject` ra (151 -> 108 slot) và cả bảng so
-    vòng lẫn bảng theo vai đều in nó cạnh số tổng; khoảng cách nói đúng điều đã lo -
-    `v1-deepseek` precision 70,7% tổng nhưng 61,4% khi bỏ `subject`, tức hơn 9 điểm của
-    con số tổng là điểm của một vai mà lược đồ bắt buộc phải có. Phần còn treo đúng một
-    câu: `cause` (2 slot) và `symptom` (4 slot) vẫn quá mỏng để đọc hai hàng tương ứng
-    của ma trận - bốn vòng cho TP 1-2 trên `cause`, một con số không kết luận được gì.
-    Đường sửa là thêm báo cáo sự cố vào corpus. Địa chỉ: story 2.8.
+  tien_do: |-
+    2026-09-03 (2.8) - phần "thêm báo cáo sự cố vào corpus" đã làm: `eval/corpus/` có 3 `bao_cao_su_co` và 2 `postmortem`, tức chất liệu `cause`/`symptom` nay dày hơn hẳn 10 tài liệu lõi. Nhưng nó **không** chữa khoản này: mẫu số của R2 là bộ vàng trích xuất, mà spec 2.8 cấm mở rộng bộ vàng (sonlm quyết 02/09: 151 slot giữ nguyên). Khoản thu hẹp còn đúng một việc - gán nhãn thêm tài liệu vào bộ vàng để `cause` và `symptom` đủ mẫu, hoặc chấp nhận báo cáo hai vai đó là mô tả. Địa chỉ: Epic 7, trước khi số vào chương 4.
+
+    2026-09-02 - nửa "báo cáo theo vai" đã có sẵn trong story này: `BoVang.dem_theo_vai(chi_cham=True)` và bảng "Số fact có điền từng vai" của trang soát nhãn in cả số tuyệt đối lẫn phần của mẫu số. Phần còn treo là quyết định của 2.6: có dùng mẫu số phụ đã loại `subject` hay không, và nếu `cause`/`symptom` vẫn quá mỏng thì 2.8 thêm báo cáo sự cố vào corpus. Địa chỉ giữ 2.6.
+
+    2026-09-02 (2.6) - nửa của 2.6 đã quyết: **có dùng mẫu số phụ**. `eval/cham_trich_xuat.mau_so_phu()` bỏ `subject` ra (151 -> 108 slot) và cả bảng so vòng lẫn bảng theo vai đều in nó cạnh số tổng; khoảng cách nói đúng điều đã lo - `v1-deepseek` precision 70,7% tổng nhưng 61,4% khi bỏ `subject`, tức hơn 9 điểm của con số tổng là điểm của một vai mà lược đồ bắt buộc phải có. Phần còn treo đúng một câu: `cause` (2 slot) và `symptom` (4 slot) vẫn quá mỏng để đọc hai hàng tương ứng của ma trận - bốn vòng cho TP 1-2 trên `cause`, một con số không kết luận được gì. Đường sửa là thêm báo cáo sự cố vào corpus. Địa chỉ: story 2.8.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-5-bo-vang-trich-xuat.md`
   summary: Trùng `id_fact` giữa hai tài liệu khác nhau chưa có luật; loader chỉ cấm trùng *trong cùng* một tài liệu.
   evidence: `id_fact` băm tập slot đã chuẩn hóa, nên hai tài liệu gán cùng một tập slot là một node hyperedge duy nhất phía pipeline trong khi mẫu số của bộ vàng đếm hai slot-set. Trên 10 tài liệu hiện tại không có ca nào (49 id fact đôi một khác nhau), nên cấm ngay bây giờ là cấm một thứ chưa xảy ra và có thể hợp lệ (hai tài liệu nói cùng một quy định). Corpus 40 tài liệu của 2.8 làm ca này thành thường. Phải quyết cùng lúc với luật ghép của 2.6: đếm một lần hay đếm theo tài liệu. Địa chỉ: story 2.8.
-  tien_do: 2026-09-02 - nửa "im lặng" đã đóng: `BoVang.id_fact_trung_cheo_tai_lieu()`
-    liệt kê id xuất hiện ở từ hai tài liệu trở lên, trang soát nhãn in mục "Fact trùng
-    giữa hai tài liệu" (hiện nói rõ "Không có"), và có test cả ca thật lẫn ca dựng
-    (`test_hai_tai_lieu_cung_mot_fact_duoc_bao_ra_chu_khong_bi_tu_choi` ghim đặc tả
-    hiện trạng: mẫu số cộng cả hai lần). Không cấm, vì hai tài liệu nói cùng một quy
-    định là dữ liệu hợp lệ. Phần còn treo hẹp lại đúng một câu: đếm một lần hay đếm
-    theo tài liệu, quyết cùng luật ghép. Địa chỉ giữ 2.6/2.8.
-  tien_do: 2026-09-02 (2.6) - nửa "đếm thế nào" đã quyết cùng luật ghép: **đếm theo tài
-    liệu**. `cham_moi_tai_lieu` chấm từng tài liệu một, ghép chỉ trong phạm vi tài liệu
-    đó rồi cộng sổ; hai tài liệu gán cùng một tập slot vì thế góp hai lần vào mẫu số,
-    đúng bằng cách `BoVang.mau_so_slot()` đếm. Lý do: phép chấm đo *trích xuất từ một tài
-    liệu*, nên một fact xuất hiện ở hai tài liệu là hai lần hệ phải trích được nó. Phần
-    còn treo là phía pipeline (một node hyperedge cho hai tài liệu, `source_id` gộp), chỉ
-    thành ca thật khi corpus lớn lên. Địa chỉ: story 2.8.
+  tien_do: |-
+    2026-09-03 (2.8) - corpus nay **dựng sẵn** ca đó thay vì chờ nó xảy ra: `k1-07-sop-12-quan-ly-thay-doi.md` và `n-05-sop-ban-giao-ca-truc.md` mang cùng một câu quy định 24 giờ nguyên văn (ghi trong `ghi_chu` của cả hai mục ở bảng thiết kế). Kỳ vọng theo I/O Matrix của spec 2.8: một node hyperedge, `source_id` gộp hai tài liệu. Chưa quan sát được vì lần nạp thật 40 tài liệu còn chờ duyệt (Ask First), nên khoản này còn treo với dữ liệu đã sẵn sàng. Bộ vàng **không** đổi, nên mẫu số R2 chưa có ca này; luật đếm (một lần hay theo tài liệu) vẫn phải quyết cùng luật ghép. Địa chỉ: story 2.9 (nhãn truy hồi vàng chạy trên chính corpus này) hoặc Epic 7.
+
+    2026-09-02 - nửa "im lặng" đã đóng: `BoVang.id_fact_trung_cheo_tai_lieu()` liệt kê id xuất hiện ở từ hai tài liệu trở lên, trang soát nhãn in mục "Fact trùng giữa hai tài liệu" (hiện nói rõ "Không có"), và có test cả ca thật lẫn ca dựng (`test_hai_tai_lieu_cung_mot_fact_duoc_bao_ra_chu_khong_bi_tu_choi` ghim đặc tả hiện trạng: mẫu số cộng cả hai lần). Không cấm, vì hai tài liệu nói cùng một quy định là dữ liệu hợp lệ. Phần còn treo hẹp lại đúng một câu: đếm một lần hay đếm theo tài liệu, quyết cùng luật ghép. Địa chỉ giữ 2.6/2.8.
+
+    2026-09-02 (2.6) - nửa "đếm thế nào" đã quyết cùng luật ghép: **đếm theo tài liệu**. `cham_moi_tai_lieu` chấm từng tài liệu một, ghép chỉ trong phạm vi tài liệu đó rồi cộng sổ; hai tài liệu gán cùng một tập slot vì thế góp hai lần vào mẫu số, đúng bằng cách `BoVang.mau_so_slot()` đếm. Lý do: phép chấm đo *trích xuất từ một tài liệu*, nên một fact xuất hiện ở hai tài liệu là hai lần hệ phải trích được nó. Phần còn treo là phía pipeline (một node hyperedge cho hai tài liệu, `source_id` gộp), chỉ thành ca thật khi corpus lớn lên. Địa chỉ: story 2.8.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-5-bo-vang-trich-xuat.md`
   summary: Luật "phủ đủ 8 vai" và "phủ đủ 3 loại nội dung" là điều kiện *nạp* của loader, nên thêm một loại nội dung vào `config/hang-do-nhay.yaml` hay một vai vào `core/slots.py` làm cả bộ test đỏ cho tới khi có người soạn và gán nhãn tài liệu mới.
   evidence: Cố ý theo I/O Matrix của spec 2.5 (hai hàng "Vai vắng mặt cả bộ" và "Loại nội dung thiếu"): hàng rỗng trong ma trận lẫn lộn của 2.6 là một con số vô nghĩa im lặng, nên chặn ở cửa nạp. Cái giá là một khớp nối ngược chiều import: một thay đổi ở `core/slots.py` (hợp đồng toàn hệ) hay ở file cấu hình hạng độ nhạy bị chặn bởi dữ liệu đánh giá. Đúng chiều với luật "8 vai là hợp đồng toàn hệ, không phải việc của một story lẻ", nhưng người đổi phải biết trước là mình nợ thêm một tài liệu và một lượt gán nhãn. Địa chỉ: story 2.8, nơi corpus mở rộng và biết được có thêm loại nội dung nào không.
-  resolved: 2026-09-02 - chốt giữ nguyên, không phải nợ. Bộ vàng là mẫu số của R2, nên
-    một loại nội dung hay một vai không có nhãn nào là một lỗ trong mẫu số chứ không
-    phải chuyện nhỏ; đỏ ngay lúc thêm là đúng chỗ để phát hiện, và I/O Matrix của spec
-    2.5 đã chốt hai luật này là điều kiện nạp. Giảm đau bằng tài liệu thay vì nới luật:
-    AGENTS.md mục Running ghi thẳng rằng thêm file vào `eval/data/` mà chưa gán nhãn là
-    `uv run pytest` đỏ, và thông điệp lỗi nêu đúng vai hoặc loại còn thiếu.
+  resolved: |-
+    2026-09-03 (2.8) - luật phủ *loại nội dung* tách khỏi bảng hạng độ nhạy. Một đẳng thức thành hai phép bao hàm có tên trong `eval/bo_vang._kiem_loai_noi_dung`: (a) bộ vàng phải phủ mọi loại **khai trong `config/policy-toi-gian.yaml`** - loại chưa khai là fail-closed L0 im lặng nên không có ca đo nào để mất; (b) mọi loại của bộ vàng phải có hạng, vì thiếu hạng là `SensitivityRankUnknown` từ chối cả lô lúc ingest. Nhờ đó mở `config/hang-do-nhay.yaml` từ 3 lên 13 loại **không** làm bộ vàng đỏ; `tests/test_bo_vang.py::test_bang_hang_rong_hon_bo_vang_khong_lam_bo_vang_do` ghim đúng điều đó. Phần "phủ đủ 8 vai" giữ nguyên: 8 vai là hợp đồng toàn hệ và một hàng rỗng trong ma trận A13 vẫn là một con số vô nghĩa im lặng.
+
+    2026-09-02 - chốt giữ nguyên, không phải nợ. Bộ vàng là mẫu số của R2, nên một loại nội dung hay một vai không có nhãn nào là một lỗ trong mẫu số chứ không phải chuyện nhỏ; đỏ ngay lúc thêm là đúng chỗ để phát hiện, và I/O Matrix của spec 2.5 đã chốt hai luật này là điều kiện nạp. Giảm đau bằng tài liệu thay vì nới luật: AGENTS.md mục Running ghi thẳng rằng thêm file vào `eval/data/` mà chưa gán nhãn là `uv run pytest` đỏ, và thông điệp lỗi nêu đúng vai hoặc loại còn thiếu.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
   summary: `remediation` là hố nuốt của lược đồ 8 vai - nó nhận 27 trong 51 ca lẫn vai của `v1-deepseek`, kéo ba vai `time` (8/23 slot đúng vai), `owner` (6/18) và `source` (1/8) xuống đáy.
   evidence: Chỉ số mức tài liệu cho thấy 149/151 giá trị vàng *có mặt* trong đầu ra: chỉ 2 vắng hẳn, còn 51 slot bị dán sai vai. Lẫn vai dồn vào một cột chứ không rải đều (`remediation` 27, `subject` 11, `condition` 8) và hình dạng đó giống nhau ở cả bốn vòng, kể cả `gpt-4o` (cột `remediation` nhận 21-27 ca ở mọi vòng) - tức **hai model lẫn cùng chỗ**. Theo khung A13 đó chính là ca "nguyên nhân ở lược đồ/prompt, không ở model": đường sửa là phản ví dụ theo cặp vai (kỹ thuật 1) hoặc prompt theo loại tài liệu (kỹ thuật 3), không phải đổi model. Ask First của spec 2.6 cấm chỉnh prompt ngoài việc sửa ví dụ, nên sonlm quyết kỹ thuật nào cho vòng sau. Ngưỡng 60% của R2 chỉ ràng precision nên chuyện này không kích hoạt đường lùi, nhưng nó là con số của FR-02 trong chương 4 và là câu trả lời cho câu hỏi A13. Địa chỉ: vòng sau của 2.6 (sonlm quyết kỹ thuật A13), hoặc 2.8 nếu corpus đổi trước.
+  tien_do: 2026-09-03 (2.8) - corpus đổi trước, nhưng nó không chạm khoản này: prompt và
+    bộ vàng đều không đổi ở story 2.8, nên bốn vòng đã đo vẫn là bốn vòng đó. Địa chỉ
+    thu về một chỗ: vòng sau của 2.6, sonlm quyết kỹ thuật A13 (phản ví dụ theo cặp vai
+    hay prompt theo loại tài liệu).
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
   summary: Khớp lỏng là quan hệ chuỗi con hai chiều, nên một giá trị pred nuốt cả câu vẫn ăn điểm nếu nó *chứa* nhãn vàng; và ngược lại, một chữ chèn vào giữa làm hai bên trượt hẳn.
   evidence: I/O Matrix của spec 2.6 chốt "một giá trị là chuỗi con của giá trị kia" và phép chấm làm đúng thế. Hai mép của luật đó chưa đo được cái giá: (a) pred dài gấp ba nhãn vàng vẫn là TP, nên một prompt lười chép cả câu được điểm cao hơn nó xứng đáng - chống một phần bằng luật "mỗi giá trị pred tiêu thụ đúng một lần trong một cặp", nhưng không chặn ca một fact một vai; (b) chèn chữ vào *giữa* thì không còn là chuỗi con ("trả giới hạn bộ nhớ PHP-FPM về mức cũ" so với "trả giới hạn bộ nhớ về mức cũ" - chính ví dụ trong Design Notes của spec), nên ca đó rơi xuống "thiếu" dù vai dán đúng. Đường sửa nếu cần: thêm ràng buộc tỉ lệ độ dài cho khớp lỏng, hoặc dùng một phép khớp theo token (Jaccard trên token, ngưỡng chốt trước). Không đổi ở 2.6 vì đổi luật chấm giữa lúc so bốn vòng là đổi thước giữa lúc đo. Địa chỉ: story 2.8 (khi corpus lớn hơn cho đủ ca), hoặc Epic 7 trước khi số vào chương 4.
+  tien_do: 2026-09-03 (2.8) - không đổi. Corpus lớn hơn không cho thêm ca nào cho khoản
+    này: phép chấm chạy trên bộ vàng, và bộ vàng giữ nguyên 151 slot. Địa chỉ thu về
+    một chỗ: **Epic 7**, trước khi số vào chương 4.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
   summary: Năm trong sáu khoản của bảng ngoại suy FR-30 mang cờ `giả định`; chỉ `nap_corpus` (0,0375 trên tổng 4,00 USD) đứng trọn trên số đo.
@@ -590,6 +595,11 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
   summary: `eval/` nay import thẳng `hypergraphrag` (`chunking_by_token_size`) mà `CAM_IMPORT["eval"]` của import-lint không nói gì; AGENTS.md ghi chiều import vendor chỉ cho `adapters/`.
   evidence: Vòng review 2 đóng phần chính: luật chia chunk chuyển sang `adapters/chunking.py` (`TRUONG_CHUNK`, `cau_hinh_chunk`, `chia_chunk`) và `eval/do_trich_xuat.py` import từ đó, nên nó không còn chạm `vendor/`. Parity nay được canh bằng cách *quan sát* chunk mà `ainsert` thật ghi vào kho KV chứ không dựng lại lời gọi chuẩn (`test_chia_chunk_khop_chunk_ma_ainsert_that_ghi_ra`). Phần còn treo hẹp lại đúng một chỗ: `eval/smoke_upstream.py` (smoke của story 1.1) vẫn import `hypergraphrag` để chạy engine upstream, và import-lint không có luật nào nói về chiều đó - thêm `hypergraphrag` vào `CAM_IMPORT["eval"]` cùng một dòng danh sách trắng cho smoke, hoặc ghi ngoại lệ vào AGENTS.md. Địa chỉ: story 2.8.
+  resolved: 2026-09-03 (2.8) - `CAM_IMPORT["eval"]` nay cấm cả `hypergraphrag` lẫn
+    `vendor`, cộng `CHO_PHEP_VENDOR = {"eval/smoke_upstream.py"}` đúng một dòng kèm lý
+    do. Hai test mới canh chính danh sách trắng: `test_danh_sach_trang_vendor_dung_mot_dong_va_van_con_that`
+    (đúng một dòng và dòng đó trỏ file có thật - một miễn trừ trỏ vào file đã xóa là
+    một luật đã hết tác dụng mà không ai biết) và `test_eval_ngoai_smoke_khong_cham_vendor`.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
   summary: `SO_DO_NAP_THAT` là 6 hằng chép tay từ `audit_log` của máy chủ; script sinh ra nó (`/root/hyper-rag-data/chay_2_6.sh`) không nằm trong repo.
@@ -611,22 +621,66 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
   summary: Neo `subject` khớp lỏng không có ràng buộc độ dài tối thiểu: một `subject` ngắn ("VPN", "IT") ghép được với mọi fact pipeline có chứa chuỗi đó.
   evidence: Ứng viên ghép cặp là hai fact có `subject` khớp theo `khop_gia_tri`, tức bằng nhau *hoặc* chuỗi con hai chiều. Trên corpus lõi chưa thấy ca sai vì điểm chồng lấn chọn cặp tốt nhất trong số ứng viên, nhưng cửa vào thì rộng: một chủ thể hai ký tự khớp gần như mọi câu. Corpus 40 tài liệu của 2.8 có nhiều tài liệu cùng chủ đề nên ca này thành thường. Cần một ca âm (hai fact khác chủ thể mà ghép được) rồi mới chốt luật: ngưỡng độ dài tối thiểu, hay đòi tỉ lệ trùng token, hay chỉ cho chuỗi con một chiều. Địa chỉ: story 2.8.
+  tien_do: 2026-09-03 (2.8) - corpus có sẵn cặp gây nhiễu đúng kiểu này (`App01` so với
+    `App02` ở `n-11-tai-lieu-san-pham-app02-khach-hang-a.md`, ba tên miền
+    `*.khachhangb.vn` ở `k3-06`), nhưng phép chấm của 2.6 chỉ chạy trên **bộ vàng**,
+    mà bộ vàng không đổi ở story này. Vậy ca âm vẫn chưa quan sát được, và đổi luật
+    ghép lúc chưa có ca âm là đổi thước bằng phỏng đoán. Khoản giữ nguyên, dữ liệu để
+    dựng ca âm nay đã có. Địa chỉ: Epic 7, cùng lúc với luật khớp lỏng ngay dưới.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
   summary: `gop()` cộng lẫn sổ đếm của hai chỉ số mà không có hàng rào kiểu; ba bộ đếm phân loại chỉ lặng lẽ thành `None`.
   evidence: `KetQuaCham` không mang tên chỉ số sinh ra nó, nên `gop([cham_ghep_cap, cham_muc_tai_lieu])` cho một tổng vô nghĩa mà không ai nổ. Hiện không có nơi gọi nào làm thế (`cham_bo` và `cham_bo_muc_tai_lieu` mỗi hàm gấp một loại), và `None` của ba bộ đếm phân loại lan ra làm tổng ít nhất không nói dối về phần đó. Đường sửa: thêm một field `chi_so` vào `KetQuaCham` rồi từ chối cộng hai sổ khác chỉ số. Địa chỉ: story 2.8 hoặc Epic 7, cùng lúc với việc thêm chỉ số thứ ba nếu có.
+  resolved: 2026-09-03 (2.8) - `KetQuaCham` mang thêm field `ten_chi_so`, và `__add__`
+    ném `ChiSoKhongCongDuoc` (mã `CHI_SO_KHONG_CONG_DUOC`, con của `TypeError` vì đây
+    là phép cộng sai *kiểu* đo) khi hai sổ khai hai chỉ số khác nhau. Chuỗi rỗng là
+    "chưa gán" và cộng được với mọi chỉ số: sổ rỗng của `gop()` và sổ dựng tay trong
+    test không mang khẳng định nào để mâu thuẫn. Tên field là `ten_chi_so` chứ không
+    phải `chi_so` như ledger viết: `chi_so` đã là property trả bốn bộ đếm gộp, đổi
+    nghĩa của nó là đổi hợp đồng của mọi nơi đọc báo cáo. 5 ca mới trong
+    `tests/test_cham_trich_xuat.py`.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
   summary: Runner ghi cứu hộ theo *tài liệu*, không theo chunk: một tài liệu dài hỏng ở chunk cuối là mất phản hồi của mọi chunk trước đó trong cùng tài liệu.
   evidence: Corpus lõi mỗi tài liệu đúng một chunk nên hiện không mất gì. Corpus 40 tài liệu của 2.8 có tài liệu dài hơn 1200 token thì một tài liệu 5 chunk hỏng ở chunk thứ 5 mất bốn lời gọi đã trả tiền. Ghi sau mỗi chunk là một dòng đổi chỗ vòng lặp, nhưng file cứu hộ khi đó có tài liệu dở dang nên phải quyết luôn hình dạng của nó. Địa chỉ: story 2.8.
+  resolved: 2026-09-03 (2.8) - `_ghi_nguyen_tu(tam, ...)` chạy sau **mỗi chunk**. Hình
+    dạng file cứu hộ đã chốt: mục của tài liệu vào danh sách *trước* lời gọi đầu tiên
+    và mang cờ `dang_do: true`, cờ bị gỡ khi tài liệu chạy xong. `KHOA_DANG_DO` cố ý
+    nằm ngoài `KHOA_TAI_LIEU`, nên đổi tên một file cứu hộ thành file kết quả là
+    `KetQuaDoKhongHopLe` - đúng điều phải xảy ra, vì tài liệu đó thiếu chunk và mọi
+    tổng tính trên nó đều sai. Thông điệp lỗi nói cả số tài liệu đã xong lẫn tài liệu
+    nào đang dở ở chunk thứ mấy. Ba ca mới, gồm một ca tài liệu nhiều chunk hỏng ở
+    chunk cuối.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
   summary: Không có `--uoc-tinh`/dry-run trước khi tiêu tiền, và `--ghi-de` không giữ bản `.bak` của file kết quả cũ.
   evidence: Một vòng hiện tốn ~0,007 USD (DeepSeek) tới ~0,037 USD (GPT-4o) nên rủi ro tiền nhỏ, nhưng `--ghi-de` xóa vĩnh viễn một vòng *đã trả tiền* và không có bước nào cho biết trước "sắp gọi 8 lời gọi trên model X". Dry-run in số lời gọi cùng ước tính chi phí theo đơn giá danh mục là một hàm thuần; `--ghi-de` đổi tên file cũ thành `<vòng>.bak.json` là một dòng. Địa chỉ: story 2.8, khi corpus lớn làm một vòng đắt lên gấp năm.
+  resolved: 2026-09-03 (2.8) - `--uoc-tinh` in số lời gọi, token vào (đếm trên chính
+    chuỗi prompt sắp gửi, qua `adapters/chunking` nên không mở cửa thứ hai sang
+    `vendor/`), token ra ước theo hằng có tên `TOKEN_RA_UOC_MOI_CHUNK = 400` (trần trên
+    bốn vòng đã đo), rồi thoát 0 mà không chạm thư mục kết quả. `--ghi-de` gọi
+    `os.replace` sang `<vòng>.bak.json` trước khi ghi bản mới, nên sao lưu hỏng thì
+    không ghi đè. Một chi tiết phải sửa kèm: `doc_moi_vong` glob `*.json` nên bản cũ
+    nằm cạnh sẽ thành một vòng nữa trùng tên - nay nó bỏ qua đuôi `.bak.json`.
+    Còn treo, hẹp: token vào của `--uoc-tinh` thấp hơn số provider tính ~25-30% vì phần
+    bọc hội thoại của provider không đếm được ở phía mình; test khóa tỉ lệ ước/thật
+    trong khoảng 0,4-2,5 nên nó là con số cùng bậc chứ không phải một hóa đơn. Địa chỉ:
+    Epic 7, nếu ai đó cần ước tính chính xác hơn một bậc.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-6-vong-lap-precision-va-diem-quyet-r2.md`
   summary: Runner không có retry hay xử lý 429: một lần rate limit giữa chừng là dừng cả vòng.
   evidence: Có chủ ý ở mức này - `TaskGroup` của `adapters/trich_xuat.py` cũng hủy anh em khi một lời gọi hỏng, vì mỗi lời gọi là tiền thật và một vòng dở dang dễ đọc nhầm thành một vòng đủ. Bù lại đã có file cứu hộ giữ phần đã trả tiền. Nhưng bốn vòng hiện chạy tuần tự 8 lời gọi, còn corpus 40 tài liệu là 40+ lời gọi liên tiếp trên một key dùng chung: xác suất chạm 429 khác hẳn. Đường sửa: `tenacity` retry theo `Retry-After` cho đúng mã 429 và 5xx, không retry mã 4xx khác. Địa chỉ: story 2.8.
+  resolved: 2026-09-03 (2.8) - `goi_llm_co_thu_lai` bọc lời gọi bằng `tenacity.AsyncRetrying`
+    (`SO_LAN_THU = 4`, `reraise=True` để mã HTTP gốc không bị `RetryError` che mất).
+    Thử lại đúng 429 và 5xx; 4xx khác không thử lại lần nào vì một 400 vì prompt sai
+    lặp lại y nguyên ở lần thử thứ hai. Chờ theo `Retry-After` của provider, cắt ở
+    `TRAN_CHO_GIAY = 60` (header 3600 giây làm vòng đo treo cả giờ mà không in dòng
+    nào), không có header thì lùi lũy thừa. Mã HTTP đọc theo *hình dạng*
+    (`status_code` trên ngoại lệ hay trên `response`) chứ không theo tên lớp SDK:
+    `eval/` không import openai/ollama/httpx, và một harness biết tên lớp ngoại lệ của
+    từng SDK là một chỗ nữa phải sửa mỗi lần đổi provider. Lời gọi hỏng không ghi sự
+    kiện chi phí nên mốc `audit.moc()` vẫn neo đúng một sự kiện của lần thử thành công
+    (`test_vong_that_di_qua_duong_thu_lai_va_van_neo_dung_chi_phi`). 8 ca mới.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-7-man-nap-tai-lieu-web-toi-gian.md`
   summary: `eval/so_do_nap/nap-that.json` hiện là bản chép nguyên bảng chi phí cuối của lần nạp thật 2.6, chưa phải đầu ra của chính `--xuat-json`.
@@ -650,4 +704,99 @@
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-7-man-nap-tai-lieu-web-toi-gian.md`
   summary: `adapters.ingest.nap_thu_muc` và `nap_cac_file` sau story 2.7 không còn nơi gọi nào ngoài `tests/`; chúng chỉ còn sống nhờ test.
-  evidence: Hai lối vào sản phẩm nay tự ghép `core.ingest_scan.quet_thu_muc` / `quet_cac_file` rồi gọi `api.dot_nap.chay_lan_nap` - script làm thế để dùng chung lõi đợt với màn, màn làm thế vì nó quét từ một thư mục tạm chứ không từ một đường dẫn người dùng đưa. Hai hàm cũ vẫn đúng và vẫn được `tests/test_ingest_pipeline.py` dùng, nhưng một hàm không có nơi gọi trong đường đang chạy sẽ trôi khỏi nó: đổi chữ ký `nap_cac_tai_lieu` mà quên hai hàm này thì chỉ test biết. Ba đường ra: bỏ chúng, hoặc để `chay_lan_nap` gọi lại chúng thay vì `nap_cac_tai_lieu`, hoặc chốt chúng là API công khai của `adapters/` cho `eval/`. Không sửa trong story 2.7 vì mọi phương án đều chạm `adapters/` và AGENTS.md bắt trình diff cho sonlm. Địa chỉ: story 2.8.
+  evidence: Hai lối vào sản phẩm nay tự ghép `core.ingest_scan.quet_thu_muc` / `quet_cac_file` rồi gọi `api.dot_nap.chay_lan_nap` - script làm thế để dùng chung lõi đợt với màn, màn làm thế vì nó quét từ một thư mục tạm chứ không từ một đường dẫn người dùng đưa. Hai hàm cũ vẫn đúng và vẫn được `tests/test_ingest_pipeline.py` dùng, nhưng một hàm không có nơi gọi trong đường đang chạy sẽ trôi khỏi nó: đổi chữ ký `nap_cac_tai_lieu` mà quên hai hàm này thì chỉ test biết. Ba đường ra: bỏ chúng, hoặc để `chay_lan_nap` gọi lại chúng thay vì `nap_cac_tai_lieu`, hoặc chốt chúng là API công khai của `adapters/` cho `eval/`. Không sửa trong story 2.7 vì mọi phương án đều chạm `adapters/` và AGENTS.md bắt trình diff cho sonlm.
+  resolved: 2026-09-03 (2.8) - **sonlm quyết đường thứ ba: giữ hai hàm, chốt chúng là
+    API công khai của `adapters/` cho `eval/`.** Story 2.8 có dựng thử đường thứ nhất
+    (bỏ ba hàm, chuyển phần ghép sang `tests/ho_tro_ingest.py`) và trình diff `adapters/`
+    theo luật AGENTS.md; sonlm bác, nên `adapters/ingest.py` hoàn nguyên nguyên trạng và
+    test giữ nguyên cách gọi cũ. Nguy cơ mà khoản này nêu vẫn còn - đổi chữ ký
+    `nap_cac_tai_lieu` mà quên hai hàm bọc thì chỉ test biết - nhưng nay nó là một nguy cơ
+    đã được cân nhắc và chấp nhận có chủ, đổi lại là `eval/` có một lối vào ingest ở đúng
+    tầng `adapters/` mà không phải tự ghép `core.ingest_scan`. Không còn mồ côi.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-8-corpus-dung-40-tai-lieu.md`
+  summary: Lần nạp thật 40 tài liệu chưa chạy, nên ba thứ của story 2.8 còn treo cùng một chỗ: giả định 6.3.4 (số đỉnh hyperedge demo App01), `eval/so_do_nap/nap-that.json` vẫn là số của 10 tài liệu, và khoản `nap_corpus` của bảng ngoại suy FR-30 vẫn là phép nhân 4 lần.
+  evidence: Mục Ask First của spec 2.8 đòi sonlm duyệt trước khi tiêu tiền thật (~0,04 USD). Phần code và dữ liệu đã sẵn sàng để chạy đúng một lệnh - `scripts/chay-may-chu.sh nap eval/corpus --xuat-json eval/so_do_nap/nap-that.json` - và mọi thứ treo vào nó đều có chỗ ghi sẵn: `so_dinh_hyperedge_demo` trong `eval/corpus_thiet_ke.yaml` đang là `null` (test `test_so_dinh_hyperedge_demo_la_mot_gia_tri_duy_nhat` skip khi còn `null`, đòi số nguyên dương khi đã điền), và PRD mục lục giả định 6.3 khoản 4 đã trỏ về đúng khóa đó. Khi chạy xong phải cập nhật **trong cùng một commit** (luật AGENTS.md): file số đo, sáu số khóa trong `tests/test_cham_trich_xuat.py` (`test_so_do_nap_that_khop_lan_nap_03_09`, `SO_KHOA_NGOAI_SUY`, tổng và phần trăm mức báo động), `so_dinh_hyperedge_demo`, PRD 6.3, ledger và sprint-status. Địa chỉ: story 2.8 (lần chạy Ask First), không chuyển đi đâu khác.
+  resolved: 2026-09-03 - sonlm duyệt mục Ask First, đã chạy trên máy chủ:
+    `scripts/chay-may-chu.sh nap_2_8 eval/corpus --xuat-json eval/so_do_nap/nap-that.json`,
+    đợt `a344138401024652b9562c229da597c8`, 40 tài liệu, 0 file bị từ chối, rc=0 (đối
+    chiếu hai kho lệch là đợt fail theo AD-4, nên rc=0 chứng cả bước đối chiếu), **2 phút
+    42 giây, 0,039736 USD**. Kho `synth` nay 261 hyperedge / 747 entity: 218 hyperedge của
+    corpus cộng 43 của bộ vàng, khớp đúng tổng cột hyperedge từng tài liệu. Nạp lại đúng
+    thư mục đó cho **KHÔNG ĐỔI** cả 40 tài liệu và 0 USD, tức re-ingest không nhân đôi.
+    Ba thứ treo vào nó đóng cùng lúc: `so_dinh_hyperedge_demo: 5` (bằng chứng dưới),
+    `eval/so_do_nap/nap-that.json` nay là 40 tài liệu, và `nap_corpus` **0,0397 USD là số
+    đo trực tiếp** chứ không còn là phép nhân 4 lần (`so_tai_lieu_corpus` 40 chia
+    `so_tai_lieu` 40 bằng 1). Bảng ngoại suy đổi 6,7720 -> **6,7932 USD** (11,32% mức báo
+    động, không vượt); hai khoản GPT-4o nhích lên vì chúng áp đơn giá model khác lên token
+    đo được, mà token của corpus 40 tài liệu khác token của 10 tài liệu bộ vàng. Sáu số
+    khóa trong `tests/test_cham_trich_xuat.py` cập nhật cùng commit theo luật AGENTS.md.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-8-corpus-dung-40-tai-lieu.md`
+  summary: Bảng thiết kế `eval/corpus_thiet_ke.yaml` chưa được sonlm duyệt; spec đòi trình bảng **trước khi viết tài liệu**, còn ở đây bảng và 40 tài liệu được viết liền một mạch.
+  evidence: Trình tự của spec có lý do thật - 40 tài liệu là công viết tay, duyệt bảng trước rẻ hơn duyệt lại corpus sau. Cái đã giữ được là *thứ tự kỹ thuật*: bảng viết trước tài liệu, `tests/test_corpus.py` viết trước tài liệu, và mọi tài liệu phải khớp bảng nên bảng vẫn là nguồn chuẩn chứ không phải bản mô tả chép lại từ corpus. Cái mất là vòng duyệt. Nếu sonlm đổi bảng thì phần phải viết lại là nội dung tài liệu, không phải cấu trúc: số 21/19, ba kịch bản, ba scope và luật một-một đều nằm trong test. Địa chỉ: sonlm duyệt bảng trước khi commit story 2.8.
+  resolved: 2026-09-03 - sonlm đọc bảng và **duyệt như hiện tại** (21 lõi / 19 nhiễu, ba
+    kịch bản mỗi kịch bản 7 tài liệu, scope `noi_bo` 20 · `khach_hang_a` 11 ·
+    `khach_hang_b` 9, 13 loại nội dung). Vòng duyệt vẫn bị bỏ so với trình tự spec đòi;
+    ghi lại ở đây để lần sau agent dừng đúng chỗ, không phải để mở lại nội dung corpus.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-8-corpus-dung-40-tai-lieu.md`
+  summary: Corpus dùng 13 loại nội dung nhưng `config/policy-toi-gian.yaml` mới khai 3, nên 10 trong 13 loại của corpus là fail-closed L0 với **mọi** vai cho tới story 3.2.
+  evidence: Đúng thiết kế, không phải lỗi: Never của spec 2.8 cấm sửa bảng chính sách, và `core.policy.RolePolicy.level` trả L0 cho loại chưa khai. Hệ quả phải nhớ khi đọc số ở giữa hai story: một phép đo recall chạy *bây giờ* trên corpus 40 tài liệu sẽ thấy 30 tài liệu vắng mặt hoàn toàn với cả `devops` lẫn `tech_support`, và đó là trạng thái đúng chứ không phải một lỗ. Chỉ 10 tài liệu mang `runbook`, `bao_cao_su_co` hay `bi_mat_ha_tang` là nhìn thấy được. Địa chỉ: story 3.2 (bảng chính sách đầy đủ, validator đơn điệu AD-5, 4 cấu hình đo).
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-8-corpus-dung-40-tai-lieu.md`
+  summary: Thứ tự 13 hạng của `config/hang-do-nhay.yaml` chọn để bảng chính sách A4 diễn đạt được mà vẫn đơn điệu, nhưng chưa có validator nào *chứng minh* điều đó - lập luận mới nằm trong chú thích YAML và trong một chuỗi bất đẳng thức viết tay.
+  evidence: Validator đơn điệu của AD-5 là story 3.2 và nó cần cả bảng chính sách đầy đủ mới chạy được, nên viết nó bây giờ là viết một validator không có gì để kiểm. Cái đang canh: `tests/test_hop_nhat_khoa.py::test_hang_cua_file_mac_dinh_doi_mot_chieu` ghim đủ 13 mắt của chuỗi (kỳ vọng viết tay, không suy từ file) và `test_ba_hang_da_dong_bang_giu_nguyen_so` ghim 10/20/30. Rủi ro thật nếu thứ tự sai: 3.2 phát hiện bảng A4 không đơn điệu được thì phải đảo hạng, mà đảo hạng sau khi đã nạp là **re-ingest cả corpus**. Địa chỉ: story 3.2, và đó là chỗ phải kiểm sớm trong story chứ không phải cuối.
+
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-8-corpus-dung-40-tai-lieu.md`
+  summary: Bốn tài liệu kịch bản 1 (`k1-03`..`k1-06`) trong space `synth` trên máy chủ còn mang nội dung *trước* patch INC-1208 của vòng review 03/09; chúng cần nạp lại.
+  evidence: Lần nạp thật 02/09 chạy trên bản corpus cũ, còn patch INC-1208 (đưa mốc thời gian và tên người xử lý về khớp bộ vàng) đến sau. Không sai quyền và không mất dữ liệu - nạp lại cùng `doc_key` là re-ingest ghi đè sạch theo luật của `adapters/ingest.py`, không nhân đôi hyperedge - nhưng đồ thị đang mang hai sự thật cho cùng mã INC-1208, đúng thứ mà patch sinh ra để bỏ. 36 tài liệu còn lại không đổi nên không cần chạm. Số đo `eval/so_do_nap/nap-that.json` là số của cả 40 tài liệu và **không** đổi theo lượt nạp lại này, nên sáu số khóa của chương 4 giữ nguyên. Việc chạy tốn tiền thật nên thuộc về sonlm. Địa chỉ: story 2.8 (lượt nạp lại), trước khi story 2.9 gán nhãn truy hồi vàng trên chính đồ thị này.
+  resolved: 2026-09-03 - đã nạp lại **đủ 40 tài liệu** (`--ep-ghi-de`), không chỉ bốn
+    file sửa: sonlm quyết như vậy để `eval/so_do_nap/nap-that.json` còn là số đo của
+    **một** đợt 40 tài liệu chứ không phải số ghép từ hai đợt. Đợt
+    `2cee40883c0d45399954001b4aef7cc1`, 3 phút 32 giây, **0,039421 USD**, rc=0. Kho
+    `synth` nay 254 hyperedge / 724 entity (211 corpus + 43 bộ vàng); giảm so với 261
+    của đợt trước vì bản `k1-03` đã sửa kể liền mạch nên LLM gom fact khác đi, và
+    re-ingest ghi đè sạch chứ không cộng thêm. Sáu số khóa cập nhật lần thứ hai trong
+    cùng commit: tổng ngoại suy **6,7894 USD** (11,32% mức báo động).
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-8-corpus-dung-40-tai-lieu.md`
+  summary: `--uoc-tinh` đếm token vào thấp hơn số provider tính khoảng 25-30% vì phần bọc hội thoại của provider không đếm được ở phía mình.
+  evidence: Vòng review 03/09 đã bỏ câu "nói quá chứ không nói thiếu" và cho `dong_in()` in thẳng "cùng bậc, không bảo đảm chiều", nên cờ này không còn tạo ảo giác an toàn. Phần chưa làm là đếm *đúng*: cần biết khuôn chat template của từng provider, mà `eval/` cố ý không import SDK nào. Test khóa tỉ lệ ước/thật trong khoảng 0,4-2,5 trên cả bốn vòng đã đo, đủ để cờ trả lời câu hỏi "sắp gọi bao nhiêu lời và tốn khoảng bao nhiêu". Địa chỉ: Epic 7, chỉ khi ai đó cần ước tính chính xác hơn một bậc.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-8-corpus-dung-40-tai-lieu.md`
+  summary: Ca "một fact ở hai tài liệu" mà bảng thiết kế dựng sẵn **không xảy ra** trên kho thật: 40 tài liệu cho **0** hyperedge đa nguồn, dù `k1-07` và `n-05` mang cùng một câu quy định nguyên văn.
+  evidence: Đếm trên đồ thị sau đợt `2cee4088` (03/09): không node hyperedge nào có `source_id` gộp từ hai chunk, trong khi **46 entity** thì có - tức đường read-merge-write của FR-11 chạy thật, nhưng chỉ ở tầng entity. Nguyên nhân là `id_fact` băm *tập slot đã chuẩn hóa*, mà LLM trích hai câu giống nhau ở hai tài liệu ra hai tập slot khác nhau (khác `subject`, khác số vai điền), nên hai fact thành hai id. Hệ quả: khẳng định "corpus 2.8 dựng sẵn ca đó" trong spec và trong `ghi_chu` của bảng thiết kế **chưa được dữ liệu xác nhận**, và khoản ledger về luật đếm `id_fact` trùng chéo tài liệu vẫn chưa có ca thật để quyết. Câu trùng nguyên văn là điều kiện cần chứ không đủ; muốn ca thật thì phải hoặc chuẩn hóa thực thể (story 2.12) hoặc dựng hai tài liệu mà LLM chắc chắn trích ra cùng tập slot. Địa chỉ: story 2.12 (chuẩn hóa thực thể) và 2.9 khi gán nhãn truy hồi vàng trên chính đồ thị này.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-8-corpus-dung-40-tai-lieu.md`
+  summary: Luật phủ loại nội dung của bộ vàng sẽ tự làm `uv run pytest` đỏ ngay khi story 3.2 khai đủ 13 loại trong `config/policy-toi-gian.yaml`.
+  evidence: `eval/bo_vang._kiem_loai_noi_dung` đòi bộ vàng phủ **mọi** loại khai trong bảng chính sách. Story 2.8 đổi luật từ "mọi loại của bảng hạng" sang "mọi loại của bảng chính sách" vì bảng hạng lên 13 loại; nhưng việc của 3.2 đúng là khai đủ 13 loại để diễn đạt bản đồ A4, và lúc đó bộ vàng 10 tài liệu / 3 loại lại thành `BoVangKhongHopLe`. Tức luật mới dời cái bẫy chứ không gỡ. Ba đường ra, phải quyết trong 3.2 chứ không phát hiện lúc CI đỏ: nới luật thành "phủ đủ loại **có mặt trong `eval/data`**", hoặc mở rộng bộ vàng (tốn công gán nhãn và đổi mẫu số 151 slot của R2), hoặc tách một danh sách loại bắt buộc phải có ca trên dữ liệu thật. Địa chỉ: story 3.2.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-8-corpus-dung-40-tai-lieu.md`
+  summary: Luật phủ chỉ soi `config/policy-toi-gian.yaml`; `config/policy-nhi-phan.yaml` - baseline nhị phân của Đo 3, một trong ba chốt brief §6 - không được đối chiếu với bộ vàng.
+  evidence: `POLICY_MAC_DINH` trỏ đúng một file. Hôm nay hai bảng cùng 3 loại nên chưa lộ; 3.2 dựng 4 cấu hình đo thì chúng lệch nhau là chuyện bình thường, và lúc đó một cấu hình đo có loại nội dung không có ca nào trên dữ liệu thật sẽ đi qua im lặng. `tests/test_hop_nhat_khoa.py` đã có khuôn quét **mọi** `config/policy-*.yaml` kèm guard `len >= 2`; luật phủ nên mượn đúng khuôn đó. Địa chỉ: story 3.2.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-8-corpus-dung-40-tai-lieu.md`
+  summary: Phép thử lại 429/5xx chỉ có trên harness đo trong `eval/`, không có trên đường nạp thật - mà chính đường nạp là chỗ story này tiêu tiền, hai lần 40 lời gọi liên tiếp.
+  evidence: `adapters/llm_wrapper.py` ghi rõ "không retry riêng ngoài retry sẵn có của SDK" và `adapters/trich_xuat.py` dùng `TaskGroup` hủy anh em khi một lời gọi hỏng, nên một 429 giữa đợt là mất cả đợt và phần đã trả tiền chỉ còn trong `audit_log`. Lập luận sinh ra khoản retry của 2.6 ("40+ lời gọi liên tiếp trên một key dùng chung") áp cho đường nạp ít nhất ngang đường đo. Không sửa ở 2.8 vì mọi phương án đều chạm `adapters/`. Địa chỉ: story 2.11 (nạp dữ liệu thật, đợt dài hơn) hoặc sớm hơn nếu một đợt nạp thật chết vì 429.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-8-corpus-dung-40-tai-lieu.md`
+  summary: Số đỉnh hyperedge demo (8) là số của một cấu hình trích xuất, không phải hằng số của lược đồ; nó đổi khi đổi văn phong tài liệu hoặc đổi prompt.
+  evidence: Bằng chứng đo được trong chính story: bản `k1-03` trước patch INC-1208 cho hai hyperedge **5 đỉnh**; bản sau patch, kể liền mạch hơn, cho **một** hyperedge 8 đỉnh và một hyperedge 4 đỉnh. Kỹ thuật A13 cho vòng prompt sau (khoản ledger 2.6 còn mở, `remediation` là hố nuốt) đổi cách gom fact, tức đổi con số. PRD 6.3 khoản 4 và `eval/corpus_thiet_ke.yaml` đều ghi kèm câu này, và `tests/test_corpus.py` ghim 8 nên đổi là đỏ chứ không lặng. Việc còn lại là chương 4 trình bày 8 kèm đúng caveat đó, không trình bày như một tính chất của mô hình. Địa chỉ: story 7-5.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-8-corpus-dung-40-tai-lieu.md`
+  summary: `k1-03-bao-cao-su-co-inc-1208.md` nay gần như là bản viết lại của `eval/data/05`, mà `05` là một trong hai tài liệu few-shot của prompt 2.4 - nên chất lượng trích xuất trên chính tài liệu demo không đại diện cho corpus.
+  evidence: Patch INC-1208 buộc `k1-03` khớp `eval/data/05` ở giờ, người và cách khắc phục, mà `05` đã cung cấp fact cho `VI_DU_DAU_RA` của prompt. Hệ quả đúng chiều nguy hiểm: tài liệu được chọn làm demo chương 4 là tài liệu mà LLM có lợi thế nhất, và hyperedge 8 đỉnh (điền đủ 8 vai) có thể là hệ quả của lợi thế đó chứ không của corpus nói chung. Cách khử: khi báo cáo demo, nêu thẳng quan hệ few-shot, hoặc chọn thêm một hyperedge demo phụ từ kịch bản 2 hoặc 3 (không dính few-shot) để so. Địa chỉ: story 7-5.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-8-corpus-dung-40-tai-lieu.md`
+  summary: Ghi cứu hộ sau **mỗi chunk** ghi lại toàn bộ file mỗi lần, nên chi phí ghi là bậc hai theo số chunk của một tài liệu.
+  evidence: `_ghi_nguyen_tu(tam, dung_du_lieu(tai_lieu))` chép cả thân tài liệu nguyên văn và mọi phản hồi đã có. Corpus 2.8 mỗi tài liệu đúng một chunk nên không thấy; một tài liệu 20 chunk thì ghi 20 lần một file lớn dần. Chấp nhận được ở quy mô khóa luận và đổi lại là không mất tiền đã tiêu, nhưng nó là một giới hạn có thật chưa được ghi ở đâu ngoài khoản này. Đường sửa nếu cần: JSONL nối thêm rồi gộp lúc đọc. Địa chỉ: Epic 7.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-8-corpus-dung-40-tai-lieu.md`
+  summary: `--uoc-tinh` chỉ phủ vòng đo trên bộ vàng; đường thật sự tiêu tiền của story này (`api.do_chi_phi` nạp `eval/corpus`) không có bước xem trước nào.
+  evidence: Động cơ ghi trong khoản ledger 2.6 là "corpus lớn làm một vòng đắt lên gấp năm", mà hai lần chạy tốn tiền của 2.8 đều đi qua `api.do_chi_phi`, nơi không có cờ nào cho biết trước sắp gọi bao nhiêu lời gọi trên model nào. Hàm ước là hàm thuần và `api/` được phép import `adapters/`, nên chuyển nó thành một cờ của CLI nạp là việc nhỏ; không làm ở 2.8 vì nó chạm `api/` ngoài phạm vi spec. Địa chỉ: story 2.11.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-8-corpus-dung-40-tai-lieu.md`
+  summary: Hai thay đổi hành vi của vòng review cần được nhớ chứ không chỉ được vá: `Retry-After` dài nay là **bỏ cuộc** thay vì chờ trần, và `KetQuaCham.__add__` nay ném một lỗi **không** phải `TypeError`.
+  evidence: Cả hai đúng cho ngữ cảnh hiện tại và có test, nhưng cả hai lệch khỏi thứ người đọc quen. `goi_llm_co_thu_lai` bỏ cuộc là đúng cho một vòng đo có file cứu hộ; tái dùng nó trên đường sản phẩm (một truy vấn người dùng, không có file cứu hộ để quay lại) thì phải xét lại. `__add__` ném ngoài `TypeError` là cố ý - một `except TypeError` ở trên đường gọi sẽ nuốt đúng hàng rào này - nhưng nó lệch quy ước toán tử của Python, nên người đọc sau cần thấy lý do ở đây chứ không chỉ trong docstring. Địa chỉ: Epic 6 (nếu `redteam/` tái dùng phép thử lại) và Epic 7 (nếu thêm chỉ số chấm thứ ba).

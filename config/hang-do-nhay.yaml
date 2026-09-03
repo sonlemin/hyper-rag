@@ -25,11 +25,49 @@
 # dữ liệu nạp sau, nhưng vẫn phải quyết trước khi lô đầu tiên mang loại đó chạy.
 #
 # Loại nội dung không có trong bảng là `SensitivityRankUnknown`, từ chối cả lô.
+# **Thứ tự 13 hạng (story 2.8).** Ba số 10/20/30 là số đã đóng băng từ story
+# 2.1: 10 tài liệu bộ vàng đã nạp bằng đúng ba số đó, nên đổi chúng là re-ingest
+# cả bộ vàng. Mười loại mới chỉ chèn vào khoảng trống giữa và quanh chúng, nên
+# khóa quyền đã ghi của bộ vàng không đổi; chỉ `version` sha256 của file đổi, và
+# đó đúng là thứ audit cần để biết một mục được tính bằng bảng nào.
+#
+# Thứ tự chọn để bản đồ ACL của PRD addendum A4 (SOP toàn công ty - runbook
+# DevOps - lịch sử sự cố team + Tech Support - CMDB và log nhóm hạ tầng -
+# postmortem hạn chế) diễn đạt được thành một bảng chính sách **đơn điệu** theo
+# AD-5 (hạng cao hơn thì mức tiết lộ không được cao hơn). Đọc thử với
+# `tech_support`: L2 từ `faq` tới `runbook`, L1 từ `known_issue` tới
+# `postmortem`, L0 từ `log` trở lên - một chuỗi không tăng. Với `devops`: L2 tới
+# `cmdb`, L1 ở `bi_mat_ha_tang`. Cả hai đọc được mà không phải đảo hạng nào, nên
+# story 3.2 dựng bảng đầy đủ mà không phải re-ingest corpus.
+#
+# Bảng chính sách đầy đủ là việc của story 3.2. Loại nội dung chưa khai trong
+# bảng chính sách hiện hành là fail-closed L0 (`core.policy.RolePolicy.level`),
+# đó là trạng thái đúng cho tới khi 3.2 khai đủ.
 version: 1
 ranks:
-  # Quy trình vận hành, viết ra để lan truyền: hạn chế thấp nhất trong ba loại.
+  # Hỏi đáp thường gặp, viết cho mọi người đọc: hạn chế thấp nhất.
+  faq: 2
+  # Tài liệu sản phẩm, mô tả dịch vụ đang chạy cho khách và cho nội bộ.
+  tai_lieu_san_pham: 4
+  # SOP đã duyệt, quy trình chuẩn toàn công ty (A4: L2 toàn công ty).
+  sop: 6
+  # Hướng dẫn tự khắc phục theo triệu chứng, mức người dùng cuối.
+  troubleshooting: 8
+  # Quy trình vận hành của nhóm DevOps, có thao tác trên hệ sản xuất.
   runbook: 10
+  # Lỗi đã biết chưa có bản vá: hữu ích cho hỗ trợ, nhưng là bản đồ điểm yếu.
+  known_issue: 12
+  # Vòng đời một ticket: ai mở, ai xử lý, kết thúc thế nào.
+  vong_doi_ticket: 14
+  # Cảnh báo giám sát: ngưỡng, kênh nhận, hệ thống nào đang yếu.
+  canh_bao: 16
   # Báo cáo sự cố mang nguyên nhân, mốc thời gian và người xử lý.
   bao_cao_su_co: 20
+  # Postmortem: phân tích sâu sau sự cố, nêu cả lỗi quy trình và lỗi người.
+  postmortem: 22
+  # Log hệ thống, nguyên văn dòng nhật ký (A4: nhóm hạ tầng).
+  log: 24
+  # CMDB: sơ đồ tài sản, phiên bản, phụ thuộc - bản đồ tấn công của hệ.
+  cmdb: 26
   # Sổ tay hạ tầng, khóa quản trị, đường vào hệ thống: hạn chế nhất.
   bi_mat_ha_tang: 30

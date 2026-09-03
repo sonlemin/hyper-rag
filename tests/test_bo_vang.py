@@ -112,11 +112,40 @@ def test_mau_so_la_tong_slot_da_dien_cua_dung_tam_tai_lieu_cham(bo_vang):
     assert bo_vang.mau_so_slot() < tong, "mẫu số phải nhỏ hơn tổng: few-shot bị loại"
 
 
-def test_du_ba_loai_noi_dung_cua_bang_hang_do_nhay(bo_vang):
-    """Bảng chính sách có ca L0 trên dữ liệu thật chỉ khi có `bi_mat_ha_tang`."""
+def test_phu_du_loai_noi_dung_cua_bang_chinh_sach(bo_vang):
+    """Bộ vàng phải phủ mọi loại nội dung mà bảng chính sách *đang khai*.
+
+    Từ story 2.8 luật này là một phép **bao hàm**, không phải một đẳng thức với
+    bảng hạng độ nhạy: bảng hạng có 13 loại để 3.2 dựng được bảng đầy đủ, còn
+    loại chưa khai trong bảng chính sách là fail-closed L0 im lặng nên không có
+    ca đo nào để mất.
+    """
+    from eval.bo_vang import loai_cua_bang_chinh_sach
+
+    cua_bo = {t.content_type for t in bo_vang.tai_lieu}
+    assert loai_cua_bang_chinh_sach() <= cua_bo
+
+
+def test_moi_loai_noi_dung_cua_bo_vang_deu_co_hang_do_nhay(bo_vang):
+    """Chiều ngược lại: một loại không có hạng là một lô ingest bị từ chối."""
     from adapters.sensitivity_loader import bang_hang_mac_dinh
 
-    assert {t.content_type for t in bo_vang.tai_lieu} == set(bang_hang_mac_dinh().hang)
+    cua_bo = {t.content_type for t in bo_vang.tai_lieu}
+    assert cua_bo <= set(bang_hang_mac_dinh().hang)
+
+
+def test_bang_hang_rong_hon_bo_vang_khong_lam_bo_vang_do():
+    """Mở bảng hạng lên 13 loại **không** được biến bộ vàng thành không hợp lệ.
+
+    Đây là khoản ledger 2.5 mà story 2.8 đóng: luật cũ đòi bộ vàng phủ *mọi*
+    loại của bảng hạng, nên một dòng thêm vào `config/hang-do-nhay.yaml` là một
+    lượt gán nhãn 10 tài liệu mới.
+    """
+    from adapters.sensitivity_loader import bang_hang_mac_dinh
+    from eval.bo_vang import doc_bo_vang, loai_cua_bang_chinh_sach
+
+    assert len(bang_hang_mac_dinh().hang) > len(loai_cua_bang_chinh_sach())
+    doc_bo_vang()  # không ném
 
 
 def test_moi_vai_co_it_nhat_mot_fact_trong_ca_bo(bo_vang):
@@ -798,3 +827,70 @@ def test_hai_tai_lieu_cung_mot_fact_duoc_bao_ra_chu_khong_bi_tu_choi(kho):
     assert set(next(iter(id_trung.values()))) == {"a-runbook.txt", "d-them.txt"}
     # Đặc tả hiện trạng: mẫu số cộng cả hai lần (3 + 2 của bộ tối thiểu, cộng 3).
     assert kq.mau_so_slot() == 3 + 2 + 3
+
+
+# --- Vòng review 2.8: nhánh "loại không có hạng" phải bắt được đột biến ----
+
+
+def test_loai_noi_dung_khong_co_hang_do_nhay_bi_tu_choi_kem_ten_loai(kho):
+    """Xóa nhánh này khỏi `_kiem_loai_noi_dung` mà cả bộ vẫn xanh là một lỗ.
+
+    Bộ vàng thật phủ đúng ba loại đều có hạng, nên nhánh đó chưa từng chạy. Ca
+    dựng tay ở đây làm nó chạy: một tài liệu mang `content_type` không có trong
+    `config/hang-do-nhay.yaml` là một lô ingest bị `SensitivityRankUnknown` từ
+    chối trọn vẹn, nên nó phải đỏ ở cửa nạp bộ vàng chứ không đỏ sau khi trả tiền.
+    """
+    from adapters.sensitivity_loader import bang_hang_mac_dinh
+
+    la = "loai_khong_co_hang"
+    assert la not in bang_hang_mac_dinh().hang
+
+    data, duong_dan = kho
+    (data / "d-la.txt").write_text(
+        f"---\nscope: noi_bo\ncontent_type: {la}\n---\nMay chu App09 chay dich vu bao cao.\n",
+        encoding="utf-8",
+    )
+    bo = _bo_toi_thieu()
+    bo["tai_lieu"].append(
+        {
+            "doc_key": "d-la.txt",
+            "scope": "noi_bo",
+            "content_type": la,
+            "few_shot": False,
+            "facts": [
+                {
+                    "slots": {"subject": "App09", "remediation": "chay dich vu bao cao"},
+                    "cau_nguon": "May chu App09 chay dich vu bao cao.",
+                }
+            ],
+        }
+    )
+    with pytest.raises(BoVangKhongHopLe) as loi:
+        _nap(kho, bo)
+    thong_diep = str(loi.value)
+    assert la in thong_diep
+    assert "hạng độ nhạy" in thong_diep and "SensitivityRankUnknown" in thong_diep
+
+
+def test_bang_hang_hong_van_bao_ca_loi_phu_theo_bang_chinh_sach(kho, monkeypatch):
+    """`except SensitivityRanksInvalid` trước đây `return` trần, nuốt luôn phép kiểm kia.
+
+    Gom hết lỗi rồi ném một lần là luật của cả module: người sửa nhãn phải thấy
+    toàn bộ danh sách trong một lượt chạy.
+    """
+    from adapters.sensitivity_loader import SensitivityRanksInvalid
+
+    def hong():
+        raise SensitivityRanksInvalid("bảng hạng hỏng cố ý")
+
+    monkeypatch.setattr("eval.bo_vang.bang_hang_mac_dinh", hong)
+    bo = _bo_toi_thieu()
+    # Bỏ tài liệu `bi_mat_ha_tang` để phép phủ theo bảng chính sách cũng hỏng.
+    bo["tai_lieu"] = [t for t in bo["tai_lieu"] if t["content_type"] != "bi_mat_ha_tang"]
+    for t in bo["tai_lieu"]:
+        t["few_shot"] = False
+    with pytest.raises(BoVangKhongHopLe) as loi:
+        _nap(kho, bo)
+    thong_diep = str(loi.value)
+    assert "bảng hạng hỏng cố ý" in thong_diep
+    assert "bảng chính sách" in thong_diep, "lỗi thứ hai bị nuốt mất"

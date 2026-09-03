@@ -1,0 +1,359 @@
+# Bảng thiết kế corpus dựng ~40 tài liệu (story 2.8, PRD addendum A8).
+#
+# **Viết trước tài liệu và là nguồn chuẩn.** Mọi file trong `eval/corpus/` có
+# đúng một mục ở đây, mọi mục có đúng một file, và `scope`/`content_type` của
+# mục phải khớp frontmatter đọc bằng `core.ingest_scan`. Lệch một chiều nào cũng
+# là `uv run pytest` đỏ (`tests/test_corpus.py`), cùng luật một-một mà story 2.5
+# đặt cho bộ vàng trích xuất.
+#
+# Vì sao bảng có trước: cửa quét của `core/ingest_scan.py` **không** whitelist
+# `content_type`, nên một chữ gõ sai trong frontmatter đi lọt tới ingest rồi mới
+# nổ `SensitivityRankUnknown` và từ chối cả lô 40 tài liệu *sau khi* đã trả tiền
+# cho phần đầu. Bảng này cộng test của nó bắt đúng lỗi đó ở CI, rẻ hơn nhiều so
+# với nới luật trong `core/`.
+#
+# Ba scope, đơn trị mỗi tài liệu (AD-4), và scope mang chiều khách hàng. Biên
+# cách ly của RT-01 nằm ở đây: `devops` chạm `noi_bo` và `khach_hang_a` nhưng
+# **không** chạm `khach_hang_b` (`config/policy-toi-gian.yaml`), nên mọi tài
+# liệu `khach_hang_b` là một ca thử thật của biên đó ở T3.
+#
+# Loại nội dung dùng 12 loại của A8 cộng `bi_mat_ha_tang`; hạng của từng loại ở
+# `config/hang-do-nhay.yaml`. Bảng chính sách đầy đủ là việc của story 3.2: cho
+# tới lúc đó, loại chưa khai trong `config/policy-toi-gian.yaml` là fail-closed
+# L0, đó là trạng thái đúng chứ không phải một lỗ.
+version: 1
+
+# Số đỉnh của hyperedge demo App01 (PRD mục lục giả định 6.3 khoản 4). Chốt
+# **một** giá trị, đếm trên đồ thị đã nạp thật chứ không chọn theo tài liệu
+# nguồn - tài liệu nguồn lệch nhau 5 và 6, và đó chính là giả định treo.
+#
+# Đo ngày 03/09/2026 trên space `synth`, đợt `2cee40883c0d45399954001b4aef7cc1`
+# (lần nạp lại đủ 40 tài liệu sau khi `k1-03`..`k1-06` sửa cho khớp bộ vàng).
+# Hyperedge demo là fact chính của `k1-03-bao-cao-su-co-inc-1208.md`, id
+# `he-1052ab379974d65544056533`, nối **8** đỉnh entity - điền đủ cả 8 vai slot:
+# `subject` = "trang thanh toán App01" · `symptom` = "ngừng phục vụ 40 phút, trả
+# lỗi 502 với tỷ lệ 100%" · `cause` = "chỉnh sai giới hạn bộ nhớ PHP-FPM" ·
+# `condition` = "lưu lượng vượt 5000 req/phút" · `time` = "12/08/2026 lúc 09:20" ·
+# `owner` = "Trần Thị Hạnh" · `remediation` = "trả giới hạn bộ nhớ PHP-FPM về mức
+# cũ rồi nạp lại cấu hình theo SOP-12" · `source` = "INC-1208".
+#
+# **Đây là số của một cấu hình trích xuất, không phải hằng số của lược đồ.** Nó
+# phụ thuộc cách LLM gom fact: hyperedge thứ hai của cùng tài liệu chỉ 4 đỉnh, và
+# bản `k1-03` trước khi sửa (kể sự cố rời rạc hơn) cho hai hyperedge 5 đỉnh. Đổi
+# prompt theo kỹ thuật A13 mà 2.6 còn treo là con số có thể đổi. Ghi ra đây để
+# chương 4 không trình bày 8 như một tính chất của mô hình.
+so_dinh_hyperedge_demo: 8
+
+kich_ban:
+  - id: web_sap
+    ten: Web sập - chuỗi nhân quả
+    mo_ta: >-
+      Ví dụ xuyên suốt App01 (A8): trang thanh toán của khách hàng A trả 502 sau
+      một lần chỉnh giới hạn bộ nhớ PHP-FPM. Chuỗi cảnh báo -> triệu chứng ->
+      nguyên nhân -> khắc phục -> phòng ngừa trải qua sáu tài liệu cùng scope
+      cộng SOP-12 ở `noi_bo`, nên câu hỏi N2 phải ghép **hai scope** mới trả lời
+      được và chỉ `devops` ghép được.
+    scope_chinh: khach_hang_a
+  - id: day_o_cung
+    ten: Đầy ổ cứng - fan-out
+    mo_ta: >-
+      Một nguyên nhân gốc (phân vùng log của máy chủ log01 đầy) làm bốn dịch vụ
+      nội bộ hỏng theo những cách khác nhau. Hình dạng ngược với kịch bản 1: một
+      đỉnh nguyên nhân, nhiều đỉnh triệu chứng - chất liệu cho câu hỏi tổng hợp
+      đa nguồn (N2) trên cùng một scope.
+    scope_chinh: noi_bo
+  - id: ssl_het_han
+    ten: Chứng thư số hết hạn - thời gian và sở hữu
+    mo_ta: >-
+      Chứng thư số của cổng thanh toán khách hàng B hết hạn ngày 26/08 vì lịch
+      gia hạn thuộc về một nhóm đã bàn giao. Hai trục của kịch bản là *thời
+      điểm* (hết hạn, nhắc trước 30 ngày, gia hạn 90 ngày) và *sở hữu* (ai chịu
+      trách nhiệm sau bàn giao) - chất liệu cho N6 và cho vai slot `owner`.
+    scope_chinh: khach_hang_b
+  - id: nhieu
+    ten: Nhiễu
+    mo_ta: >-
+      Tài liệu không thuộc kịch bản nào. Chúng có mặt để phép truy hồi phải
+      *chọn*: cùng chủ đề, cùng loại nội dung, cùng từ vựng vận hành với tài
+      liệu lõi, nhưng không mang đáp án. Không có phần này thì recall của Đo 3
+      đo một bài toán quá dễ.
+    scope_chinh: null
+
+tai_lieu:
+  # --- Kịch bản 1: web sập (21 lõi, phần 1/3) --------------------------------
+  - ten: k1-01-runbook-app01-khoi-dong-lai.md
+    scope: khach_hang_a
+    content_type: runbook
+    kich_ban: web_sap
+    vai_tro: loi
+    ghi_chu: >-
+      Runbook công khai của A8: App01 chạy Nginx + PHP-FPM phục vụ trang thanh
+      toán. Ngưỡng 5000 req/phút và điều kiện khởi động lại là chất liệu N3.
+  - ten: k1-02-canh-bao-app01-502.md
+    scope: khach_hang_a
+    content_type: canh_bao
+    kich_ban: web_sap
+    vai_tro: loi
+    ghi_chu: Ngưỡng cảnh báo và kênh nhận - đầu chuỗi nhân quả, chất liệu N3.
+  - ten: k1-03-bao-cao-su-co-inc-1208.md
+    scope: khach_hang_a
+    content_type: bao_cao_su_co
+    kich_ban: web_sap
+    vai_tro: loi
+    ghi_chu: >-
+      Báo cáo hạn chế của A8: App01 sập 40 phút ngày 12/08 do chỉnh sai giới hạn
+      bộ nhớ PHP-FPM, ảnh hưởng khách VIP. Đáp án vàng của Đo 2 nằm ở vai
+      `cause`; đây là hyperedge demo mà giả định 6.3.4 đếm đỉnh (chốt 5 đỉnh).
+      INC-1208 là *cùng một sự cố* với `eval/data/05-bao-cao-su-co-inc-1208.txt` của bộ vàng, nhìn từ scope khách hàng thay vì scope nội bộ. Hai bộ nạp chung space `synth` nên chúng phải là hai góc nhìn của một sự thật, không phải hai sự thật cùng mã: ba mỏ neo (bắt đầu 09:20, phục hồi 10:00, người xử lý Trần Thị Hạnh đội Vận hành ứng dụng) lấy nguyên từ bộ vàng. Bộ vàng không đổi một chữ (nhãn tay đã khóa, `cau_nguon` phải còn nguyên văn), nên corpus là bên sửa. `tests/test_corpus.py` đọc ba mỏ neo *từ chính bộ vàng* nên đổi bộ vàng là test đỏ chứ không lặng.
+  - ten: k1-04-postmortem-inc-1208.md
+    scope: khach_hang_a
+    content_type: postmortem
+    kich_ban: web_sap
+    vai_tro: loi
+    ghi_chu: >-
+      Phân tích sau sự cố, nêu cả lỗi quy trình - chất liệu N5. Mang đủ ba mỏ neo
+      ngay ở câu thứ hai. INC-1208 là *cùng một sự cố* với `eval/data/05-bao-cao-su-co-inc-1208.txt` của bộ vàng, nhìn từ scope khách hàng thay vì scope nội bộ. Hai bộ nạp chung space `synth` nên chúng phải là hai góc nhìn của một sự thật, không phải hai sự thật cùng mã: ba mỏ neo (bắt đầu 09:20, phục hồi 10:00, người xử lý Trần Thị Hạnh đội Vận hành ứng dụng) lấy nguyên từ bộ vàng. Bộ vàng không đổi một chữ (nhãn tay đã khóa, `cau_nguon` phải còn nguyên văn), nên corpus là bên sửa. `tests/test_corpus.py` đọc ba mỏ neo *từ chính bộ vàng* nên đổi bộ vàng là test đỏ chứ không lặng.
+  - ten: k1-05-cmdb-app01.md
+    scope: khach_hang_a
+    content_type: cmdb
+    kich_ban: web_sap
+    vai_tro: loi
+    ghi_chu: >-
+      PHP 7.4, Nginx, phụ thuộc và phiên bản (chi tiết demo A8). Người phụ trách
+      kỹ thuật của App01 phải là chính người xử lý INC-1208 của bộ vàng: bản ghi
+      CMDB là nơi mọi tài liệu khác tra tên, nên một cái tên thứ hai ở đây là hai
+      người phụ trách cho một hệ thống. Test đọc tên từ bộ vàng và ghim chính mục
+      CMDB của kịch bản `web_sap` này.
+  - ten: k1-06-log-app01-ngay-12-08.md
+    scope: khach_hang_a
+    content_type: log
+    kich_ban: web_sap
+    vai_tro: loi
+    ghi_chu: >-
+      Nguyên văn dòng nhật ký của đúng khung giờ sự cố. Mọi mốc log phải nằm
+      trong khung 09:20-10:00 suy từ bộ vàng (bắt đầu cộng 40 phút): một dòng log
+      ngoài khung là bằng chứng nói ngược lại chính báo cáo mà nó chống lưng.
+      INC-1208 là *cùng một sự cố* với `eval/data/05-bao-cao-su-co-inc-1208.txt` của bộ vàng, nhìn từ scope khách hàng thay vì scope nội bộ. Hai bộ nạp chung space `synth` nên chúng phải là hai góc nhìn của một sự thật, không phải hai sự thật cùng mã: ba mỏ neo (bắt đầu 09:20, phục hồi 10:00, người xử lý Trần Thị Hạnh đội Vận hành ứng dụng) lấy nguyên từ bộ vàng. Bộ vàng không đổi một chữ (nhãn tay đã khóa, `cau_nguon` phải còn nguyên văn), nên corpus là bên sửa. `tests/test_corpus.py` đọc ba mỏ neo *từ chính bộ vàng* nên đổi bộ vàng là test đỏ chứ không lặng.
+  - ten: k1-07-sop-12-quan-ly-thay-doi.md
+    scope: noi_bo
+    content_type: sop
+    kich_ban: web_sap
+    vai_tro: loi
+    ghi_chu: >-
+      SOP-12 của A8, scope `noi_bo` chứ không phải scope khách hàng: đây là mắt
+      xích làm câu hỏi N2 của kịch bản 1 phải ghép hai scope. Mang câu quy định
+      24 giờ **trùng nguyên văn** với `n-05-sop-ban-giao-ca-truc.md` - ca "một
+      fact ở hai tài liệu" của I/O Matrix.
+
+  # --- Kịch bản 2: đầy ổ cứng (21 lõi, phần 2/3) -----------------------------
+  - ten: k2-01-canh-bao-day-o-dia-log01.md
+    scope: noi_bo
+    content_type: canh_bao
+    kich_ban: day_o_cung
+    vai_tro: loi
+    ghi_chu: Ngưỡng 85% và 95%, hai kênh nhận khác nhau - chất liệu N3.
+  - ten: k2-02-runbook-xu-ly-day-o-dia.md
+    scope: noi_bo
+    content_type: runbook
+    kich_ban: day_o_cung
+    vai_tro: loi
+    ghi_chu: Thứ tự thao tác và điều kiện được xóa, được nén, phải xin duyệt.
+  - ten: k2-03-bao-cao-su-co-inc-1520.md
+    scope: noi_bo
+    content_type: bao_cao_su_co
+    kich_ban: day_o_cung
+    vai_tro: loi
+    ghi_chu: >-
+      Đỉnh nguyên nhân của fan-out; bốn dịch vụ hỏng theo bốn cách. Mã sự cố
+      INC-1520 không trùng ba mã đã có trong `eval/data`.
+  - ten: k2-04-vong-doi-ticket-inc-1520.md
+    scope: noi_bo
+    content_type: vong_doi_ticket
+    kich_ban: day_o_cung
+    vai_tro: loi
+    ghi_chu: Ai mở, ai nhận, ai đóng - chất liệu cho vai slot `owner`.
+  - ten: k2-05-cmdb-may-chu-log01.md
+    scope: noi_bo
+    content_type: cmdb
+    kich_ban: day_o_cung
+    vai_tro: loi
+    ghi_chu: Bốn dịch vụ phụ thuộc log01 - đây là chỗ fan-out đọc được thành cạnh.
+  - ten: k2-06-known-issue-xoay-vong-log.md
+    scope: noi_bo
+    content_type: known_issue
+    kich_ban: day_o_cung
+    vai_tro: loi
+    ghi_chu: Lỗi đã biết chưa có bản vá, là nguyên nhân xa của INC-1520.
+  - ten: k2-07-troubleshooting-dich-vu-cham.md
+    scope: noi_bo
+    content_type: troubleshooting
+    kich_ban: day_o_cung
+    vai_tro: loi
+    ghi_chu: Hướng dẫn tự kiểm mức người dùng cuối, một nhánh trỏ về đầy ổ đĩa.
+
+  # --- Kịch bản 3: SSL hết hạn (21 lõi, phần 3/3) ----------------------------
+  - ten: k3-01-tai-lieu-san-pham-cong-thanh-toan-b.md
+    scope: khach_hang_b
+    content_type: tai_lieu_san_pham
+    kich_ban: ssl_het_han
+    vai_tro: loi
+    ghi_chu: Mô tả dịch vụ và cam kết thời gian đáp ứng của khách hàng B.
+  - ten: k3-02-runbook-gia-han-chung-thu-so.md
+    scope: khach_hang_b
+    content_type: runbook
+    kich_ban: ssl_het_han
+    vai_tro: loi
+    ghi_chu: Chu kỳ 90 ngày, nhắc trước 30 ngày - trục thời gian của kịch bản (N6).
+  - ten: k3-03-canh-bao-chung-thu-sap-het-han.md
+    scope: khach_hang_b
+    content_type: canh_bao
+    kich_ban: ssl_het_han
+    vai_tro: loi
+    ghi_chu: Cảnh báo đã bắn nhưng gửi tới nhóm cũ - mắt xích sở hữu bị đứt.
+  - ten: k3-04-bao-cao-su-co-inc-1533.md
+    scope: khach_hang_b
+    content_type: bao_cao_su_co
+    kich_ban: ssl_het_han
+    vai_tro: loi
+    ghi_chu: Chứng thư hết hạn 26/08, gián đoạn 2 giờ 10 phút.
+  - ten: k3-05-postmortem-inc-1533.md
+    scope: khach_hang_b
+    content_type: postmortem
+    kich_ban: ssl_het_han
+    vai_tro: loi
+    ghi_chu: Nguyên nhân gốc là bàn giao thiếu danh sách tài sản, không phải kỹ thuật.
+  - ten: k3-06-cmdb-chung-thu-so-khach-hang-b.md
+    scope: khach_hang_b
+    content_type: cmdb
+    kich_ban: ssl_het_han
+    vai_tro: loi
+    ghi_chu: Bảng chứng thư kèm ngày hết hạn và nhóm sở hữu - hai trục của N6.
+  - ten: k3-07-vong-doi-ticket-inc-1533.md
+    scope: khach_hang_b
+    content_type: vong_doi_ticket
+    kich_ban: ssl_het_han
+    vai_tro: loi
+    ghi_chu: Vòng đời ticket có bước chuyển nhóm - chất liệu cho `owner` đổi theo thời gian.
+
+  # --- Nhiễu (19) ------------------------------------------------------------
+  - ten: n-01-faq-dat-lai-mat-khau.md
+    scope: noi_bo
+    content_type: faq
+    kich_ban: nhieu
+    vai_tro: nhieu
+    ghi_chu: Loại `faq` chỉ có ở phần nhiễu; hạng thấp nhất của bảng.
+  - ten: n-02-faq-vpn-cho-nhan-vien-moi.md
+    scope: noi_bo
+    content_type: faq
+    kich_ban: nhieu
+    vai_tro: nhieu
+    ghi_chu: Cùng chủ đề VPN với `eval/data/02-vpn-va-mat-khau.txt` - nhiễu có chủ đích.
+  - ten: n-03-faq-cong-thanh-toan-khach-hang-a.md
+    scope: khach_hang_a
+    content_type: faq
+    kich_ban: nhieu
+    vai_tro: nhieu
+    ghi_chu: Nói về cùng cổng thanh toán của kịch bản 1 nhưng không mang đáp án.
+  - ten: n-04-sop-tiep-nhan-yeu-cau-ho-tro.md
+    scope: noi_bo
+    content_type: sop
+    kich_ban: nhieu
+    vai_tro: nhieu
+    ghi_chu: Quy trình chuẩn toàn công ty, mức tiết lộ cao nhất của bản đồ A4.
+  - ten: n-05-sop-ban-giao-ca-truc.md
+    scope: noi_bo
+    content_type: sop
+    kich_ban: nhieu
+    vai_tro: nhieu
+    ghi_chu: >-
+      Mang câu quy định 24 giờ **trùng nguyên văn** với `k1-07-sop-12-quan-ly-thay-doi.md`:
+      hai tài liệu nói cùng một quy định, kỳ vọng một node hyperedge và
+      `source_id` gộp hai tài liệu.
+  - ten: n-06-troubleshooting-may-in-mang.md
+    scope: noi_bo
+    content_type: troubleshooting
+    kich_ban: nhieu
+    vai_tro: nhieu
+    ghi_chu: Nhiễu xa, không chạm chủ đề nào của ba kịch bản.
+  - ten: n-07-troubleshooting-email-khong-gui-duoc.md
+    scope: noi_bo
+    content_type: troubleshooting
+    kich_ban: nhieu
+    vai_tro: nhieu
+    ghi_chu: Có nhánh "hộp thư đầy" gần với kịch bản 2 mà không phải nó.
+  - ten: n-08-known-issue-trinh-duyet-cu-loi-dang-nhap.md
+    scope: noi_bo
+    content_type: known_issue
+    kich_ban: nhieu
+    vai_tro: nhieu
+    ghi_chu: Lỗi đã biết không liên quan sự cố nào của corpus.
+  - ten: n-09-known-issue-bao-cao-thang-cham.md
+    scope: khach_hang_a
+    content_type: known_issue
+    kich_ban: nhieu
+    vai_tro: nhieu
+    ghi_chu: Cùng scope với kịch bản 1, khác hệ thống.
+  - ten: n-10-tai-lieu-san-pham-cong-noi-bo.md
+    scope: noi_bo
+    content_type: tai_lieu_san_pham
+    kich_ban: nhieu
+    vai_tro: nhieu
+    ghi_chu: Mô tả cổng nội bộ, một trong bốn dịch vụ chạm kịch bản 2 nhưng không nêu sự cố.
+  - ten: n-11-tai-lieu-san-pham-app02-khach-hang-a.md
+    scope: khach_hang_a
+    content_type: tai_lieu_san_pham
+    kich_ban: nhieu
+    vai_tro: nhieu
+    ghi_chu: App02 là hàng xóm gần nhất của App01 - nhiễu khó nhất của corpus.
+  - ten: n-12-runbook-sao-luu-co-so-du-lieu.md
+    scope: noi_bo
+    content_type: runbook
+    kich_ban: nhieu
+    vai_tro: nhieu
+    ghi_chu: Cùng chủ đề với `eval/data/04-sao-luu-du-lieu.txt`, khác chi tiết.
+  - ten: n-13-runbook-trien-khai-ban-va-thang.md
+    scope: khach_hang_b
+    content_type: runbook
+    kich_ban: nhieu
+    vai_tro: nhieu
+    ghi_chu: Giữ cho `khach_hang_b` không chỉ có tài liệu của một kịch bản.
+  - ten: n-14-canh-bao-tai-cpu-may-chu-web.md
+    scope: khach_hang_a
+    content_type: canh_bao
+    kich_ban: nhieu
+    vai_tro: nhieu
+    ghi_chu: Cảnh báo khác ngưỡng, khác kênh so với `k1-02` - nhiễu cho N3.
+  - ten: n-15-log-tuong-lua-ngay-20-08.md
+    scope: noi_bo
+    content_type: log
+    kich_ban: nhieu
+    vai_tro: nhieu
+    ghi_chu: Log của ngày khác, hệ khác so với `k1-06`.
+  - ten: n-16-vong-doi-ticket-yeu-cau-cap-quyen.md
+    scope: noi_bo
+    content_type: vong_doi_ticket
+    kich_ban: nhieu
+    vai_tro: nhieu
+    ghi_chu: Ticket không phải sự cố, để loại `vong_doi_ticket` không đồng nghĩa với sự cố.
+  - ten: n-17-cmdb-thiet-bi-mang-van-phong.md
+    scope: noi_bo
+    content_type: cmdb
+    kich_ban: nhieu
+    vai_tro: nhieu
+    ghi_chu: CMDB của lớp mạng văn phòng, không phải lớp dịch vụ.
+  - ten: n-18-bi-mat-ha-tang-duong-vao-khach-hang-a.md
+    scope: khach_hang_a
+    content_type: bi_mat_ha_tang
+    kich_ban: nhieu
+    vai_tro: nhieu
+    ghi_chu: >-
+      Ca L0 của bảng chính sách trên scope khách hàng, và là ca thử của RT-02
+      (credential trong tài liệu vận hành).
+  - ten: n-19-bi-mat-ha-tang-kho-khoa-khach-hang-b.md
+    scope: khach_hang_b
+    content_type: bi_mat_ha_tang
+    kich_ban: nhieu
+    vai_tro: nhieu
+    ghi_chu: >-
+      Tài liệu hạn chế nhất trên scope mà `devops` **không** chạm: ca thử biên
+      cách ly khách hàng của RT-01 ở T3.

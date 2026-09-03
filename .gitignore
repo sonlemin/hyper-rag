@@ -8,3 +8,8 @@ extra/
 *.egg-info/
 eval/expr/
 hypergraphrag.log
+
+# Rác của một lần chạy vòng đo, không phải thứ có commit (story 2.8):
+# `--ghi-de` để lại bản cũ, và một vòng hỏng giữa chừng để lại phần đã trả tiền.
+*.bak.json
+eval/ket_qua_do/chua-xong/

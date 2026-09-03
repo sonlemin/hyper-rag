@@ -26,11 +26,16 @@ token, nên chúng mang cờ `giả định`. Ba khoản còn lại nhân số l
 với một cỡ prompt giả định, vì T7 chưa chạy và chưa có ngữ cảnh truy hồi thật
 để đếm token.
 
-Cờ `đo` **không** có nghĩa là không còn giả định nào: khoản 1 vẫn giả định 40
-tài liệu của corpus 2.8 cùng cỡ và cùng loại văn bản với 10 tài liệu đã nạp.
-Phân biệt nằm chỗ khác - với khoản `đo`, đơn giá và token *trên một tài liệu*
-đều là số đã đo và chỉ hệ số nhân là giả định; với khoản `giả định` thì chính
-token hoặc chính đơn giá là thứ được đoán. Vì thế mỗi khoản đều liệt kê giả
+Từ lần nạp thật 03/09/2026, khoản 1 không còn là phép ngoại suy: file số đo đo
+đúng 40 tài liệu của `eval/corpus/`, bằng `so_tai_lieu_corpus`, nên hệ số nhân
+bằng 1 và cả token lẫn tiền là số đọc thẳng từ `audit_log`. Đó là lý do có
+`test_so_do_nap_dung_bang_corpus_dich`: corpus lớn lên mà file số đo vẫn đo 40
+tài liệu thì hệ số nhân khác 1 trở lại, và khoản 1 lặng lẽ quay về ngoại suy
+trong khi mọi tài liệu vẫn gọi nó là số đo.
+
+Cờ `đo` nói về *nguồn* của token và đơn giá, không nói "không còn giả định nào":
+với khoản `đo`, đơn giá và token trên một tài liệu đều là số đã đo; với khoản
+`giả định` thì chính token hoặc chính đơn giá là thứ được đoán. Vì thế mỗi khoản đều liệt kê giả
 định của nó ở `Khoan.gia_dinh` và bảng in cột đó cạnh cột `nguon`: một con số
 đoán trình bày như số đo là cách nhanh nhất để mất niềm tin ở chương 4.
 
@@ -87,8 +92,9 @@ class SoDoNap:
 
     Token embedding không có token ra (`text-embedding-3-small` chỉ tính token
     vào), nên chỉ một trường. Mọi phép ngoại suy chia cho `so_tai_lieu` để ra
-    mức mỗi tài liệu rồi nhân lên - corpus 40 tài liệu cùng loại văn bản với
-    corpus lõi, đó là giả định duy nhất của khoản 1.
+    mức mỗi tài liệu rồi nhân lên. Khi `so_tai_lieu` bằng đúng số tài liệu của
+    corpus đích - trạng thái từ lần nạp thật 03/09/2026 - hệ số nhân bằng 1 và
+    khoản 1 là số đo trực tiếp, không còn giả định nào về cỡ tài liệu.
     """
 
     so_tai_lieu: int
@@ -272,7 +278,10 @@ class GiaDinh:
     ra. Ai đó đo được số thật ở T7 thì thay đúng một tham số ở đây.
     """
 
-    # Khoản 1 và 5: corpus đích của story 2.8.
+    # Khoản 1 và 5: corpus của story 2.8, đúng số mục trong
+    # `eval/corpus_thiet_ke.yaml` (`tests/test_cham_trich_xuat.py` khóa hai bên
+    # bằng nhau). Khi lần nạp thật chạy trên đủ 40 tài liệu thì `ti_le` bằng 1 và
+    # khoản `nap_corpus` thôi là phép nhân: nó trở thành số đo.
     so_tai_lieu_corpus: int = 40
     # Khoản 2: 52 câu × 3 cấu hình đo × số vai người hỏi thật dùng (devops,
     # tech_support của `config/policy-toi-gian.yaml`).
@@ -447,12 +456,17 @@ def ngoai_suy(
     dung_cuoi = _muc(danh_muc, MODEL_DUNG_CUOI)
     ensemble = _muc(danh_muc, MODEL_ENSEMBLE)
 
-    # 1. Nạp corpus: nhân thẳng số đo thật, cả trích xuất lẫn embedding.
+    # 1. Nạp corpus: số đo thật, nhân theo tỉ lệ tài liệu. Hệ số bằng 1 kể từ
+    # lần nạp thật 40 tài liệu, nên khoản này là số đo trực tiếp.
     nap = Khoan(
         ten="nap_corpus",
         mo_ta=(
             f"dựng corpus {gia_dinh.so_tai_lieu_corpus} tài liệu (trích xuất +"
-            f" embedding), suy từ {do.so_tai_lieu} tài liệu đã nạp thật"
+            + (
+                " embedding), đo trực tiếp trên chính lần nạp corpus"
+                if ti_le == 1
+                else f" embedding), suy từ {do.so_tai_lieu} tài liệu đã nạp thật"
+            )
         ),
         model=f"{trich.ten} + {MODEL_EMBEDDING}",
         so_luong=round(gia_dinh.so_tai_lieu_corpus),
@@ -462,8 +476,12 @@ def ngoai_suy(
         chi_phi_usd=(do.chi_phi_llm_usd + do.chi_phi_embedding_usd) * ti_le,
         nguon=NGUON_DO,
         gia_dinh=(
-            f"{gia_dinh.so_tai_lieu_corpus} tài liệu của corpus 2.8 cùng cỡ và"
-            f" cùng loại văn bản với {do.so_tai_lieu} tài liệu đã đo",
+            ()
+            if ti_le == 1
+            else (
+                f"{gia_dinh.so_tai_lieu_corpus} tài liệu của corpus 2.8 cùng cỡ và"
+                f" cùng loại văn bản với {do.so_tai_lieu} tài liệu đã đo",
+            )
         ),
     )
 
