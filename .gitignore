@@ -17,3 +17,8 @@ eval/ket_qua_do/chua-xong/
 # Bản lưu của `eval/chup_do_thi.py --ghi-de`: rác của một lần chạy, không commit
 # (cùng luật với `eval/ket_qua_do/*.bak.json` của story 2.6).
 eval/anh_do_thi/*.bak.json
+
+# Rác của phiên soát trang bằng trình duyệt (ảnh chụp tạm, log console của
+# Playwright). Cùng hạng với `*.bak.json`: sản phẩm của một lần soát, không phải
+# bằng chứng. Ảnh chụp màn hình *có commit* nằm ở `eval/anh_ct03/`.
+.playwright-mcp/

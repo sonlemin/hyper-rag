@@ -155,8 +155,15 @@ FILE_SYSTEM_CONTEXT = "core/system_context.py"
 # hình dạng với `CHO_PHEP_VENDOR` và `CHO_PHEP_AINSERT`: nó là **harness đo đọc
 # thuần** chạy ngoài tiến trình phục vụ, không dựng ràng buộc, không nạp, không
 # xóa, và không phải một đường truy vấn người dùng.
+#
+# Story 2.10 thêm dòng thứ ba: `eval/ct03.py` đọc bốn trường của node entity
+# nguyên văn để chứng minh node đó là **điểm hợp nhất đa nguồn** (bằng chứng
+# ĐG3). Dưới một vai người dùng, `_che_mo_ta` trả dấu che và `get_node` trả
+# `None` cho mọi id ngoài quyền, nên thí nghiệm không chứng minh được gì. Cùng
+# hạng đọc thuần với `chup_do_thi`: không `initialize()`, không nạp, không xóa,
+# không có đường nào từ API tới đây.
 CHO_PHEP_SYSTEM_CONTEXT: frozenset[str] = frozenset(
-    {"adapters/ingest.py", "eval/chup_do_thi.py"}
+    {"adapters/ingest.py", "eval/chup_do_thi.py", "eval/ct03.py"}
 )
 
 # Cùng luật với danh sách trắng ở trên nhưng cho *lối vào ghi tri thức*:

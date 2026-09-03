@@ -1,0 +1,7849 @@
+{
+  "version": 2,
+  "space": "khao_sat",
+  "ngay_do": "2026-09-03T18:42:52.230558+00:00",
+  "policy_version": "fd8a92df457321e625bf16a08fb3dc244dc4bbcbfe87b45cd11465807446fd87",
+  "so_tai_lieu": 50,
+  "so_hyperedge": 398,
+  "so_hyperedge_da_nguon": 0,
+  "tai_lieu": [
+    {
+      "doc_key": "dc-01-runbook-thay-o-cung-hong-may-chu-vat-ly.md",
+      "sha256": "3111b68a0a0aa20fa784301b0f868c8a54a9abc8df2758c01e37a42062e2a525",
+      "scope": "noi_bo",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "dc-02-runbook-mat-dien-mot-pha-tu-rack.md",
+      "sha256": "0b2c9380b14cf03b67de02a17a5d58e556f4ce7c466f24812e6380e175f82fdb",
+      "scope": "noi_bo",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "dc-03-runbook-kiem-tra-nhiet-do-phong-may.md",
+      "sha256": "8c0cb49f09761c50bbea2865762b108f5adfbd41da199e131c214235caf6f69e",
+      "scope": "noi_bo",
+      "content_type": "canh_bao"
+    },
+    {
+      "doc_key": "dc-04-sop-tiep-nhan-va-lap-dat-may-chu-moi.md",
+      "sha256": "f8fee3297cccac415cdf02f5335f312cace60be2ae508d2bb15c6793f246844a",
+      "scope": "noi_bo",
+      "content_type": "sop"
+    },
+    {
+      "doc_key": "dc-05-sop-quan-ly-ra-vao-phong-may.md",
+      "sha256": "7512c1531cb82821b247c359cbf8987eae494a553eca5be968640c9d34bbda49",
+      "scope": "noi_bo",
+      "content_type": "sop"
+    },
+    {
+      "doc_key": "dc-06-huong-dan-xu-ly-may-in-khong-in-duoc.md",
+      "sha256": "12044d2dd40b251942117aba4f2a7113e14570979481992c82dce18918d54fc8",
+      "scope": "noi_bo",
+      "content_type": "troubleshooting"
+    },
+    {
+      "doc_key": "dc-07-huong-dan-xu-ly-wifi-van-phong-chap-chon.md",
+      "sha256": "f8f14cc484d8592c2aaeaf92fb2b268447eab30823e82480041a70c8d3464890",
+      "scope": "noi_bo",
+      "content_type": "troubleshooting"
+    },
+    {
+      "doc_key": "dc-08-huong-dan-xu-ly-thiet-bi-phong-hop.md",
+      "sha256": "8d718cfdbcb55ece1804195423bcfb01d3be67c8c465262fe3bd5bc6a7c9f297",
+      "scope": "noi_bo",
+      "content_type": "troubleshooting"
+    },
+    {
+      "doc_key": "dc-09-huong-dan-cap-phat-va-thu-hoi-thiet-bi.md",
+      "sha256": "7b5aa2d62fbc3fdb417f32642a04abd757f672c3d5f3557009fd03791d083b87",
+      "scope": "noi_bo",
+      "content_type": "sop"
+    },
+    {
+      "doc_key": "dc-10-huong-dan-reset-mat-khau-tai-khoan-noi-bo.md",
+      "sha256": "3a66e50b276fd5f1203095f9db7623c77af677e8c40867e7d427ec8f75edea4e",
+      "scope": "noi_bo",
+      "content_type": "sop"
+    },
+    {
+      "doc_key": "dv-01-postmortem-web-khach-hang-sap-do-php-fpm-het-worker.md",
+      "sha256": "75bca4fe5f47f81e35f984a2c91a4201ca83dcbb7040a39adf0228b02d62cf19",
+      "scope": "noi_bo",
+      "content_type": "postmortem"
+    },
+    {
+      "doc_key": "dv-02-postmortem-day-o-cung-cum-log.md",
+      "sha256": "5e37c36624429858d5d08bb4968d8159b278d7b3e6b39cd996edf29856fc3b81",
+      "scope": "noi_bo",
+      "content_type": "postmortem"
+    },
+    {
+      "doc_key": "dv-03-postmortem-chung-chi-ssl-wildcard-het-han.md",
+      "sha256": "b9fe419d7bbc28a3b4fe956c05408ff9e106bd855940e704480c7db26c73b899",
+      "scope": "noi_bo",
+      "content_type": "postmortem"
+    },
+    {
+      "doc_key": "dv-04-postmortem-mat-ket-noi-db-sau-resize.md",
+      "sha256": "59abc793ffff0d7a04e76fd63fdcc4db6580f61d481e472d3ae01187d52eef4f",
+      "scope": "noi_bo",
+      "content_type": "postmortem"
+    },
+    {
+      "doc_key": "dv-05-runbook-xu-ly-node-k8s-notready.md",
+      "sha256": "83eab96ec8b1f6bb31f9660bc386ec91e5f3bb4f5fb0ad752f8c4c927659d274",
+      "scope": "noi_bo",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "dv-06-runbook-mo-rong-volume-cho-node.md",
+      "sha256": "6c5e0e467de60f0abc9d17c70e9e26c95825c0cb55fc4b7c46dd46d8e76f1d21",
+      "scope": "noi_bo",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "dv-07-runbook-backup-va-khoi-phuc-cloud-database.md",
+      "sha256": "c5ade5b3ec19634d7457c60985f67615d459aeaae9c51ec69c3a8829a4ac2436",
+      "scope": "noi_bo",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "dv-08-runbook-chuyen-doi-du-phong-keepalived.md",
+      "sha256": "ab31cca40a92c7eb9b6fcccd144a30fdf95da7b96e7a4a0bcb5588255a001853",
+      "scope": "noi_bo",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "dv-09-runbook-don-dep-image-registry.md",
+      "sha256": "f246f9a9b8a874a5fbf4afe70a34f8cce47a3069502846a6dc74095d9e109a1d",
+      "scope": "noi_bo",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "dv-10-runbook-xu-ly-canh-bao-ram-cpu.md",
+      "sha256": "370f9b4fb85dcb2774c70bab2cec24509630ea3bfbbb67562576566ae6fa9921",
+      "scope": "noi_bo",
+      "content_type": "canh_bao"
+    },
+    {
+      "doc_key": "dv-11-sop-trien-khai-ban-va-bao-mat-khan-cap.md",
+      "sha256": "79efdc59e80d242c408c24b6975222dee6bc8c5a9f99292f8d4c8c88ba686c90",
+      "scope": "noi_bo",
+      "content_type": "sop"
+    },
+    {
+      "doc_key": "dv-12-sop-quy-trinh-thay-doi-cau-hinh-ha-tang.md",
+      "sha256": "22bb0ee3efc47c75aba5c76ae6b4dc63c34333f7b865e562c3558ce37b5d7277",
+      "scope": "noi_bo",
+      "content_type": "sop"
+    },
+    {
+      "doc_key": "dv-13-sop-xoay-vong-khoa-truy-cap-object-storage.md",
+      "sha256": "e4eecb755c18d37e9e064ca279fcc1244da47242baad9896919b0d3b69638478",
+      "scope": "noi_bo",
+      "content_type": "bi_mat_ha_tang"
+    },
+    {
+      "doc_key": "dv-14-sop-cap-quyen-truy-cap-ha-tang.md",
+      "sha256": "5a4c11de0ff4ce05e4ef04fa17c3d5523a6939b1d9bcce78e57c243c94add0de",
+      "scope": "noi_bo",
+      "content_type": "bi_mat_ha_tang"
+    },
+    {
+      "doc_key": "dv-15-huong-dan-doc-log-nginx-bang-goaccess.md",
+      "sha256": "c06368169014781f18f4cadc23241c269de82dafea0130864d39de82c1956e01",
+      "scope": "noi_bo",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "ts-tk-0142-waf-whitelist-ghi-nham.md",
+      "sha256": "7914f98674a7545ce61672e7bd99bdfd5048ff00739470886e00f68ef1cb74cc",
+      "scope": "khach_hang_a",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "ts-tk-0147-waf-mode-con-o-phat-hien.md",
+      "sha256": "fdc93de6ced11dd327e2276320146498f0143cda0f3241e27192f54de8f09944",
+      "scope": "khach_hang_a",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "ts-tk-0151-pvc-pending-accessmode-rwx.md",
+      "sha256": "dd41f326b4c0611d6637f9ca02d7d197fc879b501263a281caf4fd8c13f90e0a",
+      "scope": "khach_hang_a",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "ts-tk-0156-pvc-pending-zone-mismatch.md",
+      "sha256": "8e3c136f9f7d984f808422eba716a77101b76c18ce2ee2651c8ecb91d17c9016",
+      "scope": "khach_hang_a",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "ts-tk-0160-pvc-terminating-finalizer.md",
+      "sha256": "db227d2d05446409e63813d33a1d2e464b10591d4baf65b07e5d61ad1811fbf7",
+      "scope": "khach_hang_a",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "ts-tk-0163-push-image-loi-500-het-quota.md",
+      "sha256": "ef935094500b7f1978b2c94f0a093f6c21adb08f3b5c5996ea76c1355d5e7536",
+      "scope": "khach_hang_a",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "ts-tk-0168-cdn-image-transform-404.md",
+      "sha256": "d7300edab44b4afedbeb6e183f5a6ddab27ed7fb737412fc45f2195c133051fa",
+      "scope": "khach_hang_a",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "ts-tk-0172-mat-ket-noi-db-sau-resize.md",
+      "sha256": "115ae5feeb943aea42312afb58a4abf19640dc2b5d7cdba48f5b51884f5a9570",
+      "scope": "khach_hang_a",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "ts-tk-0175-clouddb-khong-ping-duoc.md",
+      "sha256": "61a225f7b431936538ef78cfe93a40aacc315f512a1f38119a756600c68561d3",
+      "scope": "khach_hang_a",
+      "content_type": "vong_doi_ticket"
+    },
+    {
+      "doc_key": "ts-tk-0179-node-notready-full-ram.md",
+      "sha256": "72c44d8193bdfec0d7e8793bec437bf05b138e1e5b5cf3394e3af24434acf187",
+      "scope": "khach_hang_a",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "ts-tk-0183-nang-cau-hinh-node-trong-pool.md",
+      "sha256": "712ad6e93675bb5d803d67517e1b81c58998df2c150ffe7e216356a433ce5c1a",
+      "scope": "khach_hang_a",
+      "content_type": "vong_doi_ticket"
+    },
+    {
+      "doc_key": "ts-tk-0188-public-endpoint-khong-ho-tro-tls.md",
+      "sha256": "1c49b153bb8afe1b6fec8b81d2426c6d31b1710776f0ca52e2f1ce6dff47a6b8",
+      "scope": "khach_hang_a",
+      "content_type": "known_issue"
+    },
+    {
+      "doc_key": "ts-tk-0192-mongodb-tls-13.md",
+      "sha256": "a7e9dabae712e65974007c613b8483878d31b2f07cf828a6300187d9944e9ff1",
+      "scope": "khach_hang_b",
+      "content_type": "vong_doi_ticket"
+    },
+    {
+      "doc_key": "ts-tk-0196-vod-drm-khong-download.md",
+      "sha256": "fc02bfda4cdb85208ab88dfe0e4eedb5bae89f1ba471ac066b215251a65bc189",
+      "scope": "khach_hang_b",
+      "content_type": "vong_doi_ticket"
+    },
+    {
+      "doc_key": "ts-tk-0201-vod-player-rieng-can-m3u8.md",
+      "sha256": "99ad23efe59ad935c23f5bc6df43066c9e084210b3921c6a9c703032ac8348c1",
+      "scope": "khach_hang_b",
+      "content_type": "vong_doi_ticket"
+    },
+    {
+      "doc_key": "ts-tk-0205-tong-dai-sip-alg.md",
+      "sha256": "c019ece8fb3b12f1082d07e6a54f85a63942391042a32c7891301fd00124f14e",
+      "scope": "khach_hang_b",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "ts-tk-0209-tong-dai-jitter-duong-truyen.md",
+      "sha256": "bb90284f804ae8af061135d3e35e39deca72f8158a0e6df8bf3c72aef78e8b48",
+      "scope": "khach_hang_b",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "ts-tk-0213-firewall-outbound-chan-stun.md",
+      "sha256": "f811980712081ebdca1bd216996135eea6263f8cfcb031b0ac75333d8f2082e7",
+      "scope": "khach_hang_b",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "ts-tk-0217-chuyen-doi-business-email-thieu-thong-tin.md",
+      "sha256": "ab5747107b111e58232ea72fdcb0ae81982815421d81a93516b51b06caf79045",
+      "scope": "khach_hang_b",
+      "content_type": "vong_doi_ticket"
+    },
+    {
+      "doc_key": "ts-tk-0221-tai-khoan-quan-tri-chua-bat-2fa.md",
+      "sha256": "9f5775406b01a8c358fc26af638ba634b1159966c87feb1651d27d9053de356f",
+      "scope": "khach_hang_b",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "ts-tk-0226-iptables-khoa-ssh.md",
+      "sha256": "96084975946f4e593c1d6f7d3096665677c30d838ee1054ca206899a3b3950e2",
+      "scope": "khach_hang_b",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "ts-tk-0230-iptables-thu-tu-rule.md",
+      "sha256": "f0c58e5e01dc355abdf4a9453508d395257110c3f7531680b0a817ffa1c4213a",
+      "scope": "khach_hang_b",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "ts-tk-0234-cai-sql-server-ubuntu-loi-phu-thuoc.md",
+      "sha256": "c004a30e7974c987475982c6282f6904f816a8908c483cf325d6b7cd49b8eb0e",
+      "scope": "khach_hang_b",
+      "content_type": "vong_doi_ticket"
+    },
+    {
+      "doc_key": "ts-tk-0238-keepalived-vip-khong-chuyen.md",
+      "sha256": "f65835d461486b63f951c85abaf1d261cd493dff2cc92d4ea7c90553a7db8bb2",
+      "scope": "khach_hang_b",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "ts-tk-0242-thu-hep-pvc-bi-tu-choi.md",
+      "sha256": "c48039eadd860ceb069b417439cfa5490ca5ae6da874bd771186d8ee4b7781e5",
+      "scope": "khach_hang_a",
+      "content_type": "known_issue"
+    }
+  ],
+  "hyperedge": [
+    {
+      "id": "he-01672d1c6d8a842a25dd4dca",
+      "doc_key": [
+        "dv-02-postmortem-day-o-cung-cum-log.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "cron"
+        ],
+        "remediation": [
+          "đưa vào ảnh máy chủ, không cài tay sau khi dựng"
+        ],
+        "time": [
+          "30/09"
+        ],
+        "owner": [
+          "NV06"
+        ]
+      }
+    },
+    {
+      "id": "he-0251d2cdb81e7023e33ca126",
+      "doc_key": [
+        "dv-08-runbook-chuyen-doi-du-phong-keepalived.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "node Master"
+        ],
+        "remediation": [
+          "dừng keepalived bằng lệnh sudo systemctl stop keepalived"
+        ],
+        "source": [
+          "Runbook: chuyển đổi dự phòng keepalived khi node Master hỏng"
+        ]
+      }
+    },
+    {
+      "id": "he-03117ef73f4acc0745561cb7",
+      "doc_key": [
+        "dc-03-runbook-kiem-tra-nhiet-do-phong-may.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "kiểm tra nhiệt độ và hệ thống làm mát phòng máy"
+        ],
+        "owner": [
+          "NV12"
+        ]
+      }
+    },
+    {
+      "id": "he-040f90682f16cc8630a63be6",
+      "doc_key": [
+        "dv-03-postmortem-chung-chi-ssl-wildcard-het-han.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "chứng chỉ"
+        ],
+        "cause": [
+          "được gia hạn tay từ đầu vì tên miền dùng DNS của khách hàng, không tự động xác thực được"
+        ],
+        "condition": [
+          "tên miền dùng DNS của khách hàng"
+        ]
+      }
+    },
+    {
+      "id": "he-044d51c685a30e5131f9d90c",
+      "doc_key": [
+        "ts-tk-0217-chuyen-doi-business-email-thieu-thong-tin.md"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "hộp thư trên 20 GB"
+        ],
+        "condition": [
+          "khi chuyển đổi"
+        ],
+        "remediation": [
+          "chia nhỏ theo thư mục, chuyển một lần dễ lỗi giữa chừng và phải làm lại từ đầu"
+        ]
+      }
+    },
+    {
+      "id": "he-05166752e4b35dabae89517d",
+      "doc_key": [
+        "dv-03-postmortem-chung-chi-ssl-wildcard-het-han.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "khách hàng"
+        ],
+        "condition": [
+          "đang làm"
+        ],
+        "remediation": [
+          "xin ủy quyền bản ghi DNS để tự động gia hạn"
+        ],
+        "time": [
+          "15/10"
+        ],
+        "owner": [
+          "NV09"
+        ]
+      }
+    },
+    {
+      "id": "he-07043c6c18765098dcad90bf",
+      "doc_key": [
+        "dv-07-runbook-backup-va-khoi-phuc-cloud-database.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "instance cũ"
+        ],
+        "condition": [
+          "trước khi xóa"
+        ],
+        "remediation": [
+          "giữ ít nhất 48 giờ"
+        ]
+      }
+    },
+    {
+      "id": "he-070c335b7ba2d9280a1f7fd8",
+      "doc_key": [
+        "dv-11-sop-trien-khai-ban-va-bao-mat-khan-cap.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "lỗ hổng mức nghiêm trọng"
+        ],
+        "condition": [
+          "có khai thác công khai, ảnh hưởng hệ thống đang phục vụ khách hàng"
+        ],
+        "time": [
+          "đánh giá ảnh hưởng trong 4 giờ, vá staging trong 24 giờ, vá sản xuất trong 48 giờ"
+        ]
+      }
+    },
+    {
+      "id": "he-07bbfcb6a64b1a1b1af3090d",
+      "doc_key": [
+        "dv-02-postmortem-day-o-cung-cum-log.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "dọn chỉ mục"
+        ],
+        "remediation": [
+          "chuyển sang chính sách vòng đời của Elasticsearch"
+        ],
+        "time": [
+          "25/09"
+        ],
+        "owner": [
+          "NV04"
+        ]
+      }
+    },
+    {
+      "id": "he-07dfc294c66965ac95d12222",
+      "doc_key": [
+        "dv-14-sop-cap-quyen-truy-cap-ha-tang.md"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "quyền SSH vào máy chủ, quyền vào Dashboard cloud, quyền vào cụm Kubernetes, quyền vào cơ sở dữ liệu"
+        ],
+        "condition": [
+          "cấp theo vai, không cấp theo người"
+        ],
+        "remediation": [
+          "Người vào vai nào nhận đúng quyền của vai đó"
+        ]
+      }
+    },
+    {
+      "id": "he-08152932b588613c5ec30818",
+      "doc_key": [
+        "dc-06-huong-dan-xu-ly-may-in-khong-in-duoc.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "máy in"
+        ],
+        "cause": [
+          "lỗi ở máy tính hoặc trình điều khiển"
+        ],
+        "condition": [
+          "chỉ một người không in được"
+        ],
+        "remediation": [
+          "kiểm tra hàng đợi in, xóa các lệnh in đang kẹt; kiểm tra máy in mặc định; gỡ và cài lại trình điều khiển, thêm lại máy in theo địa chỉ IP"
+        ]
+      }
+    },
+    {
+      "id": "he-09149cc5e2cf4ba21d08dcd3",
+      "doc_key": [
+        "ts-tk-0205-tong-dai-sip-alg.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "cuộc gọi"
+        ],
+        "symptom": [
+          "mất âm thanh một chiều và rớt sau khoảng 30 giây"
+        ],
+        "condition": [
+          "khi đăng ký được"
+        ]
+      }
+    },
+    {
+      "id": "he-09dc8b5bdb405b13a9e5ce16",
+      "doc_key": [
+        "dv-07-runbook-backup-va-khoi-phuc-cloud-database.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "cơ sở dữ liệu sản xuất"
+        ],
+        "condition": [
+          "mỗi cơ sở dữ liệu sản xuất"
+        ],
+        "remediation": [
+          "có bản sao lưu không quá 24 giờ và khôi phục được trong 2 giờ"
+        ]
+      }
+    },
+    {
+      "id": "he-09e36f99072876a60eaeca7c",
+      "doc_key": [
+        "dv-08-runbook-chuyen-doi-du-phong-keepalived.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "VIP"
+        ],
+        "cause": [
+          "Firewall chặn giao thức VRRP giữa hai node"
+        ],
+        "condition": [
+          "VIP không chuyển"
+        ],
+        "source": [
+          "Runbook: chuyển đổi dự phòng keepalived khi node Master hỏng"
+        ]
+      }
+    },
+    {
+      "id": "he-0ad3ffc18830b7d9441d0a87",
+      "doc_key": [
+        "ts-tk-0156-pvc-pending-zone-mismatch.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "pod"
+        ],
+        "symptom": [
+          "kẹt Pending vĩnh viễn, log báo 'node(s) had volume node affinity conflict'"
+        ],
+        "time": [
+          "29/09/2026 08:40"
+        ],
+        "owner": [
+          "NV23"
+        ]
+      }
+    },
+    {
+      "id": "he-0ae67dd643b14ab5f52d7817",
+      "doc_key": [
+        "dv-05-runbook-xu-ly-node-k8s-notready.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "node Kubernetes"
+        ],
+        "symptom": [
+          "chuyển NotReady"
+        ],
+        "condition": [
+          "không để workload kẹt ở Pending quá 15 phút"
+        ],
+        "remediation": [
+          "đưa node về trạng thái Ready hoặc thay thế node"
+        ],
+        "source": [
+          "Runbook: xử lý node Kubernetes chuyển NotReady"
+        ]
+      }
+    },
+    {
+      "id": "he-0b704cc82e29c2bc1819d16e",
+      "doc_key": [
+        "dc-02-runbook-mat-dien-mot-pha-tu-rack.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "danh sách máy một nguồn"
+        ],
+        "remediation": [
+          "chuyển cho vận hành để lên kế hoạch bổ sung nguồn thứ hai"
+        ]
+      }
+    },
+    {
+      "id": "he-0b8ecce0f65226dbc96f0215",
+      "doc_key": [
+        "dv-01-postmortem-web-khach-hang-sap-do-php-fpm-het-worker.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "trang tìm kiếm nội bộ"
+        ],
+        "cause": [
+          "không có cache và mỗi request chạy một truy vấn LIKE toàn bảng"
+        ],
+        "condition": [
+          "bình thường lượng truy cập thấp"
+        ]
+      }
+    },
+    {
+      "id": "he-0bbe5339364399536fd225b9",
+      "doc_key": [
+        "ts-tk-0217-chuyen-doi-business-email-thieu-thong-tin.md"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "biểu mẫu thu thập thông tin khách hàng"
+        ],
+        "cause": [
+          "chưa điền đủ"
+        ],
+        "remediation": [
+          "gửi lại biểu mẫu, hướng dẫn khách điền đủ ba mục còn thiếu"
+        ]
+      }
+    },
+    {
+      "id": "he-0bd3edd4cc56b686ccf37885",
+      "doc_key": [
+        "ts-tk-0201-vod-player-rieng-can-m3u8.md"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "khách hàng khachhang14.example"
+        ],
+        "cause": [
+          "có nội dung trả phí trong đó, đã cảnh báo bằng văn bản và khách xác nhận chấp nhận rủi ro"
+        ],
+        "condition": [
+          "sau khi trao đổi"
+        ],
+        "remediation": [
+          "để toàn bộ video ở chế độ không mã hóa"
+        ]
+      }
+    },
+    {
+      "id": "he-0cc2d6970a8939d59bac582c",
+      "doc_key": [
+        "ts-tk-0175-clouddb-khong-ping-duoc.md"
+      ],
+      "khoa": "khach_hang_a:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "Cloud Database"
+        ],
+        "condition": [
+          "khách kiểm tra bằng ping hoặc SSH"
+        ],
+        "remediation": [
+          "không nên dùng ping hay SSH; dùng telnet tới cổng dịch vụ hoặc Test-NetConnection"
+        ],
+        "source": [
+          "ticket TS-2610-0175"
+        ]
+      }
+    },
+    {
+      "id": "he-0d1ba6b886ade30d7bce6643",
+      "doc_key": [
+        "dv-04-postmortem-mat-ket-noi-db-sau-resize.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "đội vận hành"
+        ],
+        "cause": [
+          "không biết tài liệu xử lý tồn tại vì nó nằm trong kho của bộ phận khác"
+        ],
+        "source": [
+          "tài liệu xử lý bên Tech Support"
+        ]
+      }
+    },
+    {
+      "id": "he-0d230c8349d4f77f93d191c6",
+      "doc_key": [
+        "dc-07-huong-dan-xu-ly-wifi-van-phong-chap-chon.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "tín hiệu yếu ở một khu vực"
+        ],
+        "remediation": [
+          "đề xuất bổ sung bộ phát, ghi vị trí vào sơ đồ phủ sóng"
+        ]
+      }
+    },
+    {
+      "id": "he-0d5a17a7ddc4ace5d72904ed",
+      "doc_key": [
+        "dv-10-runbook-xu-ly-canh-bao-ram-cpu.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "RAM sử dụng thật"
+        ],
+        "symptom": [
+          "nghiêm trọng"
+        ],
+        "condition": [
+          "vượt 95% trong 10 phút"
+        ]
+      }
+    },
+    {
+      "id": "he-0e8263dbd7bb8a272a3bf495",
+      "doc_key": [
+        "ts-tk-0238-keepalived-vip-khong-chuyen.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "cấu hình keepalived"
+        ],
+        "condition": [
+          "không muốn địa chỉ ảo tự quay về node chính"
+        ],
+        "remediation": [
+          "thêm nopreempt"
+        ],
+        "source": [
+          "Ticket TS-2610-0238"
+        ]
+      }
+    },
+    {
+      "id": "he-0fe4351fccbf511b7ef4822d",
+      "doc_key": [
+        "ts-tk-0213-firewall-outbound-chan-stun.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "thiết bị thoại"
+        ],
+        "symptom": [
+          "đăng ký lại được"
+        ],
+        "condition": [
+          "sau khi bộ phận công nghệ thông tin của khách mở theo danh sách, ping và telnet đều thông"
+        ]
+      }
+    },
+    {
+      "id": "he-1092c2c2bca1b04bea65266b",
+      "doc_key": [
+        "dv-11-sop-trien-khai-ban-va-bao-mat-khan-cap.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "triển khai khẩn"
+        ],
+        "condition": [
+          "mức cao"
+        ],
+        "remediation": [
+          "xin phê duyệt triển khai khẩn từ trưởng bộ phận"
+        ]
+      }
+    },
+    {
+      "id": "he-10df626c59bca9f7b1398e99",
+      "doc_key": [
+        "dv-12-sop-quy-trinh-thay-doi-cau-hinh-ha-tang.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "phiếu thay đổi"
+        ],
+        "condition": [
+          "sau khi thực hiện"
+        ],
+        "remediation": [
+          "ghi kết quả vào phiếu trong 24 giờ, gồm thời điểm bắt đầu, thời điểm kết thúc, và có phải lùi hay không"
+        ]
+      }
+    },
+    {
+      "id": "he-11179f65b54f73b23f7688bf",
+      "doc_key": [
+        "dv-11-sop-trien-khai-ban-va-bao-mat-khan-cap.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "triển khai khẩn"
+        ],
+        "condition": [
+          "mức nghiêm trọng"
+        ],
+        "remediation": [
+          "phê duyệt qua tin nhắn là đủ, biên bản bổ sung sau trong 24 giờ"
+        ],
+        "owner": [
+          "trưởng bộ phận"
+        ]
+      }
+    },
+    {
+      "id": "he-1380728a97b746a9f0947c01",
+      "doc_key": [
+        "ts-tk-0209-tong-dai-jitter-duong-truyen.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "khách hàng"
+        ],
+        "remediation": [
+          "làm việc với nhà cung cấp đường truyền về băng thông tải lên"
+        ]
+      }
+    },
+    {
+      "id": "he-149250b91b1d9d3d62d2928d",
+      "doc_key": [
+        "dc-09-huong-dan-cap-phat-va-thu-hoi-thiet-bi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "biên bản thu hồi"
+        ],
+        "remediation": [
+          "ký biên bản thu hồi, cập nhật sổ thiết bị"
+        ]
+      }
+    },
+    {
+      "id": "he-14e3e2b9304935dbcea531d9",
+      "doc_key": [
+        "dv-03-postmortem-chung-chi-ssl-wildcard-het-han.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "load balancer"
+        ],
+        "condition": [
+          "4 tên miền hết lỗi"
+        ],
+        "remediation": [
+          "nạp chứng chỉ mới"
+        ],
+        "time": [
+          "08:10"
+        ]
+      }
+    },
+    {
+      "id": "he-1507c79317133fdc2ab1c4e4",
+      "doc_key": [
+        "ts-tk-0188-public-endpoint-khong-ho-tro-tls.md"
+      ],
+      "khoa": "khach_hang_a:known_issue",
+      "slots": {
+        "subject": [
+          "public endpoint Cloud Database"
+        ],
+        "symptom": [
+          "không bật được TLS"
+        ],
+        "cause": [
+          "giới hạn của dịch vụ ở thời điểm hiện tại"
+        ],
+        "time": [
+          "07/10/2026 11:05"
+        ],
+        "owner": [
+          "NV21"
+        ]
+      }
+    },
+    {
+      "id": "he-1611e993f8dea6254e6e98ca",
+      "doc_key": [
+        "dc-07-huong-dan-xu-ly-wifi-van-phong-chap-chon.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "chập chờn theo giờ"
+        ],
+        "remediation": [
+          "kiểm tra có trùng giờ sao lưu hoặc giờ họp trực tuyến đông người không"
+        ]
+      }
+    },
+    {
+      "id": "he-176965cc9d880807a9aa1b34",
+      "doc_key": [
+        "ts-tk-0242-thu-hep-pvc-bi-tu-choi.md"
+      ],
+      "khoa": "khach_hang_a:known_issue",
+      "slots": {
+        "subject": [
+          "hệ thống"
+        ],
+        "cause": [
+          "bước chép dữ liệu phải dừng ghi, tức phải dừng ứng dụng, và hệ thống không được phép tự quyết định thời điểm đó"
+        ],
+        "remediation": [
+          "không tự động thực hiện ba bước giảm dung lượng"
+        ]
+      }
+    },
+    {
+      "id": "he-183d69deaaa6b061eb82c4db",
+      "doc_key": [
+        "dv-07-runbook-backup-va-khoi-phuc-cloud-database.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "ứng dụng"
+        ],
+        "remediation": [
+          "đổi chuỗi kết nối, khởi động lại"
+        ]
+      }
+    },
+    {
+      "id": "he-186bed190e6e8ba2ef682033",
+      "doc_key": [
+        "ts-tk-0242-thu-hep-pvc-bi-tu-choi.md"
+      ],
+      "khoa": "khach_hang_a:known_issue",
+      "slots": {
+        "subject": [
+          "ổ đĩa 100 GB của khách hàng khachhang05.example"
+        ],
+        "symptom": [
+          "không giảm được dung lượng xuống 50 GB"
+        ],
+        "cause": [
+          "Kubernetes và API Cloud chỉ hỗ trợ mở rộng dung lượng, cấm thu hẹp"
+        ],
+        "time": [
+          "20/10/2026 09:30"
+        ],
+        "owner": [
+          "NV22"
+        ]
+      }
+    },
+    {
+      "id": "he-195de5f0a1f8f8a8e37d40ba",
+      "doc_key": [
+        "ts-tk-0179-node-notready-full-ram.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "node Kubernetes"
+        ],
+        "symptom": [
+          "chuyển NotReady"
+        ],
+        "cause": [
+          "Node hết RAM, hệ điều hành kill kubelet để giải phóng bộ nhớ"
+        ],
+        "remediation": [
+          "Khởi động lại kubelet, node về Ready sau 2 phút"
+        ],
+        "time": [
+          "05/10/2026 21:14"
+        ],
+        "owner": [
+          "NV23"
+        ]
+      }
+    },
+    {
+      "id": "he-19605a9daa78e087c425fa6a",
+      "doc_key": [
+        "dv-14-sop-cap-quyen-truy-cap-ha-tang.md"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "quyền của nhân sự nghỉ việc"
+        ],
+        "condition": [
+          "trong ngày cuối cùng"
+        ],
+        "remediation": [
+          "Vận hành thu quyền, không để sang hôm sau"
+        ]
+      }
+    },
+    {
+      "id": "he-1a5d27b460011dbf1383cfe2",
+      "doc_key": [
+        "dv-07-runbook-backup-va-khoi-phuc-cloud-database.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "instance mới"
+        ],
+        "remediation": [
+          "kiểm tra dữ liệu trên instance tạm trước khi chuyển ứng dụng sang"
+        ]
+      }
+    },
+    {
+      "id": "he-1b522c8d1a06e9d10aef1425",
+      "doc_key": [
+        "dc-08-huong-dan-xu-ly-thiet-bi-phong-hop.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "bộ dây dự phòng"
+        ],
+        "condition": [
+          "mỗi phòng họp"
+        ],
+        "remediation": [
+          "giữ một bộ dây dự phòng trong tủ, kiểm tra tồn hằng tuần"
+        ]
+      }
+    },
+    {
+      "id": "he-1b9b2a6b4398e946af396f6d",
+      "doc_key": [
+        "ts-tk-0168-cdn-image-transform-404.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "tài liệu hướng dẫn"
+        ],
+        "symptom": [
+          "không nói rõ phải bật tính năng trước"
+        ],
+        "remediation": [
+          "bổ sung một dòng ở đầu tài liệu"
+        ]
+      }
+    },
+    {
+      "id": "he-1be5db92c41b71ef6820d771",
+      "doc_key": [
+        "dc-04-sop-tiep-nhan-va-lap-dat-may-chu-moi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "phần mềm quản trị"
+        ],
+        "condition": [
+          "khi bàn giao"
+        ],
+        "remediation": [
+          "cài ngoài băng, đặt địa chỉ theo dải quản trị"
+        ],
+        "owner": [
+          "NV11"
+        ]
+      }
+    },
+    {
+      "id": "he-1c3b70e5c4d0bbec52913c75",
+      "doc_key": [
+        "dc-05-sop-quan-ly-ra-vao-phong-may.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "phòng máy"
+        ],
+        "condition": [
+          "khi không có người trong phòng"
+        ],
+        "remediation": [
+          "cấm để cửa mở"
+        ]
+      }
+    },
+    {
+      "id": "he-1cbd6f3b3fcb76fce41defe8",
+      "doc_key": [
+        "ts-tk-0209-tong-dai-jitter-duong-truyen.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "nhóm hỗ trợ"
+        ],
+        "remediation": [
+          "yêu cầu số jitter trong mọi ticket về chất lượng thoại, không chỉ tốc độ"
+        ]
+      }
+    },
+    {
+      "id": "he-20270051a1d11c063d6eb78a",
+      "doc_key": [
+        "ts-tk-0213-firewall-outbound-chan-stun.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "danh sách điểm cuối và cổng cần mở"
+        ],
+        "remediation": [
+          "gửi cho khách, bản cập nhật tại thời điểm kiểm tra"
+        ],
+        "source": [
+          "bảng tính chia sẻ"
+        ],
+        "owner": [
+          "bộ phận công nghệ thông tin của khách"
+        ]
+      }
+    },
+    {
+      "id": "he-20594db077965bb0d12cc79a",
+      "doc_key": [
+        "ts-tk-0156-pvc-pending-zone-mismatch.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "ổ đã tạo"
+        ],
+        "remediation": [
+          "dùng 'nodeSelector' ép pod chạy ở vùng HN1"
+        ]
+      }
+    },
+    {
+      "id": "he-205f8145a6e51bbd5a035af4",
+      "doc_key": [
+        "ts-tk-0213-firewall-outbound-chan-stun.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "máy chủ stun"
+        ],
+        "symptom": [
+          "ping không có phản hồi"
+        ],
+        "condition": [
+          "chạy trên máy trong mạng nội bộ của khách"
+        ]
+      }
+    },
+    {
+      "id": "he-21ace13b1c02c985c09086c1",
+      "doc_key": [
+        "ts-tk-0230-iptables-thu-tu-rule.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "quy tắc cho phép dải IP"
+        ],
+        "symptom": [
+          "dải IP vẫn bị chặn"
+        ],
+        "cause": [
+          "quy tắc DROP đứng trước nên quy tắc cho phép phía sau không bao giờ được xét"
+        ],
+        "remediation": [
+          "xóa quy tắc cho phép ở dòng 7 và chèn lại vào trước quy tắc DROP"
+        ],
+        "source": [
+          "TICKET TS-2610-0230"
+        ],
+        "time": [
+          "17/10/2026 10:10"
+        ]
+      }
+    },
+    {
+      "id": "he-22252437f5b04658128af060",
+      "doc_key": [
+        "dc-07-huong-dan-xu-ly-wifi-van-phong-chap-chon.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "tốc độ tải xuống"
+        ],
+        "symptom": [
+          "nhanh"
+        ],
+        "condition": [
+          "trên 100 Mbps"
+        ]
+      }
+    },
+    {
+      "id": "he-23f6410ac798067c85930b31",
+      "doc_key": [
+        "dc-07-huong-dan-xu-ly-wifi-van-phong-chap-chon.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "jitter"
+        ],
+        "cause": [
+          "nguyên nhân hay gặp của rớt cuộc gọi"
+        ],
+        "condition": [
+          "trên 30 ms"
+        ]
+      }
+    },
+    {
+      "id": "he-252e325add4d184e7bc366dd",
+      "doc_key": [
+        "dc-02-runbook-mat-dien-mot-pha-tu-rack.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "máy chủ chỉ có một nguồn"
+        ],
+        "symptom": [
+          "là rủi ro có thể thấy trước, không phải sự cố bất ngờ"
+        ],
+        "remediation": [
+          "mỗi lần rà tủ phải đếm lại số máy này và báo cáo"
+        ]
+      }
+    },
+    {
+      "id": "he-2618186acd7f20e1dc7fb510",
+      "doc_key": [
+        "dv-13-sop-xoay-vong-khoa-truy-cap-object-storage.md"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "khóa bucket sao lưu"
+        ],
+        "condition": [
+          "chu kỳ 90 ngày"
+        ],
+        "owner": [
+          "trưởng nhóm vận hành"
+        ]
+      }
+    },
+    {
+      "id": "he-27f6dd85830dc5e51e0784f9",
+      "doc_key": [
+        "ts-tk-0242-thu-hep-pvc-bi-tu-choi.md"
+      ],
+      "khoa": "khach_hang_a:known_issue",
+      "slots": {
+        "subject": [
+          "tệp cấu hình"
+        ],
+        "symptom": [
+          "báo lỗi 'spec.resources.requests.storage: Forbidden: is invalid'"
+        ],
+        "cause": [
+          "Kubernetes và API Cloud chỉ hỗ trợ mở rộng dung lượng, cấm thu hẹp"
+        ],
+        "time": [
+          "20/10/2026 09:30"
+        ]
+      }
+    },
+    {
+      "id": "he-2851d11caa26d02b1488727b",
+      "doc_key": [
+        "dc-09-huong-dan-cap-phat-va-thu-hoi-thiet-bi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "thiết bị cấp cho Tech Support"
+        ],
+        "condition": [
+          "theo cấu hình chuẩn"
+        ],
+        "remediation": [
+          "máy xách tay 16 GB RAM, 2 màn hình 24 inch, chuột, bàn phím, tai nghe có micro"
+        ]
+      }
+    },
+    {
+      "id": "he-292268d7cd066d588fa39418",
+      "doc_key": [
+        "dc-08-huong-dan-xu-ly-thiet-bi-phong-hop.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "thiết bị phát âm thanh"
+        ],
+        "symptom": [
+          "không có tiếng"
+        ],
+        "remediation": [
+          "kiểm tra thiết bị phát âm thanh đã chọn đúng chưa trên máy tính, kiểm tra âm lượng của cả máy tính, phần mềm họp và thiết bị, kiểm tra micro có bị tắt tiếng bằng nút cứng trên thiết bị"
+        ]
+      }
+    },
+    {
+      "id": "he-29e38f7ed6155565cda2d9c4",
+      "doc_key": [
+        "dv-10-runbook-xu-ly-canh-bao-ram-cpu.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "RAM cao"
+        ],
+        "remediation": [
+          "xác nhận phần dùng thật, không tính cache"
+        ]
+      }
+    },
+    {
+      "id": "he-2a1dc7d5bc5be6f77f6f83cc",
+      "doc_key": [
+        "ts-tk-0205-tong-dai-sip-alg.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "router của khách"
+        ],
+        "condition": [
+          "dòng phổ thông, thông tin đăng nhập vẫn để mặc định"
+        ],
+        "remediation": [
+          "khuyến nghị khách đổi mật khẩu quản trị router, ghi vào biên bản làm việc"
+        ]
+      }
+    },
+    {
+      "id": "he-2a9204b02a6bd29cfe95a438",
+      "doc_key": [
+        "dv-05-runbook-xu-ly-node-k8s-notready.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "node Kubernetes"
+        ],
+        "symptom": [
+          "kubelet ngừng gửi tín hiệu"
+        ],
+        "source": [
+          "bảng theo dõi"
+        ]
+      }
+    },
+    {
+      "id": "he-2ac58b47d169505c995f7a2a",
+      "doc_key": [
+        "ts-tk-0205-tong-dai-sip-alg.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "thiết bị đầu cuối"
+        ],
+        "remediation": [
+          "khởi động lại và đăng ký lại thành công"
+        ]
+      }
+    },
+    {
+      "id": "he-2bd5aef6e36160891254276c",
+      "doc_key": [
+        "dv-13-sop-xoay-vong-khoa-truy-cap-object-storage.md"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "log truy cập"
+        ],
+        "condition": [
+          "trong 48 giờ"
+        ],
+        "remediation": [
+          "Theo dõi log truy cập 48 giờ, xác nhận không còn lời gọi nào dùng khóa cũ."
+        ]
+      }
+    },
+    {
+      "id": "he-2be661d366abda280c9c73d3",
+      "doc_key": [
+        "dv-06-runbook-mo-rong-volume-cho-node.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "đĩa vật lý"
+        ],
+        "symptom": [
+          "Pod xếp sang vùng khác sẽ kẹt Pending với lỗi `volume node affinity conflict`"
+        ],
+        "condition": [
+          "gắn cố định vào một vùng khả dụng"
+        ],
+        "remediation": [
+          "dùng `volumeBindingMode: WaitForFirstConsumer` để tránh"
+        ]
+      }
+    },
+    {
+      "id": "he-2dff4a0fa822133019a8b36c",
+      "doc_key": [
+        "dv-05-runbook-xu-ly-node-k8s-notready.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "node Kubernetes"
+        ],
+        "cause": [
+          "Node sẽ trở về cấu hình cũ của pool khi recycle"
+        ],
+        "remediation": [
+          "không nâng cấu hình node trực tiếp trên Cloud Server"
+        ],
+        "source": [
+          "Runbook"
+        ]
+      }
+    },
+    {
+      "id": "he-2e759de8f64144bf0645f37b",
+      "doc_key": [
+        "dv-02-postmortem-day-o-cung-cum-log.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "cảnh báo"
+        ],
+        "symptom": [
+          "có bắn nhưng không có người nhận thì bằng không"
+        ],
+        "cause": [
+          "không có người trực"
+        ],
+        "time": [
+          "ngưỡng 85% cho 3 giờ 29 phút thời gian phản ứng"
+        ]
+      }
+    },
+    {
+      "id": "he-2f3b28b70c8b8b48aa4c269d",
+      "doc_key": [
+        "dc-10-huong-dan-reset-mat-khau-tai-khoan-noi-bo.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "yêu cầu đặt lại mật khẩu"
+        ],
+        "condition": [
+          "có người nhắn tin nhờ"
+        ],
+        "remediation": [
+          "xác minh danh tính bằng một trong ba cách: gọi lại số nội bộ trong danh bạ, xác nhận qua trưởng bộ phận, hoặc gặp trực tiếp đối chiếu thẻ nhân viên"
+        ]
+      }
+    },
+    {
+      "id": "he-2fd28e4be830c821f3b05443",
+      "doc_key": [
+        "ts-tk-0209-tong-dai-jitter-duong-truyen.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "khách hàng"
+        ],
+        "remediation": [
+          "bật ưu tiên lưu lượng thoại trên router"
+        ]
+      }
+    },
+    {
+      "id": "he-30ad8f4a0ce81140accc0b87",
+      "doc_key": [
+        "dv-11-sop-trien-khai-ban-va-bao-mat-khan-cap.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "bản vá"
+        ],
+        "condition": [
+          "trước khi bắt đầu triển khai"
+        ],
+        "remediation": [
+          "phải có bước quay lui viết sẵn trong phiếu; không có đường lùi thì không được triển khai vào giờ phục vụ"
+        ]
+      }
+    },
+    {
+      "id": "he-316260f0bb745004da52922b",
+      "doc_key": [
+        "dv-01-postmortem-web-khach-hang-sap-do-php-fpm-het-worker.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "access log"
+        ],
+        "symptom": [
+          "62% request tới /tim-kiem từ một dải IP"
+        ],
+        "time": [
+          "09:38"
+        ]
+      }
+    },
+    {
+      "id": "he-31826c4f511c70c0a7b9db12",
+      "doc_key": [
+        "dc-05-sop-quan-ly-ra-vao-phong-may.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "phòng máy"
+        ],
+        "remediation": [
+          "cấm chụp ảnh toàn cảnh phòng máy hoặc sơ đồ tủ mà không có phê duyệt"
+        ]
+      }
+    },
+    {
+      "id": "he-3265b10840ea6f6bd40444e7",
+      "doc_key": [
+        "dc-04-sop-tiep-nhan-va-lap-dat-may-chu-moi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "cơ sở dữ liệu cấu hình"
+        ],
+        "condition": [
+          "khi bàn giao"
+        ],
+        "remediation": [
+          "cập nhật gồm số sê ri, vị trí tủ, địa chỉ quản trị, ngày lắp"
+        ],
+        "owner": [
+          "NV11"
+        ]
+      }
+    },
+    {
+      "id": "he-32837e8dafd7dec2837453e2",
+      "doc_key": [
+        "dv-13-sop-xoay-vong-khoa-truy-cap-object-storage.md"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "khóa của bucket sao lưu"
+        ],
+        "remediation": [
+          "không được dùng chung với khóa của ứng dụng"
+        ]
+      }
+    },
+    {
+      "id": "he-328825ac34697e99594d5904",
+      "doc_key": [
+        "dv-02-postmortem-day-o-cung-cum-log.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "cụm log"
+        ],
+        "remediation": [
+          "gỡ cờ chỉ đọc, nhận dữ liệu trở lại"
+        ],
+        "time": [
+          "06:48"
+        ]
+      }
+    },
+    {
+      "id": "he-32e024c59a8f0f39dc0078e8",
+      "doc_key": [
+        "dc-08-huong-dan-xu-ly-thiet-bi-phong-hop.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "dây HDMI"
+        ],
+        "cause": [
+          "dây HDMI hỏng là nguyên nhân phổ biến nhất khi màn hình không hiện hình"
+        ]
+      }
+    },
+    {
+      "id": "he-346c88b70f7d3b382975122a",
+      "doc_key": [
+        "dv-02-postmortem-day-o-cung-cum-log.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "kênh trực đêm"
+        ],
+        "cause": [
+          "không ai xử lý"
+        ],
+        "condition": [
+          "không có người gác"
+        ],
+        "time": [
+          "02:41 tới 06:10"
+        ]
+      }
+    },
+    {
+      "id": "he-34cfa7e4e433a59bbe9f3671",
+      "doc_key": [
+        "dc-04-sop-tiep-nhan-va-lap-dat-may-chu-moi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "dây dài thừa"
+        ],
+        "cause": [
+          "gây cản luồng khí"
+        ],
+        "remediation": [
+          "chuẩn bị đủ ray, ốc, dây nguồn và dây mạng đúng chiều dài"
+        ],
+        "owner": [
+          "NV11"
+        ]
+      }
+    },
+    {
+      "id": "he-35efc8f8d34e03b6c4391e6c",
+      "doc_key": [
+        "dv-08-runbook-chuyen-doi-du-phong-keepalived.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "VIP"
+        ],
+        "condition": [
+          "node Master hỏng"
+        ],
+        "remediation": [
+          "chuyển sang node Backup"
+        ],
+        "source": [
+          "Runbook: chuyển đổi dự phòng keepalived khi node Master hỏng"
+        ]
+      }
+    },
+    {
+      "id": "he-360ff03a1f5bcf6fd4bfeafd",
+      "doc_key": [
+        "dv-03-postmortem-chung-chi-ssl-wildcard-het-han.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "bảng theo dõi hạn của toàn bộ chứng chỉ đang phục vụ"
+        ],
+        "condition": [
+          "xong"
+        ],
+        "remediation": [
+          "lập"
+        ],
+        "time": [
+          "30/09"
+        ],
+        "owner": [
+          "NV05"
+        ]
+      }
+    },
+    {
+      "id": "he-364a20fc0e83880a938206a3",
+      "doc_key": [
+        "dv-02-postmortem-day-o-cung-cum-log.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "chỉ mục cũ hơn 30 ngày"
+        ],
+        "remediation": [
+          "xóa, giải phóng 210 GB"
+        ],
+        "time": [
+          "06:32"
+        ]
+      }
+    },
+    {
+      "id": "he-370249b160178bd4d189a45f",
+      "doc_key": [
+        "dv-06-runbook-mo-rong-volume-cho-node.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "runbook"
+        ],
+        "owner": [
+          "NV06"
+        ]
+      }
+    },
+    {
+      "id": "he-397c6cccc490964703dcf5ff",
+      "doc_key": [
+        "ts-tk-0238-keepalived-vip-khong-chuyen.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "tài liệu hướng dẫn"
+        ],
+        "symptom": [
+          "khách bỏ qua bước Allow Pair"
+        ],
+        "cause": [
+          "bước Allow Pair nằm ở phần đầu, tách khỏi phần cấu hình keepalived"
+        ],
+        "source": [
+          "Ticket TS-2610-0238"
+        ]
+      }
+    },
+    {
+      "id": "he-39a077bacd0c472fffca44f7",
+      "doc_key": [
+        "dv-14-sop-cap-quyen-truy-cap-ha-tang.md"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "quyền tạm cấp"
+        ],
+        "condition": [
+          "tối đa 7 ngày"
+        ],
+        "remediation": [
+          "hết hạn tự thu"
+        ]
+      }
+    },
+    {
+      "id": "he-3a10c2a639e1bf22a250e571",
+      "doc_key": [
+        "dv-10-runbook-xu-ly-canh-bao-ram-cpu.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "RAM cao"
+        ],
+        "remediation": [
+          "kiểm tra rò rỉ bộ nhớ bằng cách so mức dùng theo thời gian trong 7 ngày"
+        ]
+      }
+    },
+    {
+      "id": "he-3a96b0efb65ac88085128428",
+      "doc_key": [
+        "dv-14-sop-cap-quyen-truy-cap-ha-tang.md"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "bộ phận nhân sự"
+        ],
+        "condition": [
+          "khi nhân sự nghỉ việc hoặc chuyển bộ phận"
+        ],
+        "remediation": [
+          "báo trước ít nhất 3 ngày làm việc"
+        ]
+      }
+    },
+    {
+      "id": "he-3ab7013862a313c795696176",
+      "doc_key": [
+        "dc-04-sop-tiep-nhan-va-lap-dat-may-chu-moi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "máy trên 2U"
+        ],
+        "condition": [
+          "khi lắp đặt"
+        ],
+        "remediation": [
+          "hai người nâng"
+        ],
+        "owner": [
+          "NV11"
+        ]
+      }
+    },
+    {
+      "id": "he-3b59797225e97e38378db32f",
+      "doc_key": [
+        "ts-tk-0156-pvc-pending-zone-mismatch.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "StorageClass"
+        ],
+        "cause": [
+          "đang tạo đĩa ngay khi PVC được khai, trước khi biết pod sẽ chạy ở vùng nào"
+        ],
+        "remediation": [
+          "sửa StorageClass thêm 'volumeBindingMode: WaitForFirstConsumer'"
+        ]
+      }
+    },
+    {
+      "id": "he-3bf9c99f07e74259022bb32e",
+      "doc_key": [
+        "ts-tk-0217-chuyen-doi-business-email-thieu-thong-tin.md"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "quyền quản trị tên miền"
+        ],
+        "remediation": [
+          "xác nhận bằng bản ghi DNS TXT"
+        ]
+      }
+    },
+    {
+      "id": "he-3c1c6331362e22cd6b134c9e",
+      "doc_key": [
+        "dv-14-sop-cap-quyen-truy-cap-ha-tang.md"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "sổ quyền"
+        ],
+        "remediation": [
+          "Ghi gồm ngày cấp, vai, người phê duyệt"
+        ]
+      }
+    },
+    {
+      "id": "he-3c23302eeeb8bc1a8338336d",
+      "doc_key": [
+        "dv-09-runbook-don-dep-image-registry.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "pod"
+        ],
+        "symptom": [
+          "kẹt ở ImagePullBackOff"
+        ],
+        "cause": [
+          "xóa nhầm tag đang chạy"
+        ],
+        "remediation": [
+          "build lại image"
+        ],
+        "owner": [
+          "NV08"
+        ]
+      }
+    },
+    {
+      "id": "he-3cfc071e16962550340fa56b",
+      "doc_key": [
+        "dc-03-runbook-kiem-tra-nhiet-do-phong-may.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "nhiệt độ phòng máy"
+        ],
+        "condition": [
+          "chạm ngưỡng nghiêm trọng"
+        ],
+        "remediation": [
+          "tắt bớt máy chủ không phục vụ khách hàng theo danh sách ưu tiên đã duyệt"
+        ]
+      }
+    },
+    {
+      "id": "he-3e379c9be323c4d7473ab151",
+      "doc_key": [
+        "dv-12-sop-quy-trinh-thay-doi-cau-hinh-ha-tang.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "thay đổi loại Khẩn"
+        ],
+        "condition": [
+          "ví dụ vá lỗ hổng, khắc phục sự cố đang diễn ra"
+        ],
+        "time": [
+          "bất kỳ lúc nào"
+        ],
+        "owner": [
+          "phê duyệt sau"
+        ]
+      }
+    },
+    {
+      "id": "he-3e9b12a4eccf031e8c7989dd",
+      "doc_key": [
+        "ts-tk-0151-pvc-pending-accessmode-rwx.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "nhóm hỗ trợ"
+        ],
+        "remediation": [
+          "nên có sẵn manifest mẫu đúng cho nền tảng này để gửi kèm"
+        ]
+      }
+    },
+    {
+      "id": "he-3ece90d82d729a3bb81f3f04",
+      "doc_key": [
+        "dc-08-huong-dan-xu-ly-thiet-bi-phong-hop.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "thiết bị phòng họp"
+        ],
+        "condition": [
+          "trước mỗi cuộc họp lớn"
+        ],
+        "remediation": [
+          "bật màn hình và thiết bị hội nghị trước 15 phút, thử chia sẻ màn hình, thử micro và loa, kiểm tra dây HDMI và cáp chuyển đổi"
+        ]
+      }
+    },
+    {
+      "id": "he-4006bb5db74bf877a72ea299",
+      "doc_key": [
+        "dv-02-postmortem-day-o-cung-cum-log.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "cụm log nội bộ"
+        ],
+        "symptom": [
+          "ngừng nhận dữ liệu trong 3 giờ 12 phút"
+        ],
+        "cause": [
+          "phân vùng /var/lib/elasticsearch đạt 100%, node chuyển sang trạng thái chỉ đọc"
+        ],
+        "time": [
+          "18/09/2026"
+        ]
+      }
+    },
+    {
+      "id": "he-414830674a2900a21ede0769",
+      "doc_key": [
+        "dv-01-postmortem-web-khach-hang-sap-do-php-fpm-het-worker.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "chỉ số worker đang bận"
+        ],
+        "cause": [
+          "là chỉ báo sớm"
+        ],
+        "remediation": [
+          "phải đưa vào bảng theo dõi"
+        ]
+      }
+    },
+    {
+      "id": "he-41ae2469b0afb8b3542a472f",
+      "doc_key": [
+        "dc-05-sop-quan-ly-ra-vao-phong-may.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "sổ ra vào"
+        ],
+        "remediation": [
+          "rà soát, đối chiếu với danh sách thẻ đang hoạt động"
+        ],
+        "time": [
+          "hằng tháng"
+        ]
+      }
+    },
+    {
+      "id": "he-41dfbbc8e79df6a15d1e9c01",
+      "doc_key": [
+        "ts-tk-0142-waf-whitelist-ghi-nham.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "WAF"
+        ],
+        "symptom": [
+          "toàn bộ nhân viên tại văn phòng Hà Nội không vào được trang quản trị, trả về 403"
+        ],
+        "cause": [
+          "whitelist ghi thiếu một dải IP"
+        ],
+        "condition": [
+          "sau khi bật rule chỉ cho phép một số IP truy cập"
+        ],
+        "remediation": [
+          "bổ sung dải vào whitelist"
+        ],
+        "source": [
+          "ticket TS-2609-0142"
+        ],
+        "time": [
+          "26/09/2026 09:12"
+        ],
+        "owner": [
+          "NV21"
+        ]
+      }
+    },
+    {
+      "id": "he-42327d9a71f87f89e620e6ab",
+      "doc_key": [
+        "dc-04-sop-tiep-nhan-va-lap-dat-may-chu-moi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "tủ rack"
+        ],
+        "condition": [
+          "trước khi lắp đặt"
+        ],
+        "remediation": [
+          "kiểm tra tủ còn đủ công suất nguồn cho máy mới"
+        ],
+        "owner": [
+          "NV11"
+        ]
+      }
+    },
+    {
+      "id": "he-4270bc6cc29d0fe58920d172",
+      "doc_key": [
+        "ts-tk-0230-iptables-thu-tu-rule.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "iptables"
+        ],
+        "cause": [
+          "iptables duyệt quy tắc theo thứ tự và dừng ở quy tắc khớp đầu tiên"
+        ],
+        "condition": [
+          "quy tắc DROP nằm trước quy tắc cho phép"
+        ],
+        "remediation": [
+          "đặt quy tắc cho phép trước quy tắc DROP"
+        ]
+      }
+    },
+    {
+      "id": "he-43043c2b4c9ee805b1ba9774",
+      "doc_key": [
+        "dc-03-runbook-kiem-tra-nhiet-do-phong-may.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "độ ẩm phòng"
+        ],
+        "condition": [
+          "bình thường"
+        ],
+        "time": [
+          "40 tới 60%"
+        ]
+      }
+    },
+    {
+      "id": "he-4305955674fd3d012b7b0fce",
+      "doc_key": [
+        "dv-06-runbook-mo-rong-volume-cho-node.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "LVM"
+        ],
+        "condition": [
+          "nếu dùng LVM"
+        ],
+        "remediation": [
+          "mở rộng physical volume rồi logical volume: `sudo pvresize /dev/vdb`, `sudo lvextend -l +100%FREE /dev/vg_data/lv_data`, `sudo resize2fs /dev/vg_data/lv_data`"
+        ]
+      }
+    },
+    {
+      "id": "he-4404ecf987e0f5bf30e045b0",
+      "doc_key": [
+        "dc-05-sop-quan-ly-ra-vao-phong-may.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "người vào phòng máy"
+        ],
+        "remediation": [
+          "chỉ thao tác trên thiết bị ghi trong phiếu công việc"
+        ]
+      }
+    },
+    {
+      "id": "he-44464c3c5b202e19ef18eea4",
+      "doc_key": [
+        "dc-09-huong-dan-cap-phat-va-thu-hoi-thiet-bi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "nhân sự nghỉ việc"
+        ],
+        "condition": [
+          "báo trước ít nhất 3 ngày làm việc"
+        ],
+        "remediation": [
+          "thu hồi thiết bị"
+        ]
+      }
+    },
+    {
+      "id": "he-45103c2586ddd9adb71ff0a3",
+      "doc_key": [
+        "dv-15-huong-dan-doc-log-nginx-bang-goaccess.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "GoAccess"
+        ],
+        "symptom": [
+          "đọc ra số 0 mà không báo lỗi"
+        ],
+        "condition": [
+          "định dạng log không khớp với cấu hình"
+        ]
+      }
+    },
+    {
+      "id": "he-45a41aa9962708269155857c",
+      "doc_key": [
+        "ts-tk-0175-clouddb-khong-ping-duoc.md"
+      ],
+      "khoa": "khach_hang_a:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "Cloud Database"
+        ],
+        "symptom": [
+          "khách báo cơ sở dữ liệu ngừng hoạt động, ping tới địa chỉ database không có phản hồi và SSH cũng không vào được"
+        ],
+        "cause": [
+          "hiểu nhầm về mô hình dịch vụ: Cloud Database chỉ mở cổng dịch vụ được chỉ định, không mở SSH và không trả lời ping"
+        ],
+        "remediation": [
+          "hướng dẫn khách kiểm tra đúng cách bằng telnet tới cổng dịch vụ trên Linux hoặc Test-NetConnection trên Windows; gửi tài liệu mô tả mô hình kết nối của dịch vụ"
+        ],
+        "source": [
+          "ticket TS-2610-0175"
+        ],
+        "time": [
+          "04/10/2026 10:30 đến 04/10/2026 10:52"
+        ],
+        "owner": [
+          "NV22"
+        ]
+      }
+    },
+    {
+      "id": "he-483a49513eff14eafda37dfc",
+      "doc_key": [
+        "dv-11-sop-trien-khai-ban-va-bao-mat-khan-cap.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "bản vá"
+        ],
+        "condition": [
+          "trên staging"
+        ],
+        "remediation": [
+          "thử bản vá và chạy bộ kiểm thử hồi quy"
+        ]
+      }
+    },
+    {
+      "id": "he-487052a4006f48fa07a124d2",
+      "doc_key": [
+        "dv-12-sop-quy-trinh-thay-doi-cau-hinh-ha-tang.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "danh sách IP ghi nhầm"
+        ],
+        "symptom": [
+          "người dùng hợp lệ mất truy cập"
+        ],
+        "cause": [
+          "danh sách IP ghi nhầm"
+        ],
+        "condition": [
+          "lỗi thường chỉ lộ ra khi khách hàng báo"
+        ]
+      }
+    },
+    {
+      "id": "he-48fa310daa70eb56ac088227",
+      "doc_key": [
+        "dc-08-huong-dan-xu-ly-thiet-bi-phong-hop.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "âm thanh"
+        ],
+        "symptom": [
+          "tiếng vọng hoặc rè"
+        ],
+        "remediation": [
+          "tắt loa và micro của máy tính, chỉ dùng thiết bị của phòng, kiểm tra không có hai máy trong cùng phòng bật micro"
+        ]
+      }
+    },
+    {
+      "id": "he-4926a34a7c6e5e96f3603e7d",
+      "doc_key": [
+        "dv-04-postmortem-mat-ket-noi-db-sau-resize.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "app-03"
+        ],
+        "symptom": [
+          "ứng dụng không kết nối được tới Cloud Database trong 38 phút"
+        ],
+        "cause": [
+          "định tuyến bất đối xứng do máy chủ có hai default route sau khi khởi động lại"
+        ],
+        "remediation": [
+          "đặt lại route-metric trong netplan, áp dụng cấu hình"
+        ],
+        "time": [
+          "03/09/2026 từ 14:05 đến 14:43"
+        ],
+        "owner": [
+          "NV06"
+        ]
+      }
+    },
+    {
+      "id": "he-49a8b332b656a74a7a207711",
+      "doc_key": [
+        "dv-12-sop-quy-trinh-thay-doi-cau-hinh-ha-tang.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "thay đổi cấu hình hạ tầng"
+        ],
+        "condition": [
+          "chạm tới máy chủ sản xuất, cấu hình mạng, quy tắc tường lửa, WAF, load balancer và cơ sở dữ liệu"
+        ],
+        "remediation": [
+          "tuân theo SOP quy trình thay đổi cấu hình hạ tầng"
+        ]
+      }
+    },
+    {
+      "id": "he-49c96ea2c00b984193f65d3b",
+      "doc_key": [
+        "ts-tk-0188-public-endpoint-khong-ho-tro-tls.md"
+      ],
+      "khoa": "khach_hang_a:known_issue",
+      "slots": {
+        "subject": [
+          "public endpoint"
+        ],
+        "symptom": [
+          "không hỗ trợ TLS, không có tùy chọn bật trên Dashboard"
+        ]
+      }
+    },
+    {
+      "id": "he-4a3af673f2f1a0bc11b48beb",
+      "doc_key": [
+        "dv-07-runbook-backup-va-khoi-phuc-cloud-database.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "db-prod-01"
+        ],
+        "remediation": [
+          "sao lưu, giữ 14 ngày, lưu tại Object Storage bucket backup-prod"
+        ],
+        "time": [
+          "hằng ngày 01:00"
+        ]
+      }
+    },
+    {
+      "id": "he-4d52d4a5b63e1cffe6251fa4",
+      "doc_key": [
+        "dc-10-huong-dan-reset-mat-khau-tai-khoan-noi-bo.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "quy trình đặt lại mật khẩu"
+        ],
+        "remediation": [
+          "ghi phiếu gồm tên người yêu cầu, cách xác minh, thời điểm; đặt lại mật khẩu trên hệ quản trị, bật cờ bắt đổi mật khẩu; gửi mật khẩu tạm qua kênh khác; xác nhận người dùng đăng nhập được và đã đổi; đóng phiếu"
+        ]
+      }
+    },
+    {
+      "id": "he-4d7ce98d33447e291933da89",
+      "doc_key": [
+        "dv-13-sop-xoay-vong-khoa-truy-cap-object-storage.md"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "khóa ứng dụng đọc ghi"
+        ],
+        "condition": [
+          "chu kỳ 180 ngày"
+        ],
+        "owner": [
+          "chủ dịch vụ"
+        ]
+      }
+    },
+    {
+      "id": "he-510952d122c30bfa4a5a0922",
+      "doc_key": [
+        "ts-tk-0142-waf-whitelist-ghi-nham.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "WAF"
+        ],
+        "remediation": [
+          "khuyến nghị chuyển WAF Mode về Phát hiện trong 24 giờ để theo dõi log, xác nhận whitelist đủ rồi mới chuyển lại Ngăn chặn"
+        ],
+        "source": [
+          "ticket TS-2609-0142"
+        ]
+      }
+    },
+    {
+      "id": "he-51c285edeb7d0d2366ea2054",
+      "doc_key": [
+        "dv-01-postmortem-web-khach-hang-sap-do-php-fpm-het-worker.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "CloudWatch"
+        ],
+        "symptom": [
+          "cảnh báo tỷ lệ 5xx vượt 5% trên load balancer"
+        ],
+        "time": [
+          "09:14"
+        ]
+      }
+    },
+    {
+      "id": "he-5203815e7cb180e43d3b1995",
+      "doc_key": [
+        "dc-02-runbook-mat-dien-mot-pha-tu-rack.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "máy chủ trong tủ"
+        ],
+        "symptom": [
+          "đang ở trạng thái rủi ro, mất nốt đường còn lại là tắt máy"
+        ],
+        "condition": [
+          "chỉ có một nguồn"
+        ],
+        "remediation": [
+          "kiểm tra danh sách máy chủ trong tủ, xác định máy nào chỉ có một nguồn"
+        ]
+      }
+    },
+    {
+      "id": "he-520cc565748cbeb8f2afffb3",
+      "doc_key": [
+        "ts-tk-0192-mongodb-tls-13.md"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "instance MongoDB"
+        ],
+        "condition": [
+          "chỉ chấp nhận TLS 1.3"
+        ],
+        "remediation": [
+          "cấu hình chỉ chấp nhận TLS 1.3"
+        ],
+        "owner": [
+          "bộ phận dịch vụ"
+        ]
+      }
+    },
+    {
+      "id": "he-526bad091fc0ef1c35cbf543",
+      "doc_key": [
+        "ts-tk-0221-tai-khoan-quan-tri-chua-bat-2fa.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "2 tài khoản quản trị"
+        ],
+        "symptom": [
+          "không bật xác thực hai lớp"
+        ],
+        "cause": [
+          "rủi ro cao"
+        ],
+        "remediation": [
+          "đặt chính sách bắt buộc cho nhóm quản trị thay vì nhắc từng người"
+        ]
+      }
+    },
+    {
+      "id": "he-5299bfdbeb160481abf11279",
+      "doc_key": [
+        "dc-07-huong-dan-xu-ly-wifi-van-phong-chap-chon.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "thiết bị dùng cho tổng đài và hội họp"
+        ],
+        "remediation": [
+          "nên nối mạng dây"
+        ]
+      }
+    },
+    {
+      "id": "he-531c8ee38d10f1e6841a472a",
+      "doc_key": [
+        "dv-06-runbook-mo-rong-volume-cho-node.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "phân vùng"
+        ],
+        "condition": [
+          "vượt 85%"
+        ],
+        "remediation": [
+          "tăng dung lượng đĩa, không dừng dịch vụ"
+        ]
+      }
+    },
+    {
+      "id": "he-53d20fcc4508d48a76f52698",
+      "doc_key": [
+        "dv-15-huong-dan-doc-log-nginx-bang-goaccess.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "tỷ lệ 4xx"
+        ],
+        "cause": [
+          "chỉ tới quét đường dẫn"
+        ],
+        "condition": [
+          "tăng"
+        ]
+      }
+    },
+    {
+      "id": "he-5407d0ab2782e8425c180027",
+      "doc_key": [
+        "dv-04-postmortem-mat-ket-noi-db-sau-resize.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "máy chủ hai interface"
+        ],
+        "remediation": [
+          "ghim route-metric trong 50-cloud-init.yaml"
+        ],
+        "time": [
+          "hạn 10/09"
+        ],
+        "owner": [
+          "NV06"
+        ]
+      }
+    },
+    {
+      "id": "he-559b42bec1a8920fde937f96",
+      "doc_key": [
+        "dc-01-runbook-thay-o-cung-hong-may-chu-vat-ly.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "kỹ thuật viên"
+        ],
+        "condition": [
+          "vào phòng máy"
+        ],
+        "remediation": [
+          "theo quy trình ra vào, mang theo phiếu công việc"
+        ]
+      }
+    },
+    {
+      "id": "he-5691d0e919cc5389da02828e",
+      "doc_key": [
+        "dv-02-postmortem-day-o-cung-cum-log.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "node log-02"
+        ],
+        "symptom": [
+          "vượt ngưỡng cảnh báo đĩa 85%"
+        ],
+        "remediation": [
+          "cảnh báo gửi vào kênh trực đêm"
+        ],
+        "time": [
+          "02:41"
+        ]
+      }
+    },
+    {
+      "id": "he-57ce73195455ef6a5b538a88",
+      "doc_key": [
+        "ts-tk-0217-chuyen-doi-business-email-thieu-thong-tin.md"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "chuyển đổi 42 hộp thư"
+        ],
+        "condition": [
+          "thống nhất chuyển đổi vào 22:00 thứ bảy"
+        ],
+        "remediation": [
+          "chuyển đổi trong 3 giờ, kiểm tra ngẫu nhiên 5 hộp thư"
+        ]
+      }
+    },
+    {
+      "id": "he-58da9fdd71a5034462b04703",
+      "doc_key": [
+        "dv-03-postmortem-chung-chi-ssl-wildcard-het-han.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "chứng chỉ mới"
+        ],
+        "remediation": [
+          "phát hành lại, xác thực bằng bản ghi DNS TXT"
+        ],
+        "time": [
+          "07:51"
+        ]
+      }
+    },
+    {
+      "id": "he-59ba66e519a74029c90179d0",
+      "doc_key": [
+        "ts-tk-0213-firewall-outbound-chan-stun.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "tên miền hệ thống thoại"
+        ],
+        "symptom": [
+          "ping không phản hồi, tra DNS trả về đúng địa chỉ"
+        ],
+        "condition": [
+          "chạy trên máy trong mạng nội bộ của khách"
+        ]
+      }
+    },
+    {
+      "id": "he-5a69c0f1008b7510609d3d1c",
+      "doc_key": [
+        "ts-tk-0156-pvc-pending-zone-mismatch.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "cụm đa vùng khác của khách hàng"
+        ],
+        "condition": [
+          "đang dùng StorageClass mặc định"
+        ],
+        "remediation": [
+          "nên rà lại"
+        ]
+      }
+    },
+    {
+      "id": "he-5b0dd7c5aa3464be67de246b",
+      "doc_key": [
+        "ts-tk-0234-cai-sql-server-ubuntu-loi-phu-thuoc.md"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "SQL Server trên Ubuntu 24.04"
+        ],
+        "symptom": [
+          "bước cài gói báo lỗi không tìm được gói phụ thuộc"
+        ],
+        "cause": [
+          "kho phần mềm khách thêm vào là kho dành cho bản Ubuntu cũ hơn"
+        ],
+        "condition": [
+          "bản 24.04 cần kho riêng và một gói thư viện không còn trong kho mặc định"
+        ],
+        "remediation": [
+          "Gỡ kho cũ, thêm đúng kho cho bản 24.04; cài gói thư viện thiếu từ kho phụ; chạy lại cài đặt; cấu hình mật khẩu quản trị và bật dịch vụ, kiểm tra kết nối từ máy khác"
+        ],
+        "source": [
+          "ticket TS-2610-0234"
+        ],
+        "time": [
+          "18/10/2026 14:25 đến 18/10/2026 16:00"
+        ],
+        "owner": [
+          "NV24"
+        ]
+      }
+    },
+    {
+      "id": "he-5c589df2701de41e18b3e788",
+      "doc_key": [
+        "ts-tk-0172-mat-ket-noi-db-sau-resize.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "Cloud Server"
+        ],
+        "symptom": [
+          "có hai default route cùng metric 100"
+        ],
+        "cause": [
+          "khách dùng cả Internet Gateway lẫn WAN"
+        ],
+        "condition": [
+          "sau khi resize máy chủ"
+        ],
+        "remediation": [
+          "đặt lại độ ưu tiên định tuyến"
+        ],
+        "source": [
+          "ticket TS-2610-0172"
+        ]
+      }
+    },
+    {
+      "id": "he-5ced9af9db5977ec28dd5e38",
+      "doc_key": [
+        "ts-tk-0213-firewall-outbound-chan-stun.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "thiết bị thoại của khachhang17.example"
+        ],
+        "symptom": [
+          "mất kết nối tới hệ thống tổng đài"
+        ],
+        "cause": [
+          "bộ phận công nghệ thông tin của khách siết tường lửa"
+        ],
+        "time": [
+          "13/10/2026 10:15"
+        ],
+        "owner": [
+          "NV23"
+        ]
+      }
+    },
+    {
+      "id": "he-5d6c586517192bc65b619abd",
+      "doc_key": [
+        "dc-06-huong-dan-xu-ly-may-in-khong-in-duoc.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "máy in"
+        ],
+        "symptom": [
+          "mất kết nối sau khi cúp điện"
+        ],
+        "cause": [
+          "máy in nhận IP mới từ DHCP"
+        ],
+        "remediation": [
+          "đặt IP tĩnh cho máy in"
+        ]
+      }
+    },
+    {
+      "id": "he-5e09922641b95d3d34aa1285",
+      "doc_key": [
+        "ts-tk-0196-vod-drm-khong-download.md"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "khóa x-key"
+        ],
+        "symptom": [
+          "khóa lộ ra không có đường vô hiệu"
+        ],
+        "remediation": [
+          "đã đề xuất bổ sung cơ chế thu hồi khóa"
+        ]
+      }
+    },
+    {
+      "id": "he-5e7cd4ad2ff573be3139c350",
+      "doc_key": [
+        "dv-03-postmortem-chung-chi-ssl-wildcard-het-han.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "cảnh báo trước hạn 30 ngày và 7 ngày vào kênh vận hành"
+        ],
+        "condition": [
+          "xong"
+        ],
+        "remediation": [
+          "cảnh báo"
+        ],
+        "time": [
+          "30/09"
+        ],
+        "owner": [
+          "NV05"
+        ]
+      }
+    },
+    {
+      "id": "he-5edde660302c4d3c25f8c2e8",
+      "doc_key": [
+        "dc-07-huong-dan-xu-ly-wifi-van-phong-chap-chon.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "tốc độ tải xuống"
+        ],
+        "symptom": [
+          "trung bình tốt"
+        ],
+        "condition": [
+          "từ 20 đến 50 Mbps"
+        ]
+      }
+    },
+    {
+      "id": "he-609b9fb91c142a44b0a611c5",
+      "doc_key": [
+        "dv-06-runbook-mo-rong-volume-cho-node.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "PVC trên Kubernetes"
+        ],
+        "condition": [
+          "StorageClass phải có `allowVolumeExpansion: true`"
+        ],
+        "remediation": [
+          "sửa `spec.resources.requests.storage` trong PVC rồi `kubectl apply`"
+        ]
+      }
+    },
+    {
+      "id": "he-611f99b0be1f0d8f378e84b7",
+      "doc_key": [
+        "dv-01-postmortem-web-khach-hang-sap-do-php-fpm-het-worker.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "WAF"
+        ],
+        "remediation": [
+          "thêm rule chặn user-agent của crawler"
+        ],
+        "time": [
+          "09:47"
+        ]
+      }
+    },
+    {
+      "id": "he-614989085a631805e1990e33",
+      "doc_key": [
+        "dc-06-huong-dan-xu-ly-may-in-khong-in-duoc.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "máy in dùng chung"
+        ],
+        "cause": [
+          "máy in đổi IP sau mỗi lần mất điện là nguyên nhân của phần lớn phiếu báo lỗi in"
+        ],
+        "remediation": [
+          "nên đặt IP tĩnh"
+        ]
+      }
+    },
+    {
+      "id": "he-61a82649f41be11adc8b6c34",
+      "doc_key": [
+        "ts-tk-0213-firewall-outbound-chan-stun.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "chính sách tường lửa mới"
+        ],
+        "cause": [
+          "chặn toàn bộ lưu lượng đi ra trừ cổng web"
+        ],
+        "condition": [
+          "hệ thống thoại cần một số cổng khác"
+        ]
+      }
+    },
+    {
+      "id": "he-6207e6394c3035ac8e746e2d",
+      "doc_key": [
+        "dv-14-sop-cap-quyen-truy-cap-ha-tang.md"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "khóa dùng chung"
+        ],
+        "condition": [
+          "mà người đó từng biết"
+        ],
+        "remediation": [
+          "Xoay vòng mọi khóa"
+        ]
+      }
+    },
+    {
+      "id": "he-64f8381ce509a9ad981882a4",
+      "doc_key": [
+        "dv-10-runbook-xu-ly-canh-bao-ram-cpu.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "RAM sử dụng thật"
+        ],
+        "symptom": [
+          "cảnh báo"
+        ],
+        "condition": [
+          "vượt 85% trong 10 phút"
+        ]
+      }
+    },
+    {
+      "id": "he-6559d73d743e97a4ce3e3234",
+      "doc_key": [
+        "ts-tk-0188-public-endpoint-khong-ho-tro-tls.md"
+      ],
+      "khoa": "khach_hang_a:known_issue",
+      "slots": {
+        "subject": [
+          "bộ phận dịch vụ"
+        ],
+        "remediation": [
+          "cấu hình xong sau 2 ngày làm việc, cấp chuỗi kết nối mới có TLS"
+        ],
+        "time": [
+          "sau 2 ngày làm việc"
+        ]
+      }
+    },
+    {
+      "id": "he-656530d2d4db74476230b403",
+      "doc_key": [
+        "ts-tk-0163-push-image-loi-500-het-quota.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "pipeline CI"
+        ],
+        "symptom": [
+          "dừng ở bước đẩy image, báo 500 Internal Server Error"
+        ],
+        "remediation": [
+          "chạy lại thành công"
+        ]
+      }
+    },
+    {
+      "id": "he-65e4741dc3d7fd0c0b759820",
+      "doc_key": [
+        "dc-04-sop-tiep-nhan-va-lap-dat-may-chu-moi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "máy chủ"
+        ],
+        "condition": [
+          "khi bàn giao"
+        ],
+        "remediation": [
+          "bàn giao cho vận hành kèm biên bản, ghi rõ người nhận"
+        ],
+        "owner": [
+          "NV11"
+        ]
+      }
+    },
+    {
+      "id": "he-694b1d386a755908a637585c",
+      "doc_key": [
+        "dc-01-runbook-thay-o-cung-hong-may-chu-vat-ly.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "tiến trình dựng lại"
+        ],
+        "remediation": [
+          "theo dõi tới khi hoàn tất"
+        ]
+      }
+    },
+    {
+      "id": "he-6a01a4af5c2f289f55767eaa",
+      "doc_key": [
+        "dv-05-runbook-xu-ly-node-k8s-notready.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "node Kubernetes"
+        ],
+        "condition": [
+          "pool có bật auto-repair"
+        ],
+        "remediation": [
+          "chờ 10 phút xem hệ thống tự thay node chưa"
+        ],
+        "source": [
+          "Runbook"
+        ]
+      }
+    },
+    {
+      "id": "he-6a76f7bf5f73960a21f6c328",
+      "doc_key": [
+        "dc-01-runbook-thay-o-cung-hong-may-chu-vat-ly.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "thay ổ cứng"
+        ],
+        "owner": [
+          "NV11"
+        ]
+      }
+    },
+    {
+      "id": "he-6b420c3f69be9e4c7e1936d6",
+      "doc_key": [
+        "dv-03-postmortem-chung-chi-ssl-wildcard-het-han.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "sáu tên miền con"
+        ],
+        "remediation": [
+          "phát hành lại chứng chỉ và nạp lên WAF cùng load balancer"
+        ]
+      }
+    },
+    {
+      "id": "he-6b8c70d4be46f10ee512b76f",
+      "doc_key": [
+        "dc-05-sop-quan-ly-ra-vao-phong-may.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "phòng máy"
+        ],
+        "remediation": [
+          "cấm mang đồ ăn và nước uống vào phòng máy"
+        ]
+      }
+    },
+    {
+      "id": "he-6c4310f9505f9954f1631097",
+      "doc_key": [
+        "dv-07-runbook-backup-va-khoi-phuc-cloud-database.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "db-staging"
+        ],
+        "remediation": [
+          "sao lưu, giữ 4 tuần, lưu tại Object Storage bucket backup-staging"
+        ],
+        "time": [
+          "hằng tuần chủ nhật"
+        ]
+      }
+    },
+    {
+      "id": "he-6c4632a5f306aaad5f0f8b37",
+      "doc_key": [
+        "dv-03-postmortem-chung-chi-ssl-wildcard-het-han.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "chứng chỉ nạp ở hai nơi"
+        ],
+        "cause": [
+          "WAF có bản sao chứng chỉ riêng, đội xử lý không nhớ điều đó"
+        ],
+        "remediation": [
+          "phải thay ở cả hai nơi"
+        ],
+        "time": [
+          "lần này bốn tên miền hết lỗi trước hai tên miền còn lại 14 phút"
+        ]
+      }
+    },
+    {
+      "id": "he-6c6e6c0d64d54b8e67d3a05d",
+      "doc_key": [
+        "dv-07-runbook-backup-va-khoi-phuc-cloud-database.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "bản sao lưu mới nhất của db-prod-01"
+        ],
+        "condition": [
+          "phải trong vòng 24 giờ"
+        ],
+        "remediation": [
+          "nếu quá hạn, kiểm tra job và báo vào kênh vận hành"
+        ]
+      }
+    },
+    {
+      "id": "he-6ca55641fe14b65e3a62849d",
+      "doc_key": [
+        "dc-02-runbook-mat-dien-mot-pha-tu-rack.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "bộ phân phối nguồn"
+        ],
+        "symptom": [
+          "báo mất nguồn ở một trong hai đường cấp"
+        ],
+        "remediation": [
+          "đọc màn hình bộ phân phối nguồn của tủ, ghi lại pha nào mất và dòng điện của pha còn lại"
+        ]
+      }
+    },
+    {
+      "id": "he-6cf2233fd8852963344592a1",
+      "doc_key": [
+        "ts-tk-0160-pvc-terminating-finalizer.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "đĩa vật lý"
+        ],
+        "condition": [
+          "đã thực sự bị xóa"
+        ],
+        "remediation": [
+          "ép gỡ cờ bảo vệ an toàn"
+        ],
+        "source": [
+          "Ghi chú nội bộ"
+        ]
+      }
+    },
+    {
+      "id": "he-6d361931a80edf98a844d32f",
+      "doc_key": [
+        "dv-02-postmortem-day-o-cung-cum-log.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "người gác kênh trực đêm cho cảnh báo mức cao"
+        ],
+        "remediation": [
+          "bổ sung"
+        ],
+        "time": [
+          "30/09"
+        ],
+        "owner": [
+          "NV09"
+        ]
+      }
+    },
+    {
+      "id": "he-6dd1840aaff2bc74d2245240",
+      "doc_key": [
+        "dv-13-sop-xoay-vong-khoa-truy-cap-object-storage.md"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "khóa"
+        ],
+        "condition": [
+          "nghi ngờ lộ khóa"
+        ],
+        "remediation": [
+          "Vô hiệu ngay lập tức, bỏ qua bước theo dõi 48 giờ. Sau đó rà log truy cập của bucket trong 30 ngày gần nhất, tìm địa chỉ lạ. Mở phiếu sự cố bảo mật kể cả khi chưa thấy dấu hiệu bị dùng."
+        ]
+      }
+    },
+    {
+      "id": "he-6e30a868fefb7a72c3bb3ee9",
+      "doc_key": [
+        "dc-02-runbook-mat-dien-mot-pha-tu-rack.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "kênh trực vận hành"
+        ],
+        "remediation": [
+          "báo ngay vào kênh trực vận hành, không chờ xác định nguyên nhân"
+        ]
+      }
+    },
+    {
+      "id": "he-6e39d4b2a4c8e2c8f1f96ec5",
+      "doc_key": [
+        "dv-13-sop-xoay-vong-khoa-truy-cap-object-storage.md"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "khóa mới"
+        ],
+        "remediation": [
+          "Cập nhật khóa mới vào kho bí mật, không dán vào biến môi trường trong tệp cấu hình."
+        ]
+      }
+    },
+    {
+      "id": "he-6fc56ef6d32010121591031b",
+      "doc_key": [
+        "dc-04-sop-tiep-nhan-va-lap-dat-may-chu-moi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "khe trống của tủ"
+        ],
+        "remediation": [
+          "bịt bằng tấm chắn"
+        ],
+        "owner": [
+          "NV11"
+        ]
+      }
+    },
+    {
+      "id": "he-6fd04e3f782e47adc9885572",
+      "doc_key": [
+        "dc-05-sop-quan-ly-ra-vao-phong-may.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "nhân sự nội bộ khác"
+        ],
+        "condition": [
+          "có phiếu công việc được duyệt"
+        ],
+        "remediation": [
+          "cần một người có thẻ đi kèm"
+        ]
+      }
+    },
+    {
+      "id": "he-70acf68f1284231fb88b8a2d",
+      "doc_key": [
+        "dc-09-huong-dan-cap-phat-va-thu-hoi-thiet-bi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "yêu cầu cấp phát thiết bị cho nhân sự mới"
+        ],
+        "condition": [
+          "trước ngày nhận việc ít nhất 2 ngày làm việc"
+        ],
+        "source": [
+          "bộ phận nhân sự"
+        ]
+      }
+    },
+    {
+      "id": "he-7130a4c4f3b8deae4e050653",
+      "doc_key": [
+        "ts-tk-0205-tong-dai-sip-alg.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "cuộc gọi thử"
+        ],
+        "symptom": [
+          "âm thanh hai chiều ổn định"
+        ],
+        "time": [
+          "5 phút"
+        ]
+      }
+    },
+    {
+      "id": "he-717501e944117032e83fa2a6",
+      "doc_key": [
+        "dv-02-postmortem-day-o-cung-cum-log.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "job dọn dẹp"
+        ],
+        "cause": [
+          "cron không được đưa vào ảnh máy chủ khi node log-01 được dựng lại ngày 05/09, nên job im lặng ngừng chạy 13 ngày"
+        ],
+        "condition": [
+          "chính sách vòng đời chỉ mục được đặt giữ 30 ngày"
+        ]
+      }
+    },
+    {
+      "id": "he-719034e30f87afc61b2b466e",
+      "doc_key": [
+        "dv-11-sop-trien-khai-ban-va-bao-mat-khan-cap.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "trưởng nhóm vận hành"
+        ],
+        "remediation": [
+          "đánh giá phạm vi ảnh hưởng, liệt kê máy chủ và dịch vụ liên quan"
+        ]
+      }
+    },
+    {
+      "id": "he-7352af650bb3d8226b3654b0",
+      "doc_key": [
+        "dv-05-runbook-xu-ly-node-k8s-notready.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "node Kubernetes"
+        ],
+        "cause": [
+          "đĩa của node đầy, thường do image cũ không dọn"
+        ],
+        "condition": [
+          "DiskPressure True"
+        ],
+        "remediation": [
+          "sudo crictl rmi --prune; df -h /var/lib/containerd"
+        ],
+        "source": [
+          "Runbook"
+        ]
+      }
+    },
+    {
+      "id": "he-74c6d4c497962563c0117664",
+      "doc_key": [
+        "dv-01-postmortem-web-khach-hang-sap-do-php-fpm-het-worker.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "cảnh báo hiện tại"
+        ],
+        "symptom": [
+          "đội trực biết có sự cố sau khi người dùng đã chịu lỗi"
+        ],
+        "cause": [
+          "chỉ theo dõi tỷ lệ lỗi ở tầng ngoài"
+        ]
+      }
+    },
+    {
+      "id": "he-7520c3197ca48769623ce3f3",
+      "doc_key": [
+        "dv-08-runbook-chuyen-doi-du-phong-keepalived.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "VIP"
+        ],
+        "cause": [
+          "virtual_router_id khác nhau giữa hai node, gói VRRP không nhận nhau"
+        ],
+        "condition": [
+          "VIP không chuyển"
+        ],
+        "source": [
+          "Runbook: chuyển đổi dự phòng keepalived khi node Master hỏng"
+        ]
+      }
+    },
+    {
+      "id": "he-7549f1413b0fef4458d2db19",
+      "doc_key": [
+        "dc-01-runbook-thay-o-cung-hong-may-chu-vat-ly.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "kỹ thuật viên"
+        ],
+        "condition": [
+          "trước khi rút ổ"
+        ],
+        "remediation": [
+          "đối chiếu số khay và đèn báo, bật đèn định vị nếu bộ điều khiển hỗ trợ"
+        ]
+      }
+    },
+    {
+      "id": "he-755779f173119ccfbd5babaa",
+      "doc_key": [
+        "dc-10-huong-dan-reset-mat-khau-tai-khoan-noi-bo.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "tài khoản có quyền quản trị"
+        ],
+        "symptom": [
+          "phát hiện phải xử lý trong ngày"
+        ],
+        "condition": [
+          "chưa bật xác thực hai lớp"
+        ],
+        "remediation": [
+          "xử lý trong ngày"
+        ]
+      }
+    },
+    {
+      "id": "he-76066de4c24ff97311089833",
+      "doc_key": [
+        "dc-04-sop-tiep-nhan-va-lap-dat-may-chu-moi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "máy chủ mới"
+        ],
+        "condition": [
+          "khi tiếp nhận"
+        ],
+        "remediation": [
+          "đối chiếu phiếu giao hàng với đơn đặt, kiểm tra số lượng và cấu hình; kiểm tra tình trạng thùng, chụp ảnh nếu có dấu hiệu va đập; ghi số sê ri từng máy vào sổ thiết bị trước khi mở thùng"
+        ],
+        "owner": [
+          "NV11"
+        ]
+      }
+    },
+    {
+      "id": "he-762590b64037731286b99d25",
+      "doc_key": [
+        "ts-tk-0160-pvc-terminating-finalizer.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "PVC"
+        ],
+        "symptom": [
+          "kẹt ở trạng thái Terminating mãi không biến mất"
+        ],
+        "cause": [
+          "Khách đã xóa ổ đĩa vật lý trước, sau đó mới chạy kubectl delete pvc; Kubernetes gọi API xóa đĩa nhận về 404 nên không gỡ cờ bảo vệ"
+        ],
+        "remediation": [
+          "Kiểm tra không còn pod nào đang dùng PVC; ép gỡ cờ bảo vệ bằng lệnh kubectl patch pvc <ten-pvc> -p '{\"metadata\":{\"finalizers\":null}}'"
+        ],
+        "source": [
+          "TICKET TS-2609-0160"
+        ],
+        "time": [
+          "30/09/2026 15:30"
+        ],
+        "owner": [
+          "NV24"
+        ]
+      }
+    },
+    {
+      "id": "he-769909dde5ab51633c654831",
+      "doc_key": [
+        "dc-09-huong-dan-cap-phat-va-thu-hoi-thiet-bi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "máy tính cấp phát"
+        ],
+        "remediation": [
+          "cài đặt theo ảnh máy chuẩn, đặt tên máy theo quy ước, tham gia miền"
+        ]
+      }
+    },
+    {
+      "id": "he-76a09bde5acd0d53d1070293",
+      "doc_key": [
+        "dc-01-runbook-thay-o-cung-hong-may-chu-vat-ly.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "kỹ thuật viên"
+        ],
+        "cause": [
+          "dễ rút nhầm ổ đang tốt"
+        ],
+        "condition": [
+          "ra phòng máy mà không có số khay"
+        ],
+        "remediation": [
+          "ghi lại số khay, số sê ri ổ và trạng thái mảng RAID trước khi ra phòng máy"
+        ]
+      }
+    },
+    {
+      "id": "he-76d8f707d3c39c2363bb1182",
+      "doc_key": [
+        "dv-10-runbook-xu-ly-canh-bao-ram-cpu.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "đồ thị RAM trên bảng theo dõi"
+        ],
+        "symptom": [
+          "báo RAM gần đầy nhưng phần dùng thật chỉ vài trăm MB"
+        ],
+        "cause": [
+          "bao gồm cả phần cache"
+        ],
+        "remediation": [
+          "chỉ số cần nhìn là phần used sau khi trừ buff/cache"
+        ]
+      }
+    },
+    {
+      "id": "he-7807987d02dd4602d9587104",
+      "doc_key": [
+        "dv-12-sop-quy-trinh-thay-doi-cau-hinh-ha-tang.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "phiếu thay đổi"
+        ],
+        "remediation": [
+          "phải có mô tả thay đổi và lý do, hệ thống bị ảnh hưởng và người dùng bị ảnh hưởng, các bước thực hiện, cách kiểm tra sau khi làm, đường lùi và thời gian cần để lùi, người thực hiện và người giám sát"
+        ]
+      }
+    },
+    {
+      "id": "he-789526fa541cb0defb4cdfba",
+      "doc_key": [
+        "dv-12-sop-quy-trinh-thay-doi-cau-hinh-ha-tang.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "phiếu thay đổi"
+        ],
+        "condition": [
+          "không đóng trong 7 ngày"
+        ],
+        "remediation": [
+          "vào danh sách nhắc hằng tuần"
+        ]
+      }
+    },
+    {
+      "id": "he-79a2b60be0ccd77771bda240",
+      "doc_key": [
+        "ts-tk-0201-vod-player-rieng-can-m3u8.md"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "khách hàng khachhang14.example"
+        ],
+        "symptom": [
+          "không dùng trình phát của dịch vụ mà tích hợp trình phát riêng vào ứng dụng"
+        ],
+        "remediation": [
+          "hướng dẫn lấy link video, thêm .json vào cuối đường dẫn để lấy dữ liệu mô tả, trong dữ liệu đó lấy đường dẫn m3u8 để đưa vào trình phát riêng"
+        ],
+        "time": [
+          "10/10/2026 09:45"
+        ],
+        "owner": [
+          "NV24"
+        ]
+      }
+    },
+    {
+      "id": "he-79d4e3f46c63bb9806dcb2dc",
+      "doc_key": [
+        "dv-03-postmortem-chung-chi-ssl-wildcard-het-han.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "bảng theo dõi hạn chứng chỉ dùng chung"
+        ],
+        "cause": [
+          "không có"
+        ]
+      }
+    },
+    {
+      "id": "he-7a29ca1feae640dd00922753",
+      "doc_key": [
+        "dc-03-runbook-kiem-tra-nhiet-do-phong-may.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "kiểm tra hằng ngày"
+        ],
+        "remediation": [
+          "Đi một vòng phòng máy, nghe tiếng quạt bất thường của các dàn lạnh."
+        ]
+      }
+    },
+    {
+      "id": "he-7a5aa4d98b3946fd8f68e357",
+      "doc_key": [
+        "ts-tk-0205-tong-dai-sip-alg.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "SIP ALG trên router"
+        ],
+        "cause": [
+          "sửa gói tin báo hiệu khi đi qua NAT, gây mất âm thanh và rớt cuộc gọi"
+        ],
+        "condition": [
+          "với hạ tầng tổng đài hiện tại"
+        ]
+      }
+    },
+    {
+      "id": "he-7a66b2cd7a827251fe5d847a",
+      "doc_key": [
+        "dv-01-postmortem-web-khach-hang-sap-do-php-fpm-het-worker.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "khachhang01.example"
+        ],
+        "symptom": [
+          "tỷ lệ 5xx về 0, đóng sự cố"
+        ],
+        "time": [
+          "10:01"
+        ]
+      }
+    },
+    {
+      "id": "he-7b21b916ea67f5ac8c3f4fd3",
+      "doc_key": [
+        "dv-11-sop-trien-khai-ban-va-bao-mat-khan-cap.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "phiếu"
+        ],
+        "remediation": [
+          "ghi thời điểm phát hiện, thời điểm vá xong sản xuất, và danh sách máy chủ đã vá"
+        ],
+        "source": [
+          "báo cáo bảo mật"
+        ],
+        "time": [
+          "hằng quý"
+        ]
+      }
+    },
+    {
+      "id": "he-7cff6ba605114a1b0af6d4ae",
+      "doc_key": [
+        "dv-11-sop-trien-khai-ban-va-bao-mat-khan-cap.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "lỗ hổng mức cao"
+        ],
+        "condition": [
+          "có khai thác công khai, ảnh hưởng hệ thống đang phục vụ khách hàng"
+        ],
+        "time": [
+          "đánh giá ảnh hưởng trong 24 giờ, vá staging trong 72 giờ, vá sản xuất trong 7 ngày"
+        ]
+      }
+    },
+    {
+      "id": "he-7d3e27fb4defa6112477e710",
+      "doc_key": [
+        "dc-07-huong-dan-xu-ly-wifi-van-phong-chap-chon.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "quá tải thiết bị"
+        ],
+        "remediation": [
+          "chuyển bớt máy sang băng tần 5 GHz hoặc chuyển máy bàn sang mạng dây"
+        ]
+      }
+    },
+    {
+      "id": "he-7da7ecde8a6c58398f6ac624",
+      "doc_key": [
+        "dv-01-postmortem-web-khach-hang-sap-do-php-fpm-het-worker.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "WAF"
+        ],
+        "remediation": [
+          "thêm rule chặn crawler ngoài allowlist"
+        ],
+        "time": [
+          "12/09"
+        ],
+        "owner": [
+          "NV05"
+        ]
+      }
+    },
+    {
+      "id": "he-7e4deefc3486572eafcbb10c",
+      "doc_key": [
+        "dv-05-runbook-xu-ly-node-k8s-notready.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "node Kubernetes"
+        ],
+        "condition": [
+          "Ready Unknown và không khôi phục trong 10 phút"
+        ],
+        "remediation": [
+          "kubectl cordon <ten-node>; kubectl drain <ten-node> --ignore-daemonsets --delete-emptydir-data"
+        ],
+        "source": [
+          "Runbook"
+        ]
+      }
+    },
+    {
+      "id": "he-7ea612a613e60d21b2f77ab6",
+      "doc_key": [
+        "ts-tk-0168-cdn-image-transform-404.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "tính năng chuyển đổi hình ảnh"
+        ],
+        "cause": [
+          "tham số trong đường dẫn không có tác dụng khi tính năng chưa bật"
+        ],
+        "condition": [
+          "tắt theo mặc định"
+        ]
+      }
+    },
+    {
+      "id": "he-7ffdd105d414e998a6624070",
+      "doc_key": [
+        "dv-10-runbook-xu-ly-canh-bao-ram-cpu.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "CPU"
+        ],
+        "symptom": [
+          "cảnh báo"
+        ],
+        "condition": [
+          "vượt 80% trong 10 phút"
+        ]
+      }
+    },
+    {
+      "id": "he-8030d55efd8e151d04758c11",
+      "doc_key": [
+        "dc-01-runbook-thay-o-cung-hong-may-chu-vat-ly.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "sổ thiết bị"
+        ],
+        "remediation": [
+          "ghi ngày thay, số sê ri ổ cũ và ổ mới, người thực hiện"
+        ]
+      }
+    },
+    {
+      "id": "he-803c3f8640e0f11d07ca73ae",
+      "doc_key": [
+        "ts-tk-0156-pvc-pending-zone-mismatch.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "ổ đĩa"
+        ],
+        "cause": [
+          "đã tạo cố định ở vùng HN1"
+        ],
+        "condition": [
+          "bộ lập lịch xếp pod sang máy chủ ở vùng HN2"
+        ],
+        "remediation": [
+          "đĩa vật lý không gắn xuyên vùng được"
+        ]
+      }
+    },
+    {
+      "id": "he-80dc75373aa97e91faa49623",
+      "doc_key": [
+        "ts-tk-0151-pvc-pending-accessmode-rwx.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "ổ Block Storage vật lý trên Cloud"
+        ],
+        "cause": [
+          "một đĩa cắm một máy"
+        ],
+        "condition": [
+          "chỉ hỗ trợ ReadWriteOnce"
+        ]
+      }
+    },
+    {
+      "id": "he-811b6c0414fb67df8b202edc",
+      "doc_key": [
+        "dv-05-runbook-xu-ly-node-k8s-notready.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "node Kubernetes"
+        ],
+        "source": [
+          "Runbook"
+        ],
+        "owner": [
+          "NV03"
+        ]
+      }
+    },
+    {
+      "id": "he-816d262658abcee819980345",
+      "doc_key": [
+        "ts-tk-0163-push-image-loi-500-het-quota.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "tài khoản khachhang06.example"
+        ],
+        "cause": [
+          "hết quota lưu trữ"
+        ],
+        "condition": [
+          "dung lượng đã dùng đạt 100%"
+        ]
+      }
+    },
+    {
+      "id": "he-821f38c27e0181fb39cb3667",
+      "doc_key": [
+        "ts-tk-0163-push-image-loi-500-het-quota.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "dịch vụ Container Registry"
+        ],
+        "symptom": [
+          "6 ticket cùng nguyên nhân hết quota"
+        ],
+        "condition": [
+          "trong quý này"
+        ]
+      }
+    },
+    {
+      "id": "he-842c43b5bef977ff4ada9303",
+      "doc_key": [
+        "dc-01-runbook-thay-o-cung-hong-may-chu-vat-ly.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "ổ hỏng"
+        ],
+        "remediation": [
+          "dán nhãn và bỏ vào thùng chờ hủy"
+        ]
+      }
+    },
+    {
+      "id": "he-84f543005bea577a2a0b100d",
+      "doc_key": [
+        "dv-04-postmortem-mat-ket-noi-db-sau-resize.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "Cloud Database"
+        ],
+        "symptom": [
+          "mất kết nối"
+        ],
+        "cause": [
+          "danh sách IP được phép chỉ có một trong hai địa chỉ"
+        ],
+        "time": [
+          "03/09/2026 từ 14:09 đến 14:43"
+        ]
+      }
+    },
+    {
+      "id": "he-853b8ac8119ec1251ed20fff",
+      "doc_key": [
+        "ts-tk-0147-waf-mode-con-o-phat-hien.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "WAF Mode"
+        ],
+        "condition": [
+          "ở Ngăn chặn"
+        ],
+        "remediation": [
+          "kiểm tra lại từ máy ngoài whitelist, nhận 403 đúng như mong đợi"
+        ]
+      }
+    },
+    {
+      "id": "he-85488734d434dd17b89ae813",
+      "doc_key": [
+        "ts-tk-0213-firewall-outbound-chan-stun.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "danh sách điểm cuối"
+        ],
+        "condition": [
+          "mỗi lần gửi phải kiểm tra bản mới nhất"
+        ],
+        "remediation": [
+          "chỉ gửi cho đầu mối kỹ thuật của khách, không đăng công khai"
+        ],
+        "source": [
+          "bảng tính chia sẻ"
+        ]
+      }
+    },
+    {
+      "id": "he-856efd561a519c0f1373af32",
+      "doc_key": [
+        "dc-03-runbook-kiem-tra-nhiet-do-phong-may.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "kiểm tra hằng ngày"
+        ],
+        "remediation": [
+          "Đọc số trên bảng theo dõi nhiệt độ, so với ngưỡng ở trên."
+        ]
+      }
+    },
+    {
+      "id": "he-85bcfdf0d78d2dff47760291",
+      "doc_key": [
+        "dv-11-sop-trien-khai-ban-va-bao-mat-khan-cap.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "triển khai bản vá"
+        ],
+        "remediation": [
+          "triển khai theo từng đợt, mỗi đợt không quá một phần ba số máy chủ, theo dõi 15 phút giữa hai đợt"
+        ]
+      }
+    },
+    {
+      "id": "he-873022079d5c759e99d0214d",
+      "doc_key": [
+        "dc-01-runbook-thay-o-cung-hong-may-chu-vat-ly.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "tồn kho ổ dự phòng"
+        ],
+        "condition": [
+          "khi còn dưới 3 ổ mỗi dòng"
+        ],
+        "remediation": [
+          "đặt mua thêm"
+        ]
+      }
+    },
+    {
+      "id": "he-88b2bf8968694d4f3b30b608",
+      "doc_key": [
+        "ts-tk-0238-keepalived-vip-khong-chuyen.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "node dự phòng"
+        ],
+        "symptom": [
+          "không nhận được địa chỉ ảo khi dừng dịch vụ trên node chính"
+        ],
+        "cause": [
+          "Allow Pair của node dự phòng chưa khai địa chỉ ảo"
+        ],
+        "remediation": [
+          "điền địa chỉ ảo vào Allow Pair của cả hai Network Interface"
+        ],
+        "source": [
+          "Ticket TS-2610-0238"
+        ],
+        "time": [
+          "19/10/2026 11:00"
+        ]
+      }
+    },
+    {
+      "id": "he-8a0950cc2202801fe1cf9eab",
+      "doc_key": [
+        "dv-14-sop-cap-quyen-truy-cap-ha-tang.md"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "quyền sản xuất"
+        ],
+        "condition": [
+          "tách khỏi quyền staging"
+        ],
+        "remediation": [
+          "Không có vai nào mặc định có cả hai"
+        ]
+      }
+    },
+    {
+      "id": "he-8c9548b263fa8fe0629ccb7d",
+      "doc_key": [
+        "dv-01-postmortem-web-khach-hang-sap-do-php-fpm-het-worker.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "worker PHP-FPM"
+        ],
+        "cause": [
+          "mỗi worker giữ kết nối lâu hơn 4 giây khi crawler quét"
+        ],
+        "condition": [
+          "40 worker bão hòa trong chưa đầy hai phút"
+        ]
+      }
+    },
+    {
+      "id": "he-8d4660bc4ec5a36b79c1c57d",
+      "doc_key": [
+        "dc-08-huong-dan-xu-ly-thiet-bi-phong-hop.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "bộ dây"
+        ],
+        "symptom": [
+          "thiếu"
+        ],
+        "cause": [
+          "lỗi hay gặp nhất trước giờ họp"
+        ]
+      }
+    },
+    {
+      "id": "he-8ee626c8ee70cb978308e1f1",
+      "doc_key": [
+        "dc-02-runbook-mat-dien-mot-pha-tu-rack.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "aptomat của tủ"
+        ],
+        "remediation": [
+          "kiểm tra aptomat của tủ, xác nhận đã nhảy hay chưa. Không đóng lại aptomat quá một lần khi chưa biết nguyên nhân"
+        ]
+      }
+    },
+    {
+      "id": "he-8ff407413eecee933ff98118",
+      "doc_key": [
+        "dv-07-runbook-backup-va-khoi-phuc-cloud-database.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "db-prod-02"
+        ],
+        "remediation": [
+          "sao lưu, giữ 14 ngày, lưu tại Object Storage bucket backup-prod"
+        ],
+        "time": [
+          "hằng ngày 01:30"
+        ]
+      }
+    },
+    {
+      "id": "he-8ff68a77f57721f73ac9d1aa",
+      "doc_key": [
+        "dc-06-huong-dan-xu-ly-may-in-khong-in-duoc.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "máy in"
+        ],
+        "symptom": [
+          "in sai khổ giấy"
+        ],
+        "cause": [
+          "khay giấy đặt sai khổ"
+        ],
+        "remediation": [
+          "chỉnh khay và cấu hình in"
+        ]
+      }
+    },
+    {
+      "id": "he-90d90b86a9eb22d1e3eeca57",
+      "doc_key": [
+        "ts-tk-0209-tong-dai-jitter-duong-truyen.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "cuộc gọi"
+        ],
+        "symptom": [
+          "không còn báo rớt cuộc gọi"
+        ],
+        "time": [
+          "sau ba ngày theo dõi"
+        ]
+      }
+    },
+    {
+      "id": "he-91234576ad8da7e59d15116b",
+      "doc_key": [
+        "dc-02-runbook-mat-dien-mot-pha-tu-rack.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "thiết bị trong tủ"
+        ],
+        "cause": [
+          "gây quá tải"
+        ],
+        "remediation": [
+          "rút thiết bị đó ra khỏi đường cấp và ghi phiếu sự cố"
+        ]
+      }
+    },
+    {
+      "id": "he-91393bf22bf73c1eb54c4e4e",
+      "doc_key": [
+        "ts-tk-0175-clouddb-khong-ping-duoc.md"
+      ],
+      "khoa": "khach_hang_a:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "trang quản trị của instance Cloud Database"
+        ],
+        "remediation": [
+          "nên đưa dòng lưu ý về mô hình kết nối lên đầu trang quản trị"
+        ],
+        "source": [
+          "ticket TS-2610-0175"
+        ]
+      }
+    },
+    {
+      "id": "he-915e9ff6d6d77a5b2436286d",
+      "doc_key": [
+        "dc-05-sop-quan-ly-ra-vao-phong-may.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "người vào phòng máy"
+        ],
+        "remediation": [
+          "đăng ký vào sổ ra vào, ghi tên, bộ phận, lý do, thời điểm vào"
+        ]
+      }
+    },
+    {
+      "id": "he-91c5fe52778d6af3fa3855fc",
+      "doc_key": [
+        "ts-tk-0192-mongodb-tls-13.md"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "chứng chỉ máy chủ và chứng chỉ gốc"
+        ],
+        "remediation": [
+          "cung cấp cho bộ phận dịch vụ"
+        ],
+        "owner": [
+          "khách hàng"
+        ]
+      }
+    },
+    {
+      "id": "he-929ad4d237c38f5c469aa0e2",
+      "doc_key": [
+        "ts-tk-0172-mat-ket-noi-db-sau-resize.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "Cloud Database"
+        ],
+        "symptom": [
+          "không kết nối được"
+        ],
+        "cause": [
+          "định tuyến bất đối xứng"
+        ],
+        "condition": [
+          "sau khi resize máy chủ ứng dụng"
+        ],
+        "remediation": [
+          "đặt lại độ ưu tiên định tuyến, ghim vĩnh viễn bằng route-metric trong /etc/netplan/50-cloud-init.yaml rồi netplan apply, rà lại danh sách IP được phép trên Dashboard, xóa rule cũ của Internet Gateway"
+        ],
+        "source": [
+          "ticket TS-2610-0172"
+        ],
+        "time": [
+          "03/10/2026 14:07 đến 15:22"
+        ],
+        "owner": [
+          "NV24"
+        ]
+      }
+    },
+    {
+      "id": "he-93d5f78ede9c9f249f0be795",
+      "doc_key": [
+        "dc-05-sop-quan-ly-ra-vao-phong-may.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "người vào phòng máy"
+        ],
+        "remediation": [
+          "quẹt thẻ tại cửa, không đi theo người khác qua cửa đã mở"
+        ]
+      }
+    },
+    {
+      "id": "he-95290055014183bf03eeaf8c",
+      "doc_key": [
+        "dc-07-huong-dan-xu-ly-wifi-van-phong-chap-chon.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "tín hiệu Wi-Fi"
+        ],
+        "symptom": [
+          "yếu"
+        ],
+        "condition": [
+          "dưới âm 70 dBm"
+        ]
+      }
+    },
+    {
+      "id": "he-95e78a16aa27cdedbc7989e4",
+      "doc_key": [
+        "dv-05-runbook-xu-ly-node-k8s-notready.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "node Kubernetes"
+        ],
+        "condition": [
+          "MemoryPressure True và node là stateless"
+        ],
+        "remediation": [
+          "recycle node cho nhanh thay vì sửa tại chỗ"
+        ],
+        "source": [
+          "Runbook"
+        ]
+      }
+    },
+    {
+      "id": "he-961de8b5afded4a172ee4f06",
+      "doc_key": [
+        "dc-03-runbook-kiem-tra-nhiet-do-phong-may.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "luồng khí ra của tủ"
+        ],
+        "condition": [
+          "cảnh báo"
+        ],
+        "time": [
+          "trên 45 độ C"
+        ]
+      }
+    },
+    {
+      "id": "he-967b87d3c5cd3218497b2493",
+      "doc_key": [
+        "dc-09-huong-dan-cap-phat-va-thu-hoi-thiet-bi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "thiết bị cấp cho lập trình viên"
+        ],
+        "condition": [
+          "theo cấu hình chuẩn"
+        ],
+        "remediation": [
+          "máy xách tay 16 GB RAM, 1 màn hình 24 inch, chuột, bàn phím, đế tản nhiệt"
+        ]
+      }
+    },
+    {
+      "id": "he-96d38f5597716c2a16f800f0",
+      "doc_key": [
+        "dc-09-huong-dan-cap-phat-va-thu-hoi-thiet-bi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "thiết bị cấp cho văn phòng"
+        ],
+        "condition": [
+          "theo cấu hình chuẩn"
+        ],
+        "remediation": [
+          "máy xách tay 8 GB RAM, 1 màn hình 22 inch, chuột, bàn phím"
+        ]
+      }
+    },
+    {
+      "id": "he-97bcc88e859dddf1a9fe6266",
+      "doc_key": [
+        "dv-13-sop-xoay-vong-khoa-truy-cap-object-storage.md"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "cặp khóa truy cập"
+        ],
+        "remediation": [
+          "Tạo cặp khóa mới, chưa xóa khóa cũ."
+        ]
+      }
+    },
+    {
+      "id": "he-98b0e42f3628af375f599ae4",
+      "doc_key": [
+        "ts-tk-0147-waf-mode-con-o-phat-hien.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "WAF Mode"
+        ],
+        "cause": [
+          "chỉ ghi log, không chặn lưu lượng"
+        ],
+        "condition": [
+          "ở Phát hiện"
+        ],
+        "remediation": [
+          "chuyển sang Ngăn chặn để rule có hiệu lực"
+        ]
+      }
+    },
+    {
+      "id": "he-9958bc6b0666493480e8460a",
+      "doc_key": [
+        "dv-08-runbook-chuyen-doi-du-phong-keepalived.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "VIP"
+        ],
+        "condition": [
+          "mặc định khi Master khôi phục"
+        ],
+        "remediation": [
+          "VIP quay lại Master"
+        ],
+        "source": [
+          "Runbook: chuyển đổi dự phòng keepalived khi node Master hỏng"
+        ]
+      }
+    },
+    {
+      "id": "he-9a2ce0274924d96b07ad40f7",
+      "doc_key": [
+        "ts-tk-0163-push-image-loi-500-het-quota.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "dịch vụ Container Registry"
+        ],
+        "cause": [
+          "thông điệp lỗi trả về 500 thay vì báo hết quota"
+        ],
+        "remediation": [
+          "đổi thành 413 kèm thông điệp rõ"
+        ],
+        "owner": [
+          "đội phát triển"
+        ]
+      }
+    },
+    {
+      "id": "he-9a46d72abc108536502ea215",
+      "doc_key": [
+        "dc-02-runbook-mat-dien-mot-pha-tu-rack.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "pha còn lại"
+        ],
+        "condition": [
+          "dòng điện vượt 70% định mức"
+        ],
+        "remediation": [
+          "chuyển bớt tải sang tủ khác trước khi làm gì tiếp"
+        ]
+      }
+    },
+    {
+      "id": "he-9c0f51f89d707b31cbd505ec",
+      "doc_key": [
+        "dv-11-sop-trien-khai-ban-va-bao-mat-khan-cap.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "người phát hiện"
+        ],
+        "remediation": [
+          "mở phiếu sự cố bảo mật, gán mức và ghi nguồn công bố"
+        ]
+      }
+    },
+    {
+      "id": "he-9c651f40630a2738bc9a371c",
+      "doc_key": [
+        "dc-03-runbook-kiem-tra-nhiet-do-phong-may.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "quyết định tắt máy"
+        ],
+        "condition": [
+          "trong lúc nhiệt độ đang tăng"
+        ],
+        "remediation": [
+          "là quyết định tồi"
+        ]
+      }
+    },
+    {
+      "id": "he-9cd9e42f7820840220e8e5c3",
+      "doc_key": [
+        "dv-15-huong-dan-doc-log-nginx-bang-goaccess.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "một đường dẫn"
+        ],
+        "symptom": [
+          "dấu hiệu bị quét"
+        ],
+        "condition": [
+          "chiếm quá nửa lượng truy cập"
+        ]
+      }
+    },
+    {
+      "id": "he-9d42cb1dac84d6e9105a7b37",
+      "doc_key": [
+        "dv-07-runbook-backup-va-khoi-phuc-cloud-database.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "instance mới"
+        ],
+        "remediation": [
+          "cập nhật danh sách IP được phép, ứng dụng sẽ không kết nối được nếu bỏ bước này"
+        ]
+      }
+    },
+    {
+      "id": "he-9ef73b66744423a9344d6d0b",
+      "doc_key": [
+        "ts-tk-0163-push-image-loi-500-het-quota.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "khách hàng khachhang06.example"
+        ],
+        "remediation": [
+          "đặt chính sách giữ 20 tag gần nhất mỗi repo, và chỉ đẩy image cho nhánh chính"
+        ]
+      }
+    },
+    {
+      "id": "he-9ef8e11c5a718713e1f56ee9",
+      "doc_key": [
+        "dc-04-sop-tiep-nhan-va-lap-dat-may-chu-moi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "máy chưa vào cơ sở dữ liệu cấu hình"
+        ],
+        "symptom": [
+          "không ai tìm được nó nằm ở tủ nào"
+        ],
+        "cause": [
+          "coi như không tồn tại"
+        ],
+        "condition": [
+          "khi có sự cố"
+        ],
+        "owner": [
+          "NV11"
+        ]
+      }
+    },
+    {
+      "id": "he-a188380716719d04c01689f8",
+      "doc_key": [
+        "ts-tk-0156-pvc-pending-zone-mismatch.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "pod"
+        ],
+        "remediation": [
+          "xác nhận pod lên Running"
+        ]
+      }
+    },
+    {
+      "id": "he-a2351ef5c37b7d4bede515d0",
+      "doc_key": [
+        "dv-10-runbook-xu-ly-canh-bao-ram-cpu.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "runbook"
+        ],
+        "owner": [
+          "NV03"
+        ]
+      }
+    },
+    {
+      "id": "he-a2bb4649337e5f30fdffb06c",
+      "doc_key": [
+        "dc-03-runbook-kiem-tra-nhiet-do-phong-may.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "vượt ngưỡng cục bộ"
+        ],
+        "cause": [
+          "bịt kín khe trống trong tủ chưa đúng, hoặc một máy chủ có quạt hỏng"
+        ]
+      }
+    },
+    {
+      "id": "he-a348c9ae0cb150dd44c6ec89",
+      "doc_key": [
+        "ts-tk-0230-iptables-thu-tu-rule.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "tài liệu hướng dẫn iptables"
+        ],
+        "remediation": [
+          "bổ sung phần thứ tự quy tắc vào đầu tài liệu hướng dẫn"
+        ],
+        "source": [
+          "ghi chú nội bộ"
+        ]
+      }
+    },
+    {
+      "id": "he-a36bd9efe246c024e0bf02cd",
+      "doc_key": [
+        "dv-14-sop-cap-quyen-truy-cap-ha-tang.md"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "sổ quyền"
+        ],
+        "condition": [
+          "hằng quý"
+        ],
+        "remediation": [
+          "Rà soát, đối chiếu với danh sách nhân sự đang làm việc"
+        ]
+      }
+    },
+    {
+      "id": "he-a3bb2e8bbe47d9d95589afaa",
+      "doc_key": [
+        "dv-03-postmortem-chung-chi-ssl-wildcard-het-han.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "NV05"
+        ],
+        "symptom": [
+          "xác nhận chứng chỉ hết hạn trên cả WAF và load balancer"
+        ],
+        "time": [
+          "07:25"
+        ]
+      }
+    },
+    {
+      "id": "he-a4750c8ac24b13121e7bfde7",
+      "doc_key": [
+        "dc-02-runbook-mat-dien-mot-pha-tu-rack.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "phiếu sự cố"
+        ],
+        "remediation": [
+          "ghi phiếu gồm thời điểm mất, thời điểm khôi phục, danh sách máy chủ bị ảnh hưởng và số máy chỉ có một nguồn"
+        ]
+      }
+    },
+    {
+      "id": "he-a4be653da96bf0a7308daad1",
+      "doc_key": [
+        "ts-tk-0172-mat-ket-noi-db-sau-resize.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "Cloud Database"
+        ],
+        "condition": [
+          "chỉ mở đúng cổng dịch vụ, không cho SSH và không ping được"
+        ],
+        "remediation": [
+          "không nên kết luận dịch vụ chết vì ping không thông"
+        ],
+        "source": [
+          "ghi chú nội bộ ticket TS-2610-0172"
+        ]
+      }
+    },
+    {
+      "id": "he-a62f83a96e2023debc08ba1e",
+      "doc_key": [
+        "dv-13-sop-xoay-vong-khoa-truy-cap-object-storage.md"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "dịch vụ"
+        ],
+        "remediation": [
+          "Khởi động lại dịch vụ theo từng đợt, xác nhận đọc ghi bình thường."
+        ]
+      }
+    },
+    {
+      "id": "he-a63e4cc0f1cf051a4797a512",
+      "doc_key": [
+        "dv-10-runbook-xu-ly-canh-bao-ram-cpu.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "CPU cao"
+        ],
+        "remediation": [
+          "tìm tiến trình chiếm CPU bằng top -b -n 1 | head -20 và pidstat -u 1 5"
+        ]
+      }
+    },
+    {
+      "id": "he-a7f07c84a96aab7035f7361e",
+      "doc_key": [
+        "ts-tk-0209-tong-dai-jitter-duong-truyen.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "thiết bị tổng đài"
+        ],
+        "symptom": [
+          "jitter giảm còn 21 ms"
+        ],
+        "remediation": [
+          "chuyển từ Wi-Fi sang mạng dây"
+        ]
+      }
+    },
+    {
+      "id": "he-a922e77416c4a47b503e40b3",
+      "doc_key": [
+        "ts-tk-0221-tai-khoan-quan-tri-chua-bat-2fa.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "1 tài khoản chưa bật"
+        ],
+        "condition": [
+          "thuộc nhân sự đang nghỉ phép"
+        ],
+        "time": [
+          "sau hai ngày"
+        ]
+      }
+    },
+    {
+      "id": "he-a95c60c3a8974fbae7223899",
+      "doc_key": [
+        "ts-tk-0226-iptables-khoa-ssh.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "khách hàng khachhang19.example"
+        ],
+        "symptom": [
+          "mất kết nối SSH vào máy chủ và không vào lại được"
+        ],
+        "cause": [
+          "đặt chính sách mặc định của chuỗi INPUT thành DROP trước khi thêm quy tắc cho phép cổng SSH"
+        ],
+        "remediation": [
+          "dùng bảng điều khiển từ xa của Cloud Server để vào máy, thêm quy tắc cho phép cổng SSH và cho phép kết nối đã thiết lập, xác nhận SSH vào lại được, sau đó lưu quy tắc"
+        ],
+        "time": [
+          "16/10/2026 16:45"
+        ],
+        "owner": [
+          "NV22"
+        ]
+      }
+    },
+    {
+      "id": "he-a9833cdb81b1330e0b5ea822",
+      "doc_key": [
+        "dv-04-postmortem-mat-ket-noi-db-sau-resize.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "14 máy chủ khác có hai interface"
+        ],
+        "symptom": [
+          "3 máy có cùng lỗi"
+        ],
+        "remediation": [
+          "rà soát"
+        ],
+        "time": [
+          "hạn 20/09"
+        ],
+        "owner": [
+          "NV08"
+        ]
+      }
+    },
+    {
+      "id": "he-a99461a31a5ae27e83504bfb",
+      "doc_key": [
+        "ts-tk-0209-tong-dai-jitter-duong-truyen.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "đường truyền tại văn phòng khách"
+        ],
+        "symptom": [
+          "jitter 62 ms"
+        ],
+        "cause": [
+          "jitter cao vào giờ cao điểm"
+        ],
+        "condition": [
+          "vào giờ cao điểm"
+        ]
+      }
+    },
+    {
+      "id": "he-a99ebe35156efda852a6d3de",
+      "doc_key": [
+        "dv-03-postmortem-chung-chi-ssl-wildcard-het-han.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "lịch nhắc gia hạn"
+        ],
+        "cause": [
+          "đặt trong lịch cá nhân của một nhân sự đã chuyển bộ phận tháng 07"
+        ]
+      }
+    },
+    {
+      "id": "he-aa8176eb9fc8c0844e305467",
+      "doc_key": [
+        "ts-tk-0151-pvc-pending-accessmode-rwx.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "PVC"
+        ],
+        "cause": [
+          "manifest khai accessModes: [\"ReadWriteMany\"]"
+        ],
+        "condition": [
+          "khách muốn ba pod cùng đọc ghi một ổ"
+        ]
+      }
+    },
+    {
+      "id": "he-aaebdb536cc71454791c8d12",
+      "doc_key": [
+        "dv-07-runbook-backup-va-khoi-phuc-cloud-database.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "diễn tập khôi phục gần nhất"
+        ],
+        "symptom": [
+          "mất 1 giờ 40 phút"
+        ],
+        "time": [
+          "12/08/2026"
+        ]
+      }
+    },
+    {
+      "id": "he-ab1d1dacbf5a1737f101f630",
+      "doc_key": [
+        "dc-05-sop-quan-ly-ra-vao-phong-may.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "nhà thầu, đơn vị bảo trì"
+        ],
+        "condition": [
+          "đăng ký trước 1 ngày, có danh sách tên"
+        ],
+        "remediation": [
+          "cần một người có thẻ đi kèm suốt thời gian"
+        ]
+      }
+    },
+    {
+      "id": "he-ab8945299f3e1e779e5b05e2",
+      "doc_key": [
+        "dc-03-runbook-kiem-tra-nhiet-do-phong-may.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "luồng khí ra của tủ"
+        ],
+        "condition": [
+          "nghiêm trọng"
+        ],
+        "time": [
+          "trên 50 độ C"
+        ]
+      }
+    },
+    {
+      "id": "he-ac2f4361b017ede7e9645573",
+      "doc_key": [
+        "dc-05-sop-quan-ly-ra-vao-phong-may.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "nhân sự vận hành có thẻ"
+        ],
+        "condition": [
+          "có phiếu công việc"
+        ],
+        "remediation": [
+          "không cần người đi kèm"
+        ]
+      }
+    },
+    {
+      "id": "he-ac4c4aff59797307bc97eaa0",
+      "doc_key": [
+        "ts-tk-0188-public-endpoint-khong-ho-tro-tls.md"
+      ],
+      "khoa": "khach_hang_a:known_issue",
+      "slots": {
+        "subject": [
+          "khách hàng"
+        ],
+        "remediation": [
+          "đổi chuỗi kết nối và kiểm tra bắt tay TLS thành công"
+        ]
+      }
+    },
+    {
+      "id": "he-ad0a5517aae830b5885af276",
+      "doc_key": [
+        "dv-01-postmortem-web-khach-hang-sap-do-php-fpm-het-worker.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "trang tìm kiếm"
+        ],
+        "remediation": [
+          "thêm cache 60 giây"
+        ],
+        "time": [
+          "20/09"
+        ],
+        "owner": [
+          "NV07"
+        ]
+      }
+    },
+    {
+      "id": "he-ad1083ab588d067dba622029",
+      "doc_key": [
+        "ts-tk-0163-push-image-loi-500-het-quota.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "Container Registry"
+        ],
+        "symptom": [
+          "push image lên registry trả 500 Internal Server Error"
+        ],
+        "time": [
+          "01/10/2026 09:50"
+        ],
+        "owner": [
+          "NV21"
+        ]
+      }
+    },
+    {
+      "id": "he-addcaca3104e132d637f2375",
+      "doc_key": [
+        "dc-03-runbook-kiem-tra-nhiet-do-phong-may.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "luồng khí ra của tủ"
+        ],
+        "condition": [
+          "bình thường"
+        ],
+        "time": [
+          "dưới 40 độ C"
+        ]
+      }
+    },
+    {
+      "id": "he-aed00ab3a12bdf3204fe0ae9",
+      "doc_key": [
+        "dc-09-huong-dan-cap-phat-va-thu-hoi-thiet-bi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "cài lại hệ điều hành"
+        ],
+        "symptom": [
+          "không xóa hết dữ liệu cũ"
+        ],
+        "remediation": [
+          "xóa an toàn ổ cứng"
+        ]
+      }
+    },
+    {
+      "id": "he-aef6cb51bc79f902de3ed1e9",
+      "doc_key": [
+        "dc-04-sop-tiep-nhan-va-lap-dat-may-chu-moi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "máy chủ"
+        ],
+        "condition": [
+          "khi đấu nguồn"
+        ],
+        "remediation": [
+          "đấu hai nguồn vào hai đường cấp khác nhau; nếu chỉ đấu một nguồn phải ghi lý do vào phiếu"
+        ],
+        "owner": [
+          "NV11"
+        ]
+      }
+    },
+    {
+      "id": "he-af65e89fbdf3c4cb4c195eac",
+      "doc_key": [
+        "dv-02-postmortem-day-o-cung-cum-log.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "volume"
+        ],
+        "remediation": [
+          "mở rộng thêm 500 GB"
+        ],
+        "time": [
+          "09:22"
+        ]
+      }
+    },
+    {
+      "id": "he-b01e0f3cdfc7df80b10f563e",
+      "doc_key": [
+        "dc-06-huong-dan-xu-ly-may-in-khong-in-duoc.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "máy in"
+        ],
+        "symptom": [
+          "in ra giấy trắng"
+        ],
+        "cause": [
+          "hết mực nhưng máy không báo"
+        ],
+        "remediation": [
+          "thay hộp mực"
+        ]
+      }
+    },
+    {
+      "id": "he-b0739f1d40aace8764d8aef6",
+      "doc_key": [
+        "dv-10-runbook-xu-ly-canh-bao-ram-cpu.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "tiến trình hệ thống"
+        ],
+        "condition": [
+          "chiếm CPU cao"
+        ],
+        "remediation": [
+          "kiểm tra job định kỳ có trùng giờ không"
+        ]
+      }
+    },
+    {
+      "id": "he-b0b44a7101039129f7c4ead6",
+      "doc_key": [
+        "dv-01-postmortem-web-khach-hang-sap-do-php-fpm-het-worker.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "PHP-FPM"
+        ],
+        "symptom": [
+          "đạt trần pm.max_children = 40, hàng đợi listen đầy"
+        ],
+        "time": [
+          "09:26"
+        ]
+      }
+    },
+    {
+      "id": "he-b0fe9ee124945d3f30805310",
+      "doc_key": [
+        "dc-07-huong-dan-xu-ly-wifi-van-phong-chap-chon.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "bộ phát Wi-Fi"
+        ],
+        "symptom": [
+          "quá tải"
+        ],
+        "condition": [
+          "số thiết bị kết nối vượt quá 50"
+        ]
+      }
+    },
+    {
+      "id": "he-b12aed3f0798b1fc41cfa85d",
+      "doc_key": [
+        "dv-06-runbook-mo-rong-volume-cho-node.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "phân vùng"
+        ],
+        "condition": [
+          "nếu không dùng LVM"
+        ],
+        "remediation": [
+          "mở rộng phân vùng rồi hệ thống tệp: `sudo growpart /dev/vdb 1`, `sudo resize2fs /dev/vdb1`"
+        ]
+      }
+    },
+    {
+      "id": "he-b13debdf4cd4d546a4c55df4",
+      "doc_key": [
+        "dv-09-runbook-don-dep-image-registry.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "CI"
+        ],
+        "condition": [
+          "chỉ đẩy image cho nhánh chính và nhánh phát hành"
+        ],
+        "remediation": [
+          "không đẩy cho mọi commit"
+        ],
+        "owner": [
+          "NV08"
+        ]
+      }
+    },
+    {
+      "id": "he-b15d7b1c1ba431e5093a1c9c",
+      "doc_key": [
+        "dc-03-runbook-kiem-tra-nhiet-do-phong-may.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "độ ẩm phòng"
+        ],
+        "condition": [
+          "cảnh báo"
+        ],
+        "time": [
+          "dưới 30% hoặc trên 70%"
+        ]
+      }
+    },
+    {
+      "id": "he-b186ceedec2056e50b069ed7",
+      "doc_key": [
+        "ts-tk-0221-tai-khoan-quan-tri-chua-bat-2fa.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "khachhang18.example"
+        ],
+        "symptom": [
+          "11 trên 42 tài khoản chưa bật xác thực hai lớp, trong đó có 2 tài khoản quản trị"
+        ],
+        "time": [
+          "15/10/2026 13:20"
+        ],
+        "owner": [
+          "NV21"
+        ]
+      }
+    },
+    {
+      "id": "he-b3ffa52bce106ab32b6b4710",
+      "doc_key": [
+        "dv-15-huong-dan-doc-log-nginx-bang-goaccess.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "một dải địa chỉ"
+        ],
+        "condition": [
+          "chiếm phần lớn"
+        ],
+        "remediation": [
+          "cân nhắc chặn tại WAF"
+        ]
+      }
+    },
+    {
+      "id": "he-b4c158fb34cebc7a92227fdd",
+      "doc_key": [
+        "dv-13-sop-xoay-vong-khoa-truy-cap-object-storage.md"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "khóa chỉ đọc cho CDN"
+        ],
+        "condition": [
+          "chu kỳ 365 ngày"
+        ],
+        "owner": [
+          "chủ dịch vụ"
+        ]
+      }
+    },
+    {
+      "id": "he-b4cd5f35b29e0771709f5b3d",
+      "doc_key": [
+        "ts-tk-0160-pvc-terminating-finalizer.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "đĩa vật lý"
+        ],
+        "cause": [
+          "gỡ cờ sẽ để lại đĩa mồ côi tính tiền mà không ai dùng"
+        ],
+        "condition": [
+          "còn tồn tại"
+        ],
+        "remediation": [
+          "phải kiểm tra trước khi hướng dẫn khách"
+        ],
+        "source": [
+          "Ghi chú nội bộ"
+        ]
+      }
+    },
+    {
+      "id": "he-b65f193c417103d0f2c26aa3",
+      "doc_key": [
+        "dv-02-postmortem-day-o-cung-cum-log.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "NV04"
+        ],
+        "symptom": [
+          "thấy đĩa 100% và chỉ mục chuyển read_only_allow_delete"
+        ],
+        "time": [
+          "06:10"
+        ]
+      }
+    },
+    {
+      "id": "he-b72cd5495af16cf032838c54",
+      "doc_key": [
+        "dv-01-postmortem-web-khach-hang-sap-do-php-fpm-het-worker.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "PHP-FPM"
+        ],
+        "remediation": [
+          "nâng pm.max_children lên 80, reload PHP-FPM"
+        ],
+        "time": [
+          "09:55"
+        ]
+      }
+    },
+    {
+      "id": "he-b7ac952ed38165946b0aee0b",
+      "doc_key": [
+        "ts-tk-0201-vod-player-rieng-can-m3u8.md"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "trình phát riêng"
+        ],
+        "symptom": [
+          "không phát được video"
+        ],
+        "condition": [
+          "video đã mã hóa bảo vệ nội dung"
+        ],
+        "remediation": [
+          "phải tắt mã hóa cho video đó, đánh đổi bằng việc mất lớp bảo vệ"
+        ]
+      }
+    },
+    {
+      "id": "he-b7ad0211c2b7207c2cac88dd",
+      "doc_key": [
+        "dc-09-huong-dan-cap-phat-va-thu-hoi-thiet-bi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "sổ thiết bị"
+        ],
+        "remediation": [
+          "cập nhật sổ thiết bị, gán thiết bị cho người nhận"
+        ]
+      }
+    },
+    {
+      "id": "he-b84b5ac2725bdfe52b5bce9c",
+      "doc_key": [
+        "dc-09-huong-dan-cap-phat-va-thu-hoi-thiet-bi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "thiết bị hỏng hoặc thiếu"
+        ],
+        "remediation": [
+          "ghi vào biên bản, chuyển cho bộ phận nhân sự xử lý"
+        ]
+      }
+    },
+    {
+      "id": "he-b87b81687f65eb38be2e6aba",
+      "doc_key": [
+        "dc-09-huong-dan-cap-phat-va-thu-hoi-thiet-bi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "dữ liệu công việc"
+        ],
+        "condition": [
+          "theo yêu cầu của trưởng bộ phận"
+        ],
+        "remediation": [
+          "sao lưu dữ liệu, sau đó xóa dữ liệu và cài lại máy"
+        ]
+      }
+    },
+    {
+      "id": "he-b8bb94943b565b91a3bb7b6b",
+      "doc_key": [
+        "dc-10-huong-dan-reset-mat-khau-tai-khoan-noi-bo.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "tài khoản có quyền quản trị"
+        ],
+        "condition": [
+          "khi đặt lại mật khẩu"
+        ],
+        "remediation": [
+          "phải có phê duyệt của trưởng bộ phận công nghệ thông tin, không chấp nhận phê duyệt miệng; kiểm tra lại xác thực hai lớp còn hoạt động"
+        ]
+      }
+    },
+    {
+      "id": "he-b8ccca3b795cdf863d11e2ad",
+      "doc_key": [
+        "dc-08-huong-dan-xu-ly-thiet-bi-phong-hop.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "màn hình"
+        ],
+        "symptom": [
+          "không hiện hình"
+        ],
+        "remediation": [
+          "kiểm tra màn hình đang ở đúng cổng vào, đổi dây HDMI khác, bấm phím chuyển màn hình và chọn chế độ mở rộng hoặc nhân bản"
+        ]
+      }
+    },
+    {
+      "id": "he-b8efca893f72e1b3c7166602",
+      "doc_key": [
+        "ts-tk-0188-public-endpoint-khong-ho-tro-tls.md"
+      ],
+      "khoa": "khach_hang_a:known_issue",
+      "slots": {
+        "subject": [
+          "yêu cầu bật TLS"
+        ],
+        "remediation": [
+          "chuyển sang bộ phận dịch vụ để cấu hình phía hạ tầng"
+        ],
+        "owner": [
+          "bộ phận dịch vụ"
+        ]
+      }
+    },
+    {
+      "id": "he-b969edc2adb6916bfb828745",
+      "doc_key": [
+        "dv-14-sop-cap-quyen-truy-cap-ha-tang.md"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "lịch nhắc và tri thức vận hành"
+        ],
+        "symptom": [
+          "sẽ mất khi người đó rời đi"
+        ],
+        "condition": [
+          "đặt trong tài khoản cá nhân"
+        ],
+        "remediation": [
+          "Mọi thứ có tính vận hành phải nằm trong bảng dùng chung"
+        ]
+      }
+    },
+    {
+      "id": "he-b9cf5d85554c62e8b8b9d0bd",
+      "doc_key": [
+        "dv-15-huong-dan-doc-log-nginx-bang-goaccess.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "báo cáo HTML của GoAccess"
+        ],
+        "condition": [
+          "chứa địa chỉ IP của người dùng thật"
+        ],
+        "remediation": [
+          "không đính kèm vào phiếu gửi ra ngoài bộ phận, chỉ gửi phần tổng hợp"
+        ]
+      }
+    },
+    {
+      "id": "he-ba0d7841b36a239dac135104",
+      "doc_key": [
+        "dv-12-sop-quy-trinh-thay-doi-cau-hinh-ha-tang.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "thay đổi loại Có rủi ro"
+        ],
+        "condition": [
+          "ví dụ đổi quy tắc tường lửa, nâng phiên bản dịch vụ"
+        ],
+        "time": [
+          "22:00 tới 02:00"
+        ],
+        "owner": [
+          "trưởng bộ phận"
+        ]
+      }
+    },
+    {
+      "id": "he-ba0e83da9477f6732b8095d0",
+      "doc_key": [
+        "dc-03-runbook-kiem-tra-nhiet-do-phong-may.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "kiểm tra hằng ngày"
+        ],
+        "remediation": [
+          "Kiểm tra không có tủ nào bị chắn luồng khí bởi thùng carton hoặc thiết bị để tạm."
+        ]
+      }
+    },
+    {
+      "id": "he-ba903a374eab021a9fee8d44",
+      "doc_key": [
+        "ts-tk-0168-cdn-image-transform-404.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "khachhang07.example"
+        ],
+        "symptom": [
+          "truy cập link ảnh sau chuyển đổi nhận về 404"
+        ],
+        "cause": [
+          "tính năng chuyển đổi hình ảnh chưa bật"
+        ],
+        "condition": [
+          "chèn tham số chuyển đổi hình ảnh theo đúng tài liệu"
+        ],
+        "remediation": [
+          "bật chuyển đổi hình ảnh trong trang quản trị CDN"
+        ],
+        "source": [
+          "ticket TS-2610-0168"
+        ],
+        "time": [
+          "02/10/2026 13:15"
+        ],
+        "owner": [
+          "NV22"
+        ]
+      }
+    },
+    {
+      "id": "he-baa1fe0626aaf465d87409b6",
+      "doc_key": [
+        "dv-09-runbook-don-dep-image-registry.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "tag registry"
+        ],
+        "condition": [
+          "cũ hơn 90 ngày"
+        ],
+        "remediation": [
+          "xóa nếu không còn dùng"
+        ],
+        "owner": [
+          "NV08"
+        ]
+      }
+    },
+    {
+      "id": "he-bad03f31893595b5afc35346",
+      "doc_key": [
+        "ts-tk-0188-public-endpoint-khong-ho-tro-tls.md"
+      ],
+      "khoa": "khach_hang_a:known_issue",
+      "slots": {
+        "subject": [
+          "chuỗi kết nối mặc định"
+        ],
+        "symptom": [
+          "máy chủ từ chối bắt tay TLS"
+        ],
+        "condition": [
+          "ssl=false"
+        ]
+      }
+    },
+    {
+      "id": "he-bb0a2b90f0e36fe95d9cd3b2",
+      "doc_key": [
+        "dc-01-runbook-thay-o-cung-hong-may-chu-vat-ly.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "mảng RAID"
+        ],
+        "cause": [
+          "mất dữ liệu"
+        ],
+        "condition": [
+          "đang suy giảm mà rút thêm ổ"
+        ],
+        "remediation": [
+          "xác nhận mảng RAID còn chịu được mất một ổ trước khi rút"
+        ]
+      }
+    },
+    {
+      "id": "he-bb6772e61a85579edda921f0",
+      "doc_key": [
+        "dc-04-sop-tiep-nhan-va-lap-dat-may-chu-moi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "dây mạng"
+        ],
+        "condition": [
+          "khi đấu mạng"
+        ],
+        "remediation": [
+          "đấu theo sơ đồ, dán nhãn hai đầu mỗi sợi dây"
+        ],
+        "owner": [
+          "NV11"
+        ]
+      }
+    },
+    {
+      "id": "he-bc00389a6f8567ca4b08d8b6",
+      "doc_key": [
+        "dc-01-runbook-thay-o-cung-hong-may-chu-vat-ly.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "ổ hỏng"
+        ],
+        "remediation": [
+          "rút ra, lắp ổ mới, chờ mảng bắt đầu dựng lại"
+        ]
+      }
+    },
+    {
+      "id": "he-bc97fae809777623d6037423",
+      "doc_key": [
+        "dc-03-runbook-kiem-tra-nhiet-do-phong-may.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "vượt toàn phòng"
+        ],
+        "cause": [
+          "lỗi dàn lạnh"
+        ],
+        "remediation": [
+          "gọi ngay đơn vị bảo trì và báo trưởng bộ phận"
+        ]
+      }
+    },
+    {
+      "id": "he-bd0428033fd9167cf8a441fc",
+      "doc_key": [
+        "dv-09-runbook-don-dep-image-registry.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "quota tài khoản"
+        ],
+        "condition": [
+          "vẫn thiếu sau khi xóa tag"
+        ],
+        "remediation": [
+          "liên hệ bộ phận dịch vụ để tăng quota"
+        ],
+        "owner": [
+          "NV08"
+        ]
+      }
+    },
+    {
+      "id": "he-bd68ff5c7293b5ffdcd44f6a",
+      "doc_key": [
+        "dv-02-postmortem-day-o-cung-cum-log.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "cảnh báo khi job dọn không chạy quá 48 giờ"
+        ],
+        "remediation": [
+          "thêm cảnh báo"
+        ],
+        "time": [
+          "25/09"
+        ],
+        "owner": [
+          "NV04"
+        ]
+      }
+    },
+    {
+      "id": "he-bd961aaa73e38ebb46a2b820",
+      "doc_key": [
+        "dv-02-postmortem-day-o-cung-cum-log.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "cảnh báo theo dõi job dọn dẹp"
+        ],
+        "symptom": [
+          "không có"
+        ],
+        "cause": [
+          "không có cảnh báo nào theo dõi việc job có chạy hay không"
+        ]
+      }
+    },
+    {
+      "id": "he-bdfee921e59aac8a3c3398b5",
+      "doc_key": [
+        "dv-10-runbook-xu-ly-canh-bao-ram-cpu.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "node Kubernetes"
+        ],
+        "condition": [
+          "RAM cao"
+        ],
+        "remediation": [
+          "kiểm tra pod nào không đặt giới hạn bộ nhớ"
+        ]
+      }
+    },
+    {
+      "id": "he-be3c3495b3d506429382e871",
+      "doc_key": [
+        "dc-06-huong-dan-xu-ly-may-in-khong-in-duoc.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "máy in"
+        ],
+        "cause": [
+          "lỗi ở máy in hoặc mạng"
+        ],
+        "condition": [
+          "cả phòng không in được"
+        ],
+        "remediation": [
+          "ping tới địa chỉ IP của máy in; nếu ping không thông thì kiểm tra dây mạng và đèn cổng trên switch; nếu ping thông mà không in được thì khởi động lại máy in, chờ 2 phút; kiểm tra máy in có báo hết mực, kẹt giấy, hoặc hết giấy không"
+        ]
+      }
+    },
+    {
+      "id": "he-bed1f8960c3e75b6ee7e33ba",
+      "doc_key": [
+        "dv-09-runbook-don-dep-image-registry.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "registry"
+        ],
+        "symptom": [
+          "Push image trả về 500 Internal Server Error hoặc denied: quota exceeded"
+        ],
+        "cause": [
+          "hết quota"
+        ],
+        "remediation": [
+          "Liệt kê tag cũ hơn 90 ngày của các repo lớn nhất, xóa tag không còn dùng, giữ lại mọi tag đang chạy trên sản xuất"
+        ],
+        "owner": [
+          "NV08"
+        ]
+      }
+    },
+    {
+      "id": "he-bf17b8b12f34aeef60307b60",
+      "doc_key": [
+        "dv-09-runbook-don-dep-image-registry.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "chính sách giữ tag"
+        ],
+        "condition": [
+          "mỗi repo"
+        ],
+        "remediation": [
+          "giữ 20 tag gần nhất"
+        ],
+        "owner": [
+          "NV08"
+        ]
+      }
+    },
+    {
+      "id": "he-c0b76a1af3f430b1b984280e",
+      "doc_key": [
+        "dv-08-runbook-chuyen-doi-du-phong-keepalived.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "node Backup"
+        ],
+        "condition": [
+          "sau khi dừng keepalived trên Master"
+        ],
+        "remediation": [
+          "xác nhận đã nhận VIP bằng lệnh ip a show eth1"
+        ],
+        "source": [
+          "Runbook: chuyển đổi dự phòng keepalived khi node Master hỏng"
+        ]
+      }
+    },
+    {
+      "id": "he-c1fbba5dc75928dc1d3930ce",
+      "doc_key": [
+        "dc-03-runbook-kiem-tra-nhiet-do-phong-may.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "luồng khí vào của tủ"
+        ],
+        "condition": [
+          "nghiêm trọng"
+        ],
+        "time": [
+          "trên 32 độ C"
+        ]
+      }
+    },
+    {
+      "id": "he-c35c62f829225326ae3c13e0",
+      "doc_key": [
+        "dv-10-runbook-xu-ly-canh-bao-ram-cpu.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "Đĩa"
+        ],
+        "symptom": [
+          "nghiêm trọng"
+        ],
+        "condition": [
+          "vượt 92% trong 5 phút"
+        ]
+      }
+    },
+    {
+      "id": "he-c574e88f53df961a9b3533f8",
+      "doc_key": [
+        "dc-01-runbook-thay-o-cung-hong-may-chu-vat-ly.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "ổ chứa dữ liệu khách hàng"
+        ],
+        "condition": [
+          "trước khi rời phòng máy"
+        ],
+        "remediation": [
+          "phải xóa an toàn hoặc hủy vật lý"
+        ]
+      }
+    },
+    {
+      "id": "he-c5adc47d8d43922c6c97ce32",
+      "doc_key": [
+        "dc-01-runbook-thay-o-cung-hong-may-chu-vat-ly.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "ổ thay thế"
+        ],
+        "condition": [
+          "phải cùng dung lượng và cùng dòng"
+        ],
+        "remediation": [
+          "lấy từ kho và ghi phiếu xuất kho"
+        ]
+      }
+    },
+    {
+      "id": "he-c5bcedc67966a5aba70a1348",
+      "doc_key": [
+        "dc-05-sop-quan-ly-ra-vao-phong-may.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "phòng máy"
+        ],
+        "condition": [
+          "vào phòng máy"
+        ],
+        "remediation": [
+          "phải có phiếu công việc và phải được ghi nhận, kể cả nhân sự nội bộ"
+        ]
+      }
+    },
+    {
+      "id": "he-c5e4633e99221dbe54d8731e",
+      "doc_key": [
+        "dv-10-runbook-xu-ly-canh-bao-ram-cpu.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "Đĩa"
+        ],
+        "symptom": [
+          "cảnh báo"
+        ],
+        "condition": [
+          "vượt 85% trong 5 phút"
+        ]
+      }
+    },
+    {
+      "id": "he-c987634c497b9e6e9a188f72",
+      "doc_key": [
+        "ts-tk-0151-pvc-pending-accessmode-rwx.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "khách hàng"
+        ],
+        "cause": [
+          "ứng dụng chỉ ghi tệp tĩnh"
+        ],
+        "remediation": [
+          "dùng Object Storage"
+        ]
+      }
+    },
+    {
+      "id": "he-c9aa246bf76cf3a32356406b",
+      "doc_key": [
+        "dc-03-runbook-kiem-tra-nhiet-do-phong-may.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "danh sách ưu tiên tắt máy"
+        ],
+        "remediation": [
+          "phải được duyệt trước và dán trong phòng máy"
+        ]
+      }
+    },
+    {
+      "id": "he-ca4c7431598dd23ae84a71e8",
+      "doc_key": [
+        "dv-08-runbook-chuyen-doi-du-phong-keepalived.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "cấu hình keepalived"
+        ],
+        "condition": [
+          "nếu không muốn VIP chuyển đi chuyển lại"
+        ],
+        "remediation": [
+          "thêm nopreempt vào cấu hình và đặt cả hai node ở trạng thái BACKUP"
+        ],
+        "source": [
+          "Runbook: chuyển đổi dự phòng keepalived khi node Master hỏng"
+        ]
+      }
+    },
+    {
+      "id": "he-cb759bf18dd9bc94dbd2a432",
+      "doc_key": [
+        "ts-tk-0234-cai-sql-server-ubuntu-loi-phu-thuoc.md"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "mật khẩu quản trị SQL Server"
+        ],
+        "condition": [
+          "khách quên"
+        ],
+        "remediation": [
+          "phải đặt lại theo quy trình khôi phục của SQL Server, không có đường tra cứu"
+        ],
+        "source": [
+          "ghi chú nội bộ của ticket TS-2610-0234"
+        ]
+      }
+    },
+    {
+      "id": "he-cba4e32b9c8ef310b7abe40e",
+      "doc_key": [
+        "ts-tk-0205-tong-dai-sip-alg.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "SIP ALG trên router"
+        ],
+        "remediation": [
+          "tắt SIP ALG trên router, lưu cấu hình"
+        ]
+      }
+    },
+    {
+      "id": "he-cba765e1e1917bf851b10b3b",
+      "doc_key": [
+        "dc-09-huong-dan-cap-phat-va-thu-hoi-thiet-bi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "biên bản bàn giao"
+        ],
+        "remediation": [
+          "ký biên bản bàn giao, ghi số sê ri từng thiết bị"
+        ]
+      }
+    },
+    {
+      "id": "he-cbf30e8d59700c170efb128d",
+      "doc_key": [
+        "ts-tk-0192-mongodb-tls-13.md"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "chứng chỉ khách cấp"
+        ],
+        "remediation": [
+          "đưa vào bảng theo dõi hạn chứng chỉ để cảnh báo trước 30 ngày"
+        ],
+        "time": [
+          "hết hạn 12 tháng"
+        ]
+      }
+    },
+    {
+      "id": "he-cd7e736810afa7c7aa88118c",
+      "doc_key": [
+        "dc-05-sop-quan-ly-ra-vao-phong-may.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "thẻ của người đã nghỉ việc"
+        ],
+        "symptom": [
+          "phát hiện"
+        ],
+        "condition": [
+          "chưa thu hồi"
+        ],
+        "remediation": [
+          "xử lý trong ngày"
+        ]
+      }
+    },
+    {
+      "id": "he-ce90ebb83baf5d921e079ab8",
+      "doc_key": [
+        "ts-tk-0147-waf-mode-con-o-phat-hien.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "giao diện WAF"
+        ],
+        "symptom": [
+          "người dùng tạo rule Deny trong lúc WAF Mode đang ở Phát hiện"
+        ],
+        "remediation": [
+          "bổ sung cảnh báo trên giao diện"
+        ],
+        "source": [
+          "ghi chú nội bộ ticket TS-2609-0147"
+        ]
+      }
+    },
+    {
+      "id": "he-cf53d84636c009e9e1ba9cd4",
+      "doc_key": [
+        "dv-01-postmortem-web-khach-hang-sap-do-php-fpm-het-worker.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "khachhang01.example"
+        ],
+        "symptom": [
+          "trang chính trả 502 Bad Gateway trong 47 phút"
+        ],
+        "cause": [
+          "pool PHP-FPM hết worker sau khi một đợt crawler quét trang tìm kiếm nội bộ"
+        ],
+        "remediation": [
+          "nâng pm.max_children và chặn user-agent crawler tại WAF"
+        ],
+        "time": [
+          "12/09/2026 từ 09:14 tới 10:01"
+        ]
+      }
+    },
+    {
+      "id": "he-cfe954bbd8aeae14536824ac",
+      "doc_key": [
+        "dv-09-runbook-don-dep-image-registry.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "dung lượng registry"
+        ],
+        "symptom": [
+          "cảnh báo"
+        ],
+        "condition": [
+          "vượt 80% quota"
+        ],
+        "owner": [
+          "NV08"
+        ]
+      }
+    },
+    {
+      "id": "he-d0143d94522e1b08a0273fc7",
+      "doc_key": [
+        "dc-07-huong-dan-xu-ly-wifi-van-phong-chap-chon.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "tốc độ tải xuống"
+        ],
+        "symptom": [
+          "chậm"
+        ],
+        "condition": [
+          "dưới 10 Mbps"
+        ]
+      }
+    },
+    {
+      "id": "he-d07bc24def02e4dd56bafe9d",
+      "doc_key": [
+        "dv-15-huong-dan-doc-log-nginx-bang-goaccess.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "crawler"
+        ],
+        "condition": [
+          "thường khai tên trong user-agent"
+        ],
+        "remediation": [
+          "chặn theo user-agent nhanh hơn chặn theo địa chỉ"
+        ]
+      }
+    },
+    {
+      "id": "he-d0960ff5a3a43c4a7934f01f",
+      "doc_key": [
+        "ts-tk-0179-node-notready-full-ram.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "deployment"
+        ],
+        "symptom": [
+          "không khai limit bộ nhớ"
+        ],
+        "remediation": [
+          "Rà pod không đặt giới hạn bộ nhớ"
+        ]
+      }
+    },
+    {
+      "id": "he-d0c3ebb37e09a6c6b6bf5815",
+      "doc_key": [
+        "dv-05-runbook-xu-ly-node-k8s-notready.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "node Kubernetes"
+        ],
+        "cause": [
+          "node hết RAM, kubelet đã bị kill"
+        ],
+        "condition": [
+          "MemoryPressure True"
+        ],
+        "remediation": [
+          "ssh <ten-node>; sudo systemctl status kubelet; sudo systemctl restart kubelet"
+        ],
+        "source": [
+          "Runbook"
+        ]
+      }
+    },
+    {
+      "id": "he-d0f90da665d3aed0fdc87ac9",
+      "doc_key": [
+        "dv-12-sop-quy-trinh-thay-doi-cau-hinh-ha-tang.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "thay đổi tường lửa và WAF"
+        ],
+        "remediation": [
+          "phải kiểm tra lại đường truy cập của khách hàng ngay sau khi áp dụng"
+        ]
+      }
+    },
+    {
+      "id": "he-d13e86a4585d8fb3ebe3a256",
+      "doc_key": [
+        "dv-06-runbook-mo-rong-volume-cho-node.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "đĩa"
+        ],
+        "condition": [
+          "Cloud chỉ hỗ trợ mở rộng"
+        ],
+        "remediation": [
+          "cấm thu hẹp"
+        ]
+      }
+    },
+    {
+      "id": "he-d177050e164a98ae5c25b2fc",
+      "doc_key": [
+        "ts-tk-0209-tong-dai-jitter-duong-truyen.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "cuộc gọi"
+        ],
+        "symptom": [
+          "rớt và tiếng ngắt quãng"
+        ],
+        "condition": [
+          "trong khoảng 09:00 tới 11:00 và 14:00 tới 16:00"
+        ],
+        "time": [
+          "12/10/2026 14:00"
+        ],
+        "owner": [
+          "NV22"
+        ]
+      }
+    },
+    {
+      "id": "he-d189e3946a7b3556cf2784b3",
+      "doc_key": [
+        "dc-04-sop-tiep-nhan-va-lap-dat-may-chu-moi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "sơ đồ tủ"
+        ],
+        "condition": [
+          "trước khi lắp đặt"
+        ],
+        "remediation": [
+          "xác định vị trí tủ và độ cao lắp đặt theo sơ đồ tủ; cập nhật sơ đồ trước khi lắp, không lắp trước rồi vẽ sau"
+        ],
+        "owner": [
+          "NV11"
+        ]
+      }
+    },
+    {
+      "id": "he-d25fd39c41e031dfe42a05d1",
+      "doc_key": [
+        "dc-03-runbook-kiem-tra-nhiet-do-phong-may.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "vượt ngưỡng cảnh báo"
+        ],
+        "remediation": [
+          "Xác định vượt ngưỡng cục bộ ở một tủ hay toàn phòng."
+        ]
+      }
+    },
+    {
+      "id": "he-d2c0001b7506c9a90dcebb7c",
+      "doc_key": [
+        "ts-tk-0213-firewall-outbound-chan-stun.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "cổng tới máy chủ stun và tên miền hệ thống thoại"
+        ],
+        "symptom": [
+          "telnet không mở"
+        ],
+        "condition": [
+          "chạy trên máy trong mạng nội bộ của khách"
+        ]
+      }
+    },
+    {
+      "id": "he-d3a13ef2bfca64a024b8cb2d",
+      "doc_key": [
+        "ts-tk-0183-nang-cau-hinh-node-trong-pool.md"
+      ],
+      "khoa": "khach_hang_a:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "node trong pool Kubernetes Engine"
+        ],
+        "symptom": [
+          "sau khi nâng RAM trên Cloud Server, node bị recycle và quay về cấu hình cũ, ứng dụng thiếu bộ nhớ"
+        ],
+        "cause": [
+          "cấu hình node do pool quy định, nâng trực tiếp trên Cloud Server chỉ có hiệu lực tới lần recycle kế tiếp"
+        ],
+        "remediation": [
+          "tạo pool mới với cấu hình mong muốn, cordon và drain các node thuộc pool cũ, xác nhận workload đã chuyển sang pool mới rồi xóa pool cũ"
+        ],
+        "source": [
+          "ticket TS-2610-0183"
+        ],
+        "time": [
+          "06/10/2026 09:20 đến 06/10/2026 10:40"
+        ],
+        "owner": [
+          "NV24"
+        ]
+      }
+    },
+    {
+      "id": "he-d3a7f9b33d29f1ee93891adc",
+      "doc_key": [
+        "dv-07-runbook-backup-va-khoi-phuc-cloud-database.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "diễn tập khôi phục"
+        ],
+        "remediation": [
+          "thực hiện trên staging, ghi lại thời gian khôi phục thực tế vào biên bản diễn tập"
+        ],
+        "time": [
+          "mỗi quý một lần"
+        ]
+      }
+    },
+    {
+      "id": "he-d4839ed3e8128bf9a4ed67a8",
+      "doc_key": [
+        "dc-10-huong-dan-reset-mat-khau-tai-khoan-noi-bo.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "yêu cầu đặt lại mật khẩu gấp"
+        ],
+        "symptom": [
+          "dấu hiệu của lừa đảo mạo danh"
+        ],
+        "condition": [
+          "kèm lý do khẩn và không cho gọi lại"
+        ],
+        "remediation": [
+          "càng gấp càng phải xác minh"
+        ]
+      }
+    },
+    {
+      "id": "he-d57c80412488c51d8f95e373",
+      "doc_key": [
+        "dv-07-runbook-backup-va-khoi-phuc-cloud-database.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "người thực hiện"
+        ],
+        "owner": [
+          "NV07"
+        ]
+      }
+    },
+    {
+      "id": "he-d5edcf0384cff04cc14a8056",
+      "doc_key": [
+        "dc-09-huong-dan-cap-phat-va-thu-hoi-thiet-bi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "ổ cứng của máy thu hồi"
+        ],
+        "condition": [
+          "trước khi cấp lại cho người khác"
+        ],
+        "remediation": [
+          "phải xóa an toàn"
+        ]
+      }
+    },
+    {
+      "id": "he-d66048679772fc0cd3c8fd1d",
+      "doc_key": [
+        "dv-15-huong-dan-doc-log-nginx-bang-goaccess.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "tỷ lệ 5xx"
+        ],
+        "cause": [
+          "chỉ tới tầng ứng dụng"
+        ],
+        "condition": [
+          "tăng đột ngột"
+        ]
+      }
+    },
+    {
+      "id": "he-d66ede4c74fb1e4b0dbf3374",
+      "doc_key": [
+        "dc-05-sop-quan-ly-ra-vao-phong-may.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "người vào phòng máy"
+        ],
+        "remediation": [
+          "ghi thời điểm ra khi rời phòng"
+        ]
+      }
+    },
+    {
+      "id": "he-d6833273db4bb1be24f86c5a",
+      "doc_key": [
+        "dv-13-sop-xoay-vong-khoa-truy-cap-object-storage.md"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "khóa cũ"
+        ],
+        "condition": [
+          "sau khi theo dõi 48 giờ"
+        ],
+        "remediation": [
+          "Vô hiệu khóa cũ, chờ thêm 7 ngày rồi xóa hẳn."
+        ]
+      }
+    },
+    {
+      "id": "he-d6a1c7fd7d4cc965e8dabbb5",
+      "doc_key": [
+        "ts-tk-0196-vod-drm-khong-download.md"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "video đã mã hóa DRM"
+        ],
+        "symptom": [
+          "không tải xuống được từ bảng điều khiển hoặc công cụ trình duyệt"
+        ],
+        "cause": [
+          "lớp bảo vệ nội dung không cho tải trực tiếp"
+        ],
+        "remediation": [
+          "dùng API quản lý tệp để tải"
+        ]
+      }
+    },
+    {
+      "id": "he-d72ba0cf0c94ad5d520180b8",
+      "doc_key": [
+        "dv-04-postmortem-mat-ket-noi-db-sau-resize.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "app-03"
+        ],
+        "cause": [
+          "cả hai interface đều nhận default route từ DHCP với cùng metric"
+        ],
+        "condition": [
+          "sau khi resize từ 8 GB lên 16 GB RAM và khởi động lại"
+        ],
+        "time": [
+          "03/09/2026 lúc 14:05"
+        ]
+      }
+    },
+    {
+      "id": "he-d78b3bb1c11e2821daed8bcb",
+      "doc_key": [
+        "ts-tk-0196-vod-drm-khong-download.md"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "khóa x-key"
+        ],
+        "condition": [
+          "khi tải video đã mã hóa"
+        ],
+        "remediation": [
+          "gửi phiếu để bộ phận hỗ trợ cấp riêng, không tự lấy trên giao diện"
+        ],
+        "owner": [
+          "bộ phận hỗ trợ"
+        ]
+      }
+    },
+    {
+      "id": "he-d7e04a4f1f7a3df2d490fefd",
+      "doc_key": [
+        "dc-07-huong-dan-xu-ly-wifi-van-phong-chap-chon.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "chỉ một thiết bị bị"
+        ],
+        "remediation": [
+          "kiểm tra trình điều khiển card mạng của máy đó"
+        ]
+      }
+    },
+    {
+      "id": "he-d8f165058ec4e7c90fa4b7b5",
+      "doc_key": [
+        "dv-03-postmortem-chung-chi-ssl-wildcard-het-han.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "chứng chỉ wildcard *.khachhang02.example"
+        ],
+        "symptom": [
+          "hết hạn"
+        ],
+        "cause": [
+          "được gia hạn tay từ đầu vì tên miền dùng DNS của khách hàng, không tự động xác thực được; lịch nhắc gia hạn đặt trong lịch cá nhân của một nhân sự đã chuyển bộ phận tháng 07; không có bảng theo dõi hạn chứng chỉ dùng chung"
+        ],
+        "time": [
+          "24/09/2026 lúc 07:00"
+        ]
+      }
+    },
+    {
+      "id": "he-d900299d7a43b0be8d819e65",
+      "doc_key": [
+        "dv-06-runbook-mo-rong-volume-cho-node.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "kernel"
+        ],
+        "remediation": [
+          "xác nhận đã thấy dung lượng mới bằng `lsblk` và `sudo partprobe /dev/vdb`"
+        ]
+      }
+    },
+    {
+      "id": "he-d955fde50600f94408233015",
+      "doc_key": [
+        "ts-tk-0147-waf-mode-con-o-phat-hien.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "Custom Rule chặn các IP ngoài danh sách cho phép"
+        ],
+        "symptom": [
+          "thử từ máy ngoài danh sách vẫn truy cập được bình thường"
+        ],
+        "cause": [
+          "WAF Mode đang ở Phát hiện"
+        ],
+        "condition": [
+          "WAF Mode ở Phát hiện"
+        ],
+        "remediation": [
+          "chuyển WAF Mode sang Ngăn chặn"
+        ],
+        "source": [
+          "ticket TS-2609-0147"
+        ],
+        "time": [
+          "27/09/2026 14:20"
+        ],
+        "owner": [
+          "NV22"
+        ]
+      }
+    },
+    {
+      "id": "he-d9aa3cd81d6514e82fd54670",
+      "doc_key": [
+        "dv-10-runbook-xu-ly-canh-bao-ram-cpu.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "nâng cấu hình"
+        ],
+        "condition": [
+          "trước khi nâng phải trả lời được câu hỏi tài nguyên đi đâu"
+        ],
+        "remediation": [
+          "biện pháp cuối"
+        ]
+      }
+    },
+    {
+      "id": "he-da8f31be37c9dd44cc695c9e",
+      "doc_key": [
+        "ts-tk-0217-chuyen-doi-business-email-thieu-thong-tin.md"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "quá trình chuyển đổi sang Business Email"
+        ],
+        "symptom": [
+          "dừng giữa chừng"
+        ],
+        "cause": [
+          "thiếu thông tin"
+        ],
+        "time": [
+          "14/10/2026 09:00"
+        ],
+        "owner": [
+          "NV24"
+        ]
+      }
+    },
+    {
+      "id": "he-dacdded732c1c15b6e4ff931",
+      "doc_key": [
+        "dc-08-huong-dan-xu-ly-thiet-bi-phong-hop.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "thiết bị hội nghị"
+        ],
+        "symptom": [
+          "không kết nối được cuộc họp"
+        ],
+        "remediation": [
+          "kiểm tra thiết bị có mạng không, kiểm tra đường truyền bằng trang đo tốc độ, nếu mạng bình thường khởi động lại thiết bị hội nghị"
+        ]
+      }
+    },
+    {
+      "id": "he-db07d551fcf9d788cc141b3d",
+      "doc_key": [
+        "dc-09-huong-dan-cap-phat-va-thu-hoi-thiet-bi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "thiết bị thu hồi"
+        ],
+        "remediation": [
+          "thu đủ theo biên bản bàn giao, kiểm tra tình trạng"
+        ]
+      }
+    },
+    {
+      "id": "he-db2c29d795601f7f5163d5a5",
+      "doc_key": [
+        "dv-09-runbook-don-dep-image-registry.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "tag registry"
+        ],
+        "condition": [
+          "trước khi xóa"
+        ],
+        "remediation": [
+          "đối chiếu với danh sách image đang chạy"
+        ],
+        "owner": [
+          "NV08"
+        ]
+      }
+    },
+    {
+      "id": "he-db8dfdace8af8b42e758d745",
+      "doc_key": [
+        "ts-tk-0179-node-notready-full-ram.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "pool"
+        ],
+        "condition": [
+          "không bật auto-repair"
+        ],
+        "remediation": [
+          "Tư vấn bật auto-repair cho pool"
+        ]
+      }
+    },
+    {
+      "id": "he-dc0188a8c137bc9321c7a81f",
+      "doc_key": [
+        "dv-06-runbook-mo-rong-volume-cho-node.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "đĩa"
+        ],
+        "remediation": [
+          "mở rộng trên Dashboard, mục Cloud Server, chọn máy chủ, chọn ổ đĩa, nhấn mở rộng"
+        ]
+      }
+    },
+    {
+      "id": "he-dd9af79f5553bb9a1224aa52",
+      "doc_key": [
+        "dv-01-postmortem-web-khach-hang-sap-do-php-fpm-het-worker.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "pm.max_children"
+        ],
+        "remediation": [
+          "nâng lên 80 và ghim vào playbook Ansible"
+        ],
+        "time": [
+          "12/09"
+        ],
+        "owner": [
+          "NV03"
+        ]
+      }
+    },
+    {
+      "id": "he-ddcb53030bd387eb0d04ba1d",
+      "doc_key": [
+        "dv-12-sop-quy-trinh-thay-doi-cau-hinh-ha-tang.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "thay đổi loại Thường"
+        ],
+        "condition": [
+          "ví dụ thêm quy tắc theo dõi, đổi ngưỡng cảnh báo"
+        ],
+        "time": [
+          "giờ hành chính"
+        ],
+        "owner": [
+          "trưởng nhóm"
+        ]
+      }
+    },
+    {
+      "id": "he-de2857cad918ff3b55921a01",
+      "doc_key": [
+        "ts-tk-0179-node-notready-full-ram.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "node Kubernetes"
+        ],
+        "condition": [
+          "stateless"
+        ],
+        "remediation": [
+          "recycle sẽ nhanh hơn sửa tại chỗ"
+        ],
+        "owner": [
+          "đội trực"
+        ]
+      }
+    },
+    {
+      "id": "he-df0b78f54e4f84ef095edea4",
+      "doc_key": [
+        "ts-tk-0205-tong-dai-sip-alg.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "máy lẻ tại văn phòng khách"
+        ],
+        "symptom": [
+          "không đăng ký được lên tổng đài"
+        ],
+        "time": [
+          "11/10/2026 08:30"
+        ],
+        "owner": [
+          "NV21"
+        ]
+      }
+    },
+    {
+      "id": "he-df9d7a258d2cc63c063e509e",
+      "doc_key": [
+        "dv-07-runbook-backup-va-khoi-phuc-cloud-database.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "khóa truy cập bucket sao lưu"
+        ],
+        "remediation": [
+          "là khóa riêng, không dùng chung với khóa của ứng dụng, xoay vòng theo quy trình xoay vòng khóa Object Storage"
+        ]
+      }
+    },
+    {
+      "id": "he-e0435eaa5945a6676466ed10",
+      "doc_key": [
+        "dv-10-runbook-xu-ly-canh-bao-ram-cpu.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "CPU"
+        ],
+        "symptom": [
+          "nghiêm trọng"
+        ],
+        "condition": [
+          "vượt 95% trong 10 phút"
+        ]
+      }
+    },
+    {
+      "id": "he-e1764574a8ee7c436e6e9356",
+      "doc_key": [
+        "dc-09-huong-dan-cap-phat-va-thu-hoi-thiet-bi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "quy trình cấp phát và thu hồi thiết bị"
+        ],
+        "owner": [
+          "NV14"
+        ]
+      }
+    },
+    {
+      "id": "he-e17a2e41857d242e2e43e31a",
+      "doc_key": [
+        "dc-03-runbook-kiem-tra-nhiet-do-phong-may.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "luồng khí vào của tủ"
+        ],
+        "condition": [
+          "cảnh báo"
+        ],
+        "time": [
+          "trên 27 độ C"
+        ]
+      }
+    },
+    {
+      "id": "he-e1898069da9a4e031a432edb",
+      "doc_key": [
+        "dc-03-runbook-kiem-tra-nhiet-do-phong-may.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "độ ẩm phòng"
+        ],
+        "condition": [
+          "nghiêm trọng"
+        ],
+        "time": [
+          "dưới 20% hoặc trên 80%"
+        ]
+      }
+    },
+    {
+      "id": "he-e29d7446c800890bf7ab8187",
+      "doc_key": [
+        "ts-tk-0188-public-endpoint-khong-ho-tro-tls.md"
+      ],
+      "khoa": "khach_hang_a:known_issue",
+      "slots": {
+        "subject": [
+          "cấu hình TLS"
+        ],
+        "symptom": [
+          "không tự phục hồi"
+        ],
+        "condition": [
+          "instance được dựng lại"
+        ],
+        "remediation": [
+          "ghi vào hồ sơ khách hàng để lần sau resize không mất cấu hình"
+        ]
+      }
+    },
+    {
+      "id": "he-e36818b39608d2bfdff2e462",
+      "doc_key": [
+        "dv-01-postmortem-web-khach-hang-sap-do-php-fpm-het-worker.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "cảnh báo"
+        ],
+        "remediation": [
+          "thêm cảnh báo khi worker đang bận vượt 80% trần"
+        ],
+        "time": [
+          "20/09"
+        ],
+        "owner": [
+          "NV03"
+        ]
+      }
+    },
+    {
+      "id": "he-e39f3896ef955b8abffb694d",
+      "doc_key": [
+        "dv-06-runbook-mo-rong-volume-cho-node.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "PVC trên Kubernetes"
+        ],
+        "condition": [
+          "giảm dung lượng"
+        ],
+        "remediation": [
+          "không được, phải tạo PVC mới và chép dữ liệu"
+        ]
+      }
+    },
+    {
+      "id": "he-e430b20af66f9d47a13a0334",
+      "doc_key": [
+        "dc-02-runbook-mat-dien-mot-pha-tu-rack.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "bộ phận điện của tòa nhà"
+        ],
+        "condition": [
+          "mất nguồn từ đầu vào"
+        ],
+        "remediation": [
+          "liên hệ bộ phận điện của tòa nhà"
+        ]
+      }
+    },
+    {
+      "id": "he-e4dfd051336f244d4cc059d7",
+      "doc_key": [
+        "dv-08-runbook-chuyen-doi-du-phong-keepalived.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "runbook"
+        ],
+        "source": [
+          "Runbook: chuyển đổi dự phòng keepalived khi node Master hỏng"
+        ],
+        "owner": [
+          "NV06"
+        ]
+      }
+    },
+    {
+      "id": "he-e566954bb5128eefc124281c",
+      "doc_key": [
+        "dv-10-runbook-xu-ly-canh-bao-ram-cpu.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "tiến trình ứng dụng"
+        ],
+        "condition": [
+          "chiếm CPU cao"
+        ],
+        "remediation": [
+          "kiểm tra có đợt truy cập bất thường không, đọc access log"
+        ]
+      }
+    },
+    {
+      "id": "he-e5769dd4c710c975b43c5295",
+      "doc_key": [
+        "dv-04-postmortem-mat-ket-noi-db-sau-resize.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "quy trình sau resize"
+        ],
+        "remediation": [
+          "thêm bước kiểm tra ip route"
+        ],
+        "time": [
+          "hạn 10/09"
+        ],
+        "owner": [
+          "NV06"
+        ]
+      }
+    },
+    {
+      "id": "he-e649ed38435db835b140ab7c",
+      "doc_key": [
+        "dv-07-runbook-backup-va-khoi-phuc-cloud-database.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "khôi phục"
+        ],
+        "remediation": [
+          "tạo instance mới từ bản sao lưu, không ghi đè lên instance đang chạy"
+        ]
+      }
+    },
+    {
+      "id": "he-e74a26b61041c3cf439c1938",
+      "doc_key": [
+        "dv-14-sop-cap-quyen-truy-cap-ha-tang.md"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "quyền vào Dashboard"
+        ],
+        "condition": [
+          "trước khi cấp quyền"
+        ],
+        "remediation": [
+          "Bật xác thực hai lớp"
+        ]
+      }
+    },
+    {
+      "id": "he-e856bdeb44915ed4d580c71d",
+      "doc_key": [
+        "ts-tk-0142-waf-whitelist-ghi-nham.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "whitelist theo IP"
+        ],
+        "cause": [
+          "không ổn định với mô hình đó"
+        ],
+        "condition": [
+          "khách có hai đường truyền và địa chỉ ra thay đổi khi đường chính lỗi"
+        ],
+        "remediation": [
+          "đề xuất chuyển sang xác thực bằng chứng chỉ phía máy khách"
+        ],
+        "source": [
+          "ticket TS-2609-0142"
+        ]
+      }
+    },
+    {
+      "id": "he-eba84dd5326136dc59759582",
+      "doc_key": [
+        "dv-03-postmortem-chung-chi-ssl-wildcard-het-han.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "sáu tên miền con"
+        ],
+        "symptom": [
+          "trả lỗi NET::ERR_CERT_DATE_INVALID"
+        ],
+        "cause": [
+          "chứng chỉ wildcard hết hạn"
+        ],
+        "time": [
+          "trong 1 giờ 24 phút"
+        ]
+      }
+    },
+    {
+      "id": "he-ec1243df44a29f100df0e2c6",
+      "doc_key": [
+        "ts-tk-0142-waf-whitelist-ghi-nham.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "khách hàng khachhang01.example"
+        ],
+        "cause": [
+          "khách lấy địa chỉ bằng cách xem trên máy tính cá nhân đang dùng đường dự phòng lúc kiểm tra"
+        ],
+        "remediation": [
+          "hướng dẫn khách chạy curl ifconfig.me trên máy nằm ở đường truyền chính để lấy đúng địa chỉ ra"
+        ],
+        "source": [
+          "ticket TS-2609-0142"
+        ]
+      }
+    },
+    {
+      "id": "he-ec67fc888d6b331a2d62c879",
+      "doc_key": [
+        "ts-tk-0226-iptables-khoa-ssh.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "quy trình an toàn khi sửa tường lửa"
+        ],
+        "condition": [
+          "khi sửa tường lửa"
+        ],
+        "remediation": [
+          "thêm quy tắc cho phép trước, đổi chính sách mặc định sau, và luôn mở sẵn một phiên thứ hai"
+        ],
+        "source": [
+          "tài liệu hướng dẫn đặt iptables tránh rủi ro"
+        ]
+      }
+    },
+    {
+      "id": "he-ed2de775099638f51eb5f26a",
+      "doc_key": [
+        "ts-tk-0209-tong-dai-jitter-duong-truyen.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "đường truyền tại văn phòng khách"
+        ],
+        "symptom": [
+          "jitter 9 ms"
+        ],
+        "condition": [
+          "ngoài giờ cao điểm"
+        ]
+      }
+    },
+    {
+      "id": "he-ed440908d8c8631ae10c1579",
+      "doc_key": [
+        "dc-03-runbook-kiem-tra-nhiet-do-phong-may.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "kiểm tra hằng ngày"
+        ],
+        "remediation": [
+          "Ghi số đo vào sổ trực."
+        ]
+      }
+    },
+    {
+      "id": "he-ed4db0c5621e3236792ab592",
+      "doc_key": [
+        "ts-tk-0183-nang-cau-hinh-node-trong-pool.md"
+      ],
+      "khoa": "khach_hang_a:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "dịch vụ Kubernetes Engine"
+        ],
+        "symptom": [
+          "chưa hỗ trợ bật auto-repair sau khi tạo pool"
+        ],
+        "remediation": [
+          "phải tạo pool mới rồi chuyển workload, đã ghi phiếu đề xuất tính năng"
+        ],
+        "source": [
+          "ticket TS-2610-0183"
+        ]
+      }
+    },
+    {
+      "id": "he-eff5ea1a5cb4dd3db9568aef",
+      "doc_key": [
+        "ts-tk-0196-vod-drm-khong-download.md"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "khóa x-key"
+        ],
+        "condition": [
+          "cấp theo tài khoản"
+        ],
+        "time": [
+          "không hết hạn"
+        ]
+      }
+    },
+    {
+      "id": "he-f0666baca45300cb259eb998",
+      "doc_key": [
+        "dv-14-sop-cap-quyen-truy-cap-ha-tang.md"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "khóa riêng SSH"
+        ],
+        "remediation": [
+          "Không gửi qua bất kỳ kênh nào"
+        ]
+      }
+    },
+    {
+      "id": "he-f0d1995c9e57d64b1c4142ba",
+      "doc_key": [
+        "dv-03-postmortem-chung-chi-ssl-wildcard-het-han.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "khách hàng"
+        ],
+        "symptom": [
+          "báo qua ticket"
+        ],
+        "source": [
+          "ticket"
+        ],
+        "time": [
+          "07:12"
+        ]
+      }
+    },
+    {
+      "id": "he-f1a7683f77223c6c4dde688f",
+      "doc_key": [
+        "dc-07-huong-dan-xu-ly-wifi-van-phong-chap-chon.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "Wi-Fi văn phòng"
+        ],
+        "cause": [
+          "chia sẻ băng thông nên không bảo đảm được jitter thấp"
+        ]
+      }
+    },
+    {
+      "id": "he-f1d6cec8f616690b7e1bc405",
+      "doc_key": [
+        "dc-01-runbook-thay-o-cung-hong-may-chu-vat-ly.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "máy chủ vật lý"
+        ],
+        "symptom": [
+          "cảnh báo từ bộ điều khiển RAID, đèn báo lỗi trên khay ổ, hoặc log hệ thống báo lỗi đọc ghi lặp lại trên cùng một thiết bị"
+        ],
+        "remediation": [
+          "thay ổ cứng hỏng"
+        ]
+      }
+    },
+    {
+      "id": "he-f2f5a304e995abebaeb997ae",
+      "doc_key": [
+        "ts-tk-0242-thu-hep-pvc-bi-tu-choi.md"
+      ],
+      "khoa": "khach_hang_a:known_issue",
+      "slots": {
+        "subject": [
+          "Kubernetes Engine"
+        ],
+        "condition": [
+          "khi cố thu hẹp dung lượng ổ đĩa"
+        ],
+        "remediation": [
+          "tạo PVC 50 GB mới, tạo pod tạm gắn cả hai ổ, chép dữ liệu sang ổ mới, trỏ ứng dụng sang ổ mới, xác nhận chạy đúng, rồi xóa ổ cũ"
+        ]
+      }
+    },
+    {
+      "id": "he-f31b6a6110087e88b22aa512",
+      "doc_key": [
+        "dv-06-runbook-mo-rong-volume-cho-node.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "đĩa"
+        ],
+        "remediation": [
+          "chụp lại `df -h` và `lsblk` trước khi làm"
+        ]
+      }
+    },
+    {
+      "id": "he-f36d25c0ee5ecbffdad9c67c",
+      "doc_key": [
+        "dv-11-sop-trien-khai-ban-va-bao-mat-khan-cap.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "phiếu sự cố"
+        ],
+        "remediation": [
+          "xác nhận phiên bản sau khi vá và đóng phiếu"
+        ]
+      }
+    },
+    {
+      "id": "he-f3a719a027ac810516981c58",
+      "doc_key": [
+        "dv-13-sop-xoay-vong-khoa-truy-cap-object-storage.md"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "ứng dụng bị chiếm quyền"
+        ],
+        "symptom": [
+          "mất luôn đường khôi phục"
+        ],
+        "condition": [
+          "khóa sao lưu dùng chung"
+        ]
+      }
+    },
+    {
+      "id": "he-f3cf0400943c9e7a83f15908",
+      "doc_key": [
+        "dv-08-runbook-chuyen-doi-du-phong-keepalived.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "VIP"
+        ],
+        "cause": [
+          "VIP chưa được khai trong Allow Pair của Network Interface trên Dashboard, hạ tầng chặn gói"
+        ],
+        "condition": [
+          "VIP không chuyển"
+        ],
+        "source": [
+          "Runbook: chuyển đổi dự phòng keepalived khi node Master hỏng"
+        ]
+      }
+    },
+    {
+      "id": "he-f3d6ed313500d4c53c6b183d",
+      "doc_key": [
+        "dv-05-runbook-xu-ly-node-k8s-notready.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "node Kubernetes"
+        ],
+        "cause": [
+          "mất kết nối mạng tới control plane"
+        ],
+        "condition": [
+          "Ready Unknown"
+        ],
+        "remediation": [
+          "kiểm tra kết nối tới control plane, sau đó drain và recycle nếu không khôi phục trong 10 phút"
+        ],
+        "source": [
+          "Runbook"
+        ]
+      }
+    },
+    {
+      "id": "he-f41f11b60d48956fd34722ad",
+      "doc_key": [
+        "dv-05-runbook-xu-ly-node-k8s-notready.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "node Kubernetes"
+        ],
+        "remediation": [
+          "muốn đổi cấu hình thì tạo pool mới rồi drain workload sang"
+        ],
+        "source": [
+          "Runbook"
+        ]
+      }
+    },
+    {
+      "id": "he-f5212d4ea49c8df9462343f6",
+      "doc_key": [
+        "dv-14-sop-cap-quyen-truy-cap-ha-tang.md"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "nhân sự mới"
+        ],
+        "condition": [
+          "Trưởng bộ phận gửi phiếu, ghi rõ vai và hệ thống cần truy cập"
+        ],
+        "remediation": [
+          "Vận hành tạo tài khoản, thêm khóa công khai SSH do nhân sự tự sinh"
+        ]
+      }
+    },
+    {
+      "id": "he-f52ec1e71b4a51c11b9ac5a7",
+      "doc_key": [
+        "ts-tk-0147-waf-mode-con-o-phat-hien.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "WAF Mode"
+        ],
+        "condition": [
+          "ở Ngăn chặn"
+        ],
+        "remediation": [
+          "kiểm tra từ máy trong whitelist, truy cập bình thường"
+        ]
+      }
+    },
+    {
+      "id": "he-f58cd4f7b79cdafb7430ec38",
+      "doc_key": [
+        "dv-03-postmortem-chung-chi-ssl-wildcard-het-han.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "WAF"
+        ],
+        "condition": [
+          "2 tên miền còn lại hết lỗi"
+        ],
+        "remediation": [
+          "nạp chứng chỉ mới"
+        ],
+        "time": [
+          "08:24"
+        ]
+      }
+    },
+    {
+      "id": "he-f71cea52de9d86f0c9d026a8",
+      "doc_key": [
+        "ts-tk-0192-mongodb-tls-13.md"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "instance MongoDB"
+        ],
+        "condition": [
+          "theo yêu cầu của khách hàng"
+        ],
+        "remediation": [
+          "bật TLS 1.2 và 1.3"
+        ],
+        "owner": [
+          "bộ phận dịch vụ"
+        ]
+      }
+    },
+    {
+      "id": "he-fa9b6de922b4229bd570159b",
+      "doc_key": [
+        "ts-tk-0163-push-image-loi-500-het-quota.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "tài khoản khachhang06.example"
+        ],
+        "remediation": [
+          "tăng quota cho tài khoản"
+        ],
+        "time": [
+          "trong 20 phút"
+        ],
+        "owner": [
+          "bộ phận dịch vụ"
+        ]
+      }
+    },
+    {
+      "id": "he-fad52a656908017e5fc05e7f",
+      "doc_key": [
+        "dc-06-huong-dan-xu-ly-may-in-khong-in-duoc.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "lệnh in"
+        ],
+        "symptom": [
+          "kẹt ở hàng đợi"
+        ],
+        "cause": [
+          "dịch vụ in trên máy tính treo"
+        ],
+        "remediation": [
+          "khởi động lại dịch vụ Print Spooler"
+        ]
+      }
+    },
+    {
+      "id": "he-fb9cd64f557564b10c5ffeec",
+      "doc_key": [
+        "dc-05-sop-quan-ly-ra-vao-phong-may.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "khách tham quan"
+        ],
+        "condition": [
+          "được duyệt bởi trưởng bộ phận"
+        ],
+        "remediation": [
+          "cần một người có thẻ đi kèm suốt thời gian"
+        ]
+      }
+    },
+    {
+      "id": "he-fbf03df6d614c4fd4cd0740d",
+      "doc_key": [
+        "dv-09-runbook-don-dep-image-registry.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "pipeline CI"
+        ],
+        "symptom": [
+          "dừng ở bước đẩy image"
+        ],
+        "cause": [
+          "hết quota registry"
+        ],
+        "remediation": [
+          "xóa tag cũ hoặc liên hệ bộ phận dịch vụ để tăng quota"
+        ],
+        "owner": [
+          "NV08"
+        ]
+      }
+    },
+    {
+      "id": "he-fcc785dca36c19a91547f494",
+      "doc_key": [
+        "ts-tk-0151-pvc-pending-accessmode-rwx.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "PVC"
+        ],
+        "symptom": [
+          "kẹt mãi ở Pending"
+        ],
+        "cause": [
+          "invalid access mode"
+        ],
+        "time": [
+          "28/09/2026 10:02"
+        ],
+        "owner": [
+          "NV23"
+        ]
+      }
+    },
+    {
+      "id": "he-fcc89d5aad334c26361c89a9",
+      "doc_key": [
+        "dc-03-runbook-kiem-tra-nhiet-do-phong-may.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "luồng khí vào của tủ"
+        ],
+        "condition": [
+          "bình thường"
+        ],
+        "time": [
+          "18 tới 24 độ C"
+        ]
+      }
+    },
+    {
+      "id": "he-fdcd9d4f50c127b6f1658cee",
+      "doc_key": [
+        "dv-03-postmortem-chung-chi-ssl-wildcard-het-han.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "chứng chỉ wildcard"
+        ],
+        "symptom": [
+          "hết hạn"
+        ],
+        "cause": [
+          "không có bảng theo dõi hạn chứng chỉ dùng chung"
+        ],
+        "time": [
+          "07:00"
+        ]
+      }
+    },
+    {
+      "id": "he-feae6fd80fed4ed5656e9c4d",
+      "doc_key": [
+        "dv-01-postmortem-web-khach-hang-sap-do-php-fpm-het-worker.md"
+      ],
+      "khoa": "noi_bo:postmortem",
+      "slots": {
+        "subject": [
+          "NV03"
+        ],
+        "symptom": [
+          "nhận cảnh báo, kiểm tra Nginx thấy upstream sent no response"
+        ],
+        "time": [
+          "09:19"
+        ]
+      }
+    },
+    {
+      "id": "he-ff2cbe76c5ebeb146efca48a",
+      "doc_key": [
+        "ts-tk-0151-pvc-pending-accessmode-rwx.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "PVC"
+        ],
+        "remediation": [
+          "Sửa manifest thành ReadWriteOnce"
+        ],
+        "time": [
+          "PVC được cấp trong 20 giây"
+        ]
+      }
+    },
+    {
+      "id": "he-ff3b195a134d69371139d655",
+      "doc_key": [
+        "dv-09-runbook-don-dep-image-registry.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "tag registry"
+        ],
+        "condition": [
+          "đang chạy trên sản xuất"
+        ],
+        "remediation": [
+          "giữ lại"
+        ],
+        "owner": [
+          "NV08"
+        ]
+      }
+    }
+  ]
+}

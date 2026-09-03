@@ -81,7 +81,13 @@ NAMESPACE_GRAPH: str = "chunk_entity_relation"
 # lịch sử git, đúng thứ Policy của AGENTS.md cấm. Muốn chụp space khác thì phải
 # `--dich` ra ngoài cây repo, và khi đó người chạy đã tự khai là mình biết mình
 # đang cầm cái gì.
-SPACE_GHI_TRONG_REPO: frozenset[str] = frozenset({"synth"})
+#
+# Story 2.10 thêm `khao_sat`: 50 bản ghi khảo sát ba tỷ lệ n-ngôi là tài liệu
+# **giả lập** dựng trong repo (`eval/khao_sat/`), không phải dữ liệu công ty,
+# nên ảnh chụp của nó dump được vào cây repo mà không rò gì. Nó *phải* có commit
+# vì nó là nguồn duy nhất của ba con số mà chương 4 báo cáo, và ADR-012 đòi
+# người đọc repo tính lại được ba tỷ lệ mà không cần kho đang chạy.
+SPACE_GHI_TRONG_REPO: frozenset[str] = frozenset({"synth", "khao_sat"})
 
 # Đuôi bản lưu khi `--ghi-de`, cùng khuôn với `eval/ket_qua_do/<vòng>.bak.json`
 # của story 2.6: rác của một lần chạy, đã vào `.gitignore`, không commit.

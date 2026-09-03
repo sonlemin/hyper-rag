@@ -1,0 +1,511 @@
+# Bảng thiết kế 50 bản ghi khảo sát ba tỷ lệ n-ngôi (story 2.10).
+#
+# **Nguồn chuẩn của `scope` và `content_type`.** Mọi file trong `eval/khao_sat/`
+# có đúng một mục ở đây, mọi mục có đúng một file, và nhãn của mục phải khớp
+# frontmatter đọc bằng `core.ingest_scan`. Lệch một chiều nào cũng là
+# `uv run pytest` đỏ (`tests/test_khao_sat.py`), cùng luật một-một mà story 2.5
+# đặt cho bộ vàng và story 2.8 đặt cho corpus.
+#
+# **Mẫu số là bản ghi giả lập.** Quyết định 03/09/2026 của sonlm: doanh nghiệp
+# không lưu báo cáo sự cố ở dạng dùng được, nên 50 bản ghi ở đây được dựng theo
+# nghiệp vụ của 30 tài liệu Tech Support thật (giữ ngoài repo, trong
+# `extra/khao-sat-50/tech-support/md/`). Hệ quả phải nói thẳng trong báo cáo:
+# ba tỷ lệ mất vai trò mỏ neo độc lập cho corpus 2.8, vì người dựng corpus và
+# người dựng mẫu số là cùng một bên. Chúng còn dùng được để kiểm tính nhất quán
+# nội bộ giữa hai vật dựng khác thời điểm và khác mục đích.
+#
+# **Ba định nghĩa đếm chốt trước phép đếm đầu tiên**, ở
+# `docs/adr/ADR-012-dinh-nghia-dem-ba-ty-le-n-ngoi.md`. Không sửa nội dung bản
+# ghi nào sau khi đã thấy con số của bất kỳ tỷ lệ nào.
+#
+# **Space riêng.** 50 bản ghi nạp vào space `khao_sat`, không bao giờ vào
+# `synth`. Tên file cũng không trùng với `eval/corpus/` hay `eval/data/`, nên
+# một lần gõ nhầm `--space synth` không âm thầm ghi đè mẫu số của Đo 2 và Đo 3.
+#
+# **Hạn ngạch 25/15/10** theo ba bộ phận, chốt trong README của thư mục nguồn,
+# suy từ tỷ lệ 50/50 nội bộ và khách hàng của corpus 2.8 (20/20 trên 40 tài
+# liệu). Ở đây tỷ lệ đó giữ đúng: 25 bản ghi Tech Support mang scope khách hàng,
+# 25 bản ghi DevOps và Data Center mang scope `noi_bo`.
+#
+# **Luật gán scope**, viết ra để nó là một quy tắc chứ không phải 50 quyết định
+# lẻ. Bộ phận giữ hồ sơ khách hàng thì bản ghi mang scope khách hàng; bộ phận
+# giữ tri thức vận hành nội bộ thì bản ghi mang `noi_bo`. Trong 25 phiếu Tech
+# Support, tên miền khách `khachhang01` tới `khachhang11` gộp về
+# `khach_hang_a`, `khachhang12` tới `khachhang22` gộp về `khach_hang_b`: hai
+# scope khách hàng của hệ đại diện cho hai khoang thuê bao, còn 22 khách giả lập
+# là 22 hồ sơ nằm trong hai khoang đó.
+#
+# Loại nội dung dùng bảng 13 hạng của `config/hang-do-nhay.yaml`. Ngưỡng nhạy
+# cảm của khảo sát là hạng 20 (`bao_cao_su_co`) trở lên, xem ADR-012.
+#
+# ============================================================================
+# BA ĐIỀU ĐÃ KHAI VỀ MẪU SỐ NÀY - đọc trước khi thêm hay sửa một bản ghi
+# ============================================================================
+#
+# Một là **quyết định**, hai là **khiếm khuyết đã biết**. Cả ba đều bị test khóa
+# lại, nên sửa mà quên khai lại là `uv run pytest` đỏ.
+#
+# --- (1) QUYẾT ĐỊNH: phủ 9 trong 13 loại nội dung ---------------------------
+#
+# Vắng `cmdb`, `faq`, `log`, `tai_lieu_san_pham`. Lý do là hình dạng nghiệp vụ
+# của ba bộ phận được lấy mẫu: Tech Support giữ phiếu ticket, DevOps và Data
+# Center giữ runbook, SOP và báo cáo sự cố; không bộ phận nào trong ba bộ phận
+# đó là chủ sở hữu của sổ tài sản (`cmdb`), của log hệ thống (`log`), của tài
+# liệu sản phẩm hay của trang hỏi đáp. Corpus 2.8 có đủ 13 vì nó được dựng để
+# phủ bảng loại, còn tập này được dựng để giống nghiệp vụ thật.
+#
+# Hệ quả phải nói ra khi báo cáo: hai trong bốn loại vắng là loại **nhạy cảm**
+# (`log` hạng 24, `cmdb` hạng 26), nên trục loại nội dung của `khao_sat` hẹp hơn
+# của `synth` đúng ở vùng mà tỷ lệ 2 và tỷ lệ 3 lấy làm mẫu số. Bảng hai cột của
+# `eval.xem_ty_le` vì vậy **không** so trên cùng một trục, và chênh lệch của mỗi
+# tỷ lệ trộn hai nguyên nhân: hình dạng tri thức khác nhau, và tập loại nội dung
+# khác nhau. Trang in cảnh báo đó và ADR-012 ghi nó.
+#
+# --- (2) KHIẾM KHUYẾT: bốn tên file mâu thuẫn `content_type` -----------------
+#
+#   dv-10-runbook-xu-ly-canh-bao-ram-cpu.md          khai canh_bao
+#   dv-13-sop-xoay-vong-khoa-truy-cap-object-storage.md  khai bi_mat_ha_tang
+#   dv-14-sop-cap-quyen-truy-cap-ha-tang.md          khai bi_mat_ha_tang
+#   dc-03-runbook-kiem-tra-nhiet-do-phong-may.md     khai canh_bao
+#
+# Nhãn loại dẫn đầu tên file nói một đằng, `content_type` khai một nẻo. Nhãn khai
+# mới là nhãn thật - `core.ingest_scan` đọc frontmatter, không đọc tên file - nên
+# **không con số nào sai**. Cái sai là người soát: `doc_key` là tên file và nó
+# hiện ở cột đầu của ảnh chụp, của bảng phân bố và của trang CT-03, nên người
+# đọc suy ra hạng độ nhạy từ một chữ không mang nghĩa gì với hệ.
+#
+# --- (3) KHIẾM KHUYẾT: mốc thời gian nằm ở tương lai ------------------------
+#
+# Bản ghi sinh ngày 03/09/2026 (dấu ở đầu mỗi file), nhưng sự việc bên trong
+# chạy từ 12/09/2026 tới 20/10/2026 - phiếu ticket 26/09 tới 20/10, postmortem
+# trong tháng 9. Corpus 2.8 thì neo quanh 12/08/2026 và dừng ở 18/09/2026. `time`
+# là một trong 8 vai được trích, nên mẫu số mang một trục thời gian không thể
+# đúng và gần như không giao với `synth` (đúng một mốc chung, 12/08/2026, xuất
+# hiện tình cờ ở dv-07).
+#
+# --- VÌ SAO KHÔNG SỬA NGAY -------------------------------------------------
+#
+# Sửa tên file đổi `doc_key`; sửa mốc thời gian đổi sha256 thân. Cả hai buộc nạp
+# lại, và cả hai đụng đúng luật Never của spec 2.10: "không sửa nội dung 50 bản
+# ghi sau khi đã thấy con số của bất kỳ tỷ lệ nào". Luật đó có mặt để không ai
+# phải phân biệt một lần sửa lành với một lần chỉnh cho ra số đẹp bằng cách tin
+# lời người sửa - và nó đáng giá nhất đúng lúc lần sửa *thật sự* lành, như lần
+# này. Hai lỗi không đổi con số nào: ba tỷ lệ đếm số vai được điền và hạng độ
+# nhạy, không đếm ngày tháng, và `content_type` lấy từ frontmatter.
+#
+# **Cấm sửa hai khiếm khuyết trên cho tới khi story 2.12 nạp lại.** 2.12 vốn
+# phải nạp lại toàn bộ để chuẩn hóa thực thể, nên sửa kèm lúc đó là miễn phí, và
+# ba tỷ lệ được đếm lại trong cùng commit theo đúng điều kiện đổi của ADR-012.
+# Hai khoản trong `_bmad-output/implementation-artifacts/deferred-work.md` giữ
+# địa chỉ; `tests/test_khao_sat.py` ghim đúng bốn tên file và khoảng mốc thời
+# gian hiện có, nên một lần sửa lén là test đỏ.
+#
+version: 1
+
+# Hạn ngạch theo bộ phận. Test khóa đúng ba số này: một bộ phận co lại còn 5 bản
+# ghi trong khi bộ phận khác phình ra vẫn giữ tổng 50, và khi đó "phủ ba bộ
+# phận" thành một câu đúng về hình thức mà sai về chất liệu.
+han_ngach:
+  tech_support: 25
+  devops: 15
+  data_center: 10
+
+bo_phan:
+  - id: tech_support
+    ten: Tech Support
+    mo_ta: >-
+      Phiếu hỗ trợ sự cố hosting của khách hàng: mã ticket, khách hàng, mức ưu
+      tiên, người tiếp nhận, mốc mở và đóng, nguyên nhân, cách xử lý và ghi chú
+      nội bộ. Đây là bộ phận có 30 tài liệu thật làm nền nghiệp vụ, nên 25 bản
+      ghi này bám sát hình dạng nghiệp vụ nhất trong ba nhóm.
+  - id: devops
+    ten: DevOps / Vận hành
+    mo_ta: >-
+      Báo cáo sau sự cố, runbook và SOP hạ tầng. Nhóm duy nhất mang loại
+      `postmortem` và `bi_mat_ha_tang`, tức mang cả hai đầu của thang độ nhạy.
+  - id: data_center
+    ten: Data Center (Helpdesk, Server IDC)
+    mo_ta: >-
+      Runbook, SOP và hướng dẫn xử lý sự cố nội bộ ở mức thiết bị và phòng máy.
+      Nhóm này kéo phần dưới của thang độ nhạy, để tập `KHÔNG_NHẠY` của định
+      nghĩa composition risk không rỗng.
+
+ban_ghi:
+  # --- Tech Support: 25 phiếu hỗ trợ, scope khách hàng ----------------------
+  - ma: ts-d-01
+    ten: ts-tk-0142-waf-whitelist-ghi-nham.md
+    scope: khach_hang_a
+    content_type: bao_cao_su_co
+    bo_phan: tech_support
+    ghi_chu: >-
+      Whitelist WAF ghi thiếu một dải IP nên nhân viên văn phòng chính bị
+      403; nguyên nhân, mốc mở/đóng và người tiếp nhận đủ ba chiều của một
+      bản ghi sự cố.
+  - ma: ts-d-02
+    ten: ts-tk-0147-waf-mode-con-o-phat-hien.md
+    scope: khach_hang_a
+    content_type: bao_cao_su_co
+    bo_phan: tech_support
+    ghi_chu: >-
+      Rule WAF đã tạo mà không chặn vì WAF Mode còn ở Phát hiện: một nguyên
+      nhân cấu hình, không phải lỗi sản phẩm.
+  - ma: ts-d-03
+    ten: ts-tk-0151-pvc-pending-accessmode-rwx.md
+    scope: khach_hang_a
+    content_type: bao_cao_su_co
+    bo_phan: tech_support
+    ghi_chu: >-
+      PVC kẹt Pending do accessMode RWX không được lớp lưu trữ hỗ trợ.
+  - ma: ts-d-04
+    ten: ts-tk-0156-pvc-pending-zone-mismatch.md
+    scope: khach_hang_a
+    content_type: bao_cao_su_co
+    bo_phan: tech_support
+    ghi_chu: >-
+      Pod kẹt Pending do volume và node khác vùng khả dụng; cùng triệu chứng
+      với ts-d-03 nhưng khác nguyên nhân.
+  - ma: ts-d-05
+    ten: ts-tk-0160-pvc-terminating-finalizer.md
+    scope: khach_hang_a
+    content_type: bao_cao_su_co
+    bo_phan: tech_support
+    ghi_chu: >-
+      PVC kẹt Terminating vì finalizer còn giữ; cách xử lý có thao tác trên
+      hệ khách.
+  - ma: ts-d-06
+    ten: ts-tk-0163-push-image-loi-500-het-quota.md
+    scope: khach_hang_a
+    content_type: bao_cao_su_co
+    bo_phan: tech_support
+    ghi_chu: >-
+      Push image trả 500 vì hết quota registry: thông điệp lỗi nói sai
+      nguyên nhân, chất liệu tốt cho vai `symptom` khác `cause`.
+  - ma: ts-d-07
+    ten: ts-tk-0168-cdn-image-transform-404.md
+    scope: khach_hang_a
+    content_type: bao_cao_su_co
+    bo_phan: tech_support
+    ghi_chu: >-
+      Ảnh sau chuyển đổi trả 404 trên CDN.
+  - ma: ts-d-08
+    ten: ts-tk-0172-mat-ket-noi-db-sau-resize.md
+    scope: khach_hang_a
+    content_type: bao_cao_su_co
+    bo_phan: tech_support
+    ghi_chu: >-
+      Mất kết nối Cloud Database sau resize do xung đột default gateway;
+      cùng sự việc với dv-04 nhìn từ phía khách.
+  - ma: ts-d-09
+    ten: ts-tk-0175-clouddb-khong-ping-duoc.md
+    scope: khach_hang_a
+    content_type: vong_doi_ticket
+    bo_phan: tech_support
+    ghi_chu: >-
+      Khách tưởng DB chết vì không ping được; ticket đóng bằng giải thích,
+      không có sự cố hệ thống nào.
+  - ma: ts-d-10
+    ten: ts-tk-0179-node-notready-full-ram.md
+    scope: khach_hang_a
+    content_type: bao_cao_su_co
+    bo_phan: tech_support
+    ghi_chu: >-
+      Node Kubernetes chuyển NotReady do hết RAM; cùng chủ đề với runbook
+      dv-05.
+  - ma: ts-d-11
+    ten: ts-tk-0183-nang-cau-hinh-node-trong-pool.md
+    scope: khach_hang_a
+    content_type: vong_doi_ticket
+    bo_phan: tech_support
+    ghi_chu: >-
+      Nâng cấu hình node bị pool trả về cấu hình cũ: vòng đời một yêu cầu,
+      không phải một sự cố.
+  - ma: ts-d-12
+    ten: ts-tk-0188-public-endpoint-khong-ho-tro-tls.md
+    scope: khach_hang_a
+    content_type: known_issue
+    bo_phan: tech_support
+    ghi_chu: >-
+      Public endpoint chưa bật được TLS: hạn chế đã biết của sản phẩm, chưa
+      có bản vá.
+  - ma: ts-d-13
+    ten: ts-tk-0192-mongodb-tls-13.md
+    scope: khach_hang_b
+    content_type: vong_doi_ticket
+    bo_phan: tech_support
+    ghi_chu: >-
+      Yêu cầu bật TLS 1.3 cho MongoDB, chuyển sang đội sản phẩm.
+  - ma: ts-d-14
+    ten: ts-tk-0196-vod-drm-khong-download.md
+    scope: khach_hang_b
+    content_type: vong_doi_ticket
+    bo_phan: tech_support
+    ghi_chu: >-
+      Video mã hóa DRM không tải xuống được: hành vi đúng thiết kế, ticket
+      đóng bằng giải thích.
+  - ma: ts-d-15
+    ten: ts-tk-0201-vod-player-rieng-can-m3u8.md
+    scope: khach_hang_b
+    content_type: vong_doi_ticket
+    bo_phan: tech_support
+    ghi_chu: >-
+      Khách dùng trình phát riêng, cần link m3u8.
+  - ma: ts-d-16
+    ten: ts-tk-0205-tong-dai-sip-alg.md
+    scope: khach_hang_b
+    content_type: bao_cao_su_co
+    bo_phan: tech_support
+    ghi_chu: >-
+      Tổng đài không đăng ký được và mất âm thanh một chiều do SIP ALG trên
+      router khách.
+  - ma: ts-d-17
+    ten: ts-tk-0209-tong-dai-jitter-duong-truyen.md
+    scope: khach_hang_b
+    content_type: bao_cao_su_co
+    bo_phan: tech_support
+    ghi_chu: >-
+      Rớt cuộc gọi giờ cao điểm do jitter đường truyền: nguyên nhân nằm
+      ngoài hệ thống nhà cung cấp.
+  - ma: ts-d-18
+    ten: ts-tk-0213-firewall-outbound-chan-stun.md
+    scope: khach_hang_b
+    content_type: bao_cao_su_co
+    bo_phan: tech_support
+    ghi_chu: >-
+      Tường lửa outbound của khách chặn cổng thoại và STUN.
+  - ma: ts-d-19
+    ten: ts-tk-0217-chuyen-doi-business-email-thieu-thong-tin.md
+    scope: khach_hang_b
+    content_type: vong_doi_ticket
+    bo_phan: tech_support
+    ghi_chu: >-
+      Chuyển đổi Business Email dừng giữa chừng vì thiếu thông tin khách
+      phải cung cấp.
+  - ma: ts-d-20
+    ten: ts-tk-0221-tai-khoan-quan-tri-chua-bat-2fa.md
+    scope: khach_hang_b
+    content_type: bao_cao_su_co
+    bo_phan: tech_support
+    ghi_chu: >-
+      Rà soát tài khoản quản trị chưa bật 2FA: bản ghi mang danh sách tài
+      khoản, hạng 20 là đúng chỗ.
+  - ma: ts-d-21
+    ten: ts-tk-0226-iptables-khoa-ssh.md
+    scope: khach_hang_b
+    content_type: bao_cao_su_co
+    bo_phan: tech_support
+    ghi_chu: >-
+      Khách tự đặt iptables và tự khóa SSH của mình.
+  - ma: ts-d-22
+    ten: ts-tk-0230-iptables-thu-tu-rule.md
+    scope: khach_hang_b
+    content_type: bao_cao_su_co
+    bo_phan: tech_support
+    ghi_chu: >-
+      Quy tắc cho phép đặt sau quy tắc chặn nên không có tác dụng.
+  - ma: ts-d-23
+    ten: ts-tk-0234-cai-sql-server-ubuntu-loi-phu-thuoc.md
+    scope: khach_hang_b
+    content_type: vong_doi_ticket
+    bo_phan: tech_support
+    ghi_chu: >-
+      Cài SQL Server trên Ubuntu 24.04 lỗi phụ thuộc, hỗ trợ ngoài phạm vi
+      dịch vụ.
+  - ma: ts-d-24
+    ten: ts-tk-0238-keepalived-vip-khong-chuyen.md
+    scope: khach_hang_b
+    content_type: bao_cao_su_co
+    bo_phan: tech_support
+    ghi_chu: >-
+      VIP không chuyển sang node dự phòng vì thiếu Allow Pair trên cổng
+      mạng; cùng chủ đề với runbook dv-08.
+  - ma: ts-d-25
+    ten: ts-tk-0242-thu-hep-pvc-bi-tu-choi.md
+    scope: khach_hang_a
+    content_type: known_issue
+    bo_phan: tech_support
+    ghi_chu: >-
+      Không thu hẹp được dung lượng ổ: hạn chế đã biết của lớp lưu trữ.
+  # --- DevOps / Vận hành: 15 bản ghi nội bộ ---------------------------------
+  - ma: dv-01
+    ten: dv-01-postmortem-web-khach-hang-sap-do-php-fpm-het-worker.md
+    scope: noi_bo
+    content_type: postmortem
+    bo_phan: devops
+    ghi_chu: >-
+      Web khách sập 47 phút do PHP-FPM hết worker. Cùng hình dạng chuỗi nhân
+      quả với kịch bản `web_sap` của corpus 2.8, dựng độc lập.
+  - ma: dv-02
+    ten: dv-02-postmortem-day-o-cung-cum-log.md
+    scope: noi_bo
+    content_type: postmortem
+    bo_phan: devops
+    ghi_chu: >-
+      Cụm log ngừng nhận do đầy ổ cứng, job dọn im lặng ngừng chạy 13 ngày.
+      Đối chiếu được với kịch bản `day_o_cung`.
+  - ma: dv-03
+    ten: dv-03-postmortem-chung-chi-ssl-wildcard-het-han.md
+    scope: noi_bo
+    content_type: postmortem
+    bo_phan: devops
+    ghi_chu: >-
+      Chứng chỉ SSL wildcard hết hạn, 6 tên miền lỗi HTTPS. Đối chiếu được
+      với kịch bản `ssl_het_han`.
+  - ma: dv-04
+    ten: dv-04-postmortem-mat-ket-noi-db-sau-resize.md
+    scope: noi_bo
+    content_type: postmortem
+    bo_phan: devops
+    ghi_chu: >-
+      Mất kết nối Cloud Database sau resize, nhìn từ phía vận hành; ts-d-08
+      là cùng sự việc nhìn từ phía khách.
+  - ma: dv-05
+    ten: dv-05-runbook-xu-ly-node-k8s-notready.md
+    scope: noi_bo
+    content_type: runbook
+    bo_phan: devops
+    ghi_chu: >-
+      Quy trình xử lý node Kubernetes chuyển NotReady.
+  - ma: dv-06
+    ten: dv-06-runbook-mo-rong-volume-cho-node.md
+    scope: noi_bo
+    content_type: runbook
+    bo_phan: devops
+    ghi_chu: >-
+      Mở rộng dung lượng volume cho máy chủ và node.
+  - ma: dv-07
+    ten: dv-07-runbook-backup-va-khoi-phuc-cloud-database.md
+    scope: noi_bo
+    content_type: runbook
+    bo_phan: devops
+    ghi_chu: >-
+      Sao lưu và khôi phục Cloud Database.
+  - ma: dv-08
+    ten: dv-08-runbook-chuyen-doi-du-phong-keepalived.md
+    scope: noi_bo
+    content_type: runbook
+    bo_phan: devops
+    ghi_chu: >-
+      Chuyển đổi dự phòng keepalived khi node Master hỏng.
+  - ma: dv-09
+    ten: dv-09-runbook-don-dep-image-registry.md
+    scope: noi_bo
+    content_type: runbook
+    bo_phan: devops
+    ghi_chu: >-
+      Dọn dẹp registry khi hết quota.
+  - ma: dv-10
+    ten: dv-10-runbook-xu-ly-canh-bao-ram-cpu.md
+    scope: noi_bo
+    content_type: canh_bao
+    bo_phan: devops
+    ghi_chu: >-
+      Ngưỡng cảnh báo RAM/CPU và kênh nhận; loại `canh_bao` chứ không
+      `runbook` vì nội dung chính là ngưỡng và kênh.
+  - ma: dv-11
+    ten: dv-11-sop-trien-khai-ban-va-bao-mat-khan-cap.md
+    scope: noi_bo
+    content_type: sop
+    bo_phan: devops
+    ghi_chu: >-
+      Quy trình triển khai bản vá bảo mật khẩn cấp.
+  - ma: dv-12
+    ten: dv-12-sop-quy-trinh-thay-doi-cau-hinh-ha-tang.md
+    scope: noi_bo
+    content_type: sop
+    bo_phan: devops
+    ghi_chu: >-
+      Quy trình thay đổi cấu hình hạ tầng.
+  - ma: dv-13
+    ten: dv-13-sop-xoay-vong-khoa-truy-cap-object-storage.md
+    scope: noi_bo
+    content_type: bi_mat_ha_tang
+    bo_phan: devops
+    ghi_chu: >-
+      Xoay vòng khóa truy cập Object Storage: mô tả đường vào và nơi giữ
+      khóa, hạng 30.
+  - ma: dv-14
+    ten: dv-14-sop-cap-quyen-truy-cap-ha-tang.md
+    scope: noi_bo
+    content_type: bi_mat_ha_tang
+    bo_phan: devops
+    ghi_chu: >-
+      Cấp và thu hồi quyền truy cập hạ tầng: bản đồ ai vào được cái gì, hạng
+      30.
+  - ma: dv-15
+    ten: dv-15-huong-dan-doc-log-nginx-bang-goaccess.md
+    scope: noi_bo
+    content_type: runbook
+    bo_phan: devops
+    ghi_chu: >-
+      Đọc log Nginx bằng GoAccess khi nghi có truy cập bất thường.
+  # --- Data Center: 10 bản ghi nội bộ ---------------------------------------
+  - ma: dc-01
+    ten: dc-01-runbook-thay-o-cung-hong-may-chu-vat-ly.md
+    scope: noi_bo
+    content_type: runbook
+    bo_phan: data_center
+    ghi_chu: >-
+      Thay ổ cứng hỏng trong máy chủ vật lý.
+  - ma: dc-02
+    ten: dc-02-runbook-mat-dien-mot-pha-tu-rack.md
+    scope: noi_bo
+    content_type: runbook
+    bo_phan: data_center
+    ghi_chu: >-
+      Xử lý mất điện một pha trên tủ rack.
+  - ma: dc-03
+    ten: dc-03-runbook-kiem-tra-nhiet-do-phong-may.md
+    scope: noi_bo
+    content_type: canh_bao
+    bo_phan: data_center
+    ghi_chu: >-
+      Ngưỡng nhiệt độ phòng máy và việc phải làm khi vượt ngưỡng.
+  - ma: dc-04
+    ten: dc-04-sop-tiep-nhan-va-lap-dat-may-chu-moi.md
+    scope: noi_bo
+    content_type: sop
+    bo_phan: data_center
+    ghi_chu: >-
+      Tiếp nhận và lắp đặt máy chủ mới vào tủ rack.
+  - ma: dc-05
+    ten: dc-05-sop-quan-ly-ra-vao-phong-may.md
+    scope: noi_bo
+    content_type: sop
+    bo_phan: data_center
+    ghi_chu: >-
+      Quản lý ra vào phòng máy.
+  - ma: dc-06
+    ten: dc-06-huong-dan-xu-ly-may-in-khong-in-duoc.md
+    scope: noi_bo
+    content_type: troubleshooting
+    bo_phan: data_center
+    ghi_chu: >-
+      Máy in không in được, mức người dùng cuối.
+  - ma: dc-07
+    ten: dc-07-huong-dan-xu-ly-wifi-van-phong-chap-chon.md
+    scope: noi_bo
+    content_type: troubleshooting
+    bo_phan: data_center
+    ghi_chu: >-
+      Wi-Fi văn phòng chập chờn.
+  - ma: dc-08
+    ten: dc-08-huong-dan-xu-ly-thiet-bi-phong-hop.md
+    scope: noi_bo
+    content_type: troubleshooting
+    bo_phan: data_center
+    ghi_chu: >-
+      Sự cố thiết bị phòng họp.
+  - ma: dc-09
+    ten: dc-09-huong-dan-cap-phat-va-thu-hoi-thiet-bi.md
+    scope: noi_bo
+    content_type: sop
+    bo_phan: data_center
+    ghi_chu: >-
+      Cấp phát và thu hồi thiết bị.
+  - ma: dc-10
+    ten: dc-10-huong-dan-reset-mat-khau-tai-khoan-noi-bo.md
+    scope: noi_bo
+    content_type: sop
+    bo_phan: data_center
+    ghi_chu: >-
+      Đặt lại mật khẩu tài khoản nội bộ.

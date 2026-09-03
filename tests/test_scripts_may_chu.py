@@ -85,9 +85,17 @@ def test_script_goi_dung_diem_vao_cua_du_an(script):
 
 def test_module_diem_vao_la_danh_sach_cho_phep(script):
     """Danh sách cho phép, không chuỗi tự do: `python -m <gì cũng được>` từ môi
-    trường là một cửa chạy code mà script này không cần đến. Hai module hợp lệ
-    là một con số đóng, khai thẳng rẻ hơn."""
-    assert _gan(script, "MODULE_CHO_PHEP") == "api.do_chi_phi eval.chup_do_thi"
+    trường là một cửa chạy code mà script này không cần đến. Số module hợp lệ
+    là một con số đóng, khai thẳng rẻ hơn.
+
+    Story 2.10 thêm `eval.ct03` (thí nghiệm mô tả entity đa nguồn, đọc thuần,
+    không tốn tiền). Thêm một module là sửa **một** hằng ở đây và một hằng trong
+    script, không phải nới luật thành chuỗi tự do.
+    """
+    assert (
+        _gan(script, "MODULE_CHO_PHEP")
+        == "api.do_chi_phi eval.chup_do_thi eval.ct03"
+    )
     assert "khong nam trong danh sach cho phep" in script
 
 
