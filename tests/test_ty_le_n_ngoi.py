@@ -794,3 +794,44 @@ def test_console_ba_cot_in_ca_hai_canh_bao(tmp_path, capsys):
     assert "(synth -> khao_sat)" in ra and "(synth -> real)" in ra
     assert "không cùng trục loại nội dung" in ra
     assert "Qwen 2.5 7B cục bộ" in ra
+
+
+def test_cot_real_nhan_ca_ban_rut_gon(tmp_path):
+    """`--anh-real` nhận cả ảnh đầy đủ (ngoài repo) lẫn ảnh rút gọn (có commit).
+
+    Bản rút gọn là dạng duy nhất của `real` đi vào repo được, nên nếu cờ chỉ
+    nhận dạng đầy đủ thì trang ba cột chỉ dựng được trên máy có file ngoài repo -
+    tức không ai đọc repo dựng lại được nó.
+    """
+    import json
+
+    from eval.anh_rut_gon import rut_gon_anh
+    from eval.xem_ty_le import main
+
+    goc = json.loads(_anh_real(tmp_path).read_text(encoding="utf-8"))
+    rut = tmp_path / "real_rut_gon.json"
+    rut.write_text(
+        json.dumps(rut_gon_anh(goc, "muoi-du-dai-cho-test-0123456789"), ensure_ascii=False),
+        encoding="utf-8",
+    )
+    dich = tmp_path / "ty_le.html"
+    assert main([str(dich), "--anh-real", str(rut)]) == 0
+    trang = dich.read_text(encoding="utf-8")
+    # Tiêu đề cột nói ra dạng nào đang được dùng.
+    assert "<th>real_rut_gon</th>" in trang
+    # Và cảnh báo bộ trích xuất khác vẫn in: nó gắn với space, không với dạng file.
+    assert "Qwen" in trang and "chưa đo lần nào" in trang
+
+
+def test_cot_real_hai_dang_cho_cung_ba_ty_le(tmp_path, hang):
+    """Tính chất làm bản rút gọn dùng được: hai dạng cho **cùng** ba con số."""
+    import json
+
+    from eval.anh_rut_gon import rut_gon_anh
+
+    day_du = json.loads(_anh_real(tmp_path).read_text(encoding="utf-8"))
+    rut = rut_gon_anh(day_du, "muoi-du-dai-cho-test-0123456789")
+    a, b = tmp_path / "a.json", tmp_path / "b.json"
+    a.write_text(json.dumps(day_du, ensure_ascii=False), encoding="utf-8")
+    b.write_text(json.dumps(rut, ensure_ascii=False), encoding="utf-8")
+    assert ba_ty_le(doc_anh_do_thi(a), hang).bo_ba() == ba_ty_le(doc_anh_do_thi(b), hang).bo_ba()

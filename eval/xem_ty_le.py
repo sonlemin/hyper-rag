@@ -37,6 +37,7 @@ from typing import Mapping, Sequence
 
 from adapters.sensitivity_loader import DUONG_DAN_MAC_DINH as HANG_MAC_DINH
 from adapters.sensitivity_loader import SensitivityRanksInvalid, tai_hang_do_nhay
+from eval.anh_rut_gon import la_space_rut_gon, space_goc
 from eval.cau_hoi import AnhDoThiKhongHopLe, doc_anh_do_thi
 from eval.ty_le_n_ngoi import (
     NGUONG_NHAY_CAM,
@@ -58,10 +59,17 @@ ANH_SYNTH: Path = _GOC / "anh_do_thi" / "synth.json"
 ANH_KHAO_SAT: Path = _GOC / "anh_do_thi" / "khao_sat.json"
 
 # Cột `real` **không có mặc định**, và đó là một quyết định chứ không phải một
-# thiếu sót: ảnh chụp của space `real` dump nguyên văn giá trị mọi slot của tài
-# liệu công ty, nên nó không bao giờ nằm trong cây repo (`eval/chup_do_thi.py`
-# từ chối ghi nó vào đây). Một đường dẫn mặc định trong `eval/anh_do_thi/` là
-# một lời mời chép file đó vào đúng chỗ mà git đang theo dõi.
+# thiếu sót: ảnh chụp *đầy đủ* của space `real` dump nguyên văn giá trị mọi slot
+# của tài liệu công ty, nên nó không bao giờ nằm trong cây repo
+# (`eval/chup_do_thi.py` từ chối ghi nó vào đây). Một đường dẫn mặc định trong
+# `eval/anh_do_thi/` là một lời mời chép file đó vào đúng chỗ mà git đang theo
+# dõi - kể cả khi bản rút gọn đã nằm sẵn ở đó, vì hai file chỉ khác nhau một
+# hậu tố tên.
+#
+# Cờ `--anh-real` nhận **cả hai dạng**: ảnh đầy đủ (ngoài repo) và ảnh rút gọn
+# (`real_rut_gon`, có commit). Ba tỷ lệ ra bằng nhau trên hai dạng - đó chính là
+# tính chất làm bản rút gọn dùng được - còn tiêu đề cột thì khác, nên người đọc
+# trang luôn biết mình đang nhìn dạng nào.
 SPACE_REAL: str = "real"
 
 # Vòng đo chốt của story 2.6 và precision *ghép cặp* trên mẫu số tổng của nó -
@@ -92,8 +100,10 @@ LENH_CHUP: Mapping[str, str] = {
         "HYPER_RAG_CUC_BO=1 scripts/chay-may-chu.sh nap <thư mục real ngoài repo>"
         " --space real --xuat-json eval/so_do_nap/nap-real.json"
         " && HYPER_RAG_CUC_BO=1 HYPER_RAG_MODULE=eval.chup_do_thi"
-        " scripts/chay-may-chu.sh chup --space real --dich /root/hyper-rag-data/real.json"
-        " (rồi scp về **ngoài** cây repo)"
+        " scripts/chay-may-chu.sh chup --space real --rut-gon"
+        " --muoi /root/hyper-rag-data/muoi-anh-rut-gon.txt"
+        " (rồi scp eval/anh_do_thi/real_rut_gon.json về và commit; bản **đầy đủ**"
+        " thì --dich ra ngoài cây repo và không bao giờ commit)"
     ),
 }
 
@@ -268,7 +278,7 @@ def _khoi_bo_trich_xuat_khac(bo: Sequence[BaTyLe]) -> str:
     trộn hình dạng tri thức với chất lượng trích xuất, và không có cách nào tách
     hai phần đó ra từ chính bảng này.
     """
-    if not any(b.space == SPACE_REAL for b in bo):
+    if not any(space_goc(b.space) == SPACE_REAL for b in bo):
         return ""
     return (
         '<div class="canh-bao"><b>Cột <code>real</code> dùng một bộ trích xuất'
@@ -392,6 +402,10 @@ def _tham_so(argv: list[str]) -> argparse.Namespace:
 def ly_do_tu_choi_anh(duong_dan, space: str, anh) -> str | None:
     """Lý do từ chối một ảnh chụp cho cột `space`, hoặc `None` nếu nhận được.
 
+    Bản rút gọn của một space tính là **cùng space** với bản đầy đủ của nó
+    (`real_rut_gon` hợp lệ cho cột `real`): hai dạng cho cùng ba con số, chỉ
+    khác nhau ở chỗ dạng nào commit được.
+
     Chặn đúng một ca mà loader không thấy: file hợp lệ nhưng **của space khác**.
     Trỏ nhầm `--anh-khao-sat` vào `synth.json` cho ra một trang hai cột giống hệt
     nhau, ba chênh lệch bằng 0, và một kết luận "khớp cỡ tuyệt đối" - kết quả sai
@@ -400,7 +414,7 @@ def ly_do_tu_choi_anh(duong_dan, space: str, anh) -> str | None:
 
     Hàm thuần để test chấm được hai chiều mà không cần dựng file.
     """
-    if anh.space == space:
+    if space_goc(anh.space) == space:
         return None
     return (
         f"{duong_dan} là ảnh chụp của space {anh.space!r} nhưng đang được dùng cho"
@@ -489,7 +503,7 @@ def main(argv: list[str] | None = None) -> int:
         f" {PRECISION_GHEP_CAP:.1%} của vòng {VONG_CHOT_2_6}), mẫu số khao_sat là"
         " bản ghi giả lập"
     )
-    if any(b.space == SPACE_REAL for b in bo):
+    if any(space_goc(b.space) == SPACE_REAL for b in bo):
         print(
             f"cảnh báo: cột {SPACE_REAL} trích bằng Qwen 2.5 7B cục bộ (AD-12),"
             " precision chưa đo lần nào; chênh của nó trộn hình dạng tri thức với"

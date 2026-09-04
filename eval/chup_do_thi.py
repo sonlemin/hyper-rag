@@ -29,9 +29,15 @@ không xóa. Đây là script `eval/` đầu tiên chạm kho thật, nên nó c
 
 **Ba rào ở phía ghi file**, vì ảnh chụp là file có commit và là neo của mọi id
 trong nhãn truy hồi vàng: chỉ space trong `SPACE_GHI_TRONG_REPO` được ghi vào
-cây repo (dữ liệu thật phải `--dich` ra ngoài); file đã có thì đòi `--ghi-de` và
-bản cũ giữ thành `.bak.json`; và loader phải nhận file **trước khi** nó thay bản
-cũ, không phải sau.
+cây repo ở dạng **đầy đủ** (dữ liệu thật phải `--dich` ra ngoài, hoặc `--rut-gon`
+vào trong); file đã có thì đòi `--ghi-de` và bản cũ giữ thành `.bak.json`; và
+loader phải nhận file **trước khi** nó thay bản cũ, không phải sau.
+
+`--rut-gon` (story 2.11) ghi một bản **không mang giá trị nào**: mọi id entity
+và `doc_key` thay bằng băm có muối, giữ khóa lọc, nhãn quyền và quan hệ bằng
+nhau giữa các id. Đó là dạng duy nhất của space dữ liệu thật đi vào repo được,
+và là chỗ đứng để `tests/test_ty_le_n_ngoi.py` tính lại ba tỷ lệ của `real` thay
+vì tin ba hằng chép tay. Xem `eval/anh_rut_gon.py`.
 
 Chạy dưới cờ ngữ cảnh hệ thống: hai method trên đều đòi cờ đó
 (`bat_buoc_ngu_canh_he_thong`) vì chúng trả nội dung và bỏ mệnh đề lọc. Đây là
@@ -60,6 +66,7 @@ from core.keys import CHUA_GHI
 from core.permission import use_context
 from core.slots import SLOT_ROLES
 from core.system_context import system_context
+from eval.anh_rut_gon import HAU_TO_RUT_GON, MuoiKhongHopLe, doc_muoi, rut_gon_anh
 from eval.cau_hoi import (
     DUONG_DAN_ANH_MAC_DINH,
     VERSION_ANH,
@@ -89,6 +96,12 @@ NAMESPACE_GRAPH: str = "chunk_entity_relation"
 # người đọc repo tính lại được ba tỷ lệ mà không cần kho đang chạy.
 SPACE_GHI_TRONG_REPO: frozenset[str] = frozenset({"synth", "khao_sat"})
 
+# Muối của bản rút gọn, giữ **ngoài repo** (`extra/` đã gitignore). Đây chỉ là
+# đường mặc định trên máy dev; trên máy chủ `extra/` không được đồng bộ (xem
+# `scripts/ci-remote.sh`), nên ở đó phải truyền `--muoi` trỏ vào một bản chép
+# ngoài cây repo. Thiếu file là **từ chối**, không băm trần.
+MUOI_MAC_DINH: Path = REPO_ROOT / "extra" / "khao-sat-50" / "muoi-anh-rut-gon.txt"
+
 # Đuôi bản lưu khi `--ghi-de`, cùng khuôn với `eval/ket_qua_do/<vòng>.bak.json`
 # của story 2.6: rác của một lần chạy, đã vào `.gitignore`, không commit.
 DUOI_BAN_CU: str = ".bak.json"
@@ -110,14 +123,24 @@ def thieu_bien_moi_truong(moi_truong=None) -> list[str]:
     return [ten for ten in BIEN_BAT_BUOC if not str(nguon.get(ten) or "").strip()]
 
 
-def ly_do_tu_choi_dich(space: str, dich: Path, goc_repo: Path | None = None) -> str | None:
+def ly_do_tu_choi_dich(
+    space: str, dich: Path, goc_repo: Path | None = None, *, rut_gon: bool = False
+) -> str | None:
     """Lý do từ chối ghi ảnh chụp của `space` vào `dich`, hoặc `None` nếu được.
 
-    Chặn đúng một ca: space ngoài danh sách cho phép mà đích lại nằm trong cây
-    repo. Ảnh chụp là file **có commit**, còn thân của nó là nguyên văn mọi giá
-    trị slot; hai thứ đó cộng lại thì một lần `--space real` là một lần rò dữ
-    liệu công ty vào git, không có bước nào ở giữa để ai đó kịp nhận ra.
+    Chặn đúng một ca: space ngoài danh sách cho phép, ở dạng **đầy đủ**, mà đích
+    lại nằm trong cây repo. Ảnh chụp đầy đủ là file có commit và thân của nó là
+    nguyên văn mọi giá trị slot; hai thứ đó cộng lại thì một lần `--space real`
+    là một lần rò dữ liệu công ty vào git, không có bước nào ở giữa để ai đó kịp
+    nhận ra.
+
+    Bản **rút gọn** đi vào repo được với mọi space, kể cả `real`: nó không mang
+    một giá trị slot nào, chỉ mang số vai được điền và quan hệ bằng nhau giữa
+    các id đã băm có muối (story 2.11). Đó là đường duy nhất để ba tỷ lệ của
+    `real` có một nguồn trong repo tính lại được, thay vì ba hằng chép tay.
     """
+    if rut_gon:
+        return None
     if space in SPACE_GHI_TRONG_REPO:
         return None
     goc = (REPO_ROOT if goc_repo is None else Path(goc_repo)).resolve()
@@ -126,10 +149,11 @@ def ly_do_tu_choi_dich(space: str, dich: Path, goc_repo: Path | None = None) -> 
     except ValueError:
         return None
     return (
-        f"từ chối ghi ảnh chụp của space {space!r} vào {dich} (trong cây repo):"
-        f" chỉ {sorted(SPACE_GHI_TRONG_REPO)} được commit. Ảnh chụp mang nguyên văn"
-        " giá trị mọi slot, gồm cả tài liệu hạn chế, nên một space dữ liệu thật"
-        " phải ghi ra ngoài repo bằng --dich"
+        f"từ chối ghi ảnh chụp **đầy đủ** của space {space!r} vào {dich} (trong cây"
+        f" repo): chỉ {sorted(SPACE_GHI_TRONG_REPO)} được commit ở dạng đầy đủ. Ảnh"
+        " chụp đầy đủ mang nguyên văn giá trị mọi slot, gồm cả tài liệu hạn chế,"
+        " nên một space dữ liệu thật phải ghi ra ngoài repo bằng --dich, hoặc vào"
+        " repo bằng --rut-gon (bản rút gọn không mang giá trị nào)"
     )
 
 
@@ -314,17 +338,53 @@ def _tham_so(argv: list[str]) -> argparse.Namespace:
         help=f"file ảnh chụp (mặc định {DUONG_DAN_ANH_MAC_DINH.parent}/<space>.json)",
     )
     p.add_argument("--ghi-de", action="store_true", dest="ghi_de", help="thay ảnh chụp đã có")
+    p.add_argument(
+        "--rut-gon",
+        action="store_true",
+        dest="rut_gon",
+        help="ghi bản rút gọn: mọi id entity và doc_key thay bằng băm có muối,"
+        " giữ khóa lọc và quan hệ bằng nhau. Đây là dạng duy nhất của space dữ"
+        " liệu thật được commit; cần --muoi",
+    )
+    p.add_argument(
+        "--muoi",
+        type=Path,
+        default=MUOI_MAC_DINH,
+        metavar="FILE",
+        help=f"file muối cho --rut-gon, giữ ngoài repo (mặc định {MUOI_MAC_DINH})",
+    )
     p.add_argument("--policy", type=Path, default=POLICY_MAC_DINH, help="bảng chính sách")
     return p.parse_args(argv)
 
 
+def ten_file_mac_dinh(space: str, *, rut_gon: bool) -> Path:
+    """Đích mặc định. Tên file mang **cùng** token với `space` mà file tự khai.
+
+    `real` -> `real.json`; `real` rút gọn -> `real_rut_gon.json`, đúng bằng
+    `space` bên trong file. Một tên file và một lời tự khai lệch nhau là chỗ
+    người soát đọc một đằng và máy đọc một nẻo, và `.gitignore` phân biệt hai
+    dạng bằng chính tên file này.
+    """
+    ten = f"{space}{HAU_TO_RUT_GON}" if rut_gon else space
+    return DUONG_DAN_ANH_MAC_DINH.with_name(f"{ten}.json")
+
+
 def main(argv: list[str] | None = None) -> int:
     ts = _tham_so(sys.argv[1:] if argv is None else list(argv))
-    dich = ts.dich or DUONG_DAN_ANH_MAC_DINH.with_name(f"{ts.space}.json")
-    ly_do = ly_do_tu_choi_dich(ts.space, dich)
+    dich = ts.dich or ten_file_mac_dinh(ts.space, rut_gon=ts.rut_gon)
+    ly_do = ly_do_tu_choi_dich(ts.space, dich, rut_gon=ts.rut_gon)
     if ly_do:
         print(ly_do, file=sys.stderr)
         return 1
+    # Muối đọc **trước** khi chạm kho: thiếu muối là từ chối cả đợt, và một đợt
+    # đọc graph rồi mới phát hiện thiếu muối là bắt người chạy đợi vô ích.
+    muoi = None
+    if ts.rut_gon:
+        try:
+            muoi = doc_muoi(ts.muoi)
+        except MuoiKhongHopLe as loi:
+            print(f"{loi.code}: {loi}", file=sys.stderr)
+            return 1
     thieu = thieu_bien_moi_truong()
     if thieu:
         print(
@@ -344,6 +404,8 @@ def main(argv: list[str] | None = None) -> int:
     cau_hinh = cau_hinh_kho_tu_moi_truong()
     try:
         anh = asyncio.run(chup(ts.space, policy.policy_version, cau_hinh))
+        if muoi is not None:
+            anh = rut_gon_anh(anh, muoi)
         ghi_anh(dich, anh, ghi_de=ts.ghi_de)
     except (AnhDoThiKhongHopLe, FileExistsError) as loi:
         print(str(loi), file=sys.stderr)
