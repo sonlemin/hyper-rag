@@ -47,6 +47,7 @@ from eval.ty_le_n_ngoi import (
 GOC_REPO = Path(__file__).resolve().parent.parent
 ANH_SYNTH = GOC_REPO / "eval" / "anh_do_thi" / "synth.json"
 ANH_KHAO_SAT = GOC_REPO / "eval" / "anh_do_thi" / "khao_sat.json"
+ANH_REAL = GOC_REPO / "eval" / "anh_do_thi" / "real_rut_gon.json"
 
 # Số khóa của space `synth`, đếm ngày 04/09/2026 trên ảnh chụp
 # `eval/anh_do_thi/synth.json` (254 hyperedge / 50 tài liệu, chụp 03/09/2026).
@@ -68,6 +69,26 @@ KHAO_SAT_N_NGOI = 319
 KHAO_SAT_NHAY_CAM = 151
 KHAO_SAT_NHAY_CAM_N_NGOI = 133
 KHAO_SAT_COMPOSITION_RISK = 0
+
+# Số khóa của space `real`, đếm ngày 04/09/2026 trên ảnh chụp **rút gọn**
+# `eval/anh_do_thi/real_rut_gon.json` (369 hyperedge / 41 tài liệu, chụp 04/09
+# ngay sau đợt nạp `45465ae0`). Bản rút gọn cho **đúng** ba con số của bản đầy
+# đủ (`tests/test_anh_rut_gon.py`), nên số ở đây tính lại được từ repo y như số
+# của hai space kia - đó là cả lý do bản rút gọn tồn tại.
+#
+# **41 chứ không 50**: 9 tài liệu ra 0 fact hợp lệ trên đường Qwen cục bộ và bị
+# pipeline dọn sạch (4 ca JSON hỏng, 5 ca LLM trả danh sách rỗng). sonlm chốt
+# nhận 41 làm mẫu số và báo cáo tỷ lệ mất 18% như một kết quả đo được, không nạp
+# lại.
+#
+# **Hai số 100% là hiện tượng của bộ trích xuất, không phải của tri thức.** Ba
+# dấu vân tay đo được ở dưới; đọc chúng trước khi đọc hai con số này.
+REAL_HYPEREDGE = 369
+REAL_TAI_LIEU = 41
+REAL_N_NGOI = 369
+REAL_NHAY_CAM = 144
+REAL_NHAY_CAM_N_NGOI = 144
+REAL_COMPOSITION_RISK = 0
 
 # Ba hạng đóng băng từ story 2.1, ngưỡng nhạy cảm gắn vào số giữa.
 HANG_RUNBOOK = 10
@@ -835,3 +856,107 @@ def test_cot_real_hai_dang_cho_cung_ba_ty_le(tmp_path, hang):
     a.write_text(json.dumps(day_du, ensure_ascii=False), encoding="utf-8")
     b.write_text(json.dumps(rut, ensure_ascii=False), encoding="utf-8")
     assert ba_ty_le(doc_anh_do_thi(a), hang).bo_ba() == ba_ty_le(doc_anh_do_thi(b), hang).bo_ba()
+
+
+# ---------------------------------------------------------------------------
+# Số khóa của space `real` (story 2.11)
+# ---------------------------------------------------------------------------
+
+
+def test_so_khoa_cua_space_real(hang):
+    """Ba tỷ lệ của tài liệu thật, đếm trên ảnh chụp **rút gọn** đã commit.
+
+    Cùng khuôn với hai space kia và vì cùng một lý do: một lần nạp lại `real`
+    làm số lệch thì phải đối chiếu lại, không chép số mới vào chương 4. Bản rút
+    gọn là thứ làm phép khóa này khả thi - ảnh đầy đủ không commit được.
+    """
+    kq = ba_ty_le(doc_anh_do_thi(ANH_REAL), hang)
+    assert kq.space == "real_rut_gon"
+    assert kq.so_tai_lieu == REAL_TAI_LIEU
+    assert kq.so_hyperedge == REAL_HYPEREDGE
+    assert kq.overall_n_ary == TyLe("Overall N-ary", REAL_N_NGOI, REAL_HYPEREDGE)
+    assert kq.sensitive_n_ary == TyLe(
+        "Sensitive N-ary", REAL_NHAY_CAM_N_NGOI, REAL_NHAY_CAM
+    )
+    assert kq.composition_risk == TyLe(
+        "Composition-Risk", REAL_COMPOSITION_RISK, REAL_NHAY_CAM
+    )
+
+
+def test_chan_doan_composition_risk_cua_real(hang):
+    """Composition-Risk 0 trên `real` cũng là kết quả, không phải mẫu số hỏng.
+
+    Cùng hình dạng với hai space kia: phần lớn ca nhạy cảm **có** entity lộ ở
+    vùng không nhạy cảm, chỉ không lộ hết. Chuẩn hóa thực thể chưa làm (2.12).
+    """
+    kq = ba_ty_le(doc_anh_do_thi(ANH_REAL), hang)
+    assert kq.so_nhay_cam_lo_mot_phan == 85
+    assert kq.so_nhay_cam_co_entity_lo == 85
+    assert kq.trung_binh_phan_entity_lo == pytest.approx(0.2590, abs=5e-4)
+
+
+def test_hai_ty_le_100_phan_tram_cua_real_la_hien_tuong_cua_bo_trich_xuat(hang):
+    """**Đọc test này trước khi đọc hai con số 100% ở trên.**
+
+    Ba dấu vân tay đo được, khóa bằng giá trị để một lần nạp lại đổi kết luận
+    thì có chỗ đỏ. Chúng nói rằng 100% là hằng của bộ trích xuất chứ không phải
+    phép đo về tri thức:
+
+    1. `real` **không có một hyperedge 2 vai nào**, trong khi `synth` có 10,2%.
+       Ngưỡng n-ngôi là 3 vai, nên một tập không bao giờ xuống dưới 3 cho tỷ lệ
+       1 bằng 100% *theo định nghĩa*.
+    2. Vai `owner` được điền ở 96,5% hyperedge của `real` so với 18,9% của
+       `synth` - trên một tập mà phần lớn tài liệu là runbook và tài liệu sản
+       phẩm, thứ không nêu người phụ trách.
+    3. 9,5% hyperedge của `real` có một entity ở hai vai trở lên, `synth` 0,4%.
+    """
+    real = ba_ty_le(doc_anh_do_thi(ANH_REAL), hang)
+    synth = ba_ty_le(doc_anh_do_thi(ANH_SYNTH), hang)
+
+    assert real.phan_hyperedge_hai_vai() == 0.0
+    assert synth.phan_hyperedge_hai_vai() == pytest.approx(0.1024, abs=5e-4)
+    assert real.so_vai_pho_bien_nhat() == 5
+    assert synth.so_vai_pho_bien_nhat() == 3
+    assert min(real.phan_bo_so_vai) == 3, "real không có hyperedge dưới 3 vai"
+
+    vai, cua_real, cua_synth = real.vai_da_dien_nhieu_nhat(synth)
+    assert vai == "owner"
+    assert cua_real == pytest.approx(0.9648, abs=5e-4)
+    assert cua_synth == pytest.approx(0.1890, abs=5e-4)
+
+    assert real.phan_entity_lap_vai() == pytest.approx(0.0949, abs=5e-4)
+    assert synth.phan_entity_lap_vai() == pytest.approx(0.0039, abs=5e-4)
+
+
+def test_canh_bao_cot_real_mang_ba_bang_chung_do_duoc(tmp_path):
+    """Cảnh báo phải in **số**, không chỉ câu "precision chưa đo lần nào".
+
+    Cột `real` ra 100% ở hai tỷ lệ đầu; một người đọc thấy 100% mà không có số
+    đối chiếu sẽ đọc thành một kết quả rất tốt. Và số phải tính từ chính hai ảnh
+    chụp: một cảnh báo mang số chép tay nói về lần nạp trước chứ không về file
+    đang mở.
+    """
+    from eval.xem_ty_le import main
+
+    dich = tmp_path / "ty_le.html"
+    assert main([str(dich), "--anh-real", str(ANH_REAL)]) == 0
+    trang = dich.read_text(encoding="utf-8")
+    assert "0.0%" in trang and "10.2%" in trang, "dấu 1: hyperedge 2 vai"
+    assert "<code>owner</code>" in trang and "96.5%" in trang, "dấu 2: vai điền thừa"
+    assert "9.5%" in trang and "0.4%" in trang, "dấu 3: entity lặp giữa các vai"
+    assert "không khôi phục được mỏ neo Composition-Risk" in trang
+
+
+def test_console_cot_real_in_cung_ba_bang_chung(tmp_path, capsys):
+    """Console và trang nói cùng một thứ, dựng từ **một** hàm.
+
+    Một bản console viết tay là bản thứ hai của cùng ba câu, và hai bản sẽ trôi
+    khỏi nhau đúng lúc người đọc console tin rằng nó nói cùng thứ với trang.
+    """
+    from eval.xem_ty_le import main
+
+    assert main([str(tmp_path / "x.html"), "--anh-real", str(ANH_REAL)]) == 0
+    ra = capsys.readouterr().out
+    assert "owner" in ra and "96.5%" in ra
+    assert "KHÔNG khôi phục được mỏ neo Composition-Risk" in ra
+    assert "<b>" not in ra, "dòng console không được mang thẻ HTML"

@@ -31,6 +31,7 @@ nằm trong `.gitignore` như mọi trang của `eval/expr/`.
 
 import argparse
 import html
+import re
 import sys
 from pathlib import Path
 from typing import Mapping, Sequence
@@ -267,31 +268,106 @@ def _khoi_lech_truc_loai(bo: Sequence[BaTyLe], ten_hang) -> str:
     )
 
 
+def _bo_the(s: str) -> str:
+    """Bỏ thẻ HTML để một dòng bằng chứng dùng lại được ở console.
+
+    Một bản console viết tay là một bản thứ hai của cùng ba câu, và hai bản sẽ
+    trôi khỏi nhau - đúng lúc người đọc console tin rằng nó nói cùng thứ với
+    trang.
+    """
+    return re.sub(r"<[^>]+>", "", s).replace("&ge;", ">=")
+
+
+def _phan_tram(gia_tri: float | None) -> str:
+    return "không tính được" if gia_tri is None else f"{gia_tri:.1%}"
+
+
+def dau_van_tay_bo_trich_xuat(cot: BaTyLe, moc: BaTyLe) -> list[str]:
+    """Ba bằng chứng **đo được** rằng hai cột đến từ hai bộ trích xuất khác nhau.
+
+    Mọi con số tính từ chính hai ảnh chụp, không chép tay: một cảnh báo mang số
+    chép tay nói về lần nạp trước chứ không về file đang mở, và đó đúng là kiểu
+    sai mà người đọc không có cách nào nhận ra.
+
+    Ba dấu, chọn vì mỗi dấu chỉ vào một cơ chế khác nhau:
+
+    1. **Trần dưới của số vai.** Tỷ lệ 1 đếm hyperedge có từ 3 vai. Một cột
+       không có hyperedge 2 vai *nào* trong khi cột mốc có hàng chục thì tỷ lệ 1
+       bằng 100% là một hằng đúng theo định nghĩa, không phải một phép đo.
+    2. **Vai bị điền thừa.** Vai mà cột này điền nhiều hơn mốc nhiều nhất. Một
+       bộ trích xuất bỏ sót thì *thiếu* vai; thừa vai đều tay trên mọi fact là
+       dấu nó tự điền thay vì đọc ra.
+    3. **Entity lặp giữa các vai.** Một fact lành hiếm khi lấy cùng một thực thể
+       làm hai chiều; tỷ lệ này cao là dấu nhồi vai cho đủ.
+    """
+    dong: list[str] = []
+    hai_vai, hai_vai_moc = cot.phan_hyperedge_hai_vai(), moc.phan_hyperedge_hai_vai()
+    if hai_vai is not None and hai_vai_moc is not None:
+        dong.append(
+            f"<b>Không một hyperedge 2 vai nào</b> ({_phan_tram(hai_vai)} so với"
+            f" {_phan_tram(hai_vai_moc)} ở <code>{html.escape(moc.space)}</code>)."
+            f" Số vai hay gặp nhất là <b>{cot.so_vai_pho_bien_nhat()}</b>, ở cột mốc"
+            f" là {moc.so_vai_pho_bien_nhat()}. Ngưỡng n-ngôi là 3 vai, nên một tập"
+            " không bao giờ xuống dưới 3 cho tỷ lệ 1 bằng 100% <i>theo định"
+            " nghĩa</i>."
+            if hai_vai == 0
+            else f"Hyperedge 2 vai: {_phan_tram(hai_vai)} so với"
+            f" {_phan_tram(hai_vai_moc)} ở <code>{html.escape(moc.space)}</code>."
+        )
+    lech = cot.vai_da_dien_nhieu_nhat(moc)
+    if lech is not None:
+        vai, a, b = lech
+        dong.append(
+            f"Vai <code>{html.escape(vai)}</code> được điền ở <b>{_phan_tram(a)}</b>"
+            f" số hyperedge, so với {_phan_tram(b)} ở"
+            f" <code>{html.escape(moc.space)}</code>."
+        )
+    lap, lap_moc = cot.phan_entity_lap_vai(), moc.phan_entity_lap_vai()
+    if lap is not None and lap_moc is not None:
+        dong.append(
+            f"Hyperedge có một entity xuất hiện ở hai vai trở lên:"
+            f" <b>{_phan_tram(lap)}</b> so với {_phan_tram(lap_moc)} ở"
+            f" <code>{html.escape(moc.space)}</code>."
+        )
+    return dong
+
+
 def _khoi_bo_trich_xuat_khac(bo: Sequence[BaTyLe]) -> str:
-    """Cảnh báo cột `real` trích bằng một bộ trích xuất **chưa đo precision**.
+    """Cảnh báo cột `real` trích bằng một bộ trích xuất khác, **kèm bằng chứng**.
 
     Ngang hạng với cảnh báo lệch trục loại, và cùng lý do: nó đổi cách đọc chính
     con số chứ không phải một ghi chú phương pháp. `synth` và `khao_sat` trích
     bằng DeepSeek với precision ghép cặp đã đo ở story 2.6; `real` chỉ chạy được
     provider cục bộ (AD-12) nên nó trích bằng Qwen 2.5 7B, và precision của
-    đường đó chưa đo lần nào. Chênh lệch giữa cột `real` và hai cột kia vì vậy
-    trộn hình dạng tri thức với chất lượng trích xuất, và không có cách nào tách
-    hai phần đó ra từ chính bảng này.
+    đường đó chưa đo lần nào.
+
+    Câu "precision chưa đo" một mình là không đủ, và đó là bài học của lần đọc
+    04/09: cột `real` ra **100%** ở cả hai tỷ lệ đầu, và một người đọc thấy 100%
+    mà không có số đối chiếu sẽ đọc thành một kết quả rất tốt. Nên khối này in
+    ba dấu vân tay đo được của bộ trích xuất ngay cạnh con số, và phát biểu
+    thẳng kết luận: cột `real` **không** khôi phục được mỏ neo Composition-Risk
+    mà story 2.10 mất.
     """
-    if not any(space_goc(b.space) == SPACE_REAL for b in bo):
+    cot = [b for b in bo if space_goc(b.space) == SPACE_REAL]
+    if not cot:
         return ""
+    moc = bo[0]
+    bang_chung = "".join(f"<li>{d}</li>" for d in dau_van_tay_bo_trich_xuat(cot[0], moc))
     return (
         '<div class="canh-bao"><b>Cột <code>real</code> dùng một bộ trích xuất'
-        " khác.</b> Space <code>real</code> chỉ chạy provider cục bộ (AD-12), nên"
-        " 50 tài liệu thật được trích bằng <b>Qwen 2.5 7B cục bộ</b>, còn"
-        f" <code>synth</code> và <code>khao_sat</code> trích bằng DeepSeek với"
+        " khác, và ba tỷ lệ của nó là hiện tượng của bộ trích xuất chứ không phải"
+        " của tri thức.</b> Space <code>real</code> chỉ chạy provider cục bộ"
+        " (AD-12), nên tài liệu thật được trích bằng <b>Qwen 2.5 7B cục bộ</b>,"
+        f" còn <code>synth</code> và <code>khao_sat</code> trích bằng DeepSeek với"
         f" precision ghép cặp <b>{PRECISION_GHEP_CAP:.1%}</b> đã đo ở story 2.6."
-        " Precision của đường Qwen <b>chưa đo lần nào</b>. Mọi chênh lệch giữa cột"
-        " <code>real</code> và hai cột kia vì vậy trộn hai nguyên nhân - hình dạng"
-        " tri thức, và chất lượng trích xuất - và bảng này không tách được chúng."
-        " Ba tỷ lệ của <code>real</code> đo trên tài liệu <b>thật</b>, đúng thứ PRD"
-        " muốn cho Composition-Risk Ratio, nên chúng gần một mỏ neo hơn hẳn cột"
-        " <code>khao_sat</code>; chúng vẫn chưa <b>là</b> một mỏ neo sạch.</div>"
+        " Precision của đường Qwen <b>chưa đo lần nào</b>: bộ vàng trích xuất của"
+        " story 2.5 đo DeepSeek trên corpus dựng, không có bộ vàng nào cho"
+        " <code>real</code>."
+        f"<br>Ba dấu vân tay đo được từ chính hai ảnh chụp:<ol>{bang_chung}</ol>"
+        "<b>Kết luận: cột <code>real</code> không khôi phục được mỏ neo"
+        " Composition-Risk mà story 2.10 mất.</b> Nó đo trên tài liệu thật, đúng"
+        " thứ PRD muốn, nhưng ba con số của nó nói về chênh lệch giữa hai bộ trích"
+        " xuất nhiều hơn nói về hình dạng tri thức doanh nghiệp.</div>"
     )
 
 
@@ -503,11 +579,19 @@ def main(argv: list[str] | None = None) -> int:
         f" {PRECISION_GHEP_CAP:.1%} của vòng {VONG_CHOT_2_6}), mẫu số khao_sat là"
         " bản ghi giả lập"
     )
-    if any(space_goc(b.space) == SPACE_REAL for b in bo):
+    for b in bo:
+        if space_goc(b.space) != SPACE_REAL:
+            continue
         print(
-            f"cảnh báo: cột {SPACE_REAL} trích bằng Qwen 2.5 7B cục bộ (AD-12),"
-            " precision chưa đo lần nào; chênh của nó trộn hình dạng tri thức với"
-            " chất lượng trích xuất"
+            f"cảnh báo: cột {b.space} trích bằng Qwen 2.5 7B cục bộ (AD-12),"
+            " precision chưa đo lần nào - ba tỷ lệ của nó là hiện tượng của bộ"
+            " trích xuất, không phải của tri thức:"
+        )
+        for d in dau_van_tay_bo_trich_xuat(b, trai):
+            print("  - " + _bo_the(d))
+        print(
+            f"  => cột {b.space} KHÔNG khôi phục được mỏ neo Composition-Risk mà"
+            " story 2.10 mất"
         )
     print(f"ghi {dich}")
     return 0

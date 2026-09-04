@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "ngay": "2026-09-04T16:11:33.276992+00:00",
+  "lenh": "uv run python -m api.do_chi_phi /root/hyper-rag-data/real --space real --xuat-json eval/so_do_nap/nap-real.json",
+  "space": "real",
+  "dot_id": "45465ae0e40040339056a8e60b28894a",
+  "so_tai_lieu": 41,
+  "theo_model": [
+    {
+      "model": "bge-m3",
+      "loai": "embedding",
+      "nha_cung_cap": "ollama",
+      "so_lan": 147,
+      "token_vao": 86054,
+      "token_ra": 0,
+      "chi_phi_usd": 0.0
+    },
+    {
+      "model": "qwen2.5:7b",
+      "loai": "llm",
+      "nha_cung_cap": "ollama",
+      "so_lan": 73,
+      "token_vao": 98870,
+      "token_ra": 102451,
+      "chi_phi_usd": 0.0
+    }
+  ],
+  "tong": {
+    "so_lan": 220,
+    "token_vao": 184924,
+    "token_ra": 102451,
+    "chi_phi_usd": 0.0
+  }
+}

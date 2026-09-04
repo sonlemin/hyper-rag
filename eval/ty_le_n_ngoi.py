@@ -22,7 +22,7 @@ vậy cùng một ảnh chụp đã commit luôn cho cùng ba con số, và ngư
 lại được mà không cần kho đang chạy. Phần đọc file nằm ở `eval/xem_ty_le.py`.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Mapping, Sequence
 
 from eval.cau_hoi import AnhDoThi, HyperedgeAnh
@@ -127,9 +127,63 @@ class BaTyLe:
     # khi mẫu số rỗng, cùng luật với `TyLe.ti_le` - "không có ca nào để đo" và
     # "đo được và bằng không" là hai câu khác nhau.
     trung_binh_phan_entity_lo: float | None = None
+    # --- Ba số **dấu vân tay của bộ trích xuất** (story 2.11) ------------------
+    #
+    # Chúng không phải kết quả và không vào báo cáo như một tỷ lệ. Chúng có mặt
+    # vì tỷ lệ 1 bằng **100%** đọc được theo hai cách rất khác nhau: "tri thức
+    # này n-ngôi tuyệt đối" hoặc "bộ trích xuất không bao giờ trả một fact dưới
+    # 3 vai". Ba số này tách hai cách đọc đó ra, và chúng phải tính từ chính ảnh
+    # chụp chứ không chép tay, nếu không lần nạp sau chúng nói về lần nạp trước.
+    #
+    # `{số vai được điền: số hyperedge}`. Một cột không có hyperedge 2 vai nào,
+    # trong khi hai cột kia có 10-20%, là dấu của trần dưới do bộ trích xuất đặt.
+    phan_bo_so_vai: Mapping[int, int] = field(default_factory=dict)
+    # `{vai: số hyperedge điền vai đó}`. So giữa hai cột thì vai nào lệch nhiều
+    # nhất chỉ ra chỗ bộ trích xuất tự điền thay vì đọc ra từ tài liệu.
+    phan_bo_vai: Mapping[str, int] = field(default_factory=dict)
+    # Số hyperedge có **một entity xuất hiện ở hai vai trở lên**. Một fact lành
+    # hiếm khi lấy cùng một thực thể làm hai chiều; tỷ lệ này cao là dấu bộ trích
+    # xuất nhồi vai cho đủ.
+    so_entity_lap_vai: int = 0
 
     def bo_ba(self) -> tuple[TyLe, TyLe, TyLe]:
         return (self.overall_n_ary, self.sensitive_n_ary, self.composition_risk)
+
+    def vai_da_dien_nhieu_nhat(self, moc: "BaTyLe") -> tuple[str, float, float] | None:
+        """Vai lệch nhiều nhất so với cột mốc: `(vai, tỷ lệ của mình, của mốc)`.
+
+        Trả vai mà cột này điền **nhiều hơn** mốc nhiều nhất - chiều đó mới là
+        chiều đáng ngờ: một bộ trích xuất bỏ sót thì thiếu vai, còn một bộ trích
+        xuất tự bịa thì thừa vai. `None` khi một trong hai cột rỗng.
+        """
+        if not self.so_hyperedge or not moc.so_hyperedge:
+            return None
+        ung_vien = []
+        for vai in set(self.phan_bo_vai) | set(moc.phan_bo_vai):
+            a = self.phan_bo_vai.get(vai, 0) / self.so_hyperedge
+            b = moc.phan_bo_vai.get(vai, 0) / moc.so_hyperedge
+            ung_vien.append((a - b, vai, a, b))
+        if not ung_vien:
+            return None
+        chenh, vai, a, b = max(ung_vien)
+        return (vai, a, b) if chenh > 0 else None
+
+    def phan_hyperedge_hai_vai(self) -> float | None:
+        """Phần hyperedge chỉ có 2 vai được điền; `None` khi không có hyperedge nào."""
+        if not self.so_hyperedge:
+            return None
+        return self.phan_bo_so_vai.get(2, 0) / self.so_hyperedge
+
+    def so_vai_pho_bien_nhat(self) -> int | None:
+        """Số vai được điền hay gặp nhất (mode); hòa thì lấy số nhỏ hơn."""
+        if not self.phan_bo_so_vai:
+            return None
+        return max(self.phan_bo_so_vai.items(), key=lambda kv: (kv[1], -kv[0]))[0]
+
+    def phan_entity_lap_vai(self) -> float | None:
+        if not self.so_hyperedge:
+            return None
+        return self.so_entity_lap_vai / self.so_hyperedge
 
 
 def so_vai_da_dien(h: HyperedgeAnh) -> int:
@@ -241,6 +295,19 @@ def ba_ty_le(anh: AnhDoThi, hang: Mapping[str, int]) -> BaTyLe:
         if da_lo:
             phan_lo.append(da_lo / len(e))
 
+    phan_bo_so_vai: dict[int, int] = {}
+    phan_bo_vai: dict[str, int] = {}
+    lap_vai = 0
+    for h in anh.hyperedge:
+        n_vai = so_vai_da_dien(h)
+        phan_bo_so_vai[n_vai] = phan_bo_so_vai.get(n_vai, 0) + 1
+        for vai, gia_tri in h.slots.items():
+            if gia_tri:
+                phan_bo_vai[vai] = phan_bo_vai.get(vai, 0) + 1
+        tat_ca = [e for gia_tri in h.slots.values() for e in gia_tri]
+        if len(tat_ca) != len(set(tat_ca)):
+            lap_vai += 1
+
     phan_bo_hang: dict[int, int] = {}
     phan_bo_loai: dict[str, int] = {}
     nguoc = {v: k for k, v in hang.items()}
@@ -275,6 +342,9 @@ def ba_ty_le(anh: AnhDoThi, hang: Mapping[str, int]) -> BaTyLe:
         so_nhay_cam_lo_mot_phan=lo_mot_phan,
         so_nhay_cam_co_entity_lo=len(phan_lo),
         trung_binh_phan_entity_lo=(sum(phan_lo) / len(phan_lo)) if phan_lo else None,
+        phan_bo_so_vai=dict(sorted(phan_bo_so_vai.items())),
+        phan_bo_vai=dict(sorted(phan_bo_vai.items())),
+        so_entity_lap_vai=lap_vai,
     )
 
 
