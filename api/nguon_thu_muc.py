@@ -15,12 +15,25 @@ Vì sao không đặt trong `core.ingest_scan`: `api/man_nap.py` (màn nạp web
 khai. Một rào đặt trong `core/` đổi luôn hình dạng của lối vào web mà không ai
 hỏi. Hai lối vào chia nhau lõi *quét*, không chia nhau lõi *chọn nguồn*.
 
-Chỉ import `core/`: đây là hàm thuần trên hệ thống file, không chạm kho nào.
+Import `core/` cho luật `space`, và `adapters/` cho luật "bỏ file ẩn" - cả hai
+đều là chiều hợp lệ. Không chạm kho nào.
 """
 
 from pathlib import Path
 
+from adapters.ingest import cac_file_nap, la_file_an
 from core.ids import validate_space
+
+__all__ = [
+    "TEN_FILE_SPACE",
+    "SpaceKhaiKhongHopLe",
+    "SpaceKhongKhai",
+    "SpaceLechThuMuc",
+    "cac_file_nap",
+    "doc_space_khai",
+    "kiem_space_thu_muc",
+    "la_file_an",
+]
 
 # Tên file khai space, đặt ngay trong thư mục nguồn. Bắt đầu bằng dấu chấm để
 # nó rơi đúng vào luật loại file ẩn bên dưới, và để `ls` mặc định không trộn nó
@@ -52,31 +65,10 @@ class SpaceKhaiKhongHopLe(RuntimeError):
     code = "SPACE_KHAI_KHONG_HOP_LE"
 
 
-def la_file_an(duong_dan: Path) -> bool:
-    """Tên bắt đầu bằng dấu chấm.
-
-    Luật là "file ẩn", không phải "đúng tên `.space`": `.DS_Store`, `.gitkeep`
-    và file tạm của trình soạn thảo cũng không phải tài liệu, và để chúng thành
-    một dòng `DINH_DANG_LA` trong danh sách từ chối là dạy người đọc bỏ qua
-    danh sách đó.
-    """
-    return duong_dan.name.startswith(".")
-
-
-def cac_file_nap(thu_muc: Path) -> list[Path]:
-    """File ứng viên trong thư mục, theo thứ tự tên, đã bỏ file ẩn.
-
-    Giữ nguyên luật của `core.ingest_scan.quet_thu_muc`: chỉ file ngay trong
-    thư mục, không đệ quy, sắp theo tên. Thư mục không tồn tại là lỗi của người
-    gọi, cùng ngoại lệ với lõi quét.
-    """
-    thu_muc = Path(thu_muc)
-    if not thu_muc.is_dir():
-        raise FileNotFoundError(f"không có thư mục {thu_muc}")
-    return sorted(
-        (p for p in thu_muc.iterdir() if p.is_file() and not la_file_an(p)),
-        key=lambda p: p.name,
-    )
+# `la_file_an` và `cac_file_nap` sống ở `adapters/ingest.py` và được import lên
+# đây (chiều `api/` -> `adapters/` là chiều hợp lệ). Một bản sao thứ hai của
+# luật "bỏ file ẩn" ở tầng này là hai bản sẽ trôi khỏi nhau, và khi đó CLI với
+# `adapters.nap_thu_muc` nhìn thấy hai tập file khác nhau trên cùng thư mục.
 
 
 def doc_space_khai(thu_muc: Path) -> str:
@@ -102,6 +94,19 @@ def doc_space_khai(thu_muc: Path) -> str:
         return validate_space(dong[0])
     except (TypeError, ValueError) as loi:
         raise SpaceKhaiKhongHopLe(f"{duong_dan}: {loi}") from None
+
+
+def thu_muc_cha_chung(cac_duong_dan) -> Path | None:
+    """Thư mục cha chung của một danh sách file, hoặc `None` nếu không có.
+
+    Ca nó sinh ra để bắt: `api.do_chi_phi real/*.md --space synth`. Shell bung
+    glob thành 50 đường dẫn file, nên nhánh "một thư mục" không chạy và rào
+    `.space` không áp - tức đúng lệnh nguy hiểm nhất đi lọt qua cái rào dựng ra
+    để chặn nó. Danh sách file rời **cùng một thư mục cha** là một thư mục xét
+    về nguồn gốc, dù dòng lệnh không nói thế.
+    """
+    cha = {Path(d).resolve().parent for d in cac_duong_dan}
+    return cha.pop() if len(cha) == 1 else None
 
 
 def kiem_space_thu_muc(thu_muc: Path, space: str) -> str:

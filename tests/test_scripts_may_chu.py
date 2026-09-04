@@ -159,3 +159,18 @@ def test_thieu_container_ollama_la_fail_chu_khong_roi_ve_api_ngoai(script):
     """Space `real` không có nhánh fallback (AD-12): thiếu ollama là dừng cả đợt."""
     assert "ollama(profile local-llm)" in script
     assert 'if [ -n "$thieu" ]; then' in script
+
+
+def test_cuc_bo_chi_nhan_0_hoac_1(script):
+    """`HYPER_RAG_CUC_BO=true` rơi về nhánh 0 rồi chạy DeepSeek trên thư mục tài
+    liệu công ty. Wrapper chặn lại (fail-closed, AD-12) nhưng thông điệp khi đó
+    nói về provider, không nói về một biến gõ sai giá trị."""
+    assert 'if [ "$CUC_BO" != "0" ] && [ "$CUC_BO" != "1" ]; then' in script
+    assert "khong hop le: chi nhan 0 hoac 1" in script
+
+
+def test_cuc_bo_chi_di_voi_space_real(script):
+    """Bật đường cục bộ cho một space khác là trích xuất `synth` bằng Qwen, tức
+    làm bẩn mẫu số của Đo 2 và Đo 3 bằng một bộ trích xuất khác hẳn."""
+    assert '*" --space real "*|*" --space=real "*' in script
+    assert "chi di voi --space real (AD-12)" in script

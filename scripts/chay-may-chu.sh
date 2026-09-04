@@ -78,6 +78,26 @@ source .env.server
 set +a
 
 CUC_BO="${HYPER_RAG_CUC_BO:-0}"
+# Chi nhan 0 hoac 1. `HYPER_RAG_CUC_BO=true` hay `=yes` truoc day roi im lang ve
+# nhanh 0, tuc chay duong DeepSeek tren thu muc tai lieu cong ty; wrapper chan
+# lai (fail-closed, AD-12) nhung thong diep khi do noi ve provider, khong noi ve
+# mot bien danh sai gia tri - nguoi chay doc no roi di sua nham cho.
+if [ "$CUC_BO" != "0" ] && [ "$CUC_BO" != "1" ]; then
+    echo "HYPER_RAG_CUC_BO=$CUC_BO khong hop le: chi nhan 0 hoac 1" >&2
+    exit 2
+fi
+# Duong cuc bo chi phuc vu space `real` (AD-12). Bat no cho mot space khac la
+# trich xuat `synth` bang Qwen, tuc lam ban mau so cua Do 2 va Do 3 bang mot bo
+# trich xuat khac - dung thu ma story 2.11 do duoc la khac han DeepSeek.
+if [ "$CUC_BO" = "1" ]; then
+    case " $* " in
+        *" --space real "*|*" --space=real "*) ;;
+        *)
+            echo "HYPER_RAG_CUC_BO=1 chi di voi --space real (AD-12): duong cuc bo la duong cua khong gian du lieu that" >&2
+            exit 2
+            ;;
+    esac
+fi
 if [ "$CUC_BO" = "1" ]; then
     [ -r "$FILE_CUC_BO" ] || { echo "thieu $REMOTE_DIR/$FILE_CUC_BO (khong doc duoc)" >&2; exit 1; }
     set -a

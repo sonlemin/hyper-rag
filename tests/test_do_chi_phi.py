@@ -39,9 +39,18 @@ def test_tham_so_thieu_duong_dan_la_loi():
         mod._tham_so([])
 
 
-def test_tham_so_xoa_space_khong_di_cung_duong_dan():
+def test_tham_so_xoa_space_nhan_nhieu_nhat_mot_thu_muc():
+    """`--xoa-space` nay nhận **một thư mục** để đối chiếu `.space` của nó.
+
+    Nhiều hơn một, hay một file thay vì thư mục, vẫn là lỗi tham số: cả hai đều
+    là dấu người chạy tưởng mình đang gõ một lệnh nạp.
+    """
     with pytest.raises(SystemExit):
-        mod._tham_so(["--xoa-space", "eval/data"])
+        mod._tham_so(["--xoa-space", "eval/data", "eval/corpus"])
+    with pytest.raises(SystemExit):
+        mod._tham_so(["--xoa-space", "eval/data/01-cap-quyen-gitlab.txt"])
+    ts = mod._tham_so(["--xoa-space", "--space", "synth", "eval/data"])
+    assert ts.xoa_space and ts.duong_dan == [Path("eval/data")]
 
 
 def test_tham_so_xuat_json_khong_di_cung_xoa_space():
@@ -366,3 +375,80 @@ def test_file_space_hong_la_loi_co_ma(monkeypatch, tmp_path, capsys):
         mod.main([str(thu_muc)])
     assert "SPACE_KHAI_KHONG_HOP_LE" in capsys.readouterr().err
     assert goi == []
+
+
+def test_xoa_space_lech_thu_muc_thi_tu_choi(monkeypatch, tmp_path, capsys):
+    """Nhánh xóa cần rào `.space` hơn nhánh nạp.
+
+    `--xoa-space --space synth` khi định gõ `real` xóa sạch corpus của Đo 2 và
+    Đo 3, không hỏi lại câu nào và không hoàn lại được.
+    """
+    goi, _, _ = _gia_lap(monkeypatch)
+    thu_muc = _corpus(tmp_path, "a.md", space="real")
+    with pytest.raises(SystemExit) as thoat:
+        mod.main(["--xoa-space", "--space", "synth", str(thu_muc)])
+    assert thoat.value.code == 1
+    assert "SPACE_LECH_THU_MUC" in capsys.readouterr().err
+    assert goi == [], "không được gọi xóa"
+
+
+def test_xoa_space_dung_thu_muc_thi_chay(monkeypatch, tmp_path):
+    goi, _, _ = _gia_lap(monkeypatch)
+    thu_muc = _corpus(tmp_path, "a.md", space="real")
+    mod.main(["--xoa-space", "--space", "real", str(thu_muc)])
+    assert goi == [("xoa", "real")]
+
+
+def test_xoa_space_in_so_tai_lieu_truoc_khi_xoa(monkeypatch, tmp_path, capsys):
+    """Một lệnh xóa không nói nó sắp xóa bao nhiêu là một lệnh mà người chạy chỉ
+    biết mình gõ nhầm space sau khi đã xóa xong."""
+    _gia_lap(monkeypatch)
+    monkeypatch.setattr(mod, "_so_tai_lieu_cua_space", lambda engine, space: "50")
+    mod.main(["--xoa-space", "--space", "synth"])
+    ra = capsys.readouterr().out
+    assert "sắp xóa sạch space 'synth'" in ra and "50 tài liệu" in ra
+
+
+def test_so_tai_lieu_hong_khong_chan_lenh_xoa(monkeypatch, tmp_path, capsys):
+    """Sổ không đọc được thì nói "không đọc được sổ", không dội traceback."""
+    _gia_lap(monkeypatch)
+    mod.main(["--xoa-space", "--space", "test_khong_co"])
+    assert "sắp xóa sạch" in capsys.readouterr().out
+
+
+def test_glob_cung_thu_muc_cha_van_bi_rao(monkeypatch, tmp_path, capsys):
+    """`real/*.md --space synth`: shell bung glob thành danh sách file rời, nên
+    nhánh "một thư mục" không chạy - đúng lệnh nguy hiểm nhất đi lọt qua rào."""
+    goi, _, _ = _gia_lap(monkeypatch)
+    thu_muc = _corpus(tmp_path, "a.md", "b.md", space="real")
+    with pytest.raises(SystemExit):
+        mod.main([str(thu_muc / "a.md"), str(thu_muc / "b.md"), "--space", "synth"])
+    assert "SPACE_LECH_THU_MUC" in capsys.readouterr().err
+    assert goi == []
+
+
+def test_glob_cung_thu_muc_cha_dung_space_thi_chay(monkeypatch, tmp_path):
+    goi, _, _ = _gia_lap(monkeypatch)
+    thu_muc = _corpus(tmp_path, "a.md", "b.md", space="real")
+    mod.main([str(thu_muc / "b.md"), str(thu_muc / "a.md"), "--space", "real"])
+    assert goi == [("nap", ("b.md", "a.md"), "real", False)]
+
+
+def test_file_roi_khong_co_space_van_chay_nhu_cu(monkeypatch, tmp_path):
+    """Hàng I/O Matrix "Nạp danh sách file rời": thư mục cha không khai gì thì
+    rào không áp - đó là ca soát một tài liệu lẻ."""
+    goi, _, _ = _gia_lap(monkeypatch)
+    thu_muc = _corpus(tmp_path, "a.md", space=None)
+    mod.main([str(thu_muc / "a.md"), "--space", "real"])
+    assert goi == [("nap", ("a.md",), "real", False)]
+
+
+def test_file_roi_hai_thu_muc_khac_nhau_khong_bi_rao(monkeypatch, tmp_path):
+    """Không có thư mục cha chung thì không có `.space` nào để đối chiếu."""
+    goi, _, _ = _gia_lap(monkeypatch)
+    a = _corpus(tmp_path, "a.md", space="real")
+    b = tmp_path / "khac"
+    b.mkdir()
+    (b / "b.md").write_text("---\nscope: noi_bo\ncontent_type: runbook\n---\nthan", encoding="utf-8")
+    mod.main([str(a / "a.md"), str(b / "b.md"), "--space", "synth"])
+    assert goi == [("nap", ("a.md", "b.md"), "synth", False)]

@@ -1,6 +1,7 @@
 {
   "version": 2,
   "space": "real_rut_gon",
+  "muoi_id": "dffc42de62eed6e1",
   "ngay_do": "2026-09-04T16:28:34.649542+00:00",
   "policy_version": "fd8a92df457321e625bf16a08fb3dc244dc4bbcbfe87b45cd11465807446fd87",
   "so_tai_lieu": 41,
@@ -9,247 +10,247 @@
   "tai_lieu": [
     {
       "doc_key": "rg-d-09e72e3b904e08eb",
-      "sha256": "f6bd1cac97dc29ed6a367b5358035acc368c9829e232259f132ab966cef09498",
+      "sha256": "rg-s-d5695d23b8f22e9e",
       "scope": "khach_hang_b",
       "content_type": "sop"
     },
     {
       "doc_key": "rg-d-0a3f96492036ddb1",
-      "sha256": "4e73d38e26e884d320fd4b50987f653175d10984ff658e53969da19d0b321f57",
+      "sha256": "rg-s-1b24c4618cfb8d74",
       "scope": "noi_bo",
       "content_type": "tai_lieu_san_pham"
     },
     {
       "doc_key": "rg-d-11a75f30f3e1573f",
-      "sha256": "95c2eb140bf49443e9d06c34a26d21dc79d6b5e02d8e77a2868473f30d3c42ea",
+      "sha256": "rg-s-181166c69afb5d98",
       "scope": "khach_hang_a",
       "content_type": "runbook"
     },
     {
       "doc_key": "rg-d-1f041a187a33c840",
-      "sha256": "72a37f84e153963af3a39219656f8473b63ef7ca550e0fdc450798402e980d34",
+      "sha256": "rg-s-3c6a0f3c5f1d3ca7",
       "scope": "noi_bo",
       "content_type": "bi_mat_ha_tang"
     },
     {
       "doc_key": "rg-d-233c8a4a50a83753",
-      "sha256": "a035bfeccb72503f3156b9e67f19a22492d438b650a8aca14c103bd17b3ff584",
+      "sha256": "rg-s-cb47bf61fd85a3bd",
       "scope": "noi_bo",
       "content_type": "known_issue"
     },
     {
       "doc_key": "rg-d-2459ed82ce432cfb",
-      "sha256": "afc46c058e19f6a189bd3e73746c43386c2e5ab41d927e8f52ff12b546d84161",
+      "sha256": "rg-s-d28645e636786923",
       "scope": "noi_bo",
       "content_type": "runbook"
     },
     {
       "doc_key": "rg-d-30023fbb448b3f54",
-      "sha256": "0597db48e267c6c00e512f9422c41cb58c0d1b30716d39f7e5e1bc1eb4505929",
+      "sha256": "rg-s-e68e582172c188f9",
       "scope": "khach_hang_b",
       "content_type": "sop"
     },
     {
       "doc_key": "rg-d-354ad5c6834b704b",
-      "sha256": "f222d56d86deceb49d0e806584476180f15cc0e69b0c6bef0576c3b69e13d931",
+      "sha256": "rg-s-dd2cd0ea808610c2",
       "scope": "noi_bo",
       "content_type": "runbook"
     },
     {
       "doc_key": "rg-d-3b83d7a3d0594dd4",
-      "sha256": "1155755388d694752e7f950315f2f63572bcdea69229bf5fb7a76815a70612ba",
+      "sha256": "rg-s-2c22d9ead7f16807",
       "scope": "noi_bo",
       "content_type": "runbook"
     },
     {
       "doc_key": "rg-d-408e5388bd5c7e40",
-      "sha256": "ebfbd4f1d9c8c47f728d664d5226ef1433e56311a801484578c73c96f097e527",
+      "sha256": "rg-s-faca10f45141e344",
       "scope": "noi_bo",
       "content_type": "troubleshooting"
     },
     {
       "doc_key": "rg-d-4516422ec01ea950",
-      "sha256": "00d69945396cf656efc55ac1688341f0e34399cd4522f4f5eae58edafc9c03b4",
+      "sha256": "rg-s-6375e30287ebd4b0",
       "scope": "noi_bo",
       "content_type": "tai_lieu_san_pham"
     },
     {
       "doc_key": "rg-d-452ac32ca104e7e6",
-      "sha256": "f8e32e1aeed987102149402480b1cef5a2b73b608c1687d58bf57f4768886ce8",
+      "sha256": "rg-s-1fcf712ea977ef7d",
       "scope": "noi_bo",
       "content_type": "runbook"
     },
     {
       "doc_key": "rg-d-47caa9bc3f6910ba",
-      "sha256": "b12450caa6f9113b768e77f5d4f3a370b0a3d79472e549e515965943f3782835",
+      "sha256": "rg-s-90d412eed7f47b7d",
       "scope": "khach_hang_a",
       "content_type": "known_issue"
     },
     {
       "doc_key": "rg-d-4a9e29588ac4d281",
-      "sha256": "b7439474d7c9d1def6e4f86f2619faf67e76439dc3fba11091d8546958752f66",
+      "sha256": "rg-s-4aa9138c26532592",
       "scope": "noi_bo",
       "content_type": "known_issue"
     },
     {
       "doc_key": "rg-d-4c0235bec045a583",
-      "sha256": "8bf69ad041c5f6cb56770376de0dfba23cde7503273a7140a1a2dc34c0aca504",
+      "sha256": "rg-s-d34cfc2396e9de59",
       "scope": "khach_hang_a",
       "content_type": "faq"
     },
     {
       "doc_key": "rg-d-50e9e375c41163a8",
-      "sha256": "dfb38224fe8068275f1a4d2534813c3401afac829d001452aefea5379df75853",
+      "sha256": "rg-s-8351d0f60accf5e5",
       "scope": "khach_hang_a",
       "content_type": "known_issue"
     },
     {
       "doc_key": "rg-d-516630d5bb98fd07",
-      "sha256": "bcfaab223a6eff0dd7ab50c7908ee14dbd14a36dc8f4a5956d23ab55a4e02b9b",
+      "sha256": "rg-s-72dd6fce6cd13037",
       "scope": "noi_bo",
       "content_type": "troubleshooting"
     },
     {
       "doc_key": "rg-d-5f0ca9e7d770e0aa",
-      "sha256": "c10b46ac17b19b14fa32485524a5a8caf9dc9f288b1ca06367f646027a3f6b65",
+      "sha256": "rg-s-e14b8aa163ab964c",
       "scope": "noi_bo",
       "content_type": "bao_cao_su_co"
     },
     {
       "doc_key": "rg-d-6354dbc1f94e4a65",
-      "sha256": "a9dd29c82ddfb31376a472b1fbcb7776cd546ddbe263dca2bd934c0ddc89481e",
+      "sha256": "rg-s-2530fb2d88f76b8d",
       "scope": "noi_bo",
       "content_type": "bao_cao_su_co"
     },
     {
       "doc_key": "rg-d-6a2172f496407665",
-      "sha256": "eccda6c50ac3dc987d2b72511ce34905ecc731fd925c8f75ad95bafc7f30645c",
+      "sha256": "rg-s-3de9f31e1176618f",
       "scope": "khach_hang_b",
       "content_type": "sop"
     },
     {
       "doc_key": "rg-d-6cb012bf1277f366",
-      "sha256": "6eedae39efd7bd7e2e22ec5621c27d14dd40005c98b55d1efdd315c9965d5226",
+      "sha256": "rg-s-a97f6f663bf8196a",
       "scope": "noi_bo",
       "content_type": "bi_mat_ha_tang"
     },
     {
       "doc_key": "rg-d-6d14f0839bb75638",
-      "sha256": "7088a7c4b475d4640e4677581568799345c556f1df39f25dc86e1f37b446c8b9",
+      "sha256": "rg-s-5d673ba18e5454eb",
       "scope": "noi_bo",
       "content_type": "runbook"
     },
     {
       "doc_key": "rg-d-752ccc184dea0fed",
-      "sha256": "9b4335f532ed607a6f201df64699d741519e1a715fbafc817ad86be32b1d5eb3",
+      "sha256": "rg-s-36a6454c96886ddc",
       "scope": "khach_hang_b",
       "content_type": "faq"
     },
     {
       "doc_key": "rg-d-786176c750e269f6",
-      "sha256": "09c357ce820fa4bdb5c085a592902b00af548d788a3512c8e9779733c9e36708",
+      "sha256": "rg-s-eca01fb0474de2d7",
       "scope": "khach_hang_b",
       "content_type": "sop"
     },
     {
       "doc_key": "rg-d-8bb9771dfeac7dd0",
-      "sha256": "f3bffa01dd632601ae2f000ad31a82b11ce35558723ad796a7a9e5ea7d98b509",
+      "sha256": "rg-s-0562d8c0c94f74c8",
       "scope": "noi_bo",
       "content_type": "tai_lieu_san_pham"
     },
     {
       "doc_key": "rg-d-9a234220fc1361bf",
-      "sha256": "d6eadf6d3d55a6fff171eae005de8ff6b3e85286d91c5ccbc332f78af2f215a5",
+      "sha256": "rg-s-2a8a9414d7aecde0",
       "scope": "khach_hang_b",
       "content_type": "tai_lieu_san_pham"
     },
     {
       "doc_key": "rg-d-9b65229fabcec4fc",
-      "sha256": "f3605e30e1f2e15866f5636c2b49df34976d463165764ea3cd77b3733e287004",
+      "sha256": "rg-s-288915f419784c89",
       "scope": "khach_hang_a",
       "content_type": "sop"
     },
     {
       "doc_key": "rg-d-a738f7cbcea7c565",
-      "sha256": "325904ce67b4c80c129319014f87abaf2456eb5d919c62619666a0fb5c5d45e7",
+      "sha256": "rg-s-88a7382a01bf73de",
       "scope": "noi_bo",
       "content_type": "postmortem"
     },
     {
       "doc_key": "rg-d-a8a79400dbc01b9e",
-      "sha256": "460f087e7739fa7859af872915ead61b3efae7960021560fac2bb08a277b103d",
+      "sha256": "rg-s-de6d48c5bbac10a0",
       "scope": "noi_bo",
       "content_type": "bao_cao_su_co"
     },
     {
       "doc_key": "rg-d-ae33610eab47b596",
-      "sha256": "16af1811f8c633e35d7ae841ce616b06a0ee42e9d3e610b282d0e2a1c02536f2",
+      "sha256": "rg-s-9fe506c689cf1983",
       "scope": "noi_bo",
       "content_type": "bao_cao_su_co"
     },
     {
       "doc_key": "rg-d-b1d777fd768ea5bb",
-      "sha256": "0b579dee6f11d045f63a645980a97c233a167ff34c8891e9878362e4a42b0bf1",
+      "sha256": "rg-s-0f431b2b290cfa27",
       "scope": "khach_hang_b",
       "content_type": "tai_lieu_san_pham"
     },
     {
       "doc_key": "rg-d-bb6a076b64e6c5ef",
-      "sha256": "59b1dc453e4b53d53f12f86b057951da731a49e776d0cb3c1a371a72bb1f93fa",
+      "sha256": "rg-s-4d0a3299874821b3",
       "scope": "noi_bo",
       "content_type": "bao_cao_su_co"
     },
     {
       "doc_key": "rg-d-bbcfc242cab82511",
-      "sha256": "078b0622b4970e86af8e6d30c4c873a8d927c954b1a900b7be4558c70b9b3316",
+      "sha256": "rg-s-b879a14f6e3f4053",
       "scope": "noi_bo",
       "content_type": "postmortem"
     },
     {
       "doc_key": "rg-d-be46126284e69a6d",
-      "sha256": "a6544ab466cbf002fe76a0a57447e730c82c1052326a086edf4a730ba67ede0a",
+      "sha256": "rg-s-5ae052a020a38093",
       "scope": "khach_hang_b",
       "content_type": "sop"
     },
     {
       "doc_key": "rg-d-bf848dae69a8d355",
-      "sha256": "4adf23832b619888dd50d10534ff5d5f58002b9029bb8a9788263d2d3e332d81",
+      "sha256": "rg-s-c0a78f45b46f32e1",
       "scope": "noi_bo",
       "content_type": "troubleshooting"
     },
     {
       "doc_key": "rg-d-c8871aa12f196335",
-      "sha256": "360616ba6ca2dd8315c953d2cddbeed42636e1f12d097d09c54e1014b2ddc4c6",
+      "sha256": "rg-s-a24848d6575ecbac",
       "scope": "khach_hang_a",
       "content_type": "troubleshooting"
     },
     {
       "doc_key": "rg-d-e9c85f45d87f0143",
-      "sha256": "f151a592cd423c21eec1f270055c92d687ef1c799a057cbdf66c1bbd4d8183e5",
+      "sha256": "rg-s-c797fcde687d8066",
       "scope": "noi_bo",
       "content_type": "tai_lieu_san_pham"
     },
     {
       "doc_key": "rg-d-eb78c7af6f59db50",
-      "sha256": "5d61d458b6b27c8c743f6fa3e60e4133c6a338a362aa2ecbe0adb1347325cd11",
+      "sha256": "rg-s-96bfd7d509bedb2f",
       "scope": "noi_bo",
       "content_type": "sop"
     },
     {
       "doc_key": "rg-d-efb60e5437c2167a",
-      "sha256": "d0e8a0efe635fb354bd88801a1cb42332347d60bc141fc7cec6f656c3e7f59b2",
+      "sha256": "rg-s-af0669db21608062",
       "scope": "khach_hang_a",
       "content_type": "faq"
     },
     {
       "doc_key": "rg-d-fcbdc832f7c1ac49",
-      "sha256": "3a08003d09de17db3a17e10931c1bad5b2716f4d7f47920968ef1303e7b9fca7",
+      "sha256": "rg-s-da89a2a153c24de4",
       "scope": "noi_bo",
       "content_type": "runbook"
     },
     {
       "doc_key": "rg-d-ff6239741043162f",
-      "sha256": "cea25e217d40fc819daf2ef06f466e0b710cb5f1032d74a108bde4775a73054e",
+      "sha256": "rg-s-99c7617c3412d8b1",
       "scope": "noi_bo",
       "content_type": "tai_lieu_san_pham"
     }

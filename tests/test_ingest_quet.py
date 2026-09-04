@@ -195,3 +195,60 @@ def test_file_qua_lon_bi_tu_choi_truoc_khi_doc(tmp_path, monkeypatch):
         monkeypatch.setattr(Path, "read_bytes", goc)
     assert [tc.ma for tc in kq.tu_choi] == [MA_QUA_LON]
     assert (MA_QUA_LON, MA_KHONG_DOC_DUOC) == ("QUA_LON", "KHONG_DOC_DUOC")
+
+
+# ---------------------------------------------------------------------------
+# File ẩn ở đường nạp công khai của `adapters/` (story 2.11, vòng review 05/09)
+# ---------------------------------------------------------------------------
+
+
+def test_nap_thu_muc_bo_qua_file_an(tmp_path):
+    """`.space` không được thành một dòng "từ chối" giả trong `adapters.nap_thu_muc`.
+
+    Từ story 2.11 mọi thư mục nguồn mang một `.space`, và `core.ingest_scan`
+    duyệt **mọi** file nên nó báo `DINH_DANG_LA` cho file đó. `api/` đã lọc từ
+    đầu; đường nạp công khai của `adapters/` - thứ AGENTS.md ghi là lối vào của
+    `eval/` - thì chưa, nên nó báo một dòng từ chối cho mọi thư mục corpus.
+
+    Fixture `corpus_2_3` không có dotfile nào, nên không test cũ nào thấy được.
+    """
+    from adapters.ingest import cac_file_nap, la_file_an
+
+    thu_muc = tmp_path / "nguon"
+    thu_muc.mkdir()
+    (thu_muc / "a.md").write_text(
+        "---\nscope: noi_bo\ncontent_type: runbook\n---\nthan", encoding="utf-8"
+    )
+    (thu_muc / ".space").write_text("synth\n", encoding="utf-8")
+    (thu_muc / ".DS_Store").write_bytes(b"rac")
+
+    assert la_file_an(thu_muc / ".space")
+    assert not la_file_an(thu_muc / "a.md")
+    assert [p.name for p in cac_file_nap(thu_muc)] == ["a.md"]
+
+    # Cùng luật ở cả hai tầng: `api/` import chính hàm này, không chép lại.
+    from api.nguon_thu_muc import cac_file_nap as cua_api
+    from api.nguon_thu_muc import la_file_an as an_cua_api
+
+    assert cua_api is cac_file_nap and an_cua_api is la_file_an
+
+
+def test_nap_thu_muc_khong_bao_dotfile_trong_tu_choi(tmp_path):
+    """Chấm thẳng trên `KetQuaQuet` mà `nap_thu_muc` dựng, không qua kho."""
+    from adapters.ingest import cac_file_nap
+    from core.ingest_scan import quet_cac_file, quet_thu_muc
+
+    thu_muc = tmp_path / "nguon"
+    thu_muc.mkdir()
+    (thu_muc / "a.md").write_text(
+        "---\nscope: noi_bo\ncontent_type: runbook\n---\nthan", encoding="utf-8"
+    )
+    (thu_muc / ".space").write_text("synth\n", encoding="utf-8")
+
+    # Lõi quét của `core/` vẫn thấy dotfile - luật lọc cố ý **không** đặt ở đó,
+    # vì màn nạp web dùng chung lõi này và nó nhận file tải lên.
+    assert [t.ten for t in quet_thu_muc(thu_muc).tu_choi] == [".space"]
+    # Còn đường nạp của `adapters/` thì không.
+    kq = quet_cac_file(cac_file_nap(thu_muc))
+    assert kq.tu_choi == ()
+    assert [t.doc_key for t in kq.chap_nhan] == ["a.md"]

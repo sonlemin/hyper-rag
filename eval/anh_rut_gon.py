@@ -17,8 +17,12 @@ Bản rút gọn giữ đúng thứ ba định nghĩa đếm của ADR-012 cần
   băm, nên phép "entity này còn xuất hiện ở hyperedge không nhạy cảm nào không"
   cho đúng kết quả như trên ảnh đầy đủ.
 
-Cái nó bỏ là **giá trị**: không tên entity, không tên file, không câu fact. Từ
-một bản rút gọn không dựng lại được một câu nào.
+Cái nó bỏ là **giá trị**: không tên entity, không tên file, không câu fact, và
+**không cả `sha256` thân tài liệu**. Băm thân là băm *không muối* của nguyên văn
+một tài liệu công ty; ai có một bản nghi ngờ chỉ cần băm nó rồi so, tức đúng cửa
+xác nhận bằng danh sách ứng viên mà luật muối tồn tại để đóng. `ba_ty_le` không
+đọc trường đó lần nào, nên nó không mất gì khi đi qua muối - và nó vẫn đối chiếu
+được với thư mục nguồn: băm lại thân rồi băm qua muối cho đúng giá trị này.
 
 **Muối là bắt buộc, thiếu muối là từ chối.** Băm trần một tên entity ngắn
 (`App01`, `Redis`, tên một khách hàng) là dò ngược được bằng danh sách ứng viên:
@@ -51,11 +55,19 @@ HAU_TO_RUT_GON: str = "_rut_gon"
 TIEN_TO_HYPEREDGE: str = "rg-h-"
 TIEN_TO_ENTITY: str = "rg-e-"
 TIEN_TO_DOC: str = "rg-d-"
+TIEN_TO_SHA: str = "rg-s-"
 
 # Độ dài băm cắt ngắn, tính bằng ký tự hex. 16 hex là 64 bit: với một space vài
 # nghìn entity, xác suất trùng là cỡ 1e-13, và `rut_gon_anh` vẫn kiểm trùng
 # tường minh thay vì tin vào con số đó. Ngắn để file đọc được bằng mắt.
 SO_HEX: int = 16
+
+# Phiên bản lược đồ ảnh chụp mà luật rút gọn ở đây đọc được. Chép lại thay vì
+# import `eval.cau_hoi.VERSION_ANH`: module này cố ý chỉ stdlib (loader kéo theo
+# `yaml` và cả tầng `adapters/`). Chỗ canh hai hằng còn bằng nhau là
+# `tests/test_anh_rut_gon.py::test_version_khop_loader`, nên nâng `VERSION_ANH`
+# mà quên đọc lại luật rút gọn là test đỏ.
+VERSION_ANH_RUT_GON_DOC_DUOC: int = 2
 
 # Trần dưới của độ dài muối. Một muối ba ký tự là không có muối: kẻ đọc dò cả
 # không gian muối rồi mới dò danh sách ứng viên, và phép dò thứ hai mới là phép
@@ -124,6 +136,24 @@ def bam(muoi: str, loai: str, gia_tri: str) -> str:
     return hashlib.sha256(than).hexdigest()[:SO_HEX]
 
 
+def id_cua_muoi(muoi: str) -> str:
+    """Vân tay của muối: nhận ra hai bản rút gọn có cùng muối hay không.
+
+    Hai lần chụp bằng hai muối khác nhau cho hai file khác nhau **hoàn toàn** mà
+    vẫn cho cùng ba tỷ lệ, nên nếu không ghi lại gì thì không ai biết ai đã đổi
+    muối - một diff git toàn dòng đỏ trông y hệt một lần nạp lại.
+
+    Băm của muối, **không phải muối**: 16 hex đầu của sha256 trên một tiền tố
+    miền riêng. Từ nó không dò ngược ra muối, và nó không trùng băm của bất kỳ
+    id nào vì tiền tố miền khác.
+    """
+    if not muoi or len(muoi) < DO_DAI_MUOI_TOI_THIEU:
+        raise MuoiKhongHopLe(
+            f"muối dài {len(muoi)} ký tự, cần ít nhất {DO_DAI_MUOI_TOI_THIEU}"
+        )
+    return hashlib.sha256(f"muoi_id\x00{muoi}".encode("utf-8")).hexdigest()[:SO_HEX]
+
+
 def la_space_rut_gon(space: str) -> bool:
     """`space` của một bản rút gọn (kết thúc bằng `_rut_gon`)."""
     return isinstance(space, str) and space.endswith(HAU_TO_RUT_GON)
@@ -163,12 +193,12 @@ def rut_gon_anh(anh: Mapping, muoi: str) -> dict:
     """Bản rút gọn của một dict ảnh chụp đầy đủ. Hàm thuần, không I/O.
 
     Giữ nguyên: `version`, `ngay_do`, `policy_version`, `khoa` của từng
-    hyperedge, `scope`/`content_type`/`sha256` của từng tài liệu, ba số đếm, cấu
-    trúc `slots` (vai nào được điền, mấy giá trị mỗi vai), và quan hệ trùng nhau
-    giữa mọi id.
+    hyperedge, `scope`/`content_type` của từng tài liệu, ba số đếm, cấu trúc
+    `slots` (vai nào được điền, mấy giá trị mỗi vai), và quan hệ trùng nhau giữa
+    mọi id. Thêm `muoi_id` để nhận ra hai file chụp bằng hai muối khác nhau.
 
-    Thay bằng băm có muối: id hyperedge, `doc_key`, và mọi id entity trong
-    `slots`.
+    Thay bằng băm có muối: id hyperedge, `doc_key`, `sha256` thân tài liệu, và
+    mọi id entity trong `slots`.
 
     Id hyperedge cũng bị băm dù nó **đã** là một băm (`core.facts.id_fact`):
     băm đó không có muối và nó băm đúng cái dict slot mà bản rút gọn đang giấu,
@@ -181,6 +211,17 @@ def rut_gon_anh(anh: Mapping, muoi: str) -> dict:
     bam_he = _So(muoi, "hyperedge", TIEN_TO_HYPEREDGE)
     bam_e = _So(muoi, "entity", TIEN_TO_ENTITY)
     bam_d = _So(muoi, "doc_key", TIEN_TO_DOC)
+    bam_s = _So(muoi, "sha256", TIEN_TO_SHA)
+
+    # Chép `version` nguyên văn mà không kiểm là một cửa hỏng lặng: `VERSION_ANH`
+    # lên 3 kèm một trường mới thì bản rút gọn khai 3 mà thiếu trường đó, và
+    # `doc_anh_do_thi` chỉ so số nên nó nhận. Bắt ở đây, nơi còn biết vì sao.
+    if anh.get("version") != VERSION_ANH_RUT_GON_DOC_DUOC:
+        raise ValueError(
+            f"ảnh chụp khai version {anh.get('version')!r}, module này rút gọn"
+            f" được version {VERSION_ANH_RUT_GON_DOC_DUOC}: lược đồ đổi thì luật rút gọn phải đọc"
+            " lại từng trường mới, không chép nguyên văn"
+        )
 
     space = str(anh["space"])
     if la_space_rut_gon(space):
@@ -192,7 +233,7 @@ def rut_gon_anh(anh: Mapping, muoi: str) -> dict:
     tai_lieu = [
         {
             "doc_key": bam_d(m["doc_key"]),
-            "sha256": m["sha256"],
+            "sha256": bam_s(m["sha256"]),
             "scope": m["scope"],
             "content_type": m["content_type"],
         }
@@ -215,6 +256,7 @@ def rut_gon_anh(anh: Mapping, muoi: str) -> dict:
     return {
         "version": anh["version"],
         "space": space + HAU_TO_RUT_GON,
+        "muoi_id": id_cua_muoi(muoi),
         "ngay_do": anh["ngay_do"],
         "policy_version": anh["policy_version"],
         "so_tai_lieu": len(tai_lieu),

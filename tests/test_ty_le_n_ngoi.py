@@ -960,3 +960,50 @@ def test_console_cot_real_in_cung_ba_bang_chung(tmp_path, capsys):
     assert "owner" in ra and "96.5%" in ra
     assert "KHÔNG khôi phục được mỏ neo Composition-Risk" in ra
     assert "<b>" not in ra, "dòng console không được mang thẻ HTML"
+
+
+def test_chi_mot_cot_co_nghia_la_dung_mot_cot(hang, tmp_path):
+    """"chỉ X có" phải đúng nghĩa "đúng một cột có".
+
+    Với hai cột, "nằm ngoài phần giao" và "chỉ một cột có" là một; với ba cột
+    thì không. Một loại mà **hai** trong ba cột cùng có nằm ngoài phần giao của
+    cả ba, nên công thức cũ in nó thành "chỉ A có" *và* "chỉ B có" cùng lúc -
+    hai câu, cả hai sai, ngay cạnh nhau.
+    """
+    from eval.xem_ty_le import _loai_rieng
+
+    def cot(space, cac_loai):
+        return ba_ty_le(
+            _anh(
+                [
+                    _he(f"{space}-{i}", f"noi_bo:{loai}", {"subject": ["x"]},
+                        doc_key=(f"{space}.md",))
+                    for i, loai in enumerate(cac_loai)
+                ],
+                tai_lieu=((f"{space}.md", "noi_bo", cac_loai[0]),),
+                space=space,
+            ),
+            hang,
+        )
+
+    # `runbook` có ở cả ba; `sop` có ở hai; `faq` chỉ ở một.
+    a = cot("a", ["runbook", "sop", "faq"])
+    b = cot("b", ["runbook", "sop"])
+    c = cot("c", ["runbook"])
+    rieng = dict(_loai_rieng([a, b, c]))
+    assert rieng["a"] == ["faq"], "chỉ `faq` là của riêng một cột"
+    assert rieng["b"] == [] and rieng["c"] == []
+
+
+def test_entity_lap_vai_khong_dem_trung_trong_cung_mot_vai(hang):
+    """Chỉ số khai "một entity ở hai vai trở lên"; trùng *trong* một vai là
+    chuyện khác (LLM lặp một giá trị) và trộn hai thứ làm câu cảnh báo nói sai
+    thứ nó đang đo."""
+    trong_mot_vai = ba_ty_le(
+        _anh([_he("a", "noi_bo:runbook", {"subject": ["X", "X"], "cause": ["Y"]})]), hang
+    )
+    hai_vai = ba_ty_le(
+        _anh([_he("b", "noi_bo:runbook", {"subject": ["X"], "cause": ["X"]})]), hang
+    )
+    assert trong_mot_vai.so_entity_lap_vai == 0
+    assert hai_vai.so_entity_lap_vai == 1

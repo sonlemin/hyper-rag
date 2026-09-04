@@ -1227,6 +1227,61 @@ def test_so_do_nap_that_khop_lan_nap_03_09():
     assert do.chi_phi_embedding_usd == pytest.approx(0.00074564)
 
 
+def test_so_do_nap_khao_sat_khop_lan_nap_04_09():
+    """Khóa số của đợt nạp `khao_sat` (04/09). File có commit mà không test nào
+    ghim là một file ai cũng sửa được mà không ai thấy."""
+    from pathlib import Path as _P
+
+    from eval.ngoai_suy import doc_so_do_nap
+
+    do = doc_so_do_nap(_P("eval/so_do_nap/nap-khao-sat.json"))
+    assert (do.so_tai_lieu, do.token_vao_llm, do.token_ra_llm) == (50, 67917, 26710)
+    assert do.chi_phi_llm_usd == pytest.approx(0.06514068)
+    # Đợt DeepSeek không mất tài liệu nào; file ghi trước lược đồ hao hụt nên ba
+    # trường vắng, và `so_tai_lieu_gui` rơi về `so_tai_lieu`.
+    assert do.phan_hao_hut() == 0.0
+
+
+def test_so_do_nap_real_khop_dot_nap_04_09():
+    """Khóa số của đợt nạp `real` bằng đường Qwen cục bộ (04/09).
+
+    Ba điều test này canh, và cả ba đều là số của chương 4:
+
+    - **0 USD** trên 220 lời gọi: bằng chứng máy của luật "space `real` chỉ chạy
+      provider cục bộ" (AD-12). Một dòng khác 0 ở đây là một lời gọi API ngoài
+      trên tài liệu công ty.
+    - **Tỷ lệ hao hụt 18%**, tính lại được từ file chứ không chép từ văn xuôi.
+    - Token ra trên mỗi lời gọi LLM, dấu vân tay thứ tư của bộ trích xuất: Qwen
+      1.403 token mỗi chunk so với 390-534 của DeepSeek ở hai đợt kia.
+    """
+    from pathlib import Path as _P
+
+    from eval.ngoai_suy import doc_so_do_nap
+
+    do = doc_so_do_nap(_P("eval/so_do_nap/nap-real.json"))
+    assert (do.so_tai_lieu, do.so_tai_lieu_gui) == (41, 50)
+    assert (do.so_tai_lieu_khong_fact, do.so_tai_lieu_tu_choi) == (9, 0)
+    assert do.phan_hao_hut() == pytest.approx(0.18)
+    assert (do.token_vao_llm, do.token_ra_llm) == (98870, 102451)
+    assert do.token_embedding == 86054
+    assert do.chi_phi_llm_usd == 0.0 and do.chi_phi_embedding_usd == 0.0
+
+
+def test_so_tai_lieu_gui_nho_hon_so_nap_duoc_la_loi(tmp_path):
+    """Không nạp được nhiều tài liệu hơn số gửi vào; hai số chống nhau trong
+    cùng một file có commit thì ít nhất một cái sai."""
+    import json
+
+    from eval.ngoai_suy import SoDoNapKhongHopLe, doc_so_do_nap
+
+    goc = json.loads(Path("eval/so_do_nap/nap-real.json").read_text(encoding="utf-8"))
+    goc["so_tai_lieu_gui"] = 3
+    f = tmp_path / "xau.json"
+    f.write_text(json.dumps(goc), encoding="utf-8")
+    with pytest.raises(SoDoNapKhongHopLe):
+        doc_so_do_nap(f)
+
+
 def _ghi_so_do(tmp_path, *, tu_tinh_tong=True, **thay):
     """File số đo mẫu; `tong` tự cộng lại từ `theo_model` trừ khi test đặt tay."""
     import json

@@ -100,6 +100,13 @@ KHOA_GOC_ANH: frozenset[str] = frozenset(
         "hyperedge",
     }
 )
+# Khóa **tùy chọn** ở cấp gốc ảnh chụp: có cũng được, không có cũng được, khóa
+# lạ ngoài danh sách này vẫn là lỗi. Đúng một khóa, thêm ở story 2.11:
+# `muoi_id` là vân tay của muối trong ảnh chụp **rút gọn** (`eval/anh_rut_gon.py`),
+# để hai file chụp bằng hai muối khác nhau phân biệt được - hai file đó khác nhau
+# hoàn toàn nhưng cho cùng ba tỷ lệ, nên không có nó thì một lần đổi muối trông y
+# hệt một lần nạp lại. Loader không dùng giá trị này, nó chỉ thôi từ chối.
+KHOA_GOC_ANH_TUY_CHON: frozenset[str] = frozenset({"muoi_id"})
 KHOA_TAI_LIEU_ANH: frozenset[str] = frozenset({"doc_key", "sha256", "scope", "content_type"})
 KHOA_HYPEREDGE_ANH: frozenset[str] = frozenset({"id", "doc_key", "khoa", "slots"})
 KHOA_GOC_CAU: frozenset[str] = frozenset({"version", "cau"})
@@ -319,7 +326,7 @@ def doc_anh_do_thi(duong_dan: str | Path | None = None) -> AnhDoThi:
     loi: list[str] = []
     if not isinstance(raw, dict):
         raise AnhDoThiKhongHopLe([f"{duong_dan}: gốc file phải là một object"])
-    _khoa_dung(raw, KHOA_GOC_ANH, f"{duong_dan} cấp gốc", loi)
+    _khoa_dung(raw, KHOA_GOC_ANH, f"{duong_dan} cấp gốc", loi, tuy_chon=KHOA_GOC_ANH_TUY_CHON)
     if raw.get("version") != VERSION_ANH:
         loi.append(f"version phải là {VERSION_ANH}, nhận được {raw.get('version')!r}")
     space = raw.get("space")
@@ -1189,10 +1196,21 @@ def _doc_json(duong_dan: Path, lop_loi):
         raise lop_loi([f"JSON hỏng ở {duong_dan}: {e}"]) from None
 
 
-def _khoa_dung(muc: Mapping, khoa: frozenset[str], cho: str, loi: list[str]) -> bool:
-    """Lược đồ đóng: khóa thiếu hay khóa lạ đều là lỗi, nêu cả hai một lần."""
+def _khoa_dung(
+    muc: Mapping,
+    khoa: frozenset[str],
+    cho: str,
+    loi: list[str],
+    *,
+    tuy_chon: frozenset[str] = frozenset(),
+) -> bool:
+    """Lược đồ đóng: khóa thiếu hay khóa lạ đều là lỗi, nêu cả hai một lần.
+
+    `tuy_chon` là tập khóa được phép vắng **và** được phép có. Nó không nới lược
+    đồ thành mở: một khóa ngoài `khoa | tuy_chon` vẫn là lỗi.
+    """
     thieu = sorted(khoa - set(muc))
-    la = sorted(set(muc) - khoa)
+    la = sorted(set(muc) - khoa - tuy_chon)
     if thieu or la:
         loi.append(f"{cho}: khóa thiếu {thieu}, khóa lạ {la}")
         return False

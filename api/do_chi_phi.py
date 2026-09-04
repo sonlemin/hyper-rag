@@ -3,6 +3,7 @@
     uv run python -m api.do_chi_phi eval/data                      # nạp cả thư mục
     uv run python -m api.do_chi_phi eval/data/01-cap-quyen-gitlab.txt  # nạp từng file
     uv run python -m api.do_chi_phi --xoa-space --space synth      # xóa sạch một space
+    uv run python -m api.do_chi_phi --xoa-space --space real /duong/dan/real  # kèm đối chiếu .space
     uv run python -m api.do_chi_phi eval/data --xuat-json eval/so_do_nap/nap-that.json
 
 Từ story 2.3 script không tự mở ngữ cảnh hệ thống hay đợt nữa: nó quét đường
@@ -38,6 +39,7 @@ from adapters.ingest import (
     TRANG_THAI_DA_XOA,
     TRANG_THAI_KHONG_DOI,
     KetQuaNap,
+    SoTaiLieu,
     xoa_space,
 )
 from adapters.policy_loader import load_policy
@@ -57,6 +59,7 @@ from api.nguon_thu_muc import (
     SpaceLechThuMuc,
     cac_file_nap,
     kiem_space_thu_muc,
+    thu_muc_cha_chung,
 )
 from core.audit import thoi_diem_utc
 from core.ingest_scan import quet_cac_file
@@ -91,11 +94,25 @@ def _tham_so(argv: list[str]) -> argparse.Namespace:
     ts = p.parse_args(argv)
     if not ts.xoa_space and not ts.duong_dan:
         p.error("cần một thư mục hoặc ít nhất một file, hoặc --xoa-space")
-    if ts.xoa_space and ts.duong_dan:
-        p.error("--xoa-space không đi cùng đường dẫn nạp")
+    if ts.xoa_space and len(ts.duong_dan) > 1:
+        p.error("--xoa-space nhận nhiều nhất một thư mục, để đối chiếu .space")
+    if ts.xoa_space and ts.duong_dan and not ts.duong_dan[0].is_dir():
+        p.error("--xoa-space chỉ nhận một *thư mục* (để đọc .space), không nhận file")
     if ts.xoa_space and ts.xuat_json:
         p.error("--xuat-json cần một đợt nạp, không đi cùng --xoa-space")
     return ts
+
+
+def _so_tai_lieu_cua_space(engine, space: str) -> str:
+    """Số tài liệu trong sổ của một space, dạng chuỗi để in; hỏng thì nói hỏng.
+
+    Đọc thuần, và **không** được làm hỏng lệnh xóa: nếu sổ không đọc được thì
+    câu trả lời là "không đọc được sổ", không phải một traceback trước khi xóa.
+    """
+    try:
+        return str(len(SoTaiLieu.mo(engine.working_dir, space).cac_doc_key()))
+    except Exception as loi:  # noqa: BLE001 - in ra rồi đi tiếp, không chặn xóa
+        return f"không đọc được sổ ({type(loi).__name__}: {loi})"
 
 
 def in_tong(tieu_de: str, tong: TongChiPhi) -> None:
@@ -189,6 +206,14 @@ async def chay(ts: argparse.Namespace, argv: list[str] | None = None) -> TongChi
             bat_dau = thoi_diem_utc()
             engine = dung_engine_tu_moi_truong(audit)
             try:
+                # In số tài liệu sắp mất **trước** khi mất. Một lệnh xóa không
+                # nói nó sắp xóa bao nhiêu là một lệnh mà người chạy chỉ biết
+                # mình gõ nhầm space sau khi đã xóa xong.
+                print(
+                    f"[{thoi_diem_utc()}] sắp xóa sạch space {ts.space!r}:"
+                    f" {_so_tai_lieu_cua_space(engine, ts.space)} tài liệu trong sổ",
+                    flush=True,
+                )
                 await xoa_space(engine, space=ts.space, policy_version=policy.policy_version, audit=audit)
                 print(f"[{thoi_diem_utc()}] đã xóa sạch space {ts.space!r}", flush=True)
             finally:
@@ -230,13 +255,25 @@ def _rao_space(ts: argparse.Namespace) -> None:
     kho đầu tiên" của I/O Matrix nghĩa là *trước*, không phải "trước lời gọi
     LLM".
 
-    Rào chỉ áp cho ca một thư mục. Nạp một danh sách file rời không có thư mục
-    nào để khai, nên nó chạy như trước; đó là ca soát một tài liệu lẻ, không
-    phải ca nạp cả corpus.
+    Ba ca, không phải một:
+
+    - **Một thư mục** (nạp hoặc `--xoa-space`): đối chiếu `.space` của nó. Nhánh
+      xóa cần rào này hơn nhánh nạp: `--xoa-space --space synth` khi định gõ
+      `real` xóa sạch corpus của Đo 2 và Đo 3, không hỏi lại câu nào.
+    - **Danh sách file rời cùng một thư mục cha** đã khai `.space`: đối chiếu
+      luôn. Đây là ca `real/*.md --space synth` mà shell bung ra, tức đúng lệnh
+      nguy hiểm nhất lại đi lọt vì nó không còn hình dạng "một thư mục".
+    - **Danh sách file rời không có `.space` nào**: chạy như trước. Đó là ca soát
+      một tài liệu lẻ, và I/O Matrix của spec khai nó tường minh.
     """
-    if ts.xoa_space or len(ts.duong_dan) != 1 or not ts.duong_dan[0].is_dir():
+    if ts.duong_dan and ts.duong_dan[0].is_dir() and len(ts.duong_dan) == 1:
+        kiem_space_thu_muc(ts.duong_dan[0], ts.space)
         return
-    kiem_space_thu_muc(ts.duong_dan[0], ts.space)
+    if not ts.duong_dan:
+        return
+    cha = thu_muc_cha_chung(ts.duong_dan)
+    if cha is not None and (cha / TEN_FILE_SPACE).exists():
+        kiem_space_thu_muc(cha, ts.space)
 
 
 def main(argv: list[str] | None = None) -> None:

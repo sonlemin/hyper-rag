@@ -5,6 +5,9 @@
   "space": "real",
   "dot_id": "45465ae0e40040339056a8e60b28894a",
   "so_tai_lieu": 41,
+  "so_tai_lieu_gui": 50,
+  "so_tai_lieu_khong_fact": 9,
+  "so_tai_lieu_tu_choi": 0,
   "theo_model": [
     {
       "model": "bge-m3",

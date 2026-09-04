@@ -66,7 +66,13 @@ from core.keys import CHUA_GHI
 from core.permission import use_context
 from core.slots import SLOT_ROLES
 from core.system_context import system_context
-from eval.anh_rut_gon import HAU_TO_RUT_GON, MuoiKhongHopLe, doc_muoi, rut_gon_anh
+from eval.anh_rut_gon import (
+    HAU_TO_RUT_GON,
+    BamTrung,
+    MuoiKhongHopLe,
+    doc_muoi,
+    rut_gon_anh,
+)
 from eval.cau_hoi import (
     DUONG_DAN_ANH_MAC_DINH,
     VERSION_ANH,
@@ -139,6 +145,26 @@ def ly_do_tu_choi_dich(
     các id đã băm có muối (story 2.11). Đó là đường duy nhất để ba tỷ lệ của
     `real` có một nguồn trong repo tính lại được, thay vì ba hằng chép tay.
     """
+    # Tên file phải khai đúng dạng của nội dung, **ở mọi nơi**, không chỉ trong
+    # repo. `.gitignore` phân biệt hai dạng bằng tên file, nên một bản đầy đủ
+    # mang tên `..._rut_gon.json` là một file dump nguyên văn giá trị slot mà
+    # git sẵn sàng nhận; và một bản rút gọn mang tên `synth.json` ghi đè **mỏ
+    # neo id của 41 cặp nhãn truy hồi vàng** bằng một file toàn băm.
+    hau_to = f"{HAU_TO_RUT_GON}.json"
+    ten = Path(dich).name
+    if rut_gon and not ten.endswith(hau_to):
+        return (
+            f"từ chối ghi bản rút gọn vào {dich}: tên file phải kết thúc bằng"
+            f" {hau_to!r}. Tên file là thứ `.gitignore` đọc để phân biệt hai dạng,"
+            " và một bản rút gọn ghi đè `synth.json` là mất mỏ neo id của nhãn"
+            " truy hồi vàng"
+        )
+    if not rut_gon and ten.endswith(hau_to):
+        return (
+            f"từ chối ghi bản **đầy đủ** vào {dich}: tên kết thúc bằng"
+            f" {hau_to!r} là tên dành cho bản rút gọn, và `.gitignore` nhận nó vào"
+            " repo. Thêm --rut-gon, hoặc đổi tên đích"
+        )
     if rut_gon:
         return None
     if space in SPACE_GHI_TRONG_REPO:
@@ -409,6 +435,15 @@ def main(argv: list[str] | None = None) -> int:
         ghi_anh(dich, anh, ghi_de=ts.ghi_de)
     except (AnhDoThiKhongHopLe, FileExistsError) as loi:
         print(str(loi), file=sys.stderr)
+        return 1
+    except (MuoiKhongHopLe, BamTrung) as loi:
+        # Hai lỗi của bước rút gọn: in `code: message` như mọi đường từ chối
+        # khác, không để chúng thoát ra thành traceback. Một traceback đọc thành
+        # "script hỏng" chứ không thành "script từ chối vì lý do này".
+        print(f"{loi.code}: {loi}", file=sys.stderr)
+        return 1
+    except ValueError as loi:
+        print(f"ảnh chụp không rút gọn được: {loi}", file=sys.stderr)
         return 1
     da_doc = doc_anh_do_thi(dich)
     print(

@@ -143,7 +143,8 @@ class BaTyLe:
     phan_bo_vai: Mapping[str, int] = field(default_factory=dict)
     # Số hyperedge có **một entity xuất hiện ở hai vai trở lên**. Một fact lành
     # hiếm khi lấy cùng một thực thể làm hai chiều; tỷ lệ này cao là dấu bộ trích
-    # xuất nhồi vai cho đủ.
+    # xuất nhồi vai cho đủ. Trùng *trong* một vai không tính: đó là LLM lặp một
+    # giá trị, một hiện tượng khác.
     so_entity_lap_vai: int = 0
 
     def bo_ba(self) -> tuple[TyLe, TyLe, TyLe]:
@@ -304,7 +305,11 @@ def ba_ty_le(anh: AnhDoThi, hang: Mapping[str, int]) -> BaTyLe:
         for vai, gia_tri in h.slots.items():
             if gia_tri:
                 phan_bo_vai[vai] = phan_bo_vai.get(vai, 0) + 1
-        tat_ca = [e for gia_tri in h.slots.values() for e in gia_tri]
+        # Khử trùng **trong** từng vai trước khi đếm: chỉ số này khai là "một
+        # entity ở hai vai trở lên", còn hai giá trị trùng nhau trong cùng một
+        # vai là một chuyện khác hẳn (LLM lặp một giá trị), và trộn hai thứ vào
+        # một con số làm câu cảnh báo nói sai thứ nó đang đo.
+        tat_ca = [e for gia_tri in h.slots.values() for e in set(gia_tri)]
         if len(tat_ca) != len(set(tat_ca)):
             lap_vai += 1
 

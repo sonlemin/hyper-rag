@@ -33,7 +33,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from adapters.engine import EngineACL, cau_hinh_kho_tu_moi_truong
-from adapters.ingest import KetQuaNap, nap_cac_tai_lieu
+from adapters.ingest import MA_KHONG_CO_FACT, KetQuaNap, nap_cac_tai_lieu
 from adapters.llm_wrapper import ham_tu_moi_truong
 from adapters.model_catalog import DanhMucModel, danh_muc_mac_dinh
 from api.audit_postgres import TongChiPhi
@@ -243,6 +243,13 @@ def so_do_nap(lan: LanNap, *, lenh: str, danh_muc: DanhMucModel | None = None) -
     `so_tai_lieu` là số tài liệu **thật sự nạp** (`da_nap`), không phải số file
     gửi vào: tài liệu `KHÔNG ĐỔI` không gọi LLM nên nó không được vào mẫu số
     của phép chia "tiền trên một tài liệu" ở `eval/ngoai_suy.py`.
+
+    Ba số **mẫu số của phép hao hụt** (story 2.11): `so_tai_lieu_gui` là số file
+    qua được cửa quét, `so_tai_lieu_khong_fact` là số tài liệu LLM trả 0 fact
+    hợp lệ (pipeline dọn sạch chúng), `so_tai_lieu_tu_choi` là số file bị cửa
+    quét loại. Không có chúng thì "41 tài liệu" trong file không nói được là 41
+    trên bao nhiêu, và tỷ lệ hao hụt của đường cục bộ - 18% ở đợt 04/09 - chỉ
+    sống trong văn xuôi của spec, nơi không ai tính lại được nó.
     """
     danh_muc = danh_muc_mac_dinh() if danh_muc is None else danh_muc
     tong = lan.chi_phi
@@ -253,6 +260,11 @@ def so_do_nap(lan: LanNap, *, lenh: str, danh_muc: DanhMucModel | None = None) -
         "space": lan.space,
         "dot_id": lan.dot_id,
         "so_tai_lieu": len(lan.ket_qua.da_nap()),
+        "so_tai_lieu_gui": len(lan.ket_qua.tai_lieu),
+        "so_tai_lieu_khong_fact": sum(
+            1 for t in lan.ket_qua.tai_lieu if t.ma == MA_KHONG_CO_FACT
+        ),
+        "so_tai_lieu_tu_choi": len(lan.ket_qua.tu_choi),
         "theo_model": [_dong_so_do(d, danh_muc) for d in (tong.theo_model if tong else ())],
         "tong": {
             "so_lan": tong.so_lan if tong else 0,

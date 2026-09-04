@@ -83,7 +83,6 @@ from core.ingest_scan import (
     TaiLieuNguon,
     TuChoi,
     quet_cac_file,
-    quet_thu_muc,
 )
 from core.keys import CHUA_GHI, KHONG_KHOA, SensitivityRankUnknown, filter_key, hop_nhat_khoa
 from core.permission import use_context
@@ -850,13 +849,47 @@ async def nap_cac_tai_lieu(
     return ket_qua
 
 
+def la_file_an(duong_dan: Path) -> bool:
+    """Tên bắt đầu bằng dấu chấm. Một nơi duy nhất giữ luật này (story 2.11).
+
+    Luật là "file ẩn", không phải "đúng tên `.space`": `.DS_Store`, `.gitkeep`
+    và file tạm của trình soạn thảo cũng không phải tài liệu, và để chúng thành
+    một dòng `DINH_DANG_LA` trong danh sách từ chối là dạy người đọc bỏ qua
+    danh sách đó. `api/nguon_thu_muc.py` import chính hàm này, nên hai lối vào
+    không thể lệch nhau.
+    """
+    return duong_dan.name.startswith(".")
+
+
+def cac_file_nap(thu_muc: Path) -> list[Path]:
+    """File ứng viên ngay trong thư mục, theo thứ tự tên, đã bỏ file ẩn.
+
+    Giữ nguyên luật của `core.ingest_scan.quet_thu_muc` (chỉ file ngay trong
+    thư mục, không đệ quy, sắp theo tên), chỉ thêm phép loại file ẩn. Luật đó
+    **không** đặt trong `core/` vì màn nạp web dùng chung lõi quét và nó nhận
+    file tải lên, không có thư mục nào để lọc.
+    """
+    thu_muc = Path(thu_muc)
+    if not thu_muc.is_dir():
+        raise FileNotFoundError(f"không có thư mục {thu_muc}")
+    return sorted(
+        (p for p in thu_muc.iterdir() if p.is_file() and not la_file_an(p)),
+        key=lambda p: p.name,
+    )
+
+
 async def nap_thu_muc(
     engine, thu_muc, *, space: str, policy_version: str, audit: AuditPort, ket_qua=None, ep_ghi_de: bool = False
 ) -> KetQuaNap:
-    """Quét một thư mục rồi nạp; từ chối ở cửa quét nằm trong `KetQuaNap.tu_choi`."""
+    """Quét một thư mục rồi nạp; từ chối ở cửa quét nằm trong `KetQuaNap.tu_choi`.
+
+    File ẩn bị loại trước cửa quét: từ story 2.11 mỗi thư mục nguồn mang một
+    `.space`, và không loại nó ra thì đường nạp công khai của `adapters/` báo
+    một dòng "từ chối `DINH_DANG_LA`" giả cho mọi thư mục corpus.
+    """
     return await _nap_ket_qua_quet(
         engine,
-        quet_thu_muc(Path(thu_muc)),
+        quet_cac_file(cac_file_nap(Path(thu_muc))),
         space=space,
         policy_version=policy_version,
         audit=audit,

@@ -103,6 +103,23 @@ class SoDoNap:
     chi_phi_llm_usd: float
     token_embedding: int
     chi_phi_embedding_usd: float
+    # Mẫu số của phép hao hụt (story 2.11). `so_tai_lieu_gui` là số file qua
+    # được cửa quét; `so_tai_lieu` là số nạp được. File số đo ghi trước lược đồ
+    # này không có ba trường đó, khi ấy `so_tai_lieu_gui` rơi về `so_tai_lieu`
+    # và hao hụt bằng 0 - đúng với hai đợt DeepSeek, nơi không tài liệu nào mất.
+    so_tai_lieu_gui: int = 0
+    so_tai_lieu_khong_fact: int = 0
+    so_tai_lieu_tu_choi: int = 0
+
+    def phan_hao_hut(self) -> float | None:
+        """Phần tài liệu gửi vào mà **không** vào được kho; `None` nếu mẫu số rỗng.
+
+        Con số của đường cục bộ ở đợt 04/09 là 18% (9 trên 50). Trước story này
+        nó chỉ sống trong văn xuôi của spec: `so_tai_lieu: 41` một mình không
+        nói được 41 trên bao nhiêu, nên không ai tính lại được tỷ lệ đó từ repo.
+        """
+        gui = self.so_tai_lieu_gui or self.so_tai_lieu
+        return None if not gui else (gui - self.so_tai_lieu) / gui
 
 
 # --- Số đo lần nạp thật: đọc từ file, không chép tay ---------------------------
@@ -119,6 +136,15 @@ DUONG_DAN_SO_DO_NAP: Path = Path(__file__).resolve().parent / "so_do_nap" / "nap
 
 KHOA_BAT_BUOC: tuple[str, ...] = (
     "version", "ngay", "lenh", "space", "so_tai_lieu", "theo_model", "tong",
+)
+# Ba trường mẫu số của phép hao hụt (story 2.11). **Tùy chọn**, không bắt buộc:
+# hai file số đo có commit từ trước (`nap-that.json`, `nap-khao-sat.json`) được
+# ghi trước khi lược đồ có chúng, và làm chúng bắt buộc là bắt hai đợt nạp đã
+# trả tiền phải chạy lại chỉ để thêm ba con số. Thiếu thì `so_tai_lieu_gui` rơi
+# về `so_tai_lieu`, tức tỷ lệ hao hụt bằng 0 - đúng với hai đợt đó (không tài
+# liệu nào mất).
+KHOA_HAO_HUT: tuple[str, ...] = (
+    "so_tai_lieu_gui", "so_tai_lieu_khong_fact", "so_tai_lieu_tu_choi",
 )
 KHOA_DONG_MODEL: tuple[str, ...] = ("model", "loai", "token_vao", "token_ra", "chi_phi_usd")
 KHOA_TONG: tuple[str, ...] = ("so_lan", "token_vao", "token_ra", "chi_phi_usd")
@@ -254,11 +280,20 @@ def doc_so_do_nap(duong_dan: str | Path | None = None) -> SoDoNap:
     if lech:
         raise SoDoNapKhongHopLe(f"{duong_dan.name}: khối `tong` lệch với `theo_model`: {'; '.join(lech)}")
 
+    so_tai_lieu = int(_so(raw["so_tai_lieu"], "so_tai_lieu", duong_dan, duong=True))
+    hao_hut = {k: int(_so(raw[k], k, duong_dan)) for k in KHOA_HAO_HUT if k in raw}
+    gui = hao_hut.get("so_tai_lieu_gui", so_tai_lieu)
+    if gui < so_tai_lieu:
+        raise SoDoNapKhongHopLe(
+            f"{duong_dan.name}: `so_tai_lieu_gui` = {gui} nhỏ hơn `so_tai_lieu`"
+            f" = {so_tai_lieu}; không nạp được nhiều tài liệu hơn số gửi vào"
+        )
     return SoDoNap(
         # `so_tai_lieu` là mẫu số của phép chia "tiền trên một tài liệu"; 0 làm
         # cả bảng ngoại suy vô nghĩa (hoặc nổ `ZeroDivisionError`), nên nó bị
         # chặn ở đây chứ không ở `_kiem_so_do` với một `ValueError` trần.
-        so_tai_lieu=int(_so(raw["so_tai_lieu"], "so_tai_lieu", duong_dan, duong=True)),
+        so_tai_lieu=so_tai_lieu,
+        **hao_hut,
         token_vao_llm=tv_llm,
         token_ra_llm=tr_llm,
         chi_phi_llm_usd=usd_llm,

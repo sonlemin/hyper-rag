@@ -51,7 +51,6 @@ from eval.ty_le_n_ngoi import (
     dong_tom_tat,
     hop_hang,
     hop_loai,
-    loai_chung,
 )
 
 _GOC = Path(__file__).resolve().parent
@@ -228,6 +227,22 @@ def _loai_cua(b: BaTyLe) -> set[str]:
     return {t for t in b.phan_bo_loai if not t.startswith(NHAN_KHONG_KHOA)}
 
 
+def _loai_rieng(bo: Sequence[BaTyLe]) -> list[tuple[str, list[str]]]:
+    """`[(space, loại mà **chỉ mình** cột đó có)]`, theo thứ tự cột.
+
+    Chữ "chỉ" phải đúng nghĩa "đúng một cột có". Với hai cột, "nằm ngoài phần
+    giao" và "chỉ một cột có" là một; với ba cột thì không: một loại mà hai
+    trong ba cột cùng có nằm ngoài phần giao của cả ba, nên công thức cũ in nó
+    thành "chỉ A có" **và** "chỉ B có" cùng lúc - hai câu, cả hai sai, ngay
+    cạnh nhau.
+    """
+    dem: dict[str, int] = {}
+    for b in bo:
+        for loai in _loai_cua(b):
+            dem[loai] = dem.get(loai, 0) + 1
+    return [(b.space, sorted(t for t in _loai_cua(b) if dem[t] == 1)) for b in bo]
+
+
 def _khoi_lech_truc_loai(bo: Sequence[BaTyLe], ten_hang) -> str:
     """Cảnh báo các cột không cùng trục loại nội dung.
 
@@ -240,8 +255,7 @@ def _khoi_lech_truc_loai(bo: Sequence[BaTyLe], ten_hang) -> str:
     Với hai cột, "phần riêng của mỗi cột" đúng bằng hiệu hai chiều mà story 2.10
     in ra; công thức chung là "nằm ngoài phần giao của **mọi** cột".
     """
-    chung = loai_chung(*bo)
-    rieng = [(b.space, sorted(_loai_cua(b) - chung)) for b in bo]
+    rieng = _loai_rieng(bo)
     if not any(ds for _, ds in rieng):
         return ""
     phan = []
@@ -567,8 +581,7 @@ def main(argv: list[str] | None = None) -> int:
             gia_tri = d.chenh_voi_moc(i)
             chenh = "không so được" if gia_tri is None else f"{gia_tri:+.1%}"
             print(f"chênh {d.ten}: {chenh} ({trai.space} -> {b.space})")
-    chung = loai_chung(*bo)
-    rieng = [(b.space, sorted(_loai_cua(b) - chung)) for b in bo]
+    rieng = _loai_rieng(bo)
     if any(ds for _, ds in rieng):
         print(
             "cảnh báo: các cột không cùng trục loại nội dung - "
