@@ -414,3 +414,129 @@ def test_duong_xoa_va_ghi_thang_hop_le_tren_neo4j_that(khong_gian, policy):
     assert da_xoa == 1 and khoa_sau == ["noi_bo:bao_cao_su_co"]
     assert con[id_hyperedge(THEO_ID["HE-01"])] is CHUA_GHI
     assert tat_ca > 0 and rong["App01"] is CHUA_GHI
+
+
+# ---------------------------------------------------------------------------
+# Rò chéo hai space trên Neo4j thật (story 2.11)
+# ---------------------------------------------------------------------------
+
+# Hyperedge chỉ tồn tại trong space thứ hai; id và giá trị slot khác hẳn bốn
+# fixture để một lần rò nhìn thấy được ngay.
+HE_CHI_O_REAL = {
+    "id": "HE-99",
+    "scope": "noi_bo",
+    "content_type": "runbook",
+    "slots": {"subject": "AppReal99", "symptom": "loi 500", "remediation": "khoi dong lai"},
+}
+
+
+@pytest.fixture()
+def hai_khong_gian(session_prefix):
+    """Hai space trên **cùng** một Neo4j: một giống `synth`, một là `real`.
+
+    Tên thứ hai kết thúc bằng `_real` nên `core.ids.la_space_real` nhận nó -
+    đúng hình dạng story 2.11 dùng thật.
+    """
+    if not URI or not MAT_KHAU:
+        if os.environ.get("NEO4J_REQUIRED"):
+            pytest.fail("NEO4J_REQUIRED được đặt nhưng thiếu NEO4J_URI/NEO4J_PASSWORD")
+        pytest.skip("thiếu NEO4J_URI/NEO4J_PASSWORD: bỏ qua test cần container")
+    return f"{session_prefix}_synth", f"{session_prefix}_real"
+
+
+@asynccontextmanager
+async def hai_kho_that(a: str, b: str, policy):
+    """Một driver, hai nhãn space: `a` mang 4 fixture, `b` mang đúng `HE-99`."""
+    driver = AsyncGraphDatabase.driver(URI, auth=(TAI_KHOAN, MAT_KHAU))
+    adapter = Neo4jACLGraphStorage(
+        namespace="chunk_entity_relation",
+        global_config={"neo4j_health_delay": 0.2},
+        embedding_func=None,
+        neo4j_driver=driver,
+    )
+    try:
+        for khong_gian, cac_he in ((a, HYPEREDGES), (b, [HE_CHI_O_REAL])):
+            with use_context(
+                system_context(space=khong_gian, policy_version=policy.policy_version)
+            ):
+                await adapter.initialize()
+                for he in cac_he:
+                    with ingest_label(
+                        scope=he["scope"], content_type=he["content_type"]
+                    ):
+                        await nap_hyperedge(adapter, he)
+        yield driver, adapter
+    finally:
+        try:
+            async with driver.session() as phien:
+                for khong_gian in (a, b):
+                    await phien.run(f"MATCH (n:`{khong_gian}`) DETACH DELETE n")
+                    await phien.run(
+                        f"DROP CONSTRAINT `id_duy_nhat_{khong_gian}` IF EXISTS"
+                    )
+                    await phien.run(f"DROP INDEX `node_id_{khong_gian}` IF EXISTS")
+        finally:
+            await driver.close()
+
+
+def test_hai_space_khong_ro_cheo_duoi_co_he_thong_tren_neo4j_that(hai_khong_gian, policy):
+    """AC story 2.11, đường Cypher: một space không thấy node của space kia.
+
+    Đo dưới **cờ hệ thống**, không dưới một vai. Ngữ cảnh hệ thống bỏ hết lọc
+    khóa và chỉ còn điều kiện `space` (`adapters/neo4j.py:_menh_de_loc`), nên
+    đây là phép đo duy nhất tách được chiều `space` khỏi chiều quyền: nếu test
+    chạy dưới một vai, một kết quả rỗng có thể chỉ là chính sách chặn, và ranh
+    giới space vẫn thủng mà không ai biết.
+    """
+    a, b = hai_khong_gian
+
+    async def chay():
+        async with hai_kho_that(a, b, policy) as (_, adapter):
+            id_a = id_hyperedge(THEO_ID["HE-01"])
+            id_b = id_hyperedge(HE_CHI_O_REAL)
+            thay = {}
+            for khong_gian in (a, b):
+                with use_context(
+                    system_context(
+                        space=khong_gian, policy_version=policy.policy_version
+                    )
+                ):
+                    thay[khong_gian] = {
+                        "a": await adapter.get_node(id_a) is not None,
+                        "b": await adapter.get_node(id_b) is not None,
+                        "entity_b": await adapter.has_node("AppReal99"),
+                    }
+            return thay
+
+    thay = asyncio.run(chay())
+    # Mỗi space thấy đúng dữ liệu của mình - đối chứng để một kết quả "không
+    # thấy gì cả" không đọc thành "cách ly tốt".
+    assert thay[a]["a"] is True and thay[b]["b"] is True
+    # Và không thấy gì của space kia, cả hyperedge lẫn entity.
+    assert thay[a]["b"] is False, "hyperedge của space real lọt sang space synth"
+    assert thay[a]["entity_b"] is False, "entity của space real lọt sang space synth"
+    assert thay[b]["a"] is False, "hyperedge của space synth lọt sang space real"
+
+
+def test_khong_node_nao_mang_ca_hai_nhan_space_tren_neo4j_that(hai_khong_gian, policy):
+    """Đối chứng ở tầng ghi: hai space là hai tập node rời, đọc thẳng bằng Cypher.
+
+    Test trên chấm đường *đọc*. Không có test này thì một adapter ghi chung node
+    cho hai space rồi lọc lúc đọc vẫn xanh, và cách ly là mệnh đề của câu truy
+    vấn chứ không của dữ liệu trong kho.
+    """
+    a, b = hai_khong_gian
+
+    async def chay():
+        async with hai_kho_that(a, b, policy) as (driver, _):
+            return await doc_tho(
+                driver,
+                f"OPTIONAL MATCH (ca:`{a}`:`{b}`)\n"
+                f"WITH count(ca) AS ca_hai\n"
+                f"MATCH (x:`{a}`) WITH ca_hai, count(x) AS so_a\n"
+                f"MATCH (y:`{b}`) RETURN ca_hai, so_a, count(y) AS so_b",
+            )
+
+    (dong,) = asyncio.run(chay())
+    assert dong["ca_hai"] == 0, "có node mang cả hai nhãn space"
+    assert dong["so_a"] > dong["so_b"] > 0

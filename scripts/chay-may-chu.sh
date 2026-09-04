@@ -9,6 +9,7 @@
 #   scripts/chay-may-chu.sh xoa --xoa-space --space synth
 #   HYPER_RAG_MODULE=eval.chup_do_thi scripts/chay-may-chu.sh chup --space synth
 #   HYPER_RAG_MODULE=eval.ct03 scripts/chay-may-chu.sh ct03 --space synth
+#   HYPER_RAG_CUC_BO=1 scripts/chay-may-chu.sh nap /root/hyper-rag-data/real --space real
 #
 # Tham so dau la *ten buoc* (chi de doc log), phan con lai di thang vao module
 # diem vao. Chay tren may chu, trong /root/hyper-rag-copilot.
@@ -18,6 +19,13 @@
 # Truoc 2.9 ten module ghim cung trong script, nen `eval.chup_do_thi` - lenh doc
 # do thi de gan nhan truy hoi vang - phai tu dung lai ca khoi moi truong nay.
 # Mot ban sao thu hai cua khoi do la mot bo tham so se troi khoi ban nay.
+#
+# DUONG CUC BO (story 2.11): HYPER_RAG_CUC_BO=1 them mot lop `.env.local-llm`
+# (LLM_MODEL/EMBEDDING_MODEL cua Ollama) va tra them IP container `ollama`.
+# Lop nay `source` SAU .env.server nen no thang, va do la ly do no la mot file
+# chu khong phai hai bien tren dong lenh: `set -a` + `source` ghi de moi bien
+# truyen tu ngoai, im lang. Space `real` chi chay provider cuc bo (AD-12), nen
+# chay nham cau hinh mac dinh la gui tai lieu cong ty ra API ngoai.
 #
 # Bien doc SAU `source .env.server` (vong review 03/09): gan truoc thi mot khai
 # bao HYPER_RAG_MODULE trong .env.server bi bo qua im lang va nguoi chay tuong
@@ -41,6 +49,7 @@ set -euo pipefail
 REMOTE_DIR="${HYPER_RAG_REPO:-/root/hyper-rag-copilot}"
 VOLUME_API="${HYPER_RAG_VOLUME:-hyper_rag_api_data}"
 MODULE_MAC_DINH="api.do_chi_phi"
+FILE_CUC_BO=".env.local-llm"
 MODULE_CHO_PHEP="api.do_chi_phi eval.chup_do_thi eval.ct03"
 # Duong dan con ben trong volume, khop HYPER_RAG_WORKING_DIR cua docker-compose.yml
 # (`api_data:/data` + `/data/hyper-rag`).
@@ -67,6 +76,15 @@ source .env
 # shellcheck disable=SC1091
 source .env.server
 set +a
+
+CUC_BO="${HYPER_RAG_CUC_BO:-0}"
+if [ "$CUC_BO" = "1" ]; then
+    [ -r "$FILE_CUC_BO" ] || { echo "thieu $REMOTE_DIR/$FILE_CUC_BO (khong doc duoc)" >&2; exit 1; }
+    set -a
+    # shellcheck disable=SC1091
+    source "$FILE_CUC_BO"
+    set +a
+fi
 
 MODULE="${HYPER_RAG_MODULE:-$MODULE_MAC_DINH}"
 hop_le=0
@@ -99,6 +117,15 @@ thieu=""
 if [ -z "$NEO4J_IP" ]; then thieu="$thieu neo4j"; fi
 if [ -z "$QDRANT_IP" ]; then thieu="$thieu qdrant"; fi
 if [ -z "$POSTGRES_IP" ]; then thieu="$thieu postgres"; fi
+# Container thu tu, chi khi chay duong cuc bo. Thieu no la FAIL chu khong phai
+# roi ve API ngoai: space `real` khong co nhanh fallback (AD-12), va mot
+# `OLLAMA_HOST` con tro `http://ollama:11434` tu .env.server thi chi hong o
+# tang driver, noi thong diep khong noi duoc profile local-llm chua len.
+OLLAMA_IP=""
+if [ "$CUC_BO" = "1" ]; then
+    OLLAMA_IP="$(ip_container ollama || true)"
+    if [ -z "$OLLAMA_IP" ]; then thieu="$thieu ollama(profile local-llm)"; fi
+fi
 if [ -n "$thieu" ]; then
     echo "khong lay duoc IP container dang chay:$thieu - stack chua len?" >&2
     exit 1
@@ -109,9 +136,12 @@ export NEO4J_USERNAME=neo4j
 export QDRANT_URL="http://$QDRANT_IP:6333"
 export POSTGRES_HOST="$POSTGRES_IP"
 export HYPER_RAG_WORKING_DIR="$MOUNTPOINT/$DUONG_DAN_CON"
+if [ "$CUC_BO" = "1" ]; then
+    export OLLAMA_HOST="http://$OLLAMA_IP:11434"
+fi
 
 buoc="$1"; shift
-echo "[$(date -u +%FT%TZ)] BAT DAU $buoc (module=$MODULE, working_dir=$HYPER_RAG_WORKING_DIR)"
+echo "[$(date -u +%FT%TZ)] BAT DAU $buoc (module=$MODULE, working_dir=$HYPER_RAG_WORKING_DIR, cuc_bo=$CUC_BO, llm=${LLM_MODEL:-?}, embedding=${EMBEDDING_MODEL:-?})"
 # `set -e` khong duoc lam mat dong KET THUC: ma thoat cua lan chay la thu can doc.
 rc=0
 uv run python -m "$MODULE" "$@" || rc=$?

@@ -116,3 +116,46 @@ def test_lenh_khong_kem_tham_so_van_chay_duoc(script):
     assert '[ "$#" -lt 1 ]' in script
     assert '[ "$#" -lt 2 ]' not in script
     assert "tham so cua api.do_chi_phi" not in script, "dòng usage còn ghim module cũ"
+
+
+# --- Story 2.11: lớp cấu hình cục bộ và container thứ tư -------------------
+
+
+def test_lop_cuc_bo_source_sau_env_server(script):
+    """`.env.local-llm` phải `source` **sau** `.env.server`, nếu không nó vô nghĩa.
+
+    Đây là cả lý do đường cục bộ là một file chứ không phải hai biến trên dòng
+    lệnh: `set -a` + `source` ghi đè mọi biến truyền từ ngoài, im lặng. Đặt lớp
+    này trước `.env.server` là dựng lại đúng cái bẫy đó, chỉ khác chỗ đứng.
+    """
+    assert script.index("source .env.server") < script.index('source "$FILE_CUC_BO"')
+    assert _gan(script, "FILE_CUC_BO") == ".env.local-llm"
+
+
+def test_lop_cuc_bo_chi_bat_khi_duoc_yeu_cau(script):
+    """Mặc định là tắt: đường sản phẩm (`synth`, DeepSeek) không được đổi ngầm."""
+    assert 'CUC_BO="${HYPER_RAG_CUC_BO:-0}"' in script
+    assert 'if [ "$CUC_BO" = "1" ]; then' in script
+
+
+def test_thieu_file_cuc_bo_la_fail_chu_khong_chay_tiep(script):
+    """Thiếu `.env.local-llm` mà vẫn chạy tiếp là chạy Qwen bằng cấu hình DeepSeek."""
+    assert 'thieu $REMOTE_DIR/$FILE_CUC_BO' in script
+
+
+def test_tra_ip_container_ollama_khi_chay_cuc_bo(script):
+    """`OLLAMA_HOST` phải dựng từ IP container như ba kho kia.
+
+    `.env.server` khai `http://ollama:11434`, tên chỉ phân giải được bên trong
+    network compose; script này chạy trên host. Và `export` phải nằm **sau**
+    mọi lệnh `source`, nếu không lớp cấu hình ghi đè lại chính nó.
+    """
+    assert "ip_container ollama" in script
+    assert 'export OLLAMA_HOST="http://$OLLAMA_IP:11434"' in script
+    assert script.index('source "$FILE_CUC_BO"') < script.index("export OLLAMA_HOST")
+
+
+def test_thieu_container_ollama_la_fail_chu_khong_roi_ve_api_ngoai(script):
+    """Space `real` không có nhánh fallback (AD-12): thiếu ollama là dừng cả đợt."""
+    assert "ollama(profile local-llm)" in script
+    assert 'if [ -n "$thieu" ]; then' in script

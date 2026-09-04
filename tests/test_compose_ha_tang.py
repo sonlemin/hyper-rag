@@ -134,7 +134,11 @@ def test_man_nap_chay_dung_app_thu_hai(compose):
 
 # --- Story 2.2: biến chọn model có nguồn trong compose và trỏ vào danh mục ---
 
-FILE_THAM_SO = (".env.server", ".env.laptop")
+# Ba file tham số môi trường. `.env.local-llm` (story 2.11) không đi vào
+# `docker compose --env-file`: nó là lớp đắp lên `.env.server` cho *một lần chạy
+# CLI* trên đường cục bộ. Nhưng nó khai cùng hai biến chọn model, nên nó chịu
+# cùng một luật: tên model phải là mục thật trong danh mục, đúng loại.
+FILE_THAM_SO = (".env.server", ".env.laptop", ".env.local-llm")
 
 
 @pytest.mark.parametrize("dv", SERVICE_PYTHON)
@@ -170,3 +174,38 @@ def test_bien_ket_noi_moi_provider_co_nguon_trong_compose(compose):
     can = {n.bien_host if n.cuc_bo else n.bien_api_key for n in dm.nha_cung_cap.values()}
     thieu = sorted(b for b in can if b not in env)
     assert not thieu, f"biến {thieu} chưa có nguồn trong docker-compose.yml"
+
+
+# --- Story 2.11: đường cục bộ của space `real` -----------------------------
+
+
+def test_file_cuc_bo_chi_khai_model_ollama():
+    """`.env.local-llm` phải trỏ vào provider **cục bộ**, không phải API ngoài.
+
+    Đây là cả lý do file tồn tại. Một `.env.local-llm` khai `deepseek-v4-flash`
+    vẫn qua được test trên (tên có trong danh mục, đúng loại) mà lại gửi tài
+    liệu công ty ra API ngoài - `_kiem_space` của wrapper chặn được, nhưng chặn
+    ở đó là chặn sau khi người chạy đã tưởng mình cấu hình đúng.
+    """
+    env = doc_env(".env.local-llm")
+    dm = danh_muc_mac_dinh()
+    for bien, loai in ((BIEN_LLM_MODEL, LOAI_LLM), (BIEN_EMBEDDING_MODEL, LOAI_EMBEDDING)):
+        muc = dm.muc(env[bien], loai=loai)
+        assert muc.cuc_bo, f"{bien}={env[bien]!r} không phải model cục bộ"
+
+
+def test_file_cuc_bo_khong_ghim_ollama_host():
+    """`OLLAMA_HOST` không được khai ở đây.
+
+    `http://ollama:11434` chỉ phân giải được trong network compose, còn
+    `scripts/chay-may-chu.sh` chạy trên host. Khai ở đây là ghi đè đúng cái mà
+    script vừa tra ra từ IP container - và lỗi chỉ nổ ở tầng driver.
+    """
+    assert "OLLAMA_HOST" not in doc_env(".env.local-llm")
+
+
+def test_file_cuc_bo_khong_chua_secret():
+    """Cùng luật với `.env.server`: secret chỉ sống trong `.env` gốc (gitignore)."""
+    env = doc_env(".env.local-llm")
+    cam = {"OPENAI_API_KEY", "DEEPSEEK_API_KEY", "NEO4J_PASSWORD", "POSTGRES_PASSWORD", "QDRANT_API_KEY"}
+    assert not (cam & set(env)), sorted(cam & set(env))

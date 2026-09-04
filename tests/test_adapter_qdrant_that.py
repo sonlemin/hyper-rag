@@ -286,3 +286,113 @@ def test_initialize_ap_lai_hnsw_va_strict_mode_len_collection_cu(khong_gian, pol
     assert (hnsw.m, hnsw.payload_m) == (GLOBAL_M, PAYLOAD_M)
     assert strict is not None and strict.enabled is True
     assert strict.filter_max_conditions == FILTER_MAX_CONDITIONS
+
+
+# ---------------------------------------------------------------------------
+# Rò chéo hai space trên Qdrant thật (story 2.11)
+# ---------------------------------------------------------------------------
+
+# Hyperedge chỉ tồn tại trong space thứ hai. Id và nội dung khác hẳn bốn fixture
+# để một lần rò nhìn thấy được: nếu truy vấn space `synth` trả về `HE-99` thì
+# ranh giới space đã thủng, và không có cách nào đọc nhầm kết quả đó.
+HE_CHI_O_REAL = {
+    "id": "HE-99",
+    "scope": "noi_bo",
+    "content_type": "runbook",
+    "slots": {"subject": "AppReal99"},
+}
+
+
+@pytest.fixture()
+def hai_khong_gian(session_prefix):
+    """Hai space trên **cùng** một Qdrant: một giống `synth`, một là `real`.
+
+    Tên thứ hai kết thúc bằng `_real` nên `core.ids.la_space_real` nhận nó -
+    đúng hình dạng mà story 2.11 dùng thật, và một phép kiểm rằng tầng kho không
+    vấp gì ở cái tên đó.
+    """
+    if not URL:
+        if os.environ.get("QDRANT_REQUIRED"):
+            pytest.fail("QDRANT_REQUIRED được đặt nhưng thiếu QDRANT_URL")
+        pytest.skip("thiếu QDRANT_URL: bỏ qua test cần container")
+    return f"{session_prefix}_synth", f"{session_prefix}_real"
+
+
+@asynccontextmanager
+async def hai_kho_that(a: str, b: str, policy):
+    """Một client, hai collection: `a` mang 4 fixture, `b` mang đúng `HE-99`."""
+    client = QdrantGhiLai.noi_toi(URL, API_KEY)
+    adapter = dung_adapter(client)
+    try:
+        for khong_gian, cac_he in ((a, HYPEREDGES), (b, [HE_CHI_O_REAL])):
+            with use_context(
+                system_context(space=khong_gian, policy_version=policy.policy_version)
+            ):
+                await adapter.initialize()
+                for he in cac_he:
+                    with ingest_label(
+                        scope=he["scope"], content_type=he["content_type"]
+                    ):
+                        await adapter.upsert(lo_upsert(he))
+        client.xoa_nhat_ky()
+        yield client, adapter
+    finally:
+        try:
+            for khong_gian in (a, b):
+                await client.delete_collection(
+                    collection_name=f"{khong_gian}_hyperedges"
+                )
+        finally:
+            await client._that.close()
+
+
+def test_hai_space_khong_ro_cheo_tren_qdrant_that(hai_khong_gian, policy):
+    """AC story 2.11, đường vector: truy vấn một space không thấy point của space kia.
+
+    Đo trên Qdrant **thật** vì đây là chỗ duy nhất chứng minh được rằng cách ly
+    đứng trên một cơ chế của server (mỗi space một collection) chứ không trên
+    một quy ước trong code test. Cả hai chiều: `synth` không thấy `real`, và
+    `real` không thấy `synth` - một chiều thôi là chưa loại được ca "space thứ
+    hai rỗng vì nạp hỏng".
+    """
+    a, b = hai_khong_gian
+
+    async def chay():
+        thay = {}
+        async with hai_kho_that(a, b, policy) as (_, adapter):
+            for khong_gian in (a, b):
+                with use_context(vai(policy, "devops", khong_gian)):
+                    ket_qua = await adapter.query(CAU_HOI, top_k=50)
+                thay[khong_gian] = sorted(
+                    r["id"].removeprefix("rel-") for r in ket_qua
+                )
+        return thay
+
+    thay = asyncio.run(chay())
+    assert thay[b] == ["HE-99"], "space real phải có đúng point của chính nó"
+    assert "HE-99" not in thay[a], "point của space real lọt sang space synth"
+    assert thay[a], "space synth rỗng: đợt nạp hỏng, test không chứng minh gì"
+    assert set(thay[a]) & set(thay[b]) == set()
+
+
+def test_hai_space_la_hai_collection_roi_tren_qdrant_that(hai_khong_gian, policy):
+    """Đối chứng ở tầng server: hai space là hai collection, đếm point rời nhau.
+
+    Test trên chấm đường *đọc*; test này chấm đường *ghi*. Không có nó thì một
+    adapter ghi cả hai space vào một collection rồi lọc lúc đọc vẫn xanh - và
+    khi đó cách ly là một mệnh đề của code truy vấn, không phải của kho.
+    """
+    a, b = hai_khong_gian
+
+    async def chay():
+        async with hai_kho_that(a, b, policy) as (client, _):
+            return {
+                khong_gian: await client.get_collection(
+                    collection_name=f"{khong_gian}_hyperedges"
+                )
+                for khong_gian in (a, b)
+            }
+
+    tt = asyncio.run(chay())
+    assert tt[a].points_count == len(HYPEREDGES)
+    assert tt[b].points_count == 1

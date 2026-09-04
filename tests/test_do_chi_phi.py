@@ -20,6 +20,7 @@ from api.dot_nap import (
     ChiPhiTaiLieu,
     LanNap,
 )
+from api.nguon_thu_muc import TEN_FILE_SPACE
 
 TONG = TongChiPhi(
     so_lan=3,
@@ -126,11 +127,14 @@ def _gia_lap(monkeypatch, *, lan: LanNap | None = None):
     return goi, audit, engine
 
 
-def _corpus(tmp_path: Path, *ten: str) -> Path:
+def _corpus(tmp_path: Path, *ten: str, space: str | None = "synth") -> Path:
+    """Thư mục nguồn dựng tay; `space=None` là thư mục **chưa khai** space."""
     thu_muc = tmp_path / "corpus"
     thu_muc.mkdir(exist_ok=True)
     for t in ten:
         (thu_muc / t).write_text("---\nscope: noi_bo\ncontent_type: runbook\n---\nthan", encoding="utf-8")
+    if space is not None:
+        (thu_muc / TEN_FILE_SPACE).write_text(f"{space}\n", encoding="utf-8")
     return thu_muc
 
 
@@ -286,3 +290,79 @@ def test_in_ket_qua_in_so_fact_hop_le_va_loai(capsys):
     ra = capsys.readouterr().out
     assert "NẠP a.md" in ra and "2 fact hợp lệ" in ra and "1 fact loại" in ra and "1 chunk hỏng" in ra
     assert "LOI b.md" in ra and "KHONG_CO_FACT" in ra and "3 bản ghi đều bị loại" in ra
+
+
+# ---------------------------------------------------------------------------
+# Rào space của thư mục nguồn (story 2.11)
+# ---------------------------------------------------------------------------
+
+
+def test_thu_muc_khai_dung_space_thi_chay_binh_thuong(monkeypatch, tmp_path):
+    """Hàng "Nạp đúng space" của I/O Matrix."""
+    goi, _, _ = _gia_lap(monkeypatch)
+    thu_muc = _corpus(tmp_path, "a.md", space="real")
+    mod.main([str(thu_muc), "--space", "real"])
+    assert goi == [("nap", ("a.md",), "real", False)]
+
+
+def test_thu_muc_khai_space_khac_co_thi_tu_choi_truoc_moi_ket_noi(monkeypatch, tmp_path, capsys):
+    """Hàng "Nạp lệch space": từ chối, nêu **cả hai** giá trị, không gọi lõi nạp.
+
+    Ba space cùng tồn tại từ story 2.11, nên gõ nhầm một cờ là nạp tài liệu công
+    ty vào mẫu số của Đo 2 và Đo 3 - một lần *thêm* im lặng mà không có gì đỏ.
+    """
+    goi, _, _ = _gia_lap(monkeypatch)
+    thu_muc = _corpus(tmp_path, "a.md", space="real")
+    with pytest.raises(SystemExit) as thoat:
+        mod.main([str(thu_muc), "--space", "synth"])
+    assert thoat.value.code == 1
+    loi = capsys.readouterr().err
+    assert "SPACE_LECH_THU_MUC" in loi
+    assert "'real'" in loi and "'synth'" in loi
+    assert goi == [], "không lời gọi lõi nạp nào được phép xảy ra"
+
+
+def test_thu_muc_chua_khai_space_thi_tu_choi_va_neu_ten_file(monkeypatch, tmp_path, capsys):
+    """Hàng "Thư mục chưa khai space": không đoán mặc định `synth`."""
+    goi, _, _ = _gia_lap(monkeypatch)
+    thu_muc = _corpus(tmp_path, "a.md", space=None)
+    with pytest.raises(SystemExit):
+        mod.main([str(thu_muc)])
+    loi = capsys.readouterr().err
+    assert "SPACE_KHONG_KHAI" in loi and TEN_FILE_SPACE in loi
+    assert goi == []
+
+
+def test_file_space_khong_xuat_hien_trong_danh_sach_tu_choi(monkeypatch, tmp_path, capsys):
+    """Hàng "File `.space` lọt vào quét": nó là file ẩn, không phải `DINH_DANG_LA`."""
+    goi, _, _ = _gia_lap(monkeypatch)
+    thu_muc = _corpus(tmp_path, "a.md")
+    (thu_muc / ".DS_Store").write_text("rac", encoding="utf-8")
+    mod.main([str(thu_muc)])
+    assert goi == [("nap", ("a.md",), "synth", False)]
+    assert "DINH_DANG_LA" not in capsys.readouterr().out
+
+
+def test_danh_sach_file_roi_khong_bi_rao_space(monkeypatch, tmp_path):
+    """Hàng "Nạp danh sách file rời": không có thư mục nào để khai, chạy như cũ."""
+    goi, _, _ = _gia_lap(monkeypatch)
+    thu_muc = _corpus(tmp_path, "a.md", space=None)
+    mod.main([str(thu_muc / "a.md"), "--space", "real"])
+    assert goi == [("nap", ("a.md",), "real", False)]
+
+
+def test_xoa_space_khong_bi_rao_space(monkeypatch, tmp_path):
+    """`--xoa-space` không nhận đường dẫn nào, nên không có thư mục nào để đối chiếu."""
+    goi, _, _ = _gia_lap(monkeypatch)
+    mod.main(["--xoa-space", "--space", "real"])
+    assert goi == [("xoa", "real")]
+
+
+def test_file_space_hong_la_loi_co_ma(monkeypatch, tmp_path, capsys):
+    goi, _, _ = _gia_lap(monkeypatch)
+    thu_muc = _corpus(tmp_path, "a.md")
+    (thu_muc / TEN_FILE_SPACE).write_text("synth\nkhao_sat\n", encoding="utf-8")
+    with pytest.raises(SystemExit):
+        mod.main([str(thu_muc)])
+    assert "SPACE_KHAI_KHONG_HOP_LE" in capsys.readouterr().err
+    assert goi == []

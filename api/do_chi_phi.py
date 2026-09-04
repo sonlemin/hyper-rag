@@ -15,6 +15,8 @@ In số fact hợp lệ / bị loại của từng tài liệu (story 2.4, cùng
 kiện `extract_doc`), rồi tổng token và USD đọc từ `audit_log` cho **từng tài
 liệu** (theo mốc thời gian bắt đầu/kết thúc mà pipeline ghi lại) rồi cả đợt;
 ngoại lệ giữa đợt (đối chiếu lệch, 429) vẫn in số đã tiêu rồi mới dội lên.
+Nạp cả một thư mục thì thư mục đó phải khai space của chính nó trong file
+`.space` (story 2.11); lệch với `--space` là từ chối trước khi mở kết nối nào.
 `--xuat-json` ghi đúng số đó thành file có commit để `eval/ngoai_suy.py` đọc,
 thay cho sáu hằng chép tay. Nằm ở `api/` vì `eval/` không import được hiện
 thực Postgres. Script tốn tiền thật: chạy sau khi spec được duyệt.
@@ -48,8 +50,16 @@ from api.dot_nap import (
     ghi_so_do_json,
     so_do_nap,
 )
+from api.nguon_thu_muc import (
+    TEN_FILE_SPACE,
+    SpaceKhaiKhongHopLe,
+    SpaceKhongKhai,
+    SpaceLechThuMuc,
+    cac_file_nap,
+    kiem_space_thu_muc,
+)
 from core.audit import thoi_diem_utc
-from core.ingest_scan import quet_cac_file, quet_thu_muc
+from core.ingest_scan import quet_cac_file
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 POLICY_MAC_DINH = REPO_ROOT / "config" / "policy-toi-gian.yaml"
@@ -62,7 +72,12 @@ TIEN_TO_LENH: str = "uv run python -m api.do_chi_phi"
 def _tham_so(argv: list[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Nạp tài liệu qua pipeline ingest và đo chi phí LLM/embedding")
     p.add_argument("duong_dan", nargs="*", type=Path, help="một thư mục, hoặc các file .md/.txt theo thứ tự")
-    p.add_argument("--space", default="synth", help="không gian dữ liệu (mặc định synth)")
+    p.add_argument(
+        "--space",
+        default="synth",
+        help=f"không gian dữ liệu (mặc định synth); nạp cả một thư mục thì phải"
+        f" khớp tên space thư mục khai trong {TEN_FILE_SPACE}",
+    )
     p.add_argument("--xoa-space", action="store_true", help="xóa sạch space rồi thoát, không nạp gì")
     p.add_argument("--ep-ghi-de", action="store_true", help="re-ingest cả tài liệu không đổi (cùng sha256 và nhãn)")
     p.add_argument("--policy", type=Path, default=POLICY_MAC_DINH, help="bảng chính sách lấy policy_version")
@@ -183,7 +198,10 @@ async def chay(ts: argparse.Namespace, argv: list[str] | None = None) -> TongChi
             return tong
 
         if len(ts.duong_dan) == 1 and ts.duong_dan[0].is_dir():
-            quet = quet_thu_muc(ts.duong_dan[0])
+            # Không gọi `quet_thu_muc`: nó duyệt **mọi** file nên `.space` sẽ
+            # thành một dòng `DINH_DANG_LA` giả trong danh sách từ chối. Quét
+            # đúng danh sách ứng viên đã bỏ file ẩn, qua cùng lõi kiểm.
+            quet = quet_cac_file(cac_file_nap(ts.duong_dan[0]))
         else:
             quet = quet_cac_file(ts.duong_dan)
         lan = await chay_lan_nap(
@@ -204,9 +222,32 @@ async def chay(ts: argparse.Namespace, argv: list[str] | None = None) -> TongChi
         await audit.dong()
 
 
+def _rao_space(ts: argparse.Namespace) -> None:
+    """Thư mục nguồn phải khai space của chính nó và khai đúng cờ `--space`.
+
+    Chạy trong `main()` chứ không trong `chay()`: `chay()` mở Postgres ở dòng
+    đầu, và một lần gõ nhầm cờ không đáng phải mở kết nối nào - "trước lời gọi
+    kho đầu tiên" của I/O Matrix nghĩa là *trước*, không phải "trước lời gọi
+    LLM".
+
+    Rào chỉ áp cho ca một thư mục. Nạp một danh sách file rời không có thư mục
+    nào để khai, nên nó chạy như trước; đó là ca soát một tài liệu lẻ, không
+    phải ca nạp cả corpus.
+    """
+    if ts.xoa_space or len(ts.duong_dan) != 1 or not ts.duong_dan[0].is_dir():
+        return
+    kiem_space_thu_muc(ts.duong_dan[0], ts.space)
+
+
 def main(argv: list[str] | None = None) -> None:
     argv = sys.argv[1:] if argv is None else list(argv)
-    asyncio.run(chay(_tham_so(argv), argv))
+    ts = _tham_so(argv)
+    try:
+        _rao_space(ts)
+    except (SpaceKhongKhai, SpaceLechThuMuc, SpaceKhaiKhongHopLe) as loi:
+        print(f"{loi.code}: {loi}", file=sys.stderr)
+        raise SystemExit(1) from None
+    asyncio.run(chay(ts, argv))
 
 
 if __name__ == "__main__":

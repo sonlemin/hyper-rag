@@ -30,7 +30,8 @@ import yaml
 from adapters.policy_loader import load_policy
 from adapters.sensitivity_loader import DUONG_DAN_MAC_DINH as HANG_MAC_DINH
 from adapters.sensitivity_loader import SensitivityRanksInvalid, tai_hang_do_nhay
-from core.ingest_scan import TaiLieuNguon, quet_thu_muc
+from api.nguon_thu_muc import cac_file_nap
+from core.ingest_scan import TaiLieuNguon, quet_cac_file
 from core.keys import filter_key
 
 GOC_REPO = Path(__file__).resolve().parent.parent
@@ -224,7 +225,11 @@ def _hang() -> dict[str, int]:
 
 
 def _quet(thu_muc: Path = THU_MUC_CORPUS) -> dict[str, TaiLieuNguon]:
-    kq = quet_thu_muc(thu_muc)
+    # `cac_file_nap` chứ không `quet_thu_muc`: từ story 2.11 mỗi thư mục nguồn
+    # mang một file `.space` khai space của chính nó, và lõi quét của `core/`
+    # duyệt **mọi** file nên nó thấy `.space` là một `DINH_DANG_LA`. Đây là đúng
+    # danh sách ứng viên mà `api.do_chi_phi` đưa vào lõi quét.
+    kq = quet_cac_file(cac_file_nap(thu_muc))
     assert not kq.tu_choi, [
         f"{t.ten}: {t.ma} - {t.ly_do}" for t in kq.tu_choi
     ]
@@ -383,7 +388,7 @@ def test_khong_trung_doc_key_voi_bo_vang():
 
     Trùng tên là re-ingest ghi đè một tài liệu bộ vàng bằng một tài liệu corpus.
     """
-    bo_vang = {p.name for p in (GOC_REPO / "eval" / "data").iterdir() if p.is_file()}
+    bo_vang = {p.name for p in cac_file_nap(GOC_REPO / "eval" / "data")}
     corpus = {m["ten"] for m in doc_bang()["tai_lieu"]}
     assert bo_vang & corpus == set()
 

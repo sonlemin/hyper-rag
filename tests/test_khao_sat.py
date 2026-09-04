@@ -30,7 +30,8 @@ import yaml
 
 from adapters.sensitivity_loader import DUONG_DAN_MAC_DINH as HANG_MAC_DINH
 from adapters.sensitivity_loader import tai_hang_do_nhay
-from core.ingest_scan import TaiLieuNguon, quet_thu_muc
+from api.nguon_thu_muc import cac_file_nap
+from core.ingest_scan import TaiLieuNguon, quet_cac_file
 from core.keys import filter_key
 from eval.cau_hoi import doc_anh_do_thi
 from eval.ty_le_n_ngoi import NGUONG_NHAY_CAM
@@ -209,7 +210,9 @@ def _hang() -> dict[str, int]:
 
 
 def _quet(thu_muc: Path = THU_MUC_KHAO_SAT) -> dict[str, TaiLieuNguon]:
-    kq = quet_thu_muc(thu_muc)
+    # Xem chú thích cùng tên trong `tests/test_corpus.py`: `.space` của story
+    # 2.11 là file ẩn, không phải một tài liệu bị từ chối.
+    kq = quet_cac_file(cac_file_nap(thu_muc))
     assert not kq.tu_choi, [f"{t.ten}: {t.ma} - {t.ly_do}" for t in kq.tu_choi]
     return {t.doc_key: t for t in kq.chap_nhan}
 
@@ -397,8 +400,8 @@ def test_khong_trung_doc_key_voi_corpus_va_bo_vang():
     liệu của mẫu số Đo 2/Đo 3, và không có gì đỏ để báo.
     """
     khao_sat = {m["ten"] for m in doc_bang()["ban_ghi"]}
-    corpus = {p.name for p in THU_MUC_CORPUS.iterdir() if p.is_file()}
-    bo_vang = {p.name for p in THU_MUC_BO_VANG.iterdir() if p.is_file()}
+    corpus = {p.name for p in cac_file_nap(THU_MUC_CORPUS)}
+    bo_vang = {p.name for p in cac_file_nap(THU_MUC_BO_VANG)}
     assert khao_sat & corpus == set(), sorted(khao_sat & corpus)
     assert khao_sat & bo_vang == set(), sorted(khao_sat & bo_vang)
 
@@ -412,8 +415,8 @@ def test_moi_ban_ghi_giu_dau_tai_lieu_dung():
     """
     thieu = [
         p.name
-        for p in sorted(THU_MUC_KHAO_SAT.iterdir())
-        if p.is_file() and "TÀI LIỆU DỰNG" not in p.read_text(encoding="utf-8")
+        for p in cac_file_nap(THU_MUC_KHAO_SAT)
+        if "TÀI LIỆU DỰNG" not in p.read_text(encoding="utf-8")
     ]
     assert not thieu, thieu
 
@@ -638,9 +641,7 @@ MAU_NGAY = re.compile(r"\b(\d{2})/(\d{2})/(\d{4})\b")
 def _moc_ngay(thu_muc: Path) -> set[str]:
     """Mọi mốc `dd/mm/yyyy` trong thư mục, trả dạng ISO để so được bằng chuỗi."""
     ra: set[str] = set()
-    for f in sorted(thu_muc.iterdir()):
-        if not f.is_file():
-            continue
+    for f in cac_file_nap(thu_muc):
         for d, m, y in MAU_NGAY.findall(f.read_text(encoding="utf-8")):
             ra.add(f"{y}-{m}-{d}")
     return ra

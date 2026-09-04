@@ -278,31 +278,79 @@ def ba_ty_le(anh: AnhDoThi, hang: Mapping[str, int]) -> BaTyLe:
     )
 
 
+class ThieuCotDoiChieu(ValueError):
+    """Đối chiếu gọi với ít hơn hai cột.
+
+    Một bảng một cột không trả lời câu hỏi nào của story 2.10, và in nó ra rồi
+    thoát 0 là để người đọc tưởng bước đối chiếu đã chạy.
+    """
+
+    code = "THIEU_COT_DOI_CHIEU"
+
+
 @dataclass(frozen=True)
 class DongDoiChieu:
-    """Một hàng của bảng đối chiếu hai space: cùng tỷ lệ, hai cột, một chênh lệch."""
+    """Một hàng của bảng đối chiếu: cùng một tỷ lệ, N cột, N-1 chênh lệch.
+
+    Cột đầu là **mốc**; mọi chênh lệch tính so với nó. Story 2.10 chỉ có hai cột
+    nên `trai`/`phai`/`chenh` đủ mô tả một hàng; story 2.11 thêm cột `real` và
+    một hàng phải mang được nhiều hơn hai ô. Ba tên cũ giữ lại thành thuộc tính
+    dẫn xuất: chúng là hợp đồng của trang hai cột và của test đã khóa số.
+    """
 
     ten: str
-    trai: TyLe
-    phai: TyLe
+    cot: tuple[TyLe, ...]
+
+    @property
+    def trai(self) -> TyLe:
+        """Cột mốc."""
+        return self.cot[0]
+
+    @property
+    def phai(self) -> TyLe:
+        """Cột thứ hai - cột duy nhất được so ở trang hai cột của story 2.10."""
+        return self.cot[1]
+
+    def chenh_voi_moc(self, i: int) -> float | None:
+        """Chênh lệch điểm phần trăm giữa cột `i` và cột mốc; `None` nếu một bên
+        không tính được (mẫu số rỗng)."""
+        a, b = self.cot[0].ti_le, self.cot[i].ti_le
+        return None if a is None or b is None else b - a
 
     @property
     def chenh(self) -> float | None:
-        """Chênh lệch điểm phần trăm (phải trừ trái); `None` nếu một bên không tính được."""
-        a, b = self.trai.ti_le, self.phai.ti_le
-        return None if a is None or b is None else b - a
+        """Chênh lệch của cột thứ hai so với mốc (phải trừ trái)."""
+        return self.chenh_voi_moc(1)
 
 
-def doi_chieu(trai: BaTyLe, phai: BaTyLe) -> tuple[DongDoiChieu, ...]:
-    """Ba hàng đối chiếu, giữ nguyên thứ tự ba tỷ lệ của ADR-012.
+def doi_chieu(*bo: BaTyLe) -> tuple[DongDoiChieu, ...]:
+    """Ba hàng đối chiếu N space, giữ nguyên thứ tự ba tỷ lệ của ADR-012.
 
-    Đây là phép "khớp cỡ" của story 2.10, và nó chỉ nói được điều gì khi cả hai
-    cột cùng có mặt kèm chênh lệch: một bảng chỉ in cột `khao_sat` là một bảng
-    không trả lời câu hỏi nào.
+    Đây là phép "khớp cỡ" của story 2.10, và nó chỉ nói được điều gì khi có từ
+    hai cột trở lên kèm chênh lệch: một bảng chỉ in cột `khao_sat` là một bảng
+    không trả lời câu hỏi nào. Chữ ký cũ `doi_chieu(trai, phai)` là ca hai cột
+    của chữ ký này, không phải một hàm khác.
     """
+    if len(bo) < 2:
+        raise ThieuCotDoiChieu(
+            f"đối chiếu cần ít nhất hai space, nhận {len(bo)}:"
+            " một cột đứng một mình không trả lời được câu hỏi khớp cỡ"
+        )
     return tuple(
-        DongDoiChieu(a.ten, a, b) for a, b in zip(trai.bo_ba(), phai.bo_ba())
+        DongDoiChieu(cot[0].ten, tuple(cot)) for cot in zip(*(b.bo_ba() for b in bo))
     )
+
+
+def loai_chung(*bo: BaTyLe) -> frozenset[str]:
+    """Loại nội dung *thật* (bỏ nhãn ca không khóa) có mặt ở **mọi** cột.
+
+    Trục chung của phép so. Phần riêng của mỗi cột là phần nằm ngoài tập này;
+    với hai cột nó đúng bằng hiệu hai chiều mà story 2.10 in ra.
+    """
+    tap = [
+        {t for t in b.phan_bo_loai if not t.startswith(NHAN_KHONG_KHOA)} for b in bo
+    ]
+    return frozenset(set.intersection(*tap)) if tap else frozenset()
 
 
 def hop_hang(*bo: BaTyLe) -> tuple[int, ...]:

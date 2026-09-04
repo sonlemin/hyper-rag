@@ -20,5 +20,11 @@ eval/anh_do_thi/*.bak.json
 
 # Rác của phiên soát trang bằng trình duyệt (ảnh chụp tạm, log console của
 # Playwright). Cùng hạng với `*.bak.json`: sản phẩm của một lần soát, không phải
-# bằng chứng. Ảnh chụp màn hình *có commit* nằm ở `eval/anh_ct03/`.
+# bằng chứng. Ảnh chụp màn hình *có commit* nằm ở `eval/anh_bang_chung/`.
 .playwright-mcp/
+
+# Ảnh chụp đồ thị của space `real` (story 2.11) không bao giờ vào git: nó dump
+# nguyên văn giá trị mọi slot của tài liệu công ty. `eval/chup_do_thi.py` đã từ
+# chối ghi nó vào cây repo (`SPACE_GHI_TRONG_REPO`), dòng này là hàng rào thứ
+# hai cho ca ai đó chép tay file về từ máy chủ.
+eval/anh_do_thi/real*.json

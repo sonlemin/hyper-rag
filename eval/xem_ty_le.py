@@ -1,28 +1,39 @@
-"""Ba tỷ lệ n-ngôi của `khao_sat` in cạnh ba tỷ lệ của `synth` (story 2.10).
+"""Ba tỷ lệ n-ngôi của `khao_sat` và `real` in cạnh ba tỷ lệ của `synth`.
 
-Chạy: `uv run python -m eval.xem_ty_le [đích]`, mặc định ghi
-`eval/expr/ty_le_n_ngoi.html`. Không chạm kho, không gọi LLM: nó đọc hai ảnh
-chụp đồ thị **đã commit** và bảng hạng độ nhạy, rồi gọi hàm thuần của
-`eval/ty_le_n_ngoi.py`. Chạy hai lần trên cùng hai ảnh chụp cho cùng ba con số.
+Chạy: `uv run python -m eval.xem_ty_le [đích] [--anh-real FILE]`, mặc định ghi
+`eval/expr/ty_le_n_ngoi.html`. Không chạm kho, không gọi LLM: nó đọc ảnh chụp
+đồ thị và bảng hạng độ nhạy, rồi gọi hàm thuần của `eval/ty_le_n_ngoi.py`.
+Chạy hai lần trên cùng bộ ảnh chụp cho cùng ba con số.
 
-Vì sao trang này in **hai cột chứ không một**: một mình cột `khao_sat` không
-trả lời câu hỏi nào. Câu hỏi của story 2.10 là hai tập dựng độc lập về thời
-điểm và mục đích có khớp cỡ hay không, nên chênh lệch giữa hai cột mới là kết
-quả, còn từng cột chỉ là số liệu.
+Vì sao trang này in **từ hai cột trở lên, không bao giờ một**: một mình cột
+`khao_sat` không trả lời câu hỏi nào. Câu hỏi của story 2.10 là hai tập dựng độc
+lập về thời điểm và mục đích có khớp cỡ hay không, nên chênh lệch giữa các cột
+mới là kết quả, còn từng cột chỉ là số liệu. Cột đầu (`synth`) là **mốc**: mọi
+chênh tính so với nó, vì nó là tập duy nhất có precision trích xuất đã đo.
 
-Hai điều trang phải nói ra ở đầu, không đẩy xuống chân trang:
+Cột thứ ba `real` (story 2.11) là **tùy chọn** và không có đường dẫn mặc định:
+ảnh chụp của space `real` dump nguyên văn giá trị mọi slot của tài liệu công ty
+nên nó nằm ngoài cây repo. Thiếu cờ `--anh-real` thì trang in hai cột như cũ.
+
+Ba điều trang phải nói ra ở đầu, không đẩy xuống chân trang:
 
 - Ba tỷ lệ là tỷ lệ trên tập fact **hệ trích được**, không phải tập fact có
   trong bản ghi. Precision ghép cặp đo ở story 2.6 là 70,7%.
 - Mẫu số của cột `khao_sat` là 50 bản ghi **giả lập**, nên ba tỷ lệ mất vai trò
   mỏ neo độc lập cho corpus 2.8.
+- Cột `real` đo trên tài liệu thật nhưng trích bằng **một bộ trích xuất khác**
+  (Qwen 2.5 7B cục bộ, precision chưa đo), nên chênh của nó trộn hai nguyên nhân.
+
+Trang này **không in id hay giá trị slot** của bất kỳ hyperedge nào; điểm lộ duy
+nhất của cột `real` là chuỗi `content_type`/`scope`, tức nhãn phân loại. Nó vẫn
+nằm trong `.gitignore` như mọi trang của `eval/expr/`.
 """
 
 import argparse
 import html
 import sys
 from pathlib import Path
-from typing import Mapping
+from typing import Mapping, Sequence
 
 from adapters.sensitivity_loader import DUONG_DAN_MAC_DINH as HANG_MAC_DINH
 from adapters.sensitivity_loader import SensitivityRanksInvalid, tai_hang_do_nhay
@@ -38,12 +49,20 @@ from eval.ty_le_n_ngoi import (
     dong_tom_tat,
     hop_hang,
     hop_loai,
+    loai_chung,
 )
 
 _GOC = Path(__file__).resolve().parent
 DUONG_DAN_HTML: Path = _GOC / "expr" / "ty_le_n_ngoi.html"
 ANH_SYNTH: Path = _GOC / "anh_do_thi" / "synth.json"
 ANH_KHAO_SAT: Path = _GOC / "anh_do_thi" / "khao_sat.json"
+
+# Cột `real` **không có mặc định**, và đó là một quyết định chứ không phải một
+# thiếu sót: ảnh chụp của space `real` dump nguyên văn giá trị mọi slot của tài
+# liệu công ty, nên nó không bao giờ nằm trong cây repo (`eval/chup_do_thi.py`
+# từ chối ghi nó vào đây). Một đường dẫn mặc định trong `eval/anh_do_thi/` là
+# một lời mời chép file đó vào đúng chỗ mà git đang theo dõi.
+SPACE_REAL: str = "real"
 
 # Vòng đo chốt của story 2.6 và precision *ghép cặp* trên mẫu số tổng của nó -
 # cổng R2 chính thức (`eval/cham_trich_xuat.py`). Ghi ra trang vì ba tỷ lệ đứng
@@ -68,6 +87,13 @@ LENH_CHUP: Mapping[str, str] = {
         "scripts/chay-may-chu.sh nap eval/khao_sat --space khao_sat"
         " --xuat-json eval/so_do_nap/nap-khao-sat.json"
         " && HYPER_RAG_MODULE=eval.chup_do_thi scripts/chay-may-chu.sh chup --space khao_sat"
+    ),
+    SPACE_REAL: (
+        "HYPER_RAG_CUC_BO=1 scripts/chay-may-chu.sh nap <thư mục real ngoài repo>"
+        " --space real --xuat-json eval/so_do_nap/nap-real.json"
+        " && HYPER_RAG_CUC_BO=1 HYPER_RAG_MODULE=eval.chup_do_thi"
+        " scripts/chay-may-chu.sh chup --space real --dich /root/hyper-rag-data/real.json"
+        " (rồi scp về **ngoài** cây repo)"
     ),
 }
 
@@ -100,63 +126,71 @@ def _o(t) -> str:
     return f'<td class="so">{html.escape(t.mo_ta())}</td>'
 
 
-def _bang_ba_ty_le(trai: BaTyLe, phai: BaTyLe) -> str:
+def _chenh(gia_tri: float | None) -> str:
+    if gia_tri is None:
+        return '<td class="so khong-tinh">không so được</td>'
+    return f'<td class="so">{gia_tri:+.1%}</td>'
+
+
+def _bang_ba_ty_le(*bo: BaTyLe) -> str:
+    """Ba hàng tỷ lệ, N cột số, N-1 cột chênh - mọi chênh so với **cột đầu**.
+
+    Cột đầu (`synth`) là mốc của cả trang: nó là tập duy nhất có precision trích
+    xuất đã đo. So `real` với `khao_sat` thay vì với mốc là so hai tập mà **cả
+    hai** đều chưa neo vào gì.
+    """
     hang = []
-    for d in doi_chieu(trai, phai):
-        if d.chenh is None:
-            chenh = '<td class="so khong-tinh">không so được</td>'
-        else:
-            chenh = f'<td class="so">{d.chenh:+.1%}</td>'
-        hang.append(f"<tr><td><b>{html.escape(d.ten)}</b></td>{_o(d.trai)}{_o(d.phai)}{chenh}</tr>")
-    return (
-        f"<table><tr><th>Tỷ lệ</th><th>{html.escape(trai.space)}</th>"
-        f"<th>{html.escape(phai.space)}</th><th>chênh (phải - trái)</th></tr>"
-        f"{''.join(hang)}</table>"
+    for d in doi_chieu(*bo):
+        o = "".join(_o(c) for c in d.cot)
+        ch = "".join(_chenh(d.chenh_voi_moc(i)) for i in range(1, len(d.cot)))
+        hang.append(f"<tr><td><b>{html.escape(d.ten)}</b></td>{o}{ch}</tr>")
+    dau_cot = "".join(f"<th>{html.escape(b.space)}</th>" for b in bo)
+    dau_chenh = "".join(
+        f"<th>chênh {html.escape(b.space)} - {html.escape(bo[0].space)}</th>" for b in bo[1:]
     )
+    return f"<table><tr><th>Tỷ lệ</th>{dau_cot}{dau_chenh}</tr>{''.join(hang)}</table>"
 
 
-def _bang_phan_bo_hang(trai: BaTyLe, phai: BaTyLe, ten_hang: Mapping[int, str]) -> str:
+def _bang_phan_bo_hang(bo: Sequence[BaTyLe], ten_hang: Mapping[int, str]) -> str:
     hang = []
-    for r in hop_hang(trai, phai):
-        a = trai.phan_bo_hang.get(r, 0)
-        b = phai.phan_bo_hang.get(r, 0)
+    for r in hop_hang(*bo):
         lop = ' class="nhay"' if r >= NGUONG_NHAY_CAM else ""
-        ta = f"{a} ({a / trai.so_hyperedge:.1%})" if trai.so_hyperedge else str(a)
-        tb = f"{b} ({b / phai.so_hyperedge:.1%})" if phai.so_hyperedge else str(b)
+        o = []
+        for b in bo:
+            v = b.phan_bo_hang.get(r, 0)
+            o.append(
+                f'<td class="so">{v} ({v / b.so_hyperedge:.1%})</td>'
+                if b.so_hyperedge
+                else f'<td class="so">{v}</td>'
+            )
         hang.append(
             f"<tr{lop}><td>{r}</td><td><code>{html.escape(ten_hang.get(r, '?'))}</code></td>"
-            f'<td class="so">{ta}</td><td class="so">{tb}</td></tr>'
+            f"{''.join(o)}</tr>"
         )
-    hang.append(
-        f'<tr class="tong"><td colspan="2">TỔNG hyperedge</td>'
-        f'<td class="so">{trai.so_hyperedge}</td><td class="so">{phai.so_hyperedge}</td></tr>'
+    tong = "".join(f'<td class="so">{b.so_hyperedge}</td>' for b in bo)
+    hang.append(f'<tr class="tong"><td colspan="2">TỔNG hyperedge</td>{tong}</tr>')
+    nhay = "".join(
+        f'<td class="so">'
+        f"{sum(v for r, v in b.phan_bo_hang.items() if r >= NGUONG_NHAY_CAM)}</td>"
+        for b in bo
     )
-    nhay_a = sum(v for r, v in trai.phan_bo_hang.items() if r >= NGUONG_NHAY_CAM)
-    nhay_b = sum(v for r, v in phai.phan_bo_hang.items() if r >= NGUONG_NHAY_CAM)
     hang.append(
         f'<tr class="tong"><td colspan="2">Nhạy cảm (hạng &ge; {NGUONG_NHAY_CAM})</td>'
-        f'<td class="so">{nhay_a}</td><td class="so">{nhay_b}</td></tr>'
+        f"{nhay}</tr>"
     )
-    return (
-        f"<table><tr><th>Hạng</th><th>Loại nội dung</th>"
-        f"<th>{html.escape(trai.space)}</th><th>{html.escape(phai.space)}</th></tr>"
-        f"{''.join(hang)}</table>"
-    )
+    dau = "".join(f"<th>{html.escape(b.space)}</th>" for b in bo)
+    return f"<table><tr><th>Hạng</th><th>Loại nội dung</th>{dau}</tr>{''.join(hang)}</table>"
 
 
-def _bang_phan_bo_loai(trai: BaTyLe, phai: BaTyLe) -> str:
+def _bang_phan_bo_loai(bo: Sequence[BaTyLe]) -> str:
     hang = []
-    for loai in hop_loai(trai, phai):
-        a = trai.phan_bo_loai.get(loai, 0)
-        b = phai.phan_bo_loai.get(loai, 0)
-        hang.append(
-            f"<tr><td><code>{html.escape(loai)}</code></td>"
-            f'<td class="so">{a}</td><td class="so">{b}</td></tr>'
+    for loai in hop_loai(*bo):
+        o = "".join(
+            f'<td class="so">{b.phan_bo_loai.get(loai, 0)}</td>' for b in bo
         )
-    return (
-        f"<table><tr><th>Loại nội dung</th><th>{html.escape(trai.space)}</th>"
-        f"<th>{html.escape(phai.space)}</th></tr>{''.join(hang)}</table>"
-    )
+        hang.append(f"<tr><td><code>{html.escape(loai)}</code></td>{o}</tr>")
+    dau = "".join(f"<th>{html.escape(b.space)}</th>" for b in bo)
+    return f"<table><tr><th>Loại nội dung</th>{dau}</tr>{''.join(hang)}</table>"
 
 
 def _khoi_chan_doan(b: BaTyLe) -> str:
@@ -183,20 +217,24 @@ def _loai_cua(b: BaTyLe) -> set[str]:
     return {t for t in b.phan_bo_loai if not t.startswith(NHAN_KHONG_KHOA)}
 
 
-def _khoi_lech_truc_loai(trai: BaTyLe, phai: BaTyLe, ten_hang) -> str:
-    """Cảnh báo hai cột không cùng trục loại nội dung.
+def _khoi_lech_truc_loai(bo: Sequence[BaTyLe], ten_hang) -> str:
+    """Cảnh báo các cột không cùng trục loại nội dung.
 
-    Bảng hai cột đặt hai phân bố cạnh nhau như thể chúng đo trên cùng một trục.
-    Chúng không: khảo sát cố ý không phủ đủ 13 loại. Chênh lệch của một tỷ lệ vì
-    vậy trộn hai nguyên nhân - hình dạng tri thức khác nhau, và tập loại nội dung
-    khác nhau - và trang phải nói ra điều đó ở chỗ người ta đọc con số.
+    Bảng đặt các phân bố cạnh nhau như thể chúng đo trên cùng một trục. Chúng
+    không: khảo sát cố ý không phủ đủ 13 loại, và tập tài liệu thật càng không.
+    Chênh lệch của một tỷ lệ vì vậy trộn hai nguyên nhân - hình dạng tri thức
+    khác nhau, và tập loại nội dung khác nhau - và trang phải nói ra điều đó ở
+    chỗ người ta đọc con số.
+
+    Với hai cột, "phần riêng của mỗi cột" đúng bằng hiệu hai chiều mà story 2.10
+    in ra; công thức chung là "nằm ngoài phần giao của **mọi** cột".
     """
-    chi_trai = sorted(_loai_cua(trai) - _loai_cua(phai))
-    chi_phai = sorted(_loai_cua(phai) - _loai_cua(trai))
-    if not chi_trai and not chi_phai:
+    chung = loai_chung(*bo)
+    rieng = [(b.space, sorted(_loai_cua(b) - chung)) for b in bo]
+    if not any(ds for _, ds in rieng):
         return ""
     phan = []
-    for ten, ds in ((trai.space, chi_trai), (phai.space, chi_phai)):
+    for ten, ds in rieng:
         if ds:
             nhay = [t for t in ds if ten_hang.get(t, 0) >= NGUONG_NHAY_CAM]
             mo_ta = ", ".join(f"<code>{html.escape(t)}</code>" for t in ds)
@@ -209,28 +247,62 @@ def _khoi_lech_truc_loai(trai: BaTyLe, phai: BaTyLe, ten_hang) -> str:
             )
             phan.append(f"chỉ <b>{html.escape(ten)}</b> có {mo_ta}{them}")
     return (
-        '<div class="canh-bao"><b>Hai cột không cùng trục loại nội dung.</b> '
+        '<div class="canh-bao"><b>Các cột không cùng trục loại nội dung.</b> '
         + "; ".join(phan)
         + ". Chênh lệch của mỗi tỷ lệ vì vậy trộn hai nguyên nhân: hình dạng tri"
         " thức khác nhau, và tập loại nội dung khác nhau. Đây là một quyết định"
-        " đã khai trong <code>eval/khao_sat_thiet_ke.yaml</code> và trong ADR-012,"
-        " không phải một lỗ phát hiện muộn.</div>"
+        " đã khai trong <code>eval/khao_sat_thiet_ke.yaml</code>, trong bảng thiết"
+        " kế của space <code>real</code> và trong ADR-012, không phải một lỗ phát"
+        " hiện muộn.</div>"
     )
 
 
-def dung_html(trai: BaTyLe, phai: BaTyLe, ten_hang: Mapping[int, str]) -> str:
-    """Dựng toàn bộ trang từ hai kết quả đã tính. Hàm thuần, không I/O."""
+def _khoi_bo_trich_xuat_khac(bo: Sequence[BaTyLe]) -> str:
+    """Cảnh báo cột `real` trích bằng một bộ trích xuất **chưa đo precision**.
+
+    Ngang hạng với cảnh báo lệch trục loại, và cùng lý do: nó đổi cách đọc chính
+    con số chứ không phải một ghi chú phương pháp. `synth` và `khao_sat` trích
+    bằng DeepSeek với precision ghép cặp đã đo ở story 2.6; `real` chỉ chạy được
+    provider cục bộ (AD-12) nên nó trích bằng Qwen 2.5 7B, và precision của
+    đường đó chưa đo lần nào. Chênh lệch giữa cột `real` và hai cột kia vì vậy
+    trộn hình dạng tri thức với chất lượng trích xuất, và không có cách nào tách
+    hai phần đó ra từ chính bảng này.
+    """
+    if not any(b.space == SPACE_REAL for b in bo):
+        return ""
+    return (
+        '<div class="canh-bao"><b>Cột <code>real</code> dùng một bộ trích xuất'
+        " khác.</b> Space <code>real</code> chỉ chạy provider cục bộ (AD-12), nên"
+        " 50 tài liệu thật được trích bằng <b>Qwen 2.5 7B cục bộ</b>, còn"
+        f" <code>synth</code> và <code>khao_sat</code> trích bằng DeepSeek với"
+        f" precision ghép cặp <b>{PRECISION_GHEP_CAP:.1%}</b> đã đo ở story 2.6."
+        " Precision của đường Qwen <b>chưa đo lần nào</b>. Mọi chênh lệch giữa cột"
+        " <code>real</code> và hai cột kia vì vậy trộn hai nguyên nhân - hình dạng"
+        " tri thức, và chất lượng trích xuất - và bảng này không tách được chúng."
+        " Ba tỷ lệ của <code>real</code> đo trên tài liệu <b>thật</b>, đúng thứ PRD"
+        " muốn cho Composition-Risk Ratio, nên chúng gần một mỏ neo hơn hẳn cột"
+        " <code>khao_sat</code>; chúng vẫn chưa <b>là</b> một mỏ neo sạch.</div>"
+    )
+
+
+def dung_html(*bo: BaTyLe, ten_hang: Mapping[int, str]) -> str:
+    """Dựng toàn bộ trang từ N kết quả đã tính. Hàm thuần, không I/O.
+
+    Cột đầu là mốc của mọi phép chênh. Chữ ký cũ hai vị trí vẫn gọi được, chỉ
+    `ten_hang` chuyển thành tham số từ khóa - nó là bảng tra, không phải một cột.
+    """
     hang_theo_ten = {ten: r for r, ten in ten_hang.items()}
     tom_tat = "".join(
         f"<p><b>{html.escape(b.space)}</b> ({b.so_tai_lieu} tài liệu,"
         f" {b.so_hyperedge} hyperedge, chụp {html.escape(b.ngay_do)}):<br>"
         + "<br>".join(html.escape(d) for d in dong_tom_tat(b))
         + "</p>"
-        for b in (trai, phai)
+        for b in bo
     )
+    ten_cot = " · ".join(b.space for b in bo)
     return (
         '<!doctype html>\n<html lang="vi"><head><meta charset="utf-8">'
-        "<title>Ba tỷ lệ n-ngôi: khao_sat cạnh synth</title>"
+        f"<title>Ba tỷ lệ n-ngôi: {html.escape(ten_cot)}</title>"
         f"<style>{_CSS}</style></head><body>"
         '<div class="khoi">'
         "<h1>Ba tỷ lệ n-ngôi</h1>"
@@ -249,22 +321,25 @@ def dung_html(trai: BaTyLe, phai: BaTyLe, ten_hang: Mapping[int, str]) -> str:
         f" trở lên; composition risk là ca nhạy cảm mà <b>mọi</b> entity cấu thành đều"
         f" còn xuất hiện ở ít nhất một hyperedge không nhạy cảm. Trang này đọc hai ảnh"
         f" chụp đã commit, không chạm kho.</p>"
+        f"{_khoi_bo_trich_xuat_khac(bo)}"
         f"{tom_tat}"
-        "<h2>Ba tỷ lệ, hai cột cạnh nhau</h2>"
-        f"{_bang_ba_ty_le(trai, phai)}"
+        f"<h2>Ba tỷ lệ, {len(bo)} cột cạnh nhau</h2>"
+        f'<p class="chu">Mọi chênh lệch tính so với cột mốc'
+        f" <code>{html.escape(bo[0].space)}</code>.</p>"
+        f"{_bang_ba_ty_le(*bo)}"
         "<h2>Phân bố mức nhạy cảm theo hạng</h2>"
         f'<p class="chu">Đếm trên hyperedge, không trên tài liệu: hai tài liệu cùng'
         " loại có thể cho số fact rất khác nhau. Hàng tô vàng là vùng nhạy cảm.</p>"
-        f"{_bang_phan_bo_hang(trai, phai, ten_hang)}"
+        f"{_bang_phan_bo_hang(bo, ten_hang)}"
         "<h2>Phân bố theo loại nội dung</h2>"
-        f"{_khoi_lech_truc_loai(trai, phai, hang_theo_ten)}"
-        f"{_bang_phan_bo_loai(trai, phai)}"
+        f"{_khoi_lech_truc_loai(bo, hang_theo_ten)}"
+        f"{_bang_phan_bo_loai(bo)}"
         "<h2>Ba số chẩn đoán của Composition-Risk</h2>"
         f'<p class="chu">Không phải tỷ lệ thứ tư và không vào báo cáo như một kết quả.'
         " Chúng chỉ để đọc được một Composition-Risk bằng 0: 0 vì không mảnh nào lộ,"
         " hay 0 vì luôn còn đúng một mảnh không lộ.</p>"
-        f"{_khoi_chan_doan(trai)}{_khoi_chan_doan(phai)}"
-        "</div></body></html>\n"
+        + "".join(_khoi_chan_doan(b) for b in bo)
+        + "</div></body></html>\n"
     )
 
 
@@ -296,6 +371,15 @@ def _tham_so(argv: list[str]) -> argparse.Namespace:
         help="ảnh chụp đồ thị khảo sát (mặc định eval/anh_do_thi/khao_sat.json)",
     )
     p.add_argument(
+        "--anh-real",
+        type=Path,
+        default=None,
+        dest="anh_real",
+        metavar="FILE",
+        help="ảnh chụp đồ thị space real - **không có mặc định**, file này nằm"
+        " ngoài cây repo (story 2.11); thiếu cờ thì trang in hai cột như cũ",
+    )
+    p.add_argument(
         "--hang",
         type=Path,
         default=HANG_MAC_DINH,
@@ -320,7 +404,7 @@ def ly_do_tu_choi_anh(duong_dan, space: str, anh) -> str | None:
         return None
     return (
         f"{duong_dan} là ảnh chụp của space {anh.space!r} nhưng đang được dùng cho"
-        f" cột {space!r}: hai cột phải là hai space khác nhau, nếu không trang in"
+        f" cột {space!r}: mỗi cột phải là một space khác nhau, nếu không trang in"
         " một space hai lần và ba chênh lệch bằng 0 vì hai cột là một, chứ không"
         " vì hai tập khớp cỡ"
     )
@@ -343,33 +427,35 @@ def _doc(duong_dan: Path, space: str):
 
 
 def main(argv: list[str] | None = None) -> int:
-    """In ba tỷ lệ hai space; ảnh chụp thiếu hay lạ thì in lý do ra stderr và trả 1.
+    """In ba tỷ lệ hai hoặc ba space; ảnh chụp thiếu hay lạ thì in lý do ra stderr và trả 1.
 
     Không có nhánh nào dựng bảng bằng một cột: một trang chỉ có `khao_sat` là
     một trang không trả lời câu hỏi khớp cỡ, và in nó ra rồi thoát 0 là để người
-    đọc tưởng bước đối chiếu đã chạy.
+    đọc tưởng bước đối chiếu đã chạy. Cột `real` là **tùy chọn** vì ảnh chụp của
+    nó không nằm trong repo; thiếu cờ thì trang in đúng hai cột như story 2.10.
     """
     ts = _tham_so(sys.argv[1:] if argv is None else list(argv))
     try:
         hang = dict(tai_hang_do_nhay(ts.hang).hang)
-        anh_synth = _doc(ts.anh_synth, "synth")
-        anh_khao_sat = _doc(ts.anh_khao_sat, "khao_sat")
-        trai = ba_ty_le(anh_synth, hang)
-        phai = ba_ty_le(anh_khao_sat, hang)
+        anh = [_doc(ts.anh_synth, "synth"), _doc(ts.anh_khao_sat, "khao_sat")]
+        if ts.anh_real is not None:
+            anh.append(_doc(ts.anh_real, SPACE_REAL))
+        bo = tuple(ba_ty_le(a, hang) for a in anh)
     except (AnhDoThiKhongHopLe, HangKhongXacDinh, SensitivityRanksInvalid) as loi:
         print(str(loi), file=sys.stderr)
         return 1
 
+    trai = bo[0]
     ten_hang = {v: k for k, v in hang.items()}
     dich = Path(ts.dich) if ts.dich is not None else DUONG_DAN_HTML
     try:
         dich.parent.mkdir(parents=True, exist_ok=True)
-        dich.write_text(dung_html(trai, phai, ten_hang), encoding="utf-8")
+        dich.write_text(dung_html(*bo, ten_hang=ten_hang), encoding="utf-8")
     except OSError as loi:
         print(f"không ghi được {dich}: {loi}", file=sys.stderr)
         return 1
 
-    for b in (trai, phai):
+    for b in bo:
         print(
             f"space {b.space}: {b.so_tai_lieu} tài liệu, {b.so_hyperedge} hyperedge,"
             f" chụp {b.ngay_do}"
@@ -386,21 +472,29 @@ def main(argv: list[str] | None = None) -> int:
             f" {b.so_nhay_cam_co_entity_lo} ca có ít nhất một entity lộ,"
             f" trung bình phần entity lộ trên nhóm đó {tb}"
         )
-    for d in doi_chieu(trai, phai):
-        chenh = "không so được" if d.chenh is None else f"{d.chenh:+.1%}"
-        print(f"chênh {d.ten}: {chenh} ({trai.space} -> {phai.space})")
-    chi_trai = sorted(_loai_cua(trai) - _loai_cua(phai))
-    chi_phai = sorted(_loai_cua(phai) - _loai_cua(trai))
-    if chi_trai or chi_phai:
+    for d in doi_chieu(*bo):
+        for i, b in enumerate(bo[1:], start=1):
+            gia_tri = d.chenh_voi_moc(i)
+            chenh = "không so được" if gia_tri is None else f"{gia_tri:+.1%}"
+            print(f"chênh {d.ten}: {chenh} ({trai.space} -> {b.space})")
+    chung = loai_chung(*bo)
+    rieng = [(b.space, sorted(_loai_cua(b) - chung)) for b in bo]
+    if any(ds for _, ds in rieng):
         print(
-            f"cảnh báo: hai cột không cùng trục loại nội dung - chỉ {trai.space} có"
-            f" {chi_trai}, chỉ {phai.space} có {chi_phai}"
+            "cảnh báo: các cột không cùng trục loại nội dung - "
+            + "; ".join(f"chỉ {ten} có {ds}" for ten, ds in rieng if ds)
         )
     print(
         "ba tỷ lệ tính trên tập fact hệ trích được (precision ghép cặp"
         f" {PRECISION_GHEP_CAP:.1%} của vòng {VONG_CHOT_2_6}), mẫu số khao_sat là"
         " bản ghi giả lập"
     )
+    if any(b.space == SPACE_REAL for b in bo):
+        print(
+            f"cảnh báo: cột {SPACE_REAL} trích bằng Qwen 2.5 7B cục bộ (AD-12),"
+            " precision chưa đo lần nào; chênh của nó trộn hình dạng tri thức với"
+            " chất lượng trích xuất"
+        )
     print(f"ghi {dich}")
     return 0
 

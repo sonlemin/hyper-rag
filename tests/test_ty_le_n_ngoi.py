@@ -32,12 +32,14 @@ from eval.ty_le_n_ngoi import (
     NHAN_KHONG_KHOA,
     TOI_THIEU_VAI_N_NGOI,
     HangKhongXacDinh,
+    ThieuCotDoiChieu,
     TyLe,
     ba_ty_le,
     doi_chieu,
     entity_cua,
     hang_cua_hyperedge,
     la_n_ngoi,
+    loai_chung,
     loai_theo_doc_key,
     so_vai_da_dien,
 )
@@ -554,7 +556,7 @@ def test_trang_ghi_duoc_va_co_ca_hai_cot_cung_cot_chenh(tmp_path):
     assert main([str(dich)]) == 0
     trang = dich.read_text(encoding="utf-8")
     assert "<th>synth</th>" in trang and "<th>khao_sat</th>" in trang
-    assert "chênh (phải - trái)" in trang
+    assert "<th>chênh khao_sat - synth</th>" in trang
     for ten in ("Overall N-ary", "Sensitive N-ary", "Composition-Risk"):
         assert ten in trang
     # Tử số và mẫu số tường minh, không chỉ một phần trăm.
@@ -647,3 +649,148 @@ def test_chay_bang_python_m_eval_xem_ty_le(tmp_path):
     assert dich.exists()
     assert "Overall N-ary" in kq.stdout
     assert "chẩn đoán" in kq.stdout
+
+
+# ---------------------------------------------------------------------------
+# Cột thứ ba: space `real` (story 2.11)
+# ---------------------------------------------------------------------------
+
+
+def _anh_real(tmp_path: Path, ten: str = "real.json") -> Path:
+    """Ảnh chụp `real` dựng tay trong `tmp_path`.
+
+    Ảnh chụp `real` **thật** nằm ngoài cây repo (nó dump nguyên văn giá trị mọi
+    slot của tài liệu công ty), nên test không có file nào để đọc và cũng không
+    được có. Cái nó chấm là *hình dạng ba cột*, không phải con số của đợt nạp.
+    """
+    import json
+
+    anh = {
+        "version": 2,
+        "space": "real",
+        "ngay_do": "2026-09-04T00:00:00+00:00",
+        "policy_version": "x" * 8,
+        "so_tai_lieu": 1,
+        "so_hyperedge": 1,
+        "so_hyperedge_da_nguon": 0,
+        "tai_lieu": [
+            {
+                "doc_key": "r1.md",
+                "sha256": "0" * 64,
+                "scope": "noi_bo",
+                "content_type": "bao_cao_su_co",
+            }
+        ],
+        "hyperedge": [
+            {
+                "id": "he-r1",
+                "doc_key": ["r1.md"],
+                "khoa": "noi_bo:bao_cao_su_co",
+                "slots": {"subject": ["A"], "cause": ["B"], "time": ["T"]},
+            }
+        ],
+    }
+    dich = tmp_path / ten
+    dich.write_text(json.dumps(anh, ensure_ascii=False), encoding="utf-8")
+    return dich
+
+
+def test_doi_chieu_nhan_ba_cot_va_chenh_deu_so_voi_cot_moc(hang):
+    """Chữ ký cũ hai cột vẫn chạy; cột thứ ba so với **cột đầu**, không so dây chuyền.
+
+    Cột đầu (`synth`) là tập duy nhất có precision trích xuất đã đo, nên nó là
+    mốc. So `real` với `khao_sat` là so hai tập mà cả hai đều chưa neo vào gì.
+    """
+    mot_vai = ba_ty_le(_anh([_he("a", "noi_bo:runbook", {"subject": ["x"]})]), hang)
+    ba_vai = ba_ty_le(
+        _anh([_he("b", "noi_bo:runbook", {"subject": ["x"], "cause": ["y"], "time": ["t"]})]),
+        hang,
+    )
+    dong = doi_chieu(mot_vai, ba_vai, mot_vai)
+    assert [d.ten for d in dong] == ["Overall N-ary", "Sensitive N-ary", "Composition-Risk"]
+    assert len(dong[0].cot) == 3
+    assert dong[0].chenh_voi_moc(1) == pytest.approx(1.0)
+    assert dong[0].chenh_voi_moc(2) == pytest.approx(0.0)
+    # Ba tên cũ vẫn là hợp đồng của trang hai cột.
+    assert dong[0].trai is dong[0].cot[0] and dong[0].phai is dong[0].cot[1]
+    assert dong[0].chenh == dong[0].chenh_voi_moc(1)
+
+
+def test_doi_chieu_mot_cot_la_loi_co_ma(hang):
+    """Một cột đứng một mình không trả lời được câu hỏi khớp cỡ."""
+    mot = ba_ty_le(_anh([_he("a", "noi_bo:runbook", {"subject": ["x"]})]), hang)
+    with pytest.raises(ThieuCotDoiChieu) as loi:
+        doi_chieu(mot)
+    assert loi.value.code == "THIEU_COT_DOI_CHIEU"
+
+
+def test_loai_chung_bang_giao_cua_moi_cot(hang):
+    """Với hai cột nó đúng bằng phép hiệu hai chiều mà story 2.10 in ra."""
+    a = ba_ty_le(_anh([_he("a", "noi_bo:runbook", {"subject": ["x"]})]), hang)
+    b = ba_ty_le(
+        _anh(
+            [_he("b", "noi_bo:bao_cao_su_co", {"subject": ["x"]}, doc_key=("c.md",))],
+            tai_lieu=(("c.md", "noi_bo", "bao_cao_su_co"),),
+        ),
+        hang,
+    )
+    assert loai_chung(a, b) == frozenset()
+    assert loai_chung(a, a) == frozenset({"runbook"})
+
+
+def test_trang_ba_cot_in_cot_real_va_canh_bao_bo_trich_xuat_khac(tmp_path):
+    """AC: ba cột kèm cảnh báo cột `real` dùng bộ trích xuất khác."""
+    from eval.xem_ty_le import main
+
+    dich = tmp_path / "ty_le.html"
+    assert main([str(dich), "--anh-real", str(_anh_real(tmp_path))]) == 0
+    trang = dich.read_text(encoding="utf-8")
+    for cot in ("<th>synth</th>", "<th>khao_sat</th>", "<th>real</th>"):
+        assert cot in trang
+    assert "<th>chênh khao_sat - synth</th>" in trang
+    assert "<th>chênh real - synth</th>" in trang
+    assert "bộ trích xuất" in trang and "Qwen" in trang
+    assert "chưa đo lần nào" in trang
+
+
+def test_thieu_co_anh_real_thi_van_in_hai_cot_nhu_cu(tmp_path):
+    """Hàng "Trang tỷ lệ thiếu cột real" của I/O Matrix."""
+    from eval.xem_ty_le import main
+
+    dich = tmp_path / "ty_le.html"
+    assert main([str(dich)]) == 0
+    trang = dich.read_text(encoding="utf-8")
+    assert "<th>real</th>" not in trang
+    assert "bộ trích xuất" not in trang
+    assert "<th>chênh khao_sat - synth</th>" in trang
+
+
+def test_anh_real_tro_nham_sang_space_khac_la_loi(tmp_path, capsys):
+    """Cùng rào với hai cột kia: một ảnh `synth` cắm vào cột `real` là chênh 0 giả."""
+    from eval.xem_ty_le import main
+
+    dich = tmp_path / "ty_le.html"
+    assert main([str(dich), "--anh-real", str(ANH_SYNTH)]) == 1
+    err = capsys.readouterr().err
+    assert "space 'synth'" in err and "real" in err
+    assert not dich.exists()
+
+
+def test_thieu_anh_real_in_lenh_dung_lai_co_co_cuc_bo(tmp_path, capsys):
+    """Lệnh dựng lại phải mang `HYPER_RAG_CUC_BO=1` và `--dich` ra ngoài repo."""
+    from eval.xem_ty_le import main
+
+    ma = main([str(tmp_path / "x.html"), "--anh-real", str(tmp_path / "chua-co.json")])
+    assert ma == 1
+    err = capsys.readouterr().err
+    assert "HYPER_RAG_CUC_BO=1" in err and "--space real" in err and "--dich" in err
+
+
+def test_console_ba_cot_in_ca_hai_canh_bao(tmp_path, capsys):
+    from eval.xem_ty_le import main
+
+    assert main([str(tmp_path / "ty_le.html"), "--anh-real", str(_anh_real(tmp_path))]) == 0
+    ra = capsys.readouterr().out
+    assert "(synth -> khao_sat)" in ra and "(synth -> real)" in ra
+    assert "không cùng trục loại nội dung" in ra
+    assert "Qwen 2.5 7B cục bộ" in ra
