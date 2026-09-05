@@ -75,6 +75,94 @@ def _goc_import_tuyet_doi(package: str) -> list[tuple[str, Path]]:
     return roots
 
 
+# Ngân sách `core/` (AD-1, QT1). Đếm **dòng lệnh**: dòng không trắng, không nằm
+# trong một docstring, không phải dòng chú thích. Trần cũ "500-800 dòng" của
+# phiên brainstorm 26/08 không nói đếm cách nào, và hai cách đọc cho hai kết
+# luận ngược nhau ở cuối Epic 1 (1091 dòng file so với 398 dòng lệnh) nên nó
+# không phán được gì; retro Epic 2 đưa ra quyết định và sonlm chốt 1200 dòng
+# lệnh ngày 05/09/2026.
+#
+# Vì sao đếm dòng lệnh chứ không đếm tổng dòng file: thứ QT1 đòi giải thích
+# được trước hội đồng là **logic**, không phải văn xuôi mô tả logic. Một trần
+# đếm cả docstring phạt đúng thứ làm việc giải thích dễ hơn - `core/masking.py`
+# có 83 dòng lệnh và 201 dòng giải thích, và tỷ lệ đó là tài sản chứ không phải
+# nợ.
+#
+# Test này là lý do trần lần này khác trần lần trước. Quy ước "không file test
+# nào vượt 1000 dòng" của cổng M1 chỉ sống trong một artifact review và vỡ ở bảy
+# file ngay epic sau; luật chiều import ngay trên đây thì có test và giữ nguyên
+# qua hai epic. Một ngân sách không có phép đếm chạy được là một con số trong
+# tài liệu, không phải một ràng buộc.
+NGAN_SACH_CORE_DONG_LENH: int = 1200
+
+
+def _dong_lenh(py: Path) -> int:
+    """Số dòng lệnh của một file Python: bỏ dòng trắng, docstring và chú thích.
+
+    Docstring nhận diện bằng AST chứ không bằng regex: một chuỗi ba nháy nằm ở
+    vế phải của phép gán là dữ liệu, không phải tài liệu, và nó phải được tính
+    là dòng lệnh.
+    """
+    src = py.read_text(encoding="utf-8")
+    dong_doc: set[int] = set()
+    for node in ast.walk(ast.parse(src, filename=str(py))):
+        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            if ast.get_docstring(node, clean=False) is not None:
+                than = node.body[0]
+                dong_doc.update(range(than.lineno, than.end_lineno + 1))
+    dem = 0
+    for i, dong in enumerate(src.splitlines(), start=1):
+        sach = dong.strip()
+        if sach and i not in dong_doc and not sach.startswith("#"):
+            dem += 1
+    return dem
+
+
+def test_ngan_sach_core():
+    """`core/` không vượt ngân sách dòng lệnh của AD-1.
+
+    Vượt trần **không** phải là dấu hiệu để nới trần. Nó là câu hỏi "thứ vừa
+    thêm có thật sự là luật quyền không, hay nó thuộc `adapters/`" - và câu trả
+    lời gần như luôn là vế sau, vì `core/` chỉ nhận thứ thuần stdlib không biết
+    gì về kho.
+    """
+    theo_module = {py.name: _dong_lenh(py) for py in sorted((REPO_ROOT / "core").glob("*.py"))}
+    tong = sum(theo_module.values())
+    assert tong <= NGAN_SACH_CORE_DONG_LENH, (
+        f"core/ có {tong} dòng lệnh, vượt ngân sách {NGAN_SACH_CORE_DONG_LENH} (AD-1). "
+        f"Theo module: {dict(sorted(theo_module.items(), key=lambda kv: -kv[1]))}. "
+        "Đọc AD-1 trước khi nới trần: chỗ sửa thường là đẩy phần vừa thêm sang adapters/."
+    )
+
+
+def test_phep_dem_dong_lenh_bo_dung_ba_loai_dong(tmp_path):
+    """Phép đếm phải bỏ dòng trắng, docstring và chú thích - và **chỉ** ba loại đó.
+
+    Ca quan trọng nhất là chuỗi ba nháy ở vế phải một phép gán: nó là dữ liệu
+    của chương trình, nên nó phải được đếm. Một phép đếm bằng regex sẽ nuốt nó
+    và làm ngân sách rộng ra một cách vô hình.
+    """
+    dong = [
+        '"""Docstring module.',      # docstring, 4 dòng
+        "",
+        "Hai dòng.",
+        '"""',
+        "",                            # trắng
+        "# một dòng chú thích",        # chú thích
+        "X = 1",                       # lệnh 1
+        'BANG = """',                 # lệnh 2 - chuỗi là dữ liệu, phải đếm
+        "mot",                         # lệnh 3
+        "hai",                         # lệnh 4
+        '"""',                        # lệnh 5
+        "def f():",                    # lệnh 6
+        '    """Doc hàm."""',         # docstring
+        "    return X",                # lệnh 7
+    ]
+    f = tmp_path / "m.py"
+    f.write_text("\n".join(dong) + "\n", encoding="utf-8")
+    assert _dong_lenh(f) == 7
+
+
 def test_core_chi_stdlib():
     """core/ chỉ được import stdlib hoặc chính nó."""
     cho_phep = set(sys.stdlib_module_names) | {"core"}

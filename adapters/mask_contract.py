@@ -15,7 +15,7 @@ thành hai luật:
 
 Story 1.3 phát hiện hai luật này ở đường vector; story 1.4 gặp lại nguyên vẹn
 ở đường graph. Chúng sống ở đây thay vì trong `core/` vì đây là chuyện của tầng
-adapter (`core/` giữ ngân sách 500-800 dòng và không biết gì về kho).
+adapter (`core/` giữ một ngân sách dòng lệnh và không biết gì về kho).
 """
 
 
