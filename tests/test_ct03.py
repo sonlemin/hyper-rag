@@ -56,6 +56,23 @@ ANH_SYNTH = GOC_REPO / "eval" / "anh_do_thi" / "synth.json"
 # liệu. Phần còn lại là hai tài liệu corpus mới cộng dao động của một lần chạy.
 SYNTH_ENTITY_DA_NGUON = 56
 
+# Ba ca mở trang CT-03, viết **một** lần và dùng ở cả hai test chấm thứ tự.
+# Trước story 2.12 chúng được chép hai bản: một trong test chạy trên ảnh chụp
+# (chạy ở mọi máy) và một trong test chạy trên Neo4j thật (chỉ chạy trên máy
+# chủ, marker `neo4j`). Đợt nạp lại 05/09 đổi thứ tự, bản chạy trên dev được
+# sửa còn bản kia thì không, và cả suốt vẫn xanh trên máy dev - CI trên máy chủ
+# mới bắt. Một hằng dùng chung là chỗ duy nhất chặn được kiểu trôi đó.
+#
+# Thứ tự này đổi ở đợt nạp lại 05/09: `Trần Thị Hạnh` lên hạng vì `k1-08` và
+# `k1-09` (hai tài liệu bí danh) cùng nêu tên bà, nên bà thành entity đa nguồn
+# 5 tài liệu. Số của story 2.10 là ["nhóm Hạ tầng", "cảnh báo mức nghiêm
+# trọng", "người trực"].
+BA_CA_MO_TRANG_SYNTH: list[str] = [
+    "cảnh báo mức nghiêm trọng",
+    "Trần Thị Hạnh",
+    "nhóm Hạ tầng",
+]
+
 # 19 entity mà khóa quyền hợp nhất thành **không khóa** (khác scope, AD-5) và 6
 # entity mang vai `time`, đọc từ kho ngày 05/09/2026 bằng `eval.ct03` trên máy
 # chủ. Chép vào đây để test thứ tự chạy được mà không cần container; bản trên
@@ -490,11 +507,7 @@ def test_doc_mo_ta_tren_neo4j_that():
     # nhưng ở đây `khoa` và `loai` đến từ kho chứ không từ hằng chép tay.
     from eval.ct03 import sap_theo_bang_chung as _sap
 
-    assert [m.entity.ten for m in _sap(ds)][:3] == [
-        "nhóm Hạ tầng",
-        "cảnh báo mức nghiêm trọng",
-        "người trực",
-    ]
+    assert [m.entity.ten for m in _sap(ds)][:3] == BA_CA_MO_TRANG_SYNTH
 
 
 # ---------------------------------------------------------------------------
@@ -621,11 +634,10 @@ def test_thu_tu_tren_anh_chup_synth_that():
         for e in ds
     ]
     ten = [m.entity.ten for m in sorted(gia, key=thu_tu_bang_chung)]
-    # Ba tên này đổi ở đợt nạp lại 05/09: `Trần Thị Hạnh` lên hạng vì `k1-08`
-    # và `k1-09` (hai tài liệu bí danh) cùng nêu tên bà, nên bà thành entity đa
-    # nguồn 5 tài liệu. Số của story 2.10 là ["nhóm Hạ tầng", "cảnh báo mức
-    # nghiêm trọng", "người trực"].
-    assert ten[:3] == ["cảnh báo mức nghiêm trọng", "Trần Thị Hạnh", "nhóm Hạ tầng"]
+    # Ba tên lấy từ `BA_CA_MO_TRANG_SYNTH`, cùng hằng mà test chạy trên Neo4j
+    # thật dùng: hai bản chép tay là hai bản sẽ trôi khỏi nhau, và bản chỉ chạy
+    # trên máy chủ là bản trôi mà không ai thấy.
+    assert ten[:3] == BA_CA_MO_TRANG_SYNTH
     # Mười ca yếu chiếm trọn phần đuôi, không ca nào lọt lên nhóm mạnh.
     assert set(ten[-len(YEU_SYNTH):]) == YEU_SYNTH, ten[-len(YEU_SYNTH):]
     assert {m.entity.ten for m in gia if m.la_gia_tri_yeu} == YEU_SYNTH
