@@ -33,7 +33,7 @@ from pathlib import Path
 import pytest
 
 from adapters.identity_seed import (
-    DUONG_DAN_DANH_TINH_DEMO,
+    DUONG_DAN_TAI_KHOAN,
     IdentitySeedInvalid,
     nap_danh_tinh,
 )
@@ -82,7 +82,7 @@ pytestmark = pytest.mark.usefixtures("ma_hoa_offline")
 def danh_tinh_demo(khong_gian):
     """Hai danh tính seed, chuyển sang không gian cách ly của phiên test.
 
-    Vai và tài khoản lấy từ `config/danh-tinh-demo.yaml`, không viết trong
+    Vai và tài khoản lấy từ `config/tai-khoan.yaml`, không viết trong
     test: đó đúng là điều AC đòi ("ngữ cảnh quyền phát từ danh tính, không
     hard-code trong test"). `khong_gian` thì là chuyện cách ly dữ liệu của bộ
     test, nên nó - và chỉ nó - được thay.
@@ -393,7 +393,7 @@ def test_do1_lop_b_khong_noi_dung_slot_da_che(
                     f"nguyên văn slot {slot!r} của {he['id']} lọt vào ngữ cảnh"
                     f" của vai {vai}"
                 )
-                assert oracle.dau_che_ky_vong(slot) in ngu_canh, (
+                assert oracle.dau_che_ky_vong(slot, he["content_type"]) in ngu_canh, (
                     f"dấu che của slot {slot!r} không có mặt: fact biến mất"
                     " khỏi ngữ cảnh thay vì bị che (FR-12)"
                 )
@@ -498,13 +498,30 @@ def test_do1_lop_e_thieu_ngu_canh_la_fail_closed(workspace_dir, khong_gian, poli
 
 
 def test_seed_danh_tinh_doc_duoc_hai_vai():
-    """Seed tối giản: hai danh tính demo, chưa JWT (FR-17 thuộc Epic 3)."""
+    """Seed của cổng M1: hai danh tính, hai vai, hai tài khoản phân biệt.
+
+    Story 3.1 mở rộng file thành `config/tai-khoan.yaml` version 2 (hash bcrypt,
+    nhóm, cờ demo/admin), nhưng phần mà M1 đứng lên vẫn là ba trường danh tính,
+    và `nap_danh_tinh` vẫn là cửa trả đúng ba trường ấy.
+    """
     danh_tinh = nap_danh_tinh()
     assert len(danh_tinh) == 2
     assert all(isinstance(dt, DanhTinh) for dt in danh_tinh)
     assert {dt.vai for dt in danh_tinh} == {"tech_support", "devops"}
     assert len({dt.tai_khoan for dt in danh_tinh}) == 2
-    assert DUONG_DAN_DANH_TINH_DEMO.exists()
+    assert DUONG_DAN_TAI_KHOAN.exists()
+
+
+# Một mục seed hợp lệ, dùng làm nền để từng ca hỏng chỉ lệch đúng một chỗ.
+HASH_MAU = "$2b$12$8htUhXFTS0wfaUBnGgBEFeuWaP5ujAKYNsFYm10apX8l4bevHO/FW"
+MUC_DU = (
+    "{tai_khoan: x, vai: y, khong_gian: synth,"
+    f' mat_khau_hash: "{HASH_MAU}", nhom: DevOps}}'
+)
+
+
+def _seed(muc: str = MUC_DU, version: str = "version: 2\n", them: str = "") -> str:
+    return f"{version}{them}tai_khoan:\n  - {muc}\n"
 
 
 # Mỗi dòng là một cách file seed hỏng, và mỗi cách đều có một luật từ chối
@@ -512,40 +529,109 @@ def test_seed_danh_tinh_doc_duoc_hai_vai():
 # nào chạy vào - xóa khối chống trùng tài khoản mà không gì đỏ là dấu hiệu đúng
 # của chuyện đó.
 SEED_HONG = {
-    "danh_sach_rong": "version: 1\ndanh_tinh: []\n",
-    "thieu_khoi": "version: 1\n",
-    "goc_khong_phai_mapping": "- version: 1\n",
+    "danh_sach_rong": "version: 2\ntai_khoan: []\n",
+    "thieu_khoi": "version: 2\n",
+    "goc_khong_phai_mapping": "- version: 2\n",
     "goc_rong": "",
-    "version_sai": "version: 2\ndanh_tinh:\n  - {tai_khoan: x, vai: y, khong_gian: synth}\n",
-    "version_thieu": "danh_tinh:\n  - {tai_khoan: x, vai: y, khong_gian: synth}\n",
-    "version_la_bool": "version: true\ndanh_tinh:\n  - {tai_khoan: x, vai: y, khong_gian: synth}\n",
-    "thieu_vai": "version: 1\ndanh_tinh:\n  - {tai_khoan: x, khong_gian: synth}\n",
-    "muc_khong_phai_mapping": "version: 1\ndanh_tinh:\n  - ts01\n",
-    "truong_la_trong_muc": (
+    # Version 1 là chính file seed của story 1.7: nó nạp được ở schema cũ nhưng
+    # thiếu ba trường mà story 3.1 thêm, nên nhận nó là chạy một hệ mà không ai
+    # đăng nhập được và không gì nói ra.
+    "version_cu": (
         "version: 1\ndanh_tinh:\n"
-        "  - {tai_khoan: x, vai: y, khong_gian: synth, allowed_keys: [a]}\n"
+        "  - {tai_khoan: x, vai: y, khong_gian: synth}\n"
+    ),
+    "version_thieu": _seed(version=""),
+    "version_la_bool": _seed(version="version: true\n"),
+    "khoi_goc_ten_cu": (
+        "version: 2\ndanh_tinh:\n  - " + MUC_DU + "\n"
+    ),
+    "thieu_vai": _seed(
+        "{tai_khoan: x, khong_gian: synth,"
+        f' mat_khau_hash: "{HASH_MAU}", nhom: DevOps}}'
+    ),
+    "thieu_hash": _seed("{tai_khoan: x, vai: y, khong_gian: synth, nhom: DevOps}"),
+    "thieu_nhom": _seed(
+        f'{{tai_khoan: x, vai: y, khong_gian: synth, mat_khau_hash: "{HASH_MAU}"}}'
+    ),
+    # Mật khẩu thô lọt vào chỗ của hash: `checkpw` sẽ dội `ValueError` giữa một
+    # handler, và khi đó ca "sai mật khẩu" và ca "seed hỏng" trả hai thứ khác
+    # nhau - đúng kênh dò mà `DANG_NHAP_SAI` sinh ra để bịt.
+    "hash_khong_phai_bcrypt": _seed(
+        "{tai_khoan: x, vai: y, khong_gian: synth,"
+        ' mat_khau_hash: "matkhau123", nhom: DevOps}'
+    ),
+    "hash_cut_mot_ky_tu": _seed(
+        "{tai_khoan: x, vai: y, khong_gian: synth,"
+        f' mat_khau_hash: "{HASH_MAU[:-1]}", nhom: DevOps}}'
+    ),
+    "nhom_rong": _seed(
+        "{tai_khoan: x, vai: y, khong_gian: synth,"
+        f' mat_khau_hash: "{HASH_MAU}", nhom: ""}}'
+    ),
+    "nhom_co_khoang_trang": _seed(
+        "{tai_khoan: x, vai: y, khong_gian: synth,"
+        f' mat_khau_hash: "{HASH_MAU}", nhom: " DevOps "}}'
+    ),
+    # `admin: 1` chạy được là một tài khoản được cấp quyền quản trị bởi một lỗi
+    # gõ, nên loader đòi đúng kiểu bool chứ không đọc theo truthiness.
+    "admin_khong_phai_bool": _seed(
+        "{tai_khoan: x, vai: y, khong_gian: synth,"
+        f' mat_khau_hash: "{HASH_MAU}", nhom: DevOps, admin: 1}}'
+    ),
+    "demo_la_chuoi": _seed(
+        "{tai_khoan: x, vai: y, khong_gian: synth,"
+        f' mat_khau_hash: "{HASH_MAU}", nhom: DevOps, demo: "true"}}'
+    ),
+    "muc_khong_phai_mapping": _seed("ts01"),
+    "truong_la_trong_muc": _seed(
+        "{tai_khoan: x, vai: y, khong_gian: synth,"
+        f' mat_khau_hash: "{HASH_MAU}", nhom: DevOps, allowed_keys: [a]}}'
     ),
     # Khóa lạ ở *cấp gốc*: đây đúng là ca mà docstring module lấy làm lý do tồn
     # tại - một khối `allowed_keys:` cấp gốc nạp bình thường thì người viết seed
     # tin rằng mình vừa cấp quyền, mà không ai đọc nó.
-    "khoa_la_o_goc": (
-        "version: 1\nallowed_keys: [noi_bo:runbook]\n"
-        "danh_tinh:\n  - {tai_khoan: x, vai: y, khong_gian: synth}\n"
-    ),
+    "khoa_la_o_goc": _seed(them="allowed_keys: [noi_bo:runbook]\n"),
     "tai_khoan_trung": (
-        "version: 1\ndanh_tinh:\n"
-        "  - {tai_khoan: ts01, vai: tech_support, khong_gian: synth}\n"
-        "  - {tai_khoan: ts01, vai: devops, khong_gian: synth}\n"
+        "version: 2\ntai_khoan:\n"
+        "  - {tai_khoan: ts01, vai: tech_support, khong_gian: synth,"
+        f' mat_khau_hash: "{HASH_MAU}", nhom: DevOps}}\n'
+        "  - {tai_khoan: ts01, vai: devops, khong_gian: synth,"
+        f' mat_khau_hash: "{HASH_MAU}", nhom: DevOps}}\n'
     ),
-    "tai_khoan_rong": "version: 1\ndanh_tinh:\n  - {tai_khoan: '', vai: y, khong_gian: synth}\n",
-    "vai_co_khoang_trang": (
-        "version: 1\ndanh_tinh:\n  - {tai_khoan: x, vai: ' devops ', khong_gian: synth}\n"
+    "tai_khoan_rong": _seed(
+        "{tai_khoan: '', vai: y, khong_gian: synth,"
+        f' mat_khau_hash: "{HASH_MAU}", nhom: DevOps}}'
     ),
-    "khong_gian_sai_ky_tu": (
-        "version: 1\ndanh_tinh:\n  - {tai_khoan: x, vai: y, khong_gian: '1-synth'}\n"
+    "vai_co_khoang_trang": _seed(
+        "{tai_khoan: x, vai: ' devops ', khong_gian: synth,"
+        f' mat_khau_hash: "{HASH_MAU}", nhom: DevOps}}'
     ),
-    "yaml_hong": "version: 1\ndanh_tinh: [\n",
+    "khong_gian_sai_ky_tu": _seed(
+        "{tai_khoan: x, vai: y, khong_gian: '1-synth',"
+        f' mat_khau_hash: "{HASH_MAU}", nhom: DevOps}}'
+    ),
+    "yaml_hong": "version: 2\ntai_khoan: [\n",
 }
+
+
+def test_seed_mau_du_that_su_nap_duoc(tmp_path):
+    """Nền của bảng ca hỏng phải nạp được, nếu không mọi ca đỏ vì cùng một lý do.
+
+    Không có ca này thì một lỗi cú pháp trong `MUC_DU` làm cả 20 ca dưới đây
+    xanh mà không ca nào còn chấm luật mà nó mang tên.
+    """
+    from adapters.identity_seed import nap_tai_khoan
+
+    duong_dan = tmp_path / "du.yaml"
+    duong_dan.write_text(_seed(), encoding="utf-8")
+    (muc,) = nap_tai_khoan(duong_dan)
+    assert muc.ten == "x"
+    assert muc.mat_khau_hash == HASH_MAU
+    assert muc.tai_khoan.nhom == "DevOps"
+    # Vắng `demo`/`admin` là `False`: mặc định *không* quyền, đúng chiều
+    # fail-closed. Ngược lại thì một mục quên khai `admin` là một tài khoản
+    # quản trị mà không ai gõ ra chữ đó.
+    assert (muc.tai_khoan.demo, muc.tai_khoan.admin) == (False, False)
 
 
 @pytest.mark.parametrize("ten", sorted(SEED_HONG))

@@ -664,7 +664,7 @@ def test_dau_che_lan_can_khong_trung_dau_che_cua_vai_slot_nao():
     """
     dau = dau_che_lan_can_khong_khoa()
     assert dau not in {dau_che(slot) for slot in SLOT_ROLES}
-    assert la_dau_che(dau), "dấu che mới phải tra ngược được qua get_node"
+    assert la_dau_che(dau, ()), "dấu che mới phải tra ngược được qua get_node"
 
 
 # --- Story 2.4: bản ghi cạnh gộp mang danh sách vai ----------------------------

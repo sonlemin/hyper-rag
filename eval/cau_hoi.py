@@ -570,7 +570,7 @@ class BoCauHoi:
 
 
 def vai_cua_seed(path: str | Path | None = None) -> set[str]:
-    """Tập vai người hỏi hợp lệ, đọc từ `config/danh-tinh-demo.yaml`.
+    """Tập vai người hỏi hợp lệ, đọc từ `config/tai-khoan.yaml`.
 
     Vai đo của Đo 3 và vai người hỏi của bộ câu là **một** danh mục: một câu gắn
     vai không có danh tính nào là một câu không ai hỏi được ở T7.

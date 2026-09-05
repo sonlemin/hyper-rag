@@ -7,11 +7,24 @@ thành hai luật:
 - che mà không có khóa của hyperedge thì không phải là che. Khóa vắng nghĩa là
   `masked_slots` không tra trúng gì, tức là không che gì - đúng kiểu mặc định
   fail-open mà cả Epic 1 dựng ra để chống;
-- `mask` dựng một bản ghi mới có cùng tập khóa, không loại bản ghi khỏi kết
-  quả. Muốn giấu hẳn một mục thì chính method đọc phải lọc mục đó ra, vì một
-  `None` lọt vào danh sách kết quả sẽ nổ tận trong `vendor/`, xa chỗ gây ra vài
-  tầng. Story 1.6 chốt chiều "dựng bản mới" chứ không phải "sửa tại chỗ": kho
-  KV giữ bản gốc chưa che dùng chung cho mọi vai.
+- `mask` dựng một bản ghi mới **không mất trường nào**, và không loại bản ghi
+  khỏi kết quả. Muốn giấu hẳn một mục thì chính method đọc phải lọc mục đó ra,
+  vì một `None` lọt vào danh sách kết quả sẽ nổ tận trong `vendor/`, xa chỗ gây
+  ra vài tầng. Story 1.6 chốt chiều "dựng bản mới" chứ không phải "sửa tại
+  chỗ": kho KV giữ bản gốc chưa che dùng chung cho mọi vai.
+
+**Không mất trường, không phải cùng tập khóa.** Hai câu đó khác nhau, và story
+3.1 làm chúng khác nhau thật: tầng che *thêm* khóa `owner` khi nơi gọi khai
+nhóm phụ trách, kể cả khi bản ghi vào không có vai đó (229 trong 281 hyperedge
+của `synth` không có). `kiem_ket_qua_che` vốn chỉ hỏi `set(trước) - set(sau)`
+nên phần kiểm đã đúng từ đầu; phần phát biểu thì trước 3.1 viết là "có cùng tập
+khóa", và hai chỗ nói hai luật khác nhau về cùng một hợp đồng là chỗ lần sửa
+sau chỉ sửa một.
+
+Cái **không** được thêm là một trường vận chuyển đi tiếp ra ngoài: adapter gắn
+`core.masking.OWNER_GROUP_FIELD` vào bản ghi trước khi gọi hàm che, rồi gỡ nó
+ra sau khi kiểm hợp đồng. Gỡ bên trong `mask` thì không được - bản ghi đã làm
+giàu chính là `truoc_khi_che`, nên hàm kiểm sẽ báo mất trường.
 
 Story 1.3 phát hiện hai luật này ở đường vector; story 1.4 gặp lại nguyên vẹn
 ở đường graph. Chúng sống ở đây thay vì trong `core/` vì đây là chuyện của tầng

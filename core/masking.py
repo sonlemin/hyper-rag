@@ -46,6 +46,16 @@ dấu che có số thứ tự là mua lại đúng đường rò vừa bịt.
 **Che không bỏ khóa khỏi bản ghi.** Che là thay giá trị. Bỏ khóa thì upstream
 lọc rụng im lặng bản ghi mất `content` (`operate.py:860`) và nổ `KeyError` khi
 mất `distance` (`operate.py:953`) - xa chỗ gây ra vài tầng.
+
+**Một khóa được thêm, đúng một, và chỉ khi nơi gọi khai nhóm (story 3.1).** Bản
+ghi mang `OWNER_GROUP_FIELD` luôn có vai `owner` trong kết quả đã che, kể cả khi
+bản ghi vào không có nó. 229 trong 281 hyperedge của `synth` không mang vai
+`owner`, và với chúng thì hôm nay không có gì nói được cho placeholder FR-14
+("còn một phần bị hạn chế, liên hệ [nhóm]") hay cho citation của story 3.4. Hợp
+đồng `adapters/mask_contract.py` chỉ cấm **mất** trường nên thêm không phạm gì;
+cái giá là hệ lộ thêm bộ phận nào giữ tài liệu, và đó là một quyết định của
+ADR-011 chứ không phải một hệ quả phụ. Bản ghi không mang trường đó - chunk của
+kho KV, point của kho vector - giữ nguyên hình dạng cũ.
 """
 
 from typing import Any, Mapping
@@ -95,6 +105,23 @@ SLOTS_FIELD: str = "slots"
 # lân cận), nên mang cả khóa xuống là mang một giá trị mà nơi nhận không có
 # quyền dùng.
 NEIGHBOR_NO_KEY_FIELD: str = "neighbor_no_key"
+
+# Cờ làm giàu thứ hai, cùng hình dạng và cùng lý do với cờ trên (story 3.1,
+# ADR-011): tên **nhóm phụ trách** của loại nội dung mà hyperedge này thuộc về.
+# Adapter tra bảng `config/nhom-phu-trach.yaml` rồi gắn vào bản ghi trước khi
+# gọi hàm che, nên chữ ký `mask(result, context, hyperedge_key)` không đổi và
+# `core/` vẫn không đọc file nào (AD-1).
+#
+# Vì sao nhóm phải xuống tới đây thay vì được ghép ở tầng trên: dấu che là thứ
+# duy nhất rời tầng che, và một tầng trên ghép tên nhóm vào sau là một luật che
+# thứ hai đứng ngoài `core/`. Vì sao nó suy từ loại nội dung chứ không từ giá
+# trị `owner`: giá trị `owner` là chuỗi tự do (30 giá trị phân biệt trên 52
+# hyperedge của `synth`, trộn tên nhóm, tên người và chức danh), còn
+# `content_type` luôn có và đúng 13 giá trị.
+#
+# Trường **vắng mặt** nghĩa là không tra được nhóm, và khi đó dấu che rơi về
+# hằng cũ `[owner:group]` - đúng hành vi trước story 3.1, không phải một ca lỗi.
+OWNER_GROUP_FIELD: str = "owner_group"
 
 # Dấu che, dạng máy đọc được `[{slot}:{lý do}]`. Tầng trên đọc ra được vai nào
 # đã bị che và vì lý do gì mà không phải đoán từ một chuỗi sao. Nhãn tiếng Việt
@@ -178,6 +205,50 @@ def dau_che_truong(ten_truong: str, ly_do: str) -> str:
     return f"[{ten_truong}:{ly_do}]"
 
 
+class OwnerGroupInvalid(ValueError):
+    """Tên nhóm phụ trách không dựng được thành một dấu che đọc ngược được.
+
+    Rỗng, có khoảng trắng bao quanh, hay mang `[`/`]`/`:` - ba thứ làm phép
+    nhận diện bằng cách dựng lại (`la_dau_che`) đọc ra một kết quả khác với
+    phép dựng. Loader `adapters/nhom_phu_trach.py` chặn cùng luật ở đường nạp;
+    cửa này chặn ở đường dựng, vì bản ghi tới tầng che có thể mang một trường
+    do adapter gắn chứ không chỉ do file cấu hình.
+
+    `code` là mã lỗi ổn định để test assert trên `code` (AD-8).
+    """
+
+    code = "OWNER_GROUP_INVALID"
+
+
+def dau_che_owner(nhom: str | None) -> str:
+    """Dấu che của vai `owner`, mang tên nhóm phụ trách; vắng nhóm là hằng cũ.
+
+    AD-9 chốt rằng `owner` luôn tổng quát hóa về mức vai/nhóm kể cả ở L2, còn
+    FR-14 đòi placeholder nói được *nhóm nào* ("còn một phần bị hạn chế, liên
+    hệ [nhóm]"). Trước story 3.1 hai đòi hỏi ấy gặp nhau ở một hằng chung
+    `[owner:group]` - đúng cơ chế, hụt nửa nội dung. Đây là nửa còn lại.
+
+    `None` không phải một ca lỗi: loại nội dung chưa khai nhóm rơi về đúng hằng
+    cũ. Fail-closed ở đây sẽ là chặn cả một câu trả lời vì một hàng cấu hình
+    còn thiếu, trong khi hằng cũ đã che đúng.
+    """
+    if nhom is None:
+        return dau_che_truong(OWNER_SLOT, MASK_REASON_OWNER)
+    if not isinstance(nhom, str) or not nhom.strip() or nhom != nhom.strip():
+        raise OwnerGroupInvalid(
+            f"tên nhóm phụ trách {nhom!r} không dùng làm dấu che được: phải là"
+            " chuỗi không rỗng, không có khoảng trắng bao quanh"
+        )
+    cam = [k for k in ("[", "]", ":") if k in nhom]
+    if cam:
+        raise OwnerGroupInvalid(
+            f"tên nhóm phụ trách {nhom!r} chứa ký tự {cam}: dấu che được nhận"
+            " diện bằng cách dựng lại, một tên mang dấu ngoặc làm hai luật đọc"
+            " ngược nhau"
+        )
+    return dau_che_truong(OWNER_SLOT, nhom)
+
+
 def dau_che(slot: str) -> str:
     """Dấu che của một vai slot, kèm lý do bị che.
 
@@ -204,7 +275,7 @@ def dau_che_lan_can_khong_khoa() -> str:
     return dau_che_truong(NEIGHBOR_FIELD, MASK_REASON_NO_KEY)
 
 
-def la_dau_che(gia_tri) -> bool:
+def la_dau_che(gia_tri, nhom_hop_le) -> bool:
     """Giá trị này có đúng là một dấu che do tầng che sinh ra không.
 
     Cần vì dấu che đi vào **vị trí id**: `get_node_edges` thay tên node lân cận
@@ -230,12 +301,32 @@ def la_dau_che(gia_tri) -> bool:
     Bỏ sót nó ở đây là `get_node` trả `None` rồi `{**n, ...}` nổ `TypeError`
     giữa `vendor/` - đúng landmine mà story 1.6 đã gỡ một lần cho dấu che theo
     slot.
+
+    `nhom_hop_le` là tập tên nhóm phụ trách đang hiệu lực, do nơi gọi truyền
+    vào (story 3.1). Từ khi dấu che `owner` mang tên nhóm, nó không còn **một**
+    giá trị duy nhất để dựng lại, nên thiếu tập này thì `la_dau_che` trả `False`
+    cho chính chuỗi mà `get_node_edges` vừa sinh ra, `get_node` chạy Cypher với
+    một id không tồn tại, trả `None`, và `operate.py:1039` nổ `TypeError` - đúng
+    landmine trên. Truyền tập nhóm vào giữ nguyên nguyên tắc dựng lại; đổi sang
+    so tiền tố `"[owner:"` thì mất nó, và một tên entity thật bắt đầu bằng chuỗi
+    đó sẽ bị nuốt thành một node rỗng.
+
+    **Tham số này bắt buộc, không có mặc định**, dù `()` chạy được và đúng cho
+    mọi nơi gọi không quan tâm tới nhóm. Một mặc định rỗng ở đây là hình dạng
+    fail-open: người gọi quên nó không thấy lỗi nào, chỉ thấy `False`, và cái
+    giá là một `TypeError` nổ giữa `vendor/` vài tầng sau - đúng kiểu hỏng mà cả
+    file này dựng ra để chống. Bắt buộc thì chỗ quên là một `TypeError` ở ngay
+    dòng gọi, lúc người viết còn đang nhìn vào nó. Không quan tâm nhóm thì gõ
+    `()` ra, và lúc gõ là lúc trả lời câu "bản ghi này có đi qua vai `owner`
+    không".
     """
     if not isinstance(gia_tri, str):
         return False
-    return gia_tri == dau_che_lan_can_khong_khoa() or any(
-        gia_tri == dau_che(slot) for slot in SLOT_ROLES
-    )
+    if gia_tri == dau_che_lan_can_khong_khoa():
+        return True
+    if any(gia_tri == dau_che(slot) for slot in SLOT_ROLES):
+        return True
+    return any(gia_tri == dau_che_owner(nhom) for nhom in nhom_hop_le)
 
 
 def mask(result: Any, context: PermissionContext, hyperedge_key: str) -> Any:
@@ -278,10 +369,34 @@ def mask(result: Any, context: PermissionContext, hyperedge_key: str) -> Any:
     phai_che = set(context.slots_to_mask(content_type)) | {OWNER_SLOT}
 
     da_che = dict(result)
+    nhom = da_che.get(OWNER_GROUP_FIELD)
     # Đường một: khóa của bản ghi chính là tên vai slot.
     for slot in phai_che:
         if slot in da_che:
             da_che[slot] = dau_che(slot)
+    # `owner` là ngoại lệ ở hai chỗ, và cả hai đến từ cùng một luật của AD-9
+    # ("luôn tổng quát hóa về mức vai/nhóm") chứ không từ bảng chính sách.
+    #
+    # Một, dấu che của nó mang tên nhóm phụ trách khi adapter tra được
+    # (`OWNER_GROUP_FIELD`); vắng trường đó thì đúng bằng hằng cũ, và vòng lặp
+    # ngay trên đã lo phần ấy.
+    #
+    # Hai, khi tra được nhóm thì khóa `owner` được **thêm vào** bản ghi chứ
+    # không chỉ thay chỗ khóa sẵn có. 229 trong 281 hyperedge của `synth` không
+    # có vai `owner` nào, và với chúng thì "không có gì để che" cũng có nghĩa là
+    # không có gì để nói cho placeholder FR-14 ("còn một phần bị hạn chế, liên
+    # hệ [nhóm]") và cho citation của story 3.4. Thêm khóa không phạm hợp đồng
+    # của `adapters/mask_contract.py`, thứ chỉ cấm **mất** trường; cái giá là hệ
+    # lộ thêm một thông tin mà trước story 3.1 nó không lộ - bộ phận nào giữ tài
+    # liệu đó - và cái giá ấy được nhận có chủ đích (ADR-011).
+    #
+    # Điều kiện là *trường có mặt*, không phải *bản ghi có vai owner*: chỉ nơi
+    # gọi mới biết bản ghi này có phải một hyperedge hay không. Adapter graph
+    # gắn trường cho mọi bản ghi nó che, còn bản ghi chunk của kho KV và point
+    # của kho vector thì không ai gắn - và chúng giữ nguyên hình dạng cũ, đúng
+    # như `test_ban_ghi_khong_mang_slot_nao_thi_nguyen_trang` đã chốt ở 1.6.
+    if OWNER_GROUP_FIELD in da_che:
+        da_che[OWNER_SLOT] = dau_che_owner(nhom)
     # Đường hai: bản ghi tự khai vai của nó và mang tên node lân cận điền vào
     # vai đó. Từ story 2.4 mọi cạnh trong graph đều mang vai (`upsert_edge` từ
     # chối cạnh thiếu `slot`), nên `slot` vắng hoặc None chỉ còn một nguồn hợp
@@ -297,7 +412,9 @@ def mask(result: Any, context: PermissionContext, hyperedge_key: str) -> Any:
                 " vai của core/: tầng che không tra được luật nào cho nó"
             )
         if vai_canh in phai_che and NEIGHBOR_FIELD in da_che:
-            da_che[NEIGHBOR_FIELD] = dau_che(vai_canh)
+            da_che[NEIGHBOR_FIELD] = (
+                dau_che_owner(nhom) if vai_canh == OWNER_SLOT else dau_che(vai_canh)
+            )
     # Đường bốn (2.4): bản ghi cạnh gộp mang danh sách vai. Bỏ vai bị che khỏi
     # danh sách - không thay bằng dấu che, vì đếm được số dấu che là đếm được
     # số vai bị che, và "entity này điền vào 2 vai đang che" tự nó là thông

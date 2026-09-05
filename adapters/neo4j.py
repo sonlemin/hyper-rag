@@ -55,9 +55,10 @@ from adapters.mask_contract import (
     MaskContractViolated,
     kiem_ket_qua_che,
 )
+from adapters.nhom_phu_trach import bang_nhom_mac_dinh
 from adapters.sensitivity_loader import bang_hang_cho
 from core.ids import normalize_id, validate_space
-from core.keys import CHUA_GHI, FILTER_KEY_FIELD
+from core.keys import CHUA_GHI, FILTER_KEY_FIELD, split_key
 # `SLOT_FIELD` là hợp đồng giữa tầng che và adapter này: nhãn vai trên cạnh
 # Neo4j và tên trường mà tầng che đọc để biết bản ghi khai vai gì phải là một.
 # Khai bản thứ hai ở đây là hai hằng trôi dạt được, và trôi dạt nghĩa là tên
@@ -67,6 +68,7 @@ from core.masking import (
     MASK_REASON_L2_ONLY,
     NEIGHBOR_FIELD,
     NEIGHBOR_NO_KEY_FIELD,
+    OWNER_GROUP_FIELD,
     SLOT_FIELD,
     SLOTS_FIELD,
     dau_che_truong,
@@ -981,7 +983,9 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
         if not self._co_khoa_de_doc(context):
             return None
         id_chuan = normalize_id(node_id)
-        if not context.bypass_filter and la_dau_che(id_chuan):
+        if not context.bypass_filter and la_dau_che(
+            id_chuan, bang_nhom_mac_dinh().ten_nhom
+        ):
             return self._node_da_che(id_chuan)
         space = self._nhan_space(context)
         dong = await self._chay(
@@ -1303,12 +1307,53 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
         )
 
     @staticmethod
-    def _che(ban_ghi: dict, context, khoa: str | None) -> dict:
+    def _nhom_phu_trach(khoa: str) -> str | None:
+        """Tên nhóm phụ trách suy từ `content_type` của khóa, `None` nếu chưa khai.
+
+        Một chỗ tra, không hai: mọi bản ghi rời adapter này đi qua `_che`, nên
+        đặt phép tra ở đó là đủ cho cả sáu method đọc. Bảng đọc một lần cho mỗi
+        tiến trình (`bang_nhom_mac_dinh`), cùng luật đóng băng với bảng hạng.
+
+        Khóa hỏng thì trả `None` chứ không nổ: `split_key` đã có cửa riêng ở
+        đường ghi, và ở đường đọc một khóa không tách được vẫn phải che - chỉ là
+        che bằng hằng cũ. Nổ ở đây là biến một dấu che thiếu tên nhóm thành một
+        câu trả lời biến mất.
+        """
+        try:
+            _, content_type = split_key(khoa)
+        except (TypeError, ValueError):
+            return None
+        return bang_nhom_mac_dinh().nhom_cua(content_type)
+
+    @classmethod
+    def _che(cls, ban_ghi: dict, context, khoa: str | None) -> dict:
         """Cửa duy nhất gọi tầng che, để không method nào quên gọi (AD-9).
 
         Ngữ cảnh hệ thống đọc thô nên không che. Khóa truyền vào là khóa của
         hyperedge liên quan, kể cả khi lời gọi bắt đầu từ phía entity; khóa
         vắng là fail-closed chứ không phải che bằng khóa rỗng.
+
+        Trước khi gọi tầng che, bản ghi được làm giàu với tên nhóm phụ trách
+        (story 3.1) - đúng tiền lệ `NEIGHBOR_NO_KEY_FIELD` của AD-9: trạng thái
+        thêm đi xuống bằng một trường của bản ghi, nên chữ ký `mask` không đổi
+        và `core/` vẫn không đọc file nào. Loại nội dung chưa khai nhóm thì
+        trường vắng mặt và dấu che rơi về `[owner:group]` như trước.
+
+        **Trường ấy là một đường vận chuyển, nên nó bị gỡ ở cả hai đầu.**
+
+        Gỡ ở đầu vào: một node Neo4j có thể mang sẵn một property tên
+        `owner_group` - kho nhận bất kỳ khóa nào ở đường ghi - và nếu nó đi
+        thẳng xuống `dau_che_owner` thì dấu che mang một giá trị **không có
+        trong bảng nhóm**. `la_dau_che` dựng lại từ bảng nên nó không nhận ra
+        chuỗi đó ở vị trí id, `get_node` chạy Cypher với một id không tồn tại,
+        trả `None`, và `operate.py:1039` nổ `TypeError` giữa `vendor/` - đúng
+        landmine mà story 1.6 đã gỡ một lần.
+
+        Gỡ ở đầu ra: không gỡ thì tên nhóm đi tiếp lên `vendor/` ở **dạng thô**,
+        nằm cạnh chính dấu che `[owner:<nhóm>]` mà nó vừa sinh ra. Gỡ ở đây chứ
+        không gỡ trong `mask`: bản ghi đã làm giàu chính là `truoc_khi_che` của
+        `kiem_ket_qua_che`, nên một phép gỡ bên trong hàm che sẽ bị hợp đồng báo
+        là **mất trường**.
         """
         if context.bypass_filter:
             return ban_ghi
@@ -1316,4 +1361,11 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
             raise HyperedgeKeyMissing(
                 f"bản ghi {ban_ghi!r} không truy ra khóa hyperedge để che"
             )
-        return kiem_ket_qua_che(mask(ban_ghi, context, khoa), ban_ghi, repr(ban_ghi))
+        if OWNER_GROUP_FIELD in ban_ghi:
+            ban_ghi = {k: v for k, v in ban_ghi.items() if k != OWNER_GROUP_FIELD}
+        nhom = cls._nhom_phu_trach(khoa)
+        if nhom is not None:
+            ban_ghi = {**ban_ghi, OWNER_GROUP_FIELD: nhom}
+        da_che = kiem_ket_qua_che(mask(ban_ghi, context, khoa), ban_ghi, repr(ban_ghi))
+        da_che.pop(OWNER_GROUP_FIELD, None)
+        return da_che

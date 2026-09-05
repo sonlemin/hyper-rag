@@ -76,7 +76,7 @@
 #   nếu chạy repair thì chép lại khối chú thích từ git history.
 
 generated: 08-31-2026 21:50
-last_updated: 09-05-2026 19:34
+last_updated: 09-05-2026 23:20
 project: hyper_graph_rag
 project_key: NOKEY
 tracking_system: file-system
@@ -114,8 +114,8 @@ development_status:
 
   # Epic 3 - TEST: AT cho mọi story cơ chế (3-1, 3-2, 3-4, 3-5, 3-7); QA sinh test API
   # cho endpoint đã xong; RV+TR trước cổng M2 tại 3-8. Test assert trên mã lỗi `code`.
-  epic-3: backlog
-  3-1-xác-thực-jwt-backend-và-seed-tài-khoản: backlog  # AT: test JWT hết hạn/sai chữ ký/thiếu token viết trước; QA: test API auth
+  epic-3: in-progress
+  3-1-xác-thực-jwt-backend-và-seed-tài-khoản: done  # AT: test JWT hết hạn/sai chữ ký/thiếu token viết trước; QA: test API auth
   3-2-bảng-chính-sách-đầy-đủ-validator-đơn-điệu-và-4-cấu-hình-đo: backlog  # AT: test validator đơn điệu + nạp 4 cấu hình đo viết trước (đổi YAML không sửa code)
   3-3-endpoint-hỏi-đáp-với-envelope-thống-nhất: backlog  # QA: test API envelope {error:{code,message}}, assert trên code
   3-4-permission-aware-citation: backlog  # AT: test citation theo quyền viết trước; assert trên ngữ cảnh truy hồi

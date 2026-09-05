@@ -82,7 +82,7 @@ POLICY = REPO_ROOT / "config" / "policy-toi-gian.yaml"
 # Ảnh chụp phải khớp một-một với hai thư mục tài liệu nạp vào space `synth`.
 THU_MUC_TAI_LIEU = (REPO_ROOT / "eval" / "corpus", REPO_ROOT / "eval" / "data")
 
-# Hai vai của `config/danh-tinh-demo.yaml`. Hằng này là thứ *được kiểm*
+# Hai vai của `config/tai-khoan.yaml`. Hằng này là thứ *được kiểm*
 # (`test_hai_vai_do_lay_tu_seed_danh_tinh`), không phải nguồn: seed là nguồn.
 HAI_VAI = ("devops", "tech_support")
 

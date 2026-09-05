@@ -698,7 +698,9 @@ def test_get_node_edges_tra_cap_id(khong_gian, policy):
         assert all(isinstance(c, tuple) and len(c) == 2 for c in cac_cap)
         assert {c[0] for c in cac_cap} == {id_hyperedge(he)}
         ky_vong = [
-            oracle.dau_che_ky_vong(slot) if slot == "owner" else gia_tri
+            oracle.dau_che_ky_vong(slot, he["content_type"])
+            if slot == "owner"
+            else gia_tri
             for slot, gia_tri in he["slots"].items()
         ]
         assert sorted(c[1] for c in cac_cap) == sorted(ky_vong)
@@ -728,7 +730,9 @@ def test_1_6_int_001_get_node_edges_che_ten_lan_can_cua_slot_bi_che(
     phai_che = oracle.slot_phai_che(bang, "tech_support", he)
     assert phai_che == {"cause", "source", "remediation", "owner"}
     ky_vong = {
-        oracle.dau_che_ky_vong(slot) if slot in phai_che else normalize_id(gia_tri)
+        oracle.dau_che_ky_vong(slot, he["content_type"])
+        if slot in phai_che
+        else normalize_id(gia_tri)
         for slot, gia_tri in he["slots"].items()
     }
     lan_can = {c[1] for c in cac_cap}
@@ -753,7 +757,9 @@ def test_1_6_int_001_vai_l2_chi_che_lan_can_cua_owner(khong_gian, policy, bang):
     assert oracle.slot_phai_che(bang, "devops", he) == {"owner"}
     lan_can = {c[1] for c in cac_cap}
     assert lan_can == {
-        oracle.dau_che_ky_vong("owner") if slot == "owner" else normalize_id(gia_tri)
+        oracle.dau_che_ky_vong("owner", he["content_type"])
+        if slot == "owner"
+        else normalize_id(gia_tri)
         for slot, gia_tri in he["slots"].items()
     }
     assert he["slots"]["cause"] in lan_can

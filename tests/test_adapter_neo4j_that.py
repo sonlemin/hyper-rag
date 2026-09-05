@@ -293,7 +293,9 @@ def test_degree_va_has_co_theo_quyen_tren_neo4j_that(khong_gian, policy):
     # Lân cận điền vào slot `owner` bị tổng quát hóa kể cả ở L2 (AD-9, story
     # 1.6); sáu slot còn lại của runbook ra nguyên văn.
     assert sorted(c[1] for c in do["cap_he01"]) == sorted(
-        oracle.dau_che_ky_vong(slot) if slot == "owner" else gia_tri
+        oracle.dau_che_ky_vong(slot, THEO_ID["HE-01"]["content_type"])
+        if slot == "owner"
+        else gia_tri
         for slot, gia_tri in THEO_ID["HE-01"]["slots"].items()
     )
 
@@ -333,7 +335,9 @@ def test_khoa_quyen_cua_canh_bi_loc_tren_neo4j_that(khong_gian, policy):
 
     do = asyncio.run(chay())
     con_lai = sorted(
-        oracle.dau_che_ky_vong(slot) if slot == "owner" else gia_tri
+        oracle.dau_che_ky_vong(slot, THEO_ID["HE-01"]["content_type"])
+        if slot == "owner"
+        else gia_tri
         for slot, gia_tri in THEO_ID["HE-01"]["slots"].items()
         if slot != "condition"
     )

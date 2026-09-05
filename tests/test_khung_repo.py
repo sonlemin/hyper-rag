@@ -54,13 +54,41 @@ def test_ep_phien_ban_dependency():
     assert _major_minor(pydantic.VERSION)[0] >= 2, f"pydantic {pydantic.VERSION} < 2"
 
 
+def test_hai_goi_xac_thuc_co_that_luc_chay():
+    """`pyjwt` và `bcrypt` phải có trong môi trường chạy, không chỉ trong pyproject.
+
+    Cả hai là dependency **mới** của story 3.1: trước đó không gói nào trong hai
+    gói ấy có trong `uv.lock`, kể cả dưới dạng dep bắc cầu. Thiếu chúng thì
+    `api/xac_thuc.py` nổ lúc *import*, tức tiến trình phục vụ không lên - ghim ở
+    đây để chuyện đó đỏ ở CI chứ không đỏ ở lần deploy.
+
+    Ghim theo sàn của `pyproject.toml`, không ghim exact: spine chốt PyJWT
+    2.13.0 nhưng `uv.lock` mới là chỗ ghim chính xác, và một assert exact ở đây
+    biến mỗi lần `uv lock` thành một test đỏ.
+    """
+    from importlib.metadata import version
+
+    assert _major_minor(version("pyjwt")) >= (2, 10), version("pyjwt")
+    assert _major_minor(version("bcrypt")) >= (4, 2), version("bcrypt")
+
+
 def test_api_health():
+    """`/health` trả lời mà không cần lifespan chạy.
+
+    Không dùng `with TestClient(app)` có chủ đích: khối `with` chạy lifespan,
+    và từ story 3.1 lifespan đòi `JWT_SECRET` cùng một Postgres có thật. Ca này
+    là smoke khung repo của story 1.1, nó không phải chỗ dựng cả stack. Và điều
+    nó chứng minh vẫn đúng nguyên: `/health` là healthcheck của compose nên nó
+    nằm ngoài mọi cửa - một healthcheck đòi token là một container không bao
+    giờ `healthy`.
+
+    Lifespan có test riêng ở `tests/test_xac_thuc.py`.
+    """
     from fastapi.testclient import TestClient
 
     from api.main import app
 
-    with TestClient(app) as client:
-        resp = client.get("/health")
+    resp = TestClient(app).get("/health")
     assert resp.status_code == 200
     assert resp.json() == {"status": "ok"}
 

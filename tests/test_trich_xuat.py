@@ -46,9 +46,10 @@ from core.facts import (
 )
 from core.ids import point_id
 from core.keys import FILTER_KEY_FIELD, filter_key
-from core.masking import dau_che
+from core.masking import dau_che, dau_che_owner
 from core.permission import use_context
 from core.slots import SLOT_ROLE_SET, SLOT_ROLES
+from tests.fixtures import oracle
 from tests.gia_lap_llm import SoAuditBoNho
 from tests.ho_tro_ingest import (
     KHONG_FACT,
@@ -408,7 +409,10 @@ def test_lo_l1_dong_tech_support_thay_id_mo_va_dau_che_khong_thay_cause(workspac
         assert FACT_DU[slot] not in ts, slot
     assert FACT_DU["symptom"] in ts
     assert he in dev and FACT_DU["cause"] in dev and FACT_DU["remediation"] in dev
-    assert dau_che("owner") in dev, "đường graph tổng quát hóa owner ở mọi mức (AD-9)"
+    assert dau_che_owner(oracle.nhom_ky_vong("bao_cao_su_co")) in dev, (
+        "đường graph tổng quát hóa owner ở mọi mức (AD-9), và từ story 3.1 dấu"
+        " che mang tên nhóm phụ trách của loại nội dung chứ không phải một chữ chung"
+    )
 
 
 def test_dac_ta_hien_trang_owner_ra_nguyen_van_o_l2_qua_entities(workspace_dir, khong_gian, policy, tmp_path):
@@ -417,10 +421,21 @@ def test_dac_ta_hien_trang_owner_ra_nguyen_van_o_l2_qua_entities(workspace_dir, 
     Phép đo mà ledger 1.7 giao cho 2.4: với trích xuất thật, tên entity của
     vai `owner` chính là tên người (`normalize_id` của giá trị slot), và ở L2
     kho vector `entities` trả nó về, `operate.py:779` ghép thẳng vào bảng
-    Entities - trong khi đường graph đã tổng quát hóa cùng lúc (`[owner:group]`
-    có mặt, kiểm ở test trên). Địa chỉ: story 3.1 (tổng quát hóa `owner` về
-    nhóm). Khi 3.1 đóng, **đảo** assert cuối thành `not in` và đổi tên test;
-    không dùng `xfail` để hiện trạng luôn là một assert đang xanh và đọc được.
+    Entities - trong khi đường graph đã tổng quát hóa cùng lúc.
+
+    **Story 3.1 không đóng được lỗ này, và đây là chỗ ghi ra vì sao.** 3.1 đổi
+    dấu che của đường graph từ `[owner:group]` sang tên nhóm thật, tức nó trả
+    nửa "tổng quát hóa về mức nhóm" của ADR-011. Nửa còn lại - tên người không
+    ra khỏi hệ qua *kho vector* - không nằm ở tầng che: nhìn từ một point
+    `entities` lẻ không biết nó điền vào vai nào, nên chỗ sửa duy nhất là
+    đường **ingest** (point của entity chỉ điền vai `owner` mang tên nhóm, hay
+    không vào collection `entities`), và sửa ở đó là một đợt nạp lại - thứ spec
+    3.1 xếp vào Ask First và không có trong Tasks của nó. Khoản ledger vì thế
+    được gán địa chỉ mới kèm lý do, không đóng bằng một câu.
+
+    Nghịch lý mà story 3.4 phải quyết: từ 3.1 câu trả lời nói "liên hệ Tech
+    Support" trong khi ngữ cảnh cùng lúc mang tên người thật, nên hai nửa nói
+    hai điều khác nhau về cùng một fact.
     """
     thu_muc = tmp_path / "corpus"
     viet_tai_lieu(thu_muc, "b.md", scope="noi_bo", content_type="bao_cao_su_co", than=THAN_SU_CO)
@@ -431,8 +446,8 @@ def test_dac_ta_hien_trang_owner_ra_nguyen_van_o_l2_qua_entities(workspace_dir, 
         return await hoi(mt.engine, vai(policy, "devops", khong_gian))
 
     dev = asyncio.run(chay())
-    assert dau_che("owner") in dev
-    assert FACT_DU["owner"] in dev, "hiện trạng: tên owner qua entities ở L2; địa chỉ 3.1"
+    assert dau_che_owner(oracle.nhom_ky_vong("bao_cao_su_co")) in dev
+    assert FACT_DU["owner"] in dev, "hiện trạng: tên owner qua entities ở L2; địa chỉ 3.4"
 
 
 # --- Hàng "Lời gọi LLM" -------------------------------------------------------------------

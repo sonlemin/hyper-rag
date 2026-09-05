@@ -37,6 +37,14 @@ dependencies = [
     # goi nay theo: thieu no thi `UploadFile` nem luc *chay* request dau tien
     # chu khong nem luc import, tuc mot man len xanh roi hong ngay lan nap dau.
     "python-multipart>=0.0.32",
+    # Xac thuc JWT (story 3.1, spine Consistency Conventions "Xac thuc"): token
+    # HS256, khoa ky doc tu bien moi truong. Ca hai goi duoi day deu chua co
+    # trong uv.lock truoc story 3.1, ke ca duoi dang dep bac cau.
+    "pyjwt>=2.10",
+    # Hash mat khau bcrypt: seed chi chua hash, va nhanh "khong co tai khoan"
+    # van chay mot phep bcrypt tren hash gia de thoi gian dap ung khong thanh
+    # kenh do (I/O Matrix story 3.1).
+    "bcrypt>=4.2",
 ]
 
 [dependency-groups]

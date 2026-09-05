@@ -20,6 +20,7 @@ import yaml
 GOC_REPO = Path(__file__).resolve().parent.parent.parent
 POLICY_TOI_GIAN = GOC_REPO / "config" / "policy-toi-gian.yaml"
 POLICY_NHI_PHAN = GOC_REPO / "config" / "policy-nhi-phan.yaml"
+NHOM_PHU_TRACH = GOC_REPO / "config" / "nhom-phu-trach.yaml"
 
 # Thứ tự mức, chỉ dùng để so sánh "đạt từ mức X trở lên".
 THU_TU_MUC = {"L0": 0, "L1": 1, "L2": 2}
@@ -147,22 +148,63 @@ def chunk_thay_duoc(bang: dict, vai: str, chunks) -> list[str]:
 LY_DO_CHE_THEO_BANG = "masked"
 LY_DO_CHE_OWNER = "group"
 
+# Tên trường mà adapter gắn thêm để mang tên nhóm phụ trách xuống tầng che
+# (story 3.1). Viết tay ở đây đúng như đã viết tay tám vai slot: oracle không
+# import ``core/``, nên hằng này là bản đối chứng chứ không phải bản sao dùng
+# chung. ``test_oracle_va_core_khai_cung_bang_hang`` đối chiếu hai bản.
+TRUONG_NHOM_PHU_TRACH = "owner_group"
 
-def dau_che_ky_vong(slot: str) -> str:
-    """Dấu che kỳ vọng của một vai slot, bản viết tay của oracle."""
-    ly_do = LY_DO_CHE_OWNER if slot == "owner" else LY_DO_CHE_THEO_BANG
-    return "[" + slot + ":" + ly_do + "]"
+
+def doc_bang_nhom(duong_dan: Path = NHOM_PHU_TRACH) -> dict:
+    """Bảng nhóm phụ trách đọc thô, không đi qua loader của ``adapters/``."""
+    return yaml.safe_load(Path(duong_dan).read_text(encoding="utf-8"))["nhom"]
 
 
-def ban_ghi_slot_ky_vong(bang: dict, vai: str, hyperedge) -> dict:
+def nhom_ky_vong(loai_noi_dung: str, duong_dan: Path = NHOM_PHU_TRACH):
+    """Nhóm phụ trách của một loại nội dung; loại chưa khai là ``None``."""
+    return doc_bang_nhom(duong_dan).get(loai_noi_dung)
+
+
+def dau_che_ky_vong(slot: str, loai_noi_dung: str | None = None) -> str:
+    """Dấu che kỳ vọng của một vai slot, bản viết tay của oracle.
+
+    ``loai_noi_dung`` chỉ có nghĩa với vai ``owner`` (story 3.1): dấu che của
+    nó mang **tên nhóm phụ trách** của loại nội dung ấy thay cho chữ ``group``
+    chung. Vắng tham số, hay loại nội dung chưa khai nhóm, thì rơi về hằng cũ -
+    đúng hai nhánh mà ``core.masking.dau_che_owner`` có.
+    """
+    if slot != "owner":
+        return "[" + slot + ":" + LY_DO_CHE_THEO_BANG + "]"
+    nhom = nhom_ky_vong(loai_noi_dung) if loai_noi_dung else None
+    return "[owner:" + (nhom or LY_DO_CHE_OWNER) + "]"
+
+
+def ban_ghi_slot_ky_vong(bang: dict, vai: str, hyperedge, co_nhom: bool = False) -> dict:
     """Bản ghi "dict theo slot" sau khi che, tính hoàn toàn từ bảng và fixture.
 
     Đối chứng độc lập cho story 1.6: giữ nguyên tập khóa của bản ghi gốc (che
     là thay giá trị, không bỏ khóa), thay giá trị của đúng những slot mà
     ``slot_phai_che`` chỉ ra, và không bịa thêm slot nào mà hyperedge không có.
+
+    ``co_nhom`` là ca của story 3.1: nơi gọi khai nhóm phụ trách, và khi đó
+    tầng che **thêm** khóa ``owner`` mang tên nhóm, kể cả khi hyperedge không
+    có vai đó. Mặc định ``False`` giữ nguyên kỳ vọng của Epic 1 cho bản ghi
+    không ai gắn nhóm.
+
+    Kỳ vọng này là bản ghi **rời adapter**, nên nó không mang
+    ``TRUONG_NHOM_PHU_TRACH``: trường ấy là đường vận chuyển tên nhóm xuống
+    tầng che, và adapter gỡ nó ở đầu ra. Một oracle giữ lại trường đó là một
+    oracle khóa chính cái rò lại - tên nhóm ở dạng thô đi tiếp lên ``vendor/``
+    nằm cạnh chính dấu che nó vừa sinh ra.
     """
     che = slot_phai_che(bang, vai, hyperedge)
-    return {
-        slot: dau_che_ky_vong(slot) if slot in che else gia_tri
+    # Tên nhóm chỉ xuống tới tầng che qua trường mà nơi gọi gắn thêm, nên bản
+    # ghi không mang trường ấy phải nhận đúng hằng cũ.
+    loai = hyperedge["content_type"] if co_nhom else None
+    ra = {
+        slot: dau_che_ky_vong(slot, loai) if slot in che else gia_tri
         for slot, gia_tri in hyperedge["slots"].items()
     }
+    if co_nhom:
+        ra["owner"] = dau_che_ky_vong("owner", hyperedge["content_type"])
+    return ra

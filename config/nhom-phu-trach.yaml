@@ -1,0 +1,62 @@
+# Nhóm phụ trách của từng loại nội dung (story 3.1, FR-14, ADR-011).
+#
+# Bảng này trả lời đúng một câu hỏi: khi tầng che tổng quát hóa vai `owner`,
+# nó nói tên nhóm nào. Trước story 3.1 dấu che là hằng chung `[owner:group]` -
+# đúng về cơ chế nhưng hụt nửa nội dung mà AD-9 và FR-14 đòi ("còn một phần bị
+# hạn chế, liên hệ [nhóm]"). Ở đây là nguồn **duy nhất** của tên nhóm ấy.
+#
+# **Nhóm không phải một trục quyền.** Quyền vẫn là vai × loại nội dung × scope
+# (AD-4); bảng này không vào khóa lọc, không quyết định ai đọc được gì, và
+# không có mặt trong `config/policy-*.yaml`. Nó chỉ đặt tên cho một dấu che.
+# Việc diễn đạt "nhân viên bộ phận nào đọc được loại nội dung nào" là bảng
+# chính sách của story 3.2.
+#
+# **Vì sao khóa là loại nội dung chứ không phải giá trị `owner`.** Ảnh chụp
+# `synth` có 52 hyperedge mang vai `owner` với 30 giá trị phân biệt, trộn tên
+# nhóm, tên người và chức danh chung; tra theo giá trị phải chuẩn hóa chuỗi tự
+# do và vẫn hụt một phần ba số ca. `content_type` thì luôn có và đúng 13 giá
+# trị. Lý do đầy đủ ở Design Notes của spec story 3.1.
+#
+# **Loại nội dung phải có trong `config/hang-do-nhay.yaml`.** Loader đối chiếu
+# hai file: một loại lạ ở đây là một hàng không bao giờ tra trúng, tức một dấu
+# che vẫn rơi về hằng cũ mà không ai biết vì sao. Chiều ngược lại thì không
+# bắt buộc - loại chưa khai nhóm rơi về `[owner:group]`, đúng hành vi trước
+# story 3.1.
+#
+# **Nguồn của bản đồ.** Bản đồ ACL A4 của PRD addendum (SOP toàn công ty -
+# runbook DevOps - vòng đời ticket team + Tech Support - CMDB và log nhóm hạ
+# tầng - postmortem hạn chế), cộng phân bố thật của khảo sát 50 bản ghi ở
+# `eval/khao_sat_thiet_ke.yaml` (bộ phận nào viết loại nào). Hai chỗ bản đồ này
+# lệch với khảo sát, ghi ra để lần sau không phải đoán lại:
+#   - `troubleshooting`: khảo sát xếp cả 3 bản ghi vào Data Center vì chúng là
+#     hướng dẫn mức thiết bị, còn corpus 2.8 thì đặt loại này ở scope khách
+#     hàng (`k1-08-troubleshooting-app01-loi-502.md`). Chọn Tech Support, vì
+#     người đọc dấu che cần một nhóm liên hệ được cho tài liệu mức người dùng.
+#   - `sop`: khảo sát chia 4 Data Center / 2 DevOps, nhưng A4 chốt SOP là quy
+#     trình chuẩn toàn công ty và nó ở L2 với mọi vai, nên nó gần như không bao
+#     giờ sinh ra một placeholder hạn chế. Để "Toàn công ty" thay vì chọn bừa
+#     một trong hai bộ phận.
+#
+# Tên nhóm là chuỗi hiển thị, đi thẳng vào dấu che `[owner:<nhóm>]` rồi vào
+# ngữ cảnh gửi LLM. Không chứa `[`, `]` hay `:` - loader từ chối - vì dấu che
+# được nhận diện bằng cách **dựng lại** chứ không bằng cách parse, và một tên
+# mang dấu ngoặc làm hai luật đọc ngược nhau.
+version: 1
+nhom:
+  # Sáu loại hướng ra người dùng cuối và khách hàng: bộ phận hỗ trợ giữ chúng.
+  faq: Tech Support
+  tai_lieu_san_pham: Tech Support
+  troubleshooting: Tech Support
+  known_issue: Tech Support
+  vong_doi_ticket: Tech Support
+  bao_cao_su_co: Tech Support
+  # Quy trình chuẩn đã duyệt: A4 xếp là tài sản toàn công ty.
+  sop: Toàn công ty
+  # Bốn loại của đường vận hành hệ sản xuất.
+  runbook: DevOps
+  canh_bao: DevOps
+  postmortem: DevOps
+  bi_mat_ha_tang: DevOps
+  # Hai loại là bản đồ tài sản và nhật ký của phòng máy (A4: nhóm hạ tầng).
+  log: Data Center
+  cmdb: Data Center

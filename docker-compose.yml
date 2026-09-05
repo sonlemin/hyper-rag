@@ -49,6 +49,12 @@ x-api-env: &api_env
   POSTGRES_USER: "${POSTGRES_USER:?thieu POSTGRES_USER trong .env.server/.env.laptop}"
   POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?thieu POSTGRES_PASSWORD trong .env}"
   POSTGRES_DB: "${POSTGRES_DB:?thieu POSTGRES_DB trong .env.server/.env.laptop}"
+  # Khoa ky JWT (story 3.1). `:?` chu khong `:-`: khoa ky KHONG co mac dinh va
+  # he khong tu sinh mot khoa moi moi lan khoi dong - lam vay la moi token da
+  # phat chet im lang, va trong luc go loi no trong giong het "token sai chu
+  # ky". Secret nen no o `.env` goc repo (da gitignore), khong o
+  # `.env.server`/`.env.laptop`; hai file do chi mang tham so moi truong.
+  JWT_SECRET: "${JWT_SECRET:?thieu JWT_SECRET trong .env}"
   OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
   DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-}"
   # Chon model cho wrapper LLM/embedding (story 2.2, adapters/llm_wrapper.py):

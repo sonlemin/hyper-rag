@@ -48,6 +48,17 @@ CAM_IMPORT = {
     "eval": {"api", "web", "tests", "hypergraphrag", "vendor"},
 }
 
+# Hai gói của tầng xác thực (story 3.1). Chỉ `api/` được import chúng, và luật
+# này chặt hơn chiều import ở trên vì nó nói về *nội dung* chứ không về tầng:
+# `jwt` ở `adapters/` là một đường phát token thứ hai, còn `bcrypt` ở `core/` là
+# hash mật khẩu đi vào lớp mà AD-1 chốt chỉ stdlib - và ở đó nó không so được
+# với gì, chỉ nằm trong `repr()` của mọi tầng trên.
+#
+# `tests/` được import mọi tầng như mọi luật khác của file này: bộ test phải
+# giải mã được token nó vừa nhận, nếu không nó chỉ so một chuỗi với chính nó.
+GOI_XAC_THUC: frozenset[str] = frozenset({"jwt", "bcrypt"})
+TANG_DUOC_XAC_THUC: frozenset[str] = frozenset({"api"})
+
 # Miễn trừ tường minh kèm lý do, thay vì nới luật ở trên. Đúng một dòng, cùng
 # hình dạng với `CHO_PHEP_SYSTEM_CONTEXT` và `CHO_PHEP_AINSERT`:
 # `eval/smoke_upstream.py` là smoke của story 1.1, chạy *engine upstream* trên
@@ -634,3 +645,23 @@ def test_oracle_khong_goi_core():
                 if root in cam:
                     vi_pham.append(f"{py.relative_to(REPO_ROOT)}: import {root}")
     assert not vi_pham, "fixture/oracle gọi vào hệ:\n" + "\n".join(vi_pham)
+
+
+def test_chi_api_duoc_import_jwt_va_bcrypt():
+    """`jwt` và `bcrypt` chỉ sống ở `api/` (story 3.1 Boundaries).
+
+    Hash mật khẩu không bao giờ đi vào `core/`: `core/` chỉ stdlib (AD-1), nên
+    một trường hash ở đó là một giá trị mà `core/` cầm mà không so được. Và
+    một `jwt.encode` ở `adapters/` hay `eval/` là một đường phát token thứ hai,
+    tức hai nguồn cho cùng một câu hỏi "token này ai ký".
+    """
+    vi_pham = []
+    for package in ("core", "adapters", "eval", "redteam", "api"):
+        if package in TANG_DUOC_XAC_THUC:
+            continue
+        for goc, py in _goc_import_tuyet_doi(package):
+            if goc in GOI_XAC_THUC:
+                vi_pham.append(f"{py.relative_to(REPO_ROOT)}: import {goc}")
+    assert not vi_pham, (
+        "`jwt`/`bcrypt` chỉ được import từ `api/`:\n" + "\n".join(vi_pham)
+    )

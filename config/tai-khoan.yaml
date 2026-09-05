@@ -1,0 +1,49 @@
+# Seed tai khoan cua he (story 3.1, FR-17). Doi ten tu `danh-tinh-demo.yaml`.
+#
+# Story 1.7 chot mot seed ba truong khong mat khau, va noi thang do la ban toi
+# gian cua cong M1. Day la ban day du: hash bcrypt, nhom phu trach, hai co
+# demo/admin. Seed la **nguon**, con noi trang thai song la bang `users` cua
+# Postgres (AD-7); `api/tai_khoan.py` dong bo mot chieu tu file nay xuong bang
+# do luc khoi dong, khong bao gio nguoc lai.
+#
+# tai_khoan      - `real_account` cua ngu canh quyen, thu audit ghi lai (AD-3),
+#                  va claim `sub` cua JWT.
+# vai            - thu quyet dinh tap khoa duoc phep; khong khai quyen o day.
+#                  Loader KHONG kiem vai co trong bang chinh sach hay khong: no
+#                  khong doc bang chinh sach. Cho kiem la
+#                  `core.identity.ngu_canh_cua` - vai la thi `RoleUnknown`.
+# khong_gian     - khoang du lieu (AD-12). `synth` la khoang du lieu tong hop;
+#                  bo test doi truong nay sang mot khoang rieng cho tung phien.
+# mat_khau_hash  - bcrypt. **Chi hash vao git.** Mat khau thuong song trong
+#                  `.env` goc repo (da gitignore), bien `DEMO_MAT_KHAU_<TAI
+#                  KHOAN>`; xem `.env.example`. Doi mat khau la sinh lai hash
+#                  bang `bcrypt.hashpw(..., bcrypt.gensalt(rounds=12))` roi dan
+#                  vao day, khong co duong doi mat khau qua API (Never cua 3.1).
+# nhom           - nhom phu trach cua *nguoi*, cung danh muc voi ten nhom trong
+#                  `config/nhom-phu-trach.yaml` (SPINE :223). Khong phai mot
+#                  truc quyen: quyen van la vai x loai noi dung x scope (AD-4).
+# demo / admin   - hai co RIENG, khong phai hai muc cua mot thang (spine :105).
+#                  Admin la vai quan tri cua PRD 1.5, tai khoan demo la tai
+#                  khoan trinh dien. Vang mat la `false`; loader tu choi moi
+#                  gia tri khong phai bool, vi `admin: 1` chay duoc la mot tai
+#                  khoan duoc cap quyen quan tri boi mot loi go.
+#
+# Khong co truong nao cho `grant_ids`: duong nang quyen break-glass thuoc Epic
+# 5, va mot truong rong nam san la mot cho de ai do dien vao truoc khi co che
+# kiem no ton tai.
+version: 2
+tai_khoan:
+  - tai_khoan: ts01
+    vai: tech_support
+    khong_gian: synth
+    mat_khau_hash: "$2b$12$8htUhXFTS0wfaUBnGgBEFeuWaP5ujAKYNsFYm10apX8l4bevHO/FW"
+    nhom: Tech Support
+    demo: false
+    admin: false
+  - tai_khoan: dev01
+    vai: devops
+    khong_gian: synth
+    mat_khau_hash: "$2b$12$dADVlBLo7HrN2S7fq4iJvOVcwWHS/ULOkHTw4A67h7TVXHkLhjV4e"
+    nhom: DevOps
+    demo: true
+    admin: true

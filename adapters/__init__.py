@@ -16,7 +16,10 @@ Nội dung hiện có:
 - `doi_chieu`      sổ đợt ingest và bước đối chiếu khóa giữa các kho (2.1)
 - `engine`         subclass `HyperGraphRAG`: registry 3 adapter, khóa cấu hình
                    kho, vòng đời kết nối (1.7)
-- `identity_seed`  nửa I/O của `core/identity.py` (1.7)
+- `identity_seed`  nửa I/O của `core/identity.py`; seed tài khoản kèm hash
+                   bcrypt, nhóm và cờ demo/admin từ version 2 (1.7, 3.1)
+- `nhom_phu_trach` bảng loại nội dung -> nhóm phụ trách; nguồn duy nhất của tên
+                   nhóm trong dấu che `owner` (3.1)
 
 Còn thiếu, vào ở các story sau: pipeline ingest (2.3), adapter audit port (3.6).
 """

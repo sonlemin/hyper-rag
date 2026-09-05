@@ -35,6 +35,7 @@ from core.ids import SPACE_MAX_LEN, normalize_id, point_id
 from core.keys import FILTER_KEY_FIELD, filter_key
 from core.masking import dau_che
 from core.permission import PermissionContextMissing, use_context, user_context
+from core.masking import OWNER_GROUP_FIELD
 from tests.fixtures import oracle
 from tests.fixtures.du_lieu_dung_tay import THEO_ID
 from tests.gia_lap_neo4j import Neo4jGhiLai, canh_moi_bien_deu_bi_loc
@@ -78,6 +79,147 @@ def test_khoan_38_get_node_tren_dau_che_tra_node_da_che_chu_khong_None(
     # Chính dòng của `operate.py:1036-1039`, không diễn giải lại.
     dong = {**node, "entity_name": dau_che("cause"), "rank": 0}
     assert dong["entity_name"] == dau_che("cause")
+
+
+def test_dau_che_owner_mang_ten_nhom_quay_lai_vi_tri_id_van_tra_node_da_che(
+    khong_gian, policy
+):
+    """Hàng I/O Matrix "Dấu che nhóm quay lại vị trí id" (story 3.1).
+
+    `get_node_edges` trả `[owner:<nhóm>]` và `operate.py:1036` mang chính chuỗi
+    đó đi hỏi `get_node`. Từ khi dấu che `owner` mang tên nhóm, nó không còn
+    **một** giá trị duy nhất để dựng lại, nên `la_dau_che` phải nhận thêm tập
+    nhóm hợp lệ. Thiếu bước đó là `get_node` chạy Cypher với một id không tồn
+    tại, trả `None`, và `{**n, ...}` nổ `TypeError` giữa `vendor/` - đúng
+    landmine mà story 1.6 đã gỡ một lần.
+
+    Chạy trọn vòng qua adapter, không gọi `la_dau_che` trực tiếp: chỗ hỏng thật
+    nằm ở lời gọi trong `get_node`, không ở hàm nhận diện.
+    """
+    he = THEO_ID["HE-01"]
+    nhom = oracle.nhom_ky_vong(he["content_type"])
+    assert nhom, "fixture phải dùng một loại nội dung có khai nhóm"
+
+    async def chay():
+        _, adapter = await graph_da_nap(khong_gian, policy)
+        with use_context(vai(policy, "tech_support", khong_gian)):
+            cac_cap = await adapter.get_node_edges(id_hyperedge(he))
+            dau = oracle.dau_che_ky_vong("owner", he["content_type"])
+            return cac_cap, await adapter.get_node(dau), dau
+
+    cac_cap, node, dau = asyncio.run(chay())
+    assert dau in {c[1] for c in cac_cap}, "dấu che nhóm phải đi ra ở vị trí id"
+    assert node is not None, "id là dấu che mà trả None thì `vendor/` nổ TypeError"
+    assert node["entity_type"] == dau and node["description"] == dau
+    assert {**node, "entity_name": dau, "rank": 0}["entity_name"] == dau
+
+
+def test_truong_van_chuyen_ten_nhom_khong_roi_adapter(khong_gian, policy):
+    """`OWNER_GROUP_FIELD` là đường vận chuyển, không phải một trường của bản ghi.
+
+    Không gỡ ở đầu ra thì tên nhóm đi tiếp lên `vendor/` ở **dạng thô**, nằm
+    cạnh chính dấu che `[owner:<nhóm>]` mà nó vừa sinh ra - tức hệ nói cùng một
+    thông tin hai lần, một lần có nhãn và một lần không.
+    """
+    he = THEO_ID["HE-01"]
+
+    async def chay():
+        _, adapter = await graph_da_nap(khong_gian, policy)
+        with use_context(vai(policy, "tech_support", khong_gian)):
+            return await adapter.get_node(id_hyperedge(he))
+
+    node = asyncio.run(chay())
+    assert node is not None
+    assert OWNER_GROUP_FIELD not in node
+    nhom = oracle.nhom_ky_vong(he["content_type"])
+    assert nhom not in [v for k, v in node.items() if k != "owner"]
+
+
+@pytest.mark.parametrize("co_khai_nhom", [True, False], ids=["co_nhom", "chua_khai_nhom"])
+def test_node_mang_san_owner_group_khong_di_vao_dau_che(
+    khong_gian, policy, monkeypatch, co_khai_nhom
+):
+    """Property `owner_group` có sẵn trên node không được thành tên nhóm.
+
+    Kho nhận bất kỳ khóa nào ở đường ghi, nên một node mang sẵn trường trùng
+    tên đường vận chuyển là chuyện có thật. Nếu nó đi thẳng xuống
+    `dau_che_owner`, dấu che mang một giá trị **không có trong bảng nhóm**;
+    `la_dau_che` dựng lại từ bảng nên nó không nhận ra chuỗi đó ở vị trí id,
+    `get_node` trả `None`, và `operate.py:1039` nổ `TypeError` - đúng landmine
+    story 1.6 đã gỡ một lần.
+
+    Hai ca, và **chỉ ca thứ hai** chấm được phép gỡ ở đầu vào. Khi loại nội
+    dung *có* khai nhóm, phép làm giàu ghi đè giá trị bẩn nên lỗ không lộ ra;
+    khi bảng nhóm chưa khai loại đó, không có gì ghi đè và giá trị bẩn đi
+    thẳng xuống tầng che. Bảng thật khai đủ 13 loại nên ca thứ hai dựng bằng
+    một bảng thiếu một hàng - đúng trạng thái mà loader cho phép và mà
+    `dau_che_owner(None)` sinh ra để đỡ.
+    """
+    he = THEO_ID["HE-01"]
+    gia = "nhom-gia-mao"
+    if not co_khai_nhom:
+        from adapters import neo4j as mod_neo4j
+        from adapters.nhom_phu_trach import BangNhomPhuTrach, bang_nhom_mac_dinh
+
+        day_du = bang_nhom_mac_dinh()
+        thieu = BangNhomPhuTrach(
+            nhom={k: v for k, v in day_du.nhom.items() if k != he["content_type"]},
+            version=day_du.version,
+        )
+        monkeypatch.setattr(mod_neo4j, "bang_nhom_mac_dinh", lambda: thieu)
+
+    async def chay():
+        _, adapter = await graph_da_nap(khong_gian, policy)
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            with ingest_label(scope=he["scope"], content_type=he["content_type"]):
+                await adapter.upsert_node(
+                    "entity-mang-owner-group",
+                    {"role": "entity", "entity_type": "KHAC",
+                     "description": "mô tả", "source_id": he["id"],
+                     OWNER_GROUP_FIELD: gia},
+                )
+        with use_context(vai(policy, "tech_support", khong_gian)):
+            return await adapter.get_node("entity-mang-owner-group")
+
+    node = asyncio.run(chay())
+    assert node is not None
+    assert OWNER_GROUP_FIELD not in node
+    # Chuỗi con, không phải bằng: giá trị bẩn đi vào dấu che thành
+    # `[owner:nhom-gia-mao]`, và một phép so bằng sẽ không thấy nó.
+    assert not [v for v in node.values() if isinstance(v, str) and gia in v]
+    if co_khai_nhom:
+        assert node["owner"] == oracle.dau_che_ky_vong("owner", he["content_type"])
+    else:
+        # Không tra được nhóm thì không có gì để nói, nên tầng che không thêm
+        # khóa `owner` nào - đúng hành vi trước story 3.1 cho bản ghi này.
+        assert "owner" not in node
+
+
+def test_ten_entity_giong_dau_che_nhom_nhung_khong_phai_nhom_that(khong_gian, policy):
+    """`[owner:<chuỗi không phải tên nhóm>]` không được nhận nhầm là dấu che.
+
+    Nhận diện vẫn bằng **dựng lại**, chỉ mở rộng tập giá trị dựng được; chuyển
+    sang so tiền tố `"[owner:"` sẽ nuốt đúng ca này thành một node rỗng.
+    """
+    he = THEO_ID["HE-01"]
+    ten = "[owner:khong-phai-mot-nhom-nao]"
+
+    async def chay():
+        _, adapter = await graph_da_nap(khong_gian, policy)
+        with use_context(ngu_canh_ingest(khong_gian, policy)):
+            with ingest_label(scope=he["scope"], content_type=he["content_type"]):
+                await adapter.upsert_node(
+                    ten,
+                    {"role": "entity", "entity_type": "KHAC",
+                     "description": "mô tả thật", "source_id": he["id"]},
+                )
+        with use_context(vai(policy, "tech_support", khong_gian)):
+            return await adapter.get_node(ten)
+
+    node = asyncio.run(chay())
+    assert node is not None
+    assert node["entity_type"] == "KHAC"
+    assert node["source_id"] == he["id"]
 
 
 def test_khoan_38_ten_entity_that_khong_bi_nham_la_dau_che(khong_gian, policy):

@@ -7,10 +7,17 @@ M1: *ai* là người hỏi, và vai của người đó đến từ đâu. Modu
 lời tối giản cho M1 - một bản ghi ba trường - và chốt luôn rằng chỉ có **một**
 đường đi từ nó sang `PermissionContext`.
 
-Tối giản là có chủ đích, không phải chưa làm xong. JWT, mật khẩu, phiên đăng
-nhập và bảng `users` thuộc Epic 3 (FR-17). Thứ M1 cần chứng minh là ngữ cảnh
-quyền *phát từ một danh tính* chứ không phải từ một hằng nằm trong test, nên
-`DanhTinh` chỉ mang đúng ba thứ mà `user_context` đòi.
+Tối giản là có chủ đích, không phải chưa làm xong. Thứ M1 cần chứng minh là ngữ
+cảnh quyền *phát từ một danh tính* chứ không phải từ một hằng nằm trong test,
+nên `DanhTinh` chỉ mang đúng ba thứ mà `user_context` đòi.
+
+Story 3.1 thêm `TaiKhoan` **bọc** `DanhTinh` chứ không mở rộng nó: nhóm phụ
+trách và hai cờ demo/admin là thuộc tính của *người*, không phải của ngữ cảnh
+quyền, và một trường thừa trong `DanhTinh` là một trường đi theo mọi lời gọi
+truy hồi mà không ai dùng. Hash mật khẩu thì không vào đây một chút nào - nó
+dừng ở `adapters/identity_seed.py` và bảng `users` (AD-7), vì `core/` chỉ
+stdlib nên nó không so được hash, và một trường hash ở đây lọt vào mọi `repr()`
+của tầng trên. JWT và phiên đăng nhập ở `api/xac_thuc.py`.
 
 Không có `grant_ids` ở đây: đường nâng quyền break-glass thuộc Epic 5, và một
 trường rỗng nằm sẵn trong seed là một chỗ để ai đó điền vào trước khi cơ chế
@@ -94,6 +101,72 @@ class DanhTinh:
         # người hỏi - một `khong_gian` sai ký tự phải hỏng ở bước nạp seed, chỗ
         # người sửa file còn đang nhìn vào file.
         validate_space(self.khong_gian)
+
+
+@dataclass(frozen=True)
+class TaiKhoan:
+    """Một tài khoản đăng nhập được: danh tính, nhóm phụ trách, hai cờ quyền.
+
+    Bọc `DanhTinh` chứ không mở rộng nó (story 3.1). `DanhTinh` là thứ đi vào
+    `user_context` và vào `real_account` của audit; ba trường ấy đúng bằng thứ
+    ngữ cảnh quyền cần, và một trường thừa ở đó là một trường đi theo mọi lời
+    gọi truy hồi mà không ai dùng.
+
+    **Hash mật khẩu không có mặt ở đây.** Nó sống ở loader `adapters/` và ở
+    bảng `users` của Postgres, hai chỗ đã có I/O. `core/` chỉ stdlib (AD-1),
+    nên một trường hash trong bản ghi này là một giá trị mà `core/` cầm mà
+    không so được, và là một giá trị lọt vào mọi `repr()` của tầng trên.
+
+    `nhom` là **nhóm phụ trách của người**, cùng danh mục với tên nhóm trong
+    `config/nhom-phu-trach.yaml` (SPINE `:223`: `users.group_name` dùng chung
+    giá trị với slot `owner`). Nó **không** phải một trục quyền: quyền vẫn là
+    vai × loại nội dung × scope (AD-4), và `ngu_canh_cua` không đọc trường này.
+
+    `demo` và `admin` là hai cờ riêng, không phải hai mức của một thang (spine
+    `:105`): Admin là vai quản trị của PRD 1.5, tài khoản demo là tài khoản
+    trình diễn. Chúng gắn theo tài khoản thật và chép nguyên vẹn sang token
+    xem-như của Epic 4, nên trộn chúng thành một trường là mất đúng phép phân
+    biệt mà AD-10 dựa vào.
+
+    Đóng băng cùng lý do với `DanhTinh`: một tài khoản đổi cờ `admin` giữa
+    chừng là leo quyền im lặng.
+    """
+
+    danh_tinh: DanhTinh
+    nhom: str
+    demo: bool = False
+    admin: bool = False
+
+    def __post_init__(self):
+        if not isinstance(self.danh_tinh, DanhTinh):
+            raise TypeError(
+                "danh_tinh phải là DanhTinh, nhận được"
+                f" {type(self.danh_tinh).__name__}"
+            )
+        if not isinstance(self.nhom, str):
+            raise TypeError(f"nhom phải là chuỗi, nhận được {type(self.nhom).__name__}")
+        if not self.nhom.strip():
+            raise ValueError("nhom rỗng: tài khoản phải khai một nhóm phụ trách")
+        if self.nhom != self.nhom.strip():
+            # Cùng luật với ba trường của `DanhTinh`: tên nhóm đi vào bảng
+            # `users`, vào claim của token và vào câu trả lời FR-14, nên một
+            # dấu cách thừa là một nhóm khác mà nhìn không ra.
+            raise ValueError(
+                f"nhom = {self.nhom!r} có khoảng trắng bao quanh: một tên nhóm"
+                " lệch một dấu cách là một tên nhóm khác"
+            )
+        for ten, gia_tri in (("demo", self.demo), ("admin", self.admin)):
+            # `1` và `"true"` đều truthy, và một seed khai `admin: 1` chạy được
+            # là một tài khoản được cấp quyền quản trị bởi một lỗi gõ.
+            if not isinstance(gia_tri, bool):
+                raise TypeError(
+                    f"{ten} phải là bool, nhận được {type(gia_tri).__name__}"
+                )
+
+    @property
+    def tai_khoan(self) -> str:
+        """Tên tài khoản, tức khóa chính của bảng `users` và `sub` của token."""
+        return self.danh_tinh.tai_khoan
 
 
 def ngu_canh_cua(danh_tinh: DanhTinh, policy: Policy) -> PermissionContext:

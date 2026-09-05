@@ -9,6 +9,8 @@ ba điều đó.
 Không cần container, không cần mạng: test đọc file, không dựng stack.
 """
 
+from pathlib import Path
+
 import pytest
 
 from adapters.llm_wrapper import BIEN_EMBEDDING_MODEL, BIEN_LLM_MODEL, BIEN_MOI_TRUONG_MODEL
@@ -204,8 +206,63 @@ def test_file_cuc_bo_khong_ghim_ollama_host():
     assert "OLLAMA_HOST" not in doc_env(".env.local-llm")
 
 
+# Biến mang secret. Chúng chỉ sống trong `.env` gốc repo (đã gitignore); ba file
+# tham số môi trường có commit thì không được chứa cái nào (Consistency
+# Conventions "Cấu hình"). Story 3.1 thêm khóa ký JWT và hai mật khẩu demo.
+BIEN_SECRET = {
+    "OPENAI_API_KEY",
+    "DEEPSEEK_API_KEY",
+    "NEO4J_PASSWORD",
+    "POSTGRES_PASSWORD",
+    "QDRANT_API_KEY",
+    "JWT_SECRET",
+    "DEMO_MAT_KHAU_TS01",
+    "DEMO_MAT_KHAU_DEV01",
+}
+
+
 def test_file_cuc_bo_khong_chua_secret():
     """Cùng luật với `.env.server`: secret chỉ sống trong `.env` gốc (gitignore)."""
     env = doc_env(".env.local-llm")
-    cam = {"OPENAI_API_KEY", "DEEPSEEK_API_KEY", "NEO4J_PASSWORD", "POSTGRES_PASSWORD", "QDRANT_API_KEY"}
-    assert not (cam & set(env)), sorted(cam & set(env))
+    assert not (BIEN_SECRET & set(env)), sorted(BIEN_SECRET & set(env))
+
+
+# --- Story 3.1: khóa ký JWT ------------------------------------------------
+
+
+@pytest.mark.parametrize("ten_file", FILE_THAM_SO)
+def test_file_tham_so_khong_chua_secret(ten_file):
+    """Không file tham số nào mang secret, kể cả khóa ký JWT.
+
+    Ba file này có commit. Một `JWT_SECRET=` ở đây là khóa ký của hệ nằm trong
+    lịch sử git, và mọi token từng phát ký được lại từ đó.
+    """
+    lo = BIEN_SECRET & set(doc_env(ten_file))
+    assert not lo, f"{ten_file} mang secret: {sorted(lo)}"
+
+
+def test_compose_doi_khoa_ky_jwt_tu_env_goc_khong_co_mac_dinh():
+    """`JWT_SECRET` khai bằng `:?`, không phải `:-`.
+
+    Khóa ký không có mặc định và hệ không tự sinh: một khóa ngẫu nhiên mỗi lần
+    khởi động làm mọi token đã phát chết im lặng, và trong lúc gỡ lỗi nó trông
+    giống hệt "token sai chữ ký". `:?` bắt `docker compose ... config --quiet`
+    đỏ ngay trên máy chủ nếu `.env` thiếu biến đó, thay vì để container lên rồi
+    hỏng ở lần đăng nhập đầu.
+    """
+    tho = (Path(__file__).resolve().parent.parent / "docker-compose.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "${JWT_SECRET:?" in tho, "compose phải đòi JWT_SECRET, không cho mặc định"
+    assert "${JWT_SECRET:-" not in tho
+
+
+@pytest.mark.parametrize("dv", SERVICE_PYTHON)
+def test_hai_service_python_deu_thay_khoa_ky(compose, dv):
+    """Cả `api` lẫn `man-nap` cùng khối biến, nên cả hai cùng đòi khóa ký.
+
+    `man-nap` chưa dùng tới nó (màn không có xác thực, và đó là lý do nó chỉ
+    bind loopback), nhưng hai service neo cùng một YAML anchor: tách riêng một
+    biến ở đây là mở đường cho hai khối biến trôi dạt.
+    """
+    assert "JWT_SECRET" in compose["services"][dv]["environment"]

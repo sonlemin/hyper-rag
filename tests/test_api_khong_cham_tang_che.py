@@ -9,6 +9,11 @@ canh hành vi che. Không cơ chế nào canh mệnh đề này, và nó là m�
 
 Đây là tripwire cho lúc đó.
 
+**Story 3.1 đổi hình dạng ca cuối, không đổi mệnh đề.** `api/main.py` nay có ba
+tuyến xác thực, nên câu "chỉ có `/health`" không phát biểu được nữa; thay bằng
+"mỗi hàm cấp module phải khai kèm lý do nó không trả nội dung tri thức"
+(`HAM_MAIN_CO_LY_DO`). Mệnh đề vẫn chưa được chứng minh và vẫn ngừng ở 3.3.
+
 **Hai vế, và chúng hỏng theo hai cách khác nhau.**
 
 *Không che lại.* Che là việc của tầng adapter (AD-9): mọi method đọc trong danh
@@ -60,6 +65,10 @@ CHAM_STORAGE_CO_LY_DO: dict[str, str] = {
 # storage nào. Danh sách gồm cả nhóm thứ hai vì đó là hình dạng thật hôm nay:
 # chỉ `dot_nap.py` cầm `EngineACL`, hai module kia đi qua `chay_lan_nap`. Một
 # danh sách chỉ có tên lớp sẽ bỏ lọt đúng hai module đang chạm kho.
+#
+# `api/tai_khoan.py` và `api/xac_thuc.py` (story 3.1) cố ý **không** có ở đây:
+# bảng `users` là trạng thái ứng dụng của AD-7, không phải một kho tri thức, và
+# hai module đó không nhập tên nào trong danh sách dưới.
 LOP_STORAGE: frozenset[str] = frozenset(
     {
         "Neo4jACLGraphStorage",
@@ -164,24 +173,140 @@ def test_ly_do_khai_van_con_that():
         )
 
 
-def test_menh_de_hom_nay_dung_mot_cach_rong_va_dieu_do_duoc_ghi_ra():
-    """`api/main.py` chưa có endpoint dữ liệu nào, và test phải nói ra điều đó.
+# Hàm cấp module của `api/main.py`, mỗi cái kèm lý do nó **không** trả nội dung
+# tri thức. Danh sách đóng, cùng hình dạng với `CHAM_STORAGE_CO_LY_DO` ở trên:
+# thêm một dòng ở đây là một quyết định, và lúc khai là lúc người viết phải trả
+# lời câu "nội dung ra khỏi handler này đã đi qua tầng che chưa".
+#
+# Story 3.1 là lần đầu danh sách này không còn chỉ có `health`. Ba hàm mới đều
+# thuộc đường **xác thực**: chúng đọc bảng `users` của Postgres và file seed,
+# hai nguồn không có một byte tri thức nào, và không hàm nào chạm ba kho hay
+# dựng một `PermissionContext`.
+HAM_MAIN_CO_LY_DO: dict[str, str] = {
+    "health": "healthcheck của compose; trả một hằng, nằm ngoài mọi cửa",
+    "mo_kho_tai_khoan": "điểm nối mở pool Postgres cho bảng users; test thay bằng bản giả",
+    "vong_doi": "lifespan: kiểm khóa ký, mở bảng users, đổ seed; không dựng engine tri thức",
+    "_loi_xac_thuc": "exception handler, dựng {error:{code,message}} từ hai hằng",
+    "_claim": "đọc claim của token trong header; không chạm kho",
+    "dang_nhap": "POST /auth/login; đọc bảng users, phát JWT",
+    "toi": "GET /auth/toi; đọc lại claim của chính token",
+    "danh_sach_tai_khoan": "GET /auth/tai-khoan; liệt kê seed, đòi demo/admin, không có hash",
+}
 
-    Không có ca này thì ba test trên xanh và người đọc tưởng mệnh đề AC-1.6-1
-    đã được chứng minh. Nó chưa: hôm nay nó đúng vì không có gì để sai. Ca này
-    đỏ ở đúng lúc điều đó thay đổi, và thông điệp nói người sửa phải làm gì.
+
+def test_moi_ham_cua_main_deu_duoc_khai_kem_ly_do():
+    """`api/main.py` không có endpoint dữ liệu nào, và test phải nói ra điều đó.
+
+    Tới cuối Epic 1 mệnh đề AC-1.6-1 đúng một cách **rỗng**: `api/main.py` có 13
+    dòng và một tuyến `/health`, nên không có gì để sai. Story 3.1 thêm ba tuyến
+    xác thực, và ca này đổi hình dạng theo: từ "chỉ có health" thành "mỗi hàm
+    phải khai kèm lý do nó không trả nội dung tri thức".
+
+    Mệnh đề vẫn chưa được chứng minh, và nó **ngừng đúng ở story 3.3** - chỗ
+    endpoint đầu tiên trả nội dung. Lúc đó dòng khai của nó không nói được câu
+    "không chạm kho", và người viết phải thay bằng một test khẳng định nội dung
+    ra khỏi endpoint đã đi qua tầng che (khoản F3 của retro Epic 1).
     """
     main = REPO_ROOT / "api" / "main.py"
-    tuyen = [
-        n
+    # `ast.walk`, không phải `.body`: quét cấp module bỏ lọt đúng hình dạng mà
+    # ca này sinh ra để bắt - một tuyến đăng ký trong một hàm lồng, một factory
+    # dựng app, hay một `include_router`. Đó là những cách tự nhiên nhất để
+    # story 3.3 thêm endpoint dữ liệu, và nếu chúng không bị đòi khai thì
+    # tripwire im lặng đúng lúc nó phải kêu.
+    ten_ham = {
+        n.name
         for n in ast.walk(_cay(main))
         if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef)
-    ]
-    ten_tuyen = {n.name for n in tuyen}
-    assert ten_tuyen <= {"health"}, (
-        "`api/main.py` có endpoint mới ngoài /health. Mệnh đề AC-1.6-1 tới giờ"
-        " đúng một cách rỗng vì không endpoint nào trả nội dung tri thức; từ lúc"
-        " này nó là một khẳng định thật. Viết một test khẳng định nội dung ra khỏi"
-        " endpoint đã đi qua tầng che, rồi cập nhật ca này (khoản F3 của retro"
-        f" Epic 1). Endpoint đang có: {sorted(ten_tuyen)}"
+    }
+    chua_khai = sorted(ten_ham - set(HAM_MAIN_CO_LY_DO))
+    assert not chua_khai, (
+        "`api/main.py` có hàm mới chưa khai trong `HAM_MAIN_CO_LY_DO`. Khai kèm"
+        " lý do, và trả lời được câu nội dung ra khỏi nó đã đi qua tầng che chưa"
+        f" (AC-1.6-1, khoản F3 của retro Epic 1). Hàm chưa khai: {chua_khai}"
     )
+    chet = sorted(set(HAM_MAIN_CO_LY_DO) - ten_ham)
+    assert not chet, (
+        "Dòng khai trỏ vào hàm không còn tồn tại; gỡ nó đi, một miễn trừ chết là"
+        f" một dòng không ai dám xóa vì không ai biết nó còn canh gì: {chet}"
+    )
+
+
+def test_main_khong_dung_ngu_canh_quyen_nao():
+    """Đường xác thực không dựng ngữ cảnh quyền, và không đọc tri thức.
+
+    Vế cụ thể của "chưa có endpoint dữ liệu": story 3.1 phát token, còn việc đổi
+    một token thành `PermissionContext` là của story 3.3 - và khi đó nó phải đi
+    qua `core.identity.ngu_canh_cua`, thứ `tests/test_import_lint.py` đã canh.
+    Ca này đỏ nếu `api/main.py` tự dựng ngữ cảnh trước lúc ấy.
+    """
+    cham = _ten_duoc_nhap(REPO_ROOT / "api" / "main.py") & {
+        "user_context",
+        "system_context",
+        "PermissionContext",
+        "use_context",
+        "current_context",
+        "ngu_canh_cua",
+    }
+    assert not cham, f"`api/main.py` chạm ngữ cảnh quyền: {sorted(cham)}"
+
+
+# Tuyến của `api/main.py` **không** đi qua cửa xác thực, kèm lý do. Hai dòng,
+# và cả hai là ngoại lệ có lập luận chứ không phải chỗ chưa làm.
+TUYEN_KHONG_XAC_THUC: dict[str, str] = {
+    "/health": "healthcheck của compose; một healthcheck đòi token là một container không bao giờ healthy",
+    "/auth/login": "chính là chỗ phát token, nên nó không thể đòi một token có sẵn",
+}
+
+
+def test_moi_tuyen_deu_di_qua_cua_xac_thuc_tru_hai_ngoai_le_co_ly_do():
+    """Xác thực hôm nay là **opt-in từng handler**, nên nó phải có cơ chế canh.
+
+    `api/main.py` không có middleware nào bắt buộc token; mỗi handler tự gọi
+    `_claim`. Một handler mới quên gọi là một endpoint mở, và không có gì trong
+    repo phát hiện điều đó - trong khi mọi luật khác ở đây đều có test canh.
+
+    Đọc `app.routes` chứ không đọc AST: thứ cần chấm là *tuyến thật sự được
+    đăng ký*, kể cả tuyến đến từ một `include_router`. Rồi truy ngược về hàm
+    xử lý và hỏi thân nó có gọi `_claim` không.
+    """
+    from api.main import app
+
+    cay = _cay(REPO_ROOT / "api" / "main.py")
+    goi_claim = {
+        n.name
+        for n in ast.walk(cay)
+        if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef)
+        and any(
+            isinstance(g, ast.Call)
+            and (getattr(g.func, "id", None) or getattr(g.func, "attr", None)) == "_claim"
+            for g in ast.walk(n)
+        )
+    }
+    ho: list[str] = []
+    for tuyen in app.routes:
+        duong = getattr(tuyen, "path", None)
+        diem_vao = getattr(tuyen, "endpoint", None)
+        if duong is None or diem_vao is None:
+            continue
+        if duong in TUYEN_KHONG_XAC_THUC or duong.startswith("/openapi"):
+            continue
+        if duong in ("/docs", "/redoc", "/docs/oauth2-redirect"):
+            continue
+        if getattr(diem_vao, "__name__", "") not in goi_claim:
+            ho.append(f"{duong} -> {getattr(diem_vao, '__name__', diem_vao)!r}")
+    assert not ho, (
+        "Tuyến không đi qua `_claim` và không khai trong `TUYEN_KHONG_XAC_THUC`."
+        " Xác thực là opt-in từng handler, nên một handler quên gọi là một"
+        f" endpoint mở:\n  " + "\n  ".join(ho)
+    )
+
+
+def test_hai_ngoai_le_khong_xac_thuc_van_la_tuyen_co_that():
+    """Một miễn trừ chết là một dòng không ai dám xóa vì không ai biết nó canh gì."""
+    from api.main import app
+
+    co_that = {getattr(t, "path", None) for t in app.routes}
+    thieu = sorted(set(TUYEN_KHONG_XAC_THUC) - co_that)
+    assert not thieu, f"khai trỏ vào tuyến không còn tồn tại: {thieu}"
+    for duong, ly_do in TUYEN_KHONG_XAC_THUC.items():
+        assert ly_do.strip(), f"{duong} khai mà không có lý do"
