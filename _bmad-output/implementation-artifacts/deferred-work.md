@@ -787,8 +787,37 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-8-corpus-dung-40-tai-lieu.md`
   summary: Thứ tự 13 hạng của `config/hang-do-nhay.yaml` chọn để bảng chính sách A4 diễn đạt được mà vẫn đơn điệu, nhưng chưa có validator nào *chứng minh* điều đó - lập luận mới nằm trong chú thích YAML và trong một chuỗi bất đẳng thức viết tay.
   evidence: Validator đơn điệu của AD-5 là story 3.2 và nó cần cả bảng chính sách đầy đủ mới chạy được, nên viết nó bây giờ là viết một validator không có gì để kiểm. Cái đang canh: `tests/test_hop_nhat_khoa.py::test_hang_cua_file_mac_dinh_doi_mot_chieu` ghim đủ 13 mắt của chuỗi (kỳ vọng viết tay, không suy từ file) và `test_ba_hang_da_dong_bang_giu_nguyen_so` ghim 10/20/30. Rủi ro thật nếu thứ tự sai: 3.2 phát hiện bảng A4 không đơn điệu được thì phải đảo hạng, mà đảo hạng sau khi đã nạp là **re-ingest cả corpus**. Địa chỉ: story 3.2, và đó là chỗ phải kiểm sớm trong story chứ không phải cuối.
+  resolved: |-
+    2026-09-05 (retro Epic 2, sonlm yêu cầu kiểm sớm) - **kiểm xong: thứ tự hạng chịu được A4. Không phải đảo hạng, không re-ingest.**
 
+    Khoản này không chờ được tới lúc viết validator: nếu thứ tự sai thì phải đảo hạng, mà đảo hạng sau khi đã nạp là re-ingest **bốn** space cộng chụp lại mọi ảnh, soát lại mọi nhãn, đếm lại mọi bảng số. Rủi ro bất đối xứng, nên kiểm trước.
 
+    **Phép kiểm không cần gì của 3.2.** Câu hỏi không phải "bảng chính sách đầy đủ là gì" - đó là việc thiết kế của 3.2 - mà hẹp hơn: *có tồn tại phép gán mức nào thỏa cả prose A4 lẫn điều kiện (1) của AD-5 trên thứ tự hạng đã đóng băng không?* Đó là một bài toán thỏa mãn ràng buộc, giải bằng cách duyệt 3^13 phép gán, lọc theo sáu ràng buộc mà A4 khai bằng chữ (`sop` L2 toàn công ty; ticket và lịch sử sự cố tới `tech_support`; `cmdb` L0 với người ngoài nhóm hạ tầng; `log` chỉ nhóm hạ tầng; `runbook` tới DevOps; `postmortem` hạn chế), rồi kiểm mức là hàm **không tăng** theo hạng.
+
+    **Kết quả: 15 phép gán khả thi cho `tech_support`, 17 cho `devops`.** Tập khả thi không rỗng nên thứ tự hạng diễn đạt được A4.
+
+    Hai hệ quả **bị ép**, 3.2 không có lựa chọn và nên biết trước khi dựng bảng. `devops` bắt buộc L2 trên `troubleshooting` (hạng 8) và `runbook` (10), vì A4 cho DevOps thấy runbook và đơn điệu kéo theo mọi hạng thấp hơn. `tech_support` bắt buộc L0 trên `log` (24), `cmdb` (26) và `bi_mat_ha_tang` (30) - hai cái đầu từ A4, cái thứ ba do đơn điệu kéo theo.
+
+    Một chỗ 3.2 phải quyết **có chủ đích**: `devops` không bị ép L0 ở bất kỳ hạng nào, kể cả `bi_mat_ha_tang`. Prose A4 một mình không chặn DevOps thấy tất. Bảng hiện tại chọn L1 cho nó, và đó là một quyết định chứ không phải một hệ quả.
+
+    Phép kiểm này lộ ra một khoản mới về **phạm vi của validator**, ghi riêng ở dưới.
+
+- source_spec: `_bmad-output/implementation-artifacts/epic-2-retro-2026-09-05.md`
+  summary: Validator đơn điệu của AD-5 kiểm trên **loại đã khai** hay trên **cả 13 loại với mặc định L0**? Hai vế của một ràng buộc đã khai đang mâu thuẫn nhau, và cả bốn bảng chính sách hiện tại đều không đơn điệu theo cách đọc thứ hai.
+  evidence: |-
+    Phát hiện ngoài dự kiến khi chạy phép kiểm đơn điệu của khoản story 2.8 ngay trên (retro Epic 2, 05/09/2026). Không khoản nợ nào trong chín khoản trỏ vào 3.2 nêu điều này, và nó là thứ 3.2 phải chốt **trước khi viết dòng validator đầu tiên**.
+
+    `core.policy.RolePolicy.level` trả **L0 cho loại chưa khai**. Nên mức *thực tế* của một vai phủ đủ 13 loại, không chỉ những loại có trong YAML. Đọc theo nghĩa đó, cả bốn cấu hình hiện tại đều đảo chiều điều kiện (1): `policy-toi-gian.yaml` có devops **21 cặp** đảo và tech_support **11**; `policy-nhi-phan.yaml` có **11** và **4**. Ca điển hình: `faq` hạng 2 = L0 vì chưa khai, còn `runbook` hạng 10 = L2 - hạng thấp hơn mà mức thấp hơn, đúng chiều mà điều kiện (1) cấm. Chỉ tính trên **3 loại đã khai** thì cả bốn đều đơn điệu.
+
+    Hai đường, và cả hai đều mất một thứ.
+
+    **Kiểm trên loại đã khai.** Bốn cấu hình hiện tại qua được ngay. Nhưng validator bỏ sót đúng ca nó sinh ra để bắt: một bảng khai `cmdb: L2` mà bỏ `faq` là fail-open, và nó đọc như fail-closed vì `faq` "chưa khai". Người soát nhìn file thấy ba dòng hợp lý; hệ thì thấy một vai đọc được CMDB mà không đọc được FAQ.
+
+    **Kiểm trên cả 13 loại với mặc định L0.** Đúng ngữ nghĩa của `level` hơn, và bắt được ca trên. Nhưng `policy-nhi-phan.yaml` **bị từ chối nạp** - mà nó là baseline nhị phân của Đo 3, một trong ba chốt brief §6, và AD-5 khai thẳng "cả 4 cấu hình đo của FR-28 phải qua validator". Hai vế đó mâu thuẫn nhau ở trạng thái hôm nay.
+
+    Đường gỡ rẻ nhất có thể chỉ là **khai đủ 13 loại trong cả bốn bảng**, tức biến mặc định L0 ngầm thành một khẳng định tường minh. Nó cũng đóng luôn khoản "luật phủ chỉ soi policy-toi-gian.yaml" ngay trên. Nhưng đó là một ràng buộc chưa ai viết ra, và nó đổi hình dạng của cả bốn file cấu hình đo.
+
+    Không sửa trong phiên retro: chọn giữa hai cách đọc là quyết định về **ngữ nghĩa của validator AD-5**, tức đúng việc mà story 3.2 sở hữu, và làm nó ở đây là làm không có spec cùng vòng review của story đó. Địa chỉ: story 3.2, đọc trước khi viết validator.
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-8-corpus-dung-40-tai-lieu.md`
   summary: Bốn tài liệu kịch bản 1 (`k1-03`..`k1-06`) trong space `synth` trên máy chủ còn mang nội dung *trước* patch INC-1208 của vòng review 03/09; chúng cần nạp lại.
   evidence: Lần nạp thật 02/09 chạy trên bản corpus cũ, còn patch INC-1208 (đưa mốc thời gian và tên người xử lý về khớp bộ vàng) đến sau. Không sai quyền và không mất dữ liệu - nạp lại cùng `doc_key` là re-ingest ghi đè sạch theo luật của `adapters/ingest.py`, không nhân đôi hyperedge - nhưng đồ thị đang mang hai sự thật cho cùng mã INC-1208, đúng thứ mà patch sinh ra để bỏ. 36 tài liệu còn lại không đổi nên không cần chạm. Số đo `eval/so_do_nap/nap-that.json` là số của cả 40 tài liệu và **không** đổi theo lượt nạp lại này, nên sáu số khóa của chương 4 giữ nguyên. Việc chạy tốn tiền thật nên thuộc về sonlm. Địa chỉ: story 2.8 (lượt nạp lại), trước khi story 2.9 gán nhãn truy hồi vàng trên chính đồ thị này.
