@@ -48,7 +48,7 @@ from adapters.llm_wrapper import (
 )
 from adapters.model_catalog import ModelUnknown, danh_muc_mac_dinh
 from core.audit import EVENT_EMBEDDING_COST, EVENT_LLM_COST, TIER_OBSERVATION
-from core.ids import SPACE_REAL, la_space_real, validate_space
+from core.ids import SPACE_REAL, SPACE_THAT_KHU, la_space_real, validate_space
 from core.permission import PermissionContextMissing, use_context
 from tests.gia_lap_llm import (
     MODEL_EMBEDDING_CUC_BO_GIA,
@@ -123,8 +123,6 @@ def test_space_that_khu_khong_khop_luat_real_va_van_hop_le():
       dội `ProviderNotAllowedForSpace` trước byte đầu tiên và cả đợt không chạy;
     - phải đọc ra khác `real` bằng mắt, để không ai nhầm hai space với nhau.
     """
-    from eval.xem_ty_le import SPACE_THAT_KHU
-
     assert SPACE_THAT_KHU == "that_khu"
     assert validate_space(SPACE_THAT_KHU) == SPACE_THAT_KHU
     assert la_space_real(SPACE_THAT_KHU) is False

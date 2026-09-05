@@ -22,7 +22,7 @@ vậy cùng một ảnh chụp đã commit luôn cho cùng ba con số, và ngư
 lại được mà không cần kho đang chạy. Phần đọc file nằm ở `eval/xem_ty_le.py`.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Mapping, Sequence
 
 from eval.cau_hoi import AnhDoThi, HyperedgeAnh
@@ -351,6 +351,76 @@ def ba_ty_le(anh: AnhDoThi, hang: Mapping[str, int]) -> BaTyLe:
         phan_bo_vai=dict(sorted(phan_bo_vai.items())),
         so_entity_lap_vai=lap_vai,
     )
+
+
+# ---------------------------------------------------------------------------
+# Hạn chế một ảnh chụp về đúng tập tài liệu chung (story 2.13)
+# ---------------------------------------------------------------------------
+
+
+class KhongCoTaiLieuChung(ValueError):
+    """Hai ảnh chụp không có `doc_key` nào chung: không có phép đối chứng nào.
+
+    Từ chối thay vì trả một ảnh rỗng. Một `AnhDoThi` không hyperedge nào cho ba
+    tỷ lệ `None`, và một khối đối chứng in ba dòng "không so được" đọc như một
+    kết quả chứ không như một lỗi cấu hình.
+
+    Ca thật nó bắt: hai ảnh chụp bằng **hai muối khác nhau**. Khi đó mọi
+    `doc_key` đã băm là hai tập rời nhau hoàn toàn, dù hai space chứa đúng cùng
+    một thư mục nguồn.
+
+    `code` ổn định để test assert trên `code` (AD-8).
+    """
+
+    code = "KHONG_CO_TAI_LIEU_CHUNG"
+
+
+def tai_lieu_chung(*anh: AnhDoThi) -> frozenset[str]:
+    """Tập `doc_key` có mặt trong sổ tài liệu của **mọi** ảnh chụp truyền vào.
+
+    Với hai ảnh **rút gọn cùng muối**, `doc_key` là băm có muối của cùng một tên
+    file, nên phép giao này tính được ngay trong repo mà không cần ảnh đầy đủ và
+    không cần kho đang chạy. Đó là lợi ích thứ hai của luật cùng muối.
+    """
+    if not anh:
+        return frozenset()
+    tap = [a.doc_key for a in anh]
+    return frozenset(set.intersection(*(set(t) for t in tap)))
+
+
+def han_che_theo_tai_lieu(anh: AnhDoThi, doc_key_giu) -> AnhDoThi:
+    """Ảnh chụp thu về đúng tập `doc_key` cho trước. Hàm thuần, không I/O.
+
+    Vì sao nó tồn tại: story 2.13 so cột `real` với cột `that_khu` để đo chênh
+    giữa hai bộ trích xuất trên **cùng một tập tài liệu**. Hai thư mục nguồn
+    đúng là cùng 50 file từng byte, nhưng hai *kho* thì không - Qwen làm mất 9
+    tài liệu ở đợt `real`, nên cột đó chỉ có 41. So 41 với 50 là trộn vào phép
+    đo chênh thêm 9 tài liệu chỉ có ở một vế, và trang lại tự khẳng định hai vế
+    bằng nhau. Hàm này là chỗ phép hạn chế sống, tách khỏi module dựng HTML để
+    nó có test riêng.
+
+    **Giữ một hyperedge khi *mọi* `doc_key` của nó nằm trong tập giữ**, không
+    phải khi có một cái nằm trong. Một hyperedge hợp nhất từ một tài liệu được
+    giữ và một tài liệu bị bỏ tồn tại *vì cả hai*, nên đếm nó là đếm một fact
+    quy được một phần cho tài liệu ngoài tập so. Trên hai ảnh của story 2.13 hai
+    luật cho cùng một con số (không hyperedge nào đa nguồn), nên lựa chọn này là
+    một quyết định ghi trước chứ không phải một phép tối ưu con số.
+
+    Ba số đếm dẫn xuất (`so_tai_lieu`, `so_hyperedge`, `so_hyperedge_da_nguon`)
+    là property tính từ hai tuple nên chúng tự đúng theo; `space` giữ nguyên để
+    tiêu đề cột vẫn nói ra dạng file đang dùng.
+    """
+    giu = frozenset(doc_key_giu)
+    tai_lieu = tuple(t for t in anh.tai_lieu if t.doc_key in giu)
+    if not tai_lieu:
+        raise KhongCoTaiLieuChung(
+            f"hạn chế ảnh chụp {anh.space!r} về {len(giu)} `doc_key` cho ra 0 tài"
+            " liệu: hai ảnh không chung tài liệu nào. Ca hay gặp nhất là hai ảnh"
+            " rút gọn chụp bằng **hai muối khác nhau** - khi đó mọi `doc_key` đã"
+            " băm là hai tập rời nhau dù thư mục nguồn là một"
+        )
+    hyperedge = tuple(h for h in anh.hyperedge if set(h.doc_key) <= giu)
+    return replace(anh, tai_lieu=tai_lieu, hyperedge=hyperedge)
 
 
 class ThieuCotDoiChieu(ValueError):

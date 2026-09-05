@@ -220,8 +220,8 @@ async def _trich_mot_chunk(use_llm_func, chunk_key: str, chunk: dict):
     van_ban = await goi_co_thu_lai(
         use_llm_func,
         dung_prompt(chunk["content"]),
-        ten=f"chunk {chunk_key}",
-        in_ra=_in_thu_lai,
+        _ten=f"chunk {chunk_key}",
+        _in_ra=_in_thu_lai,
         **THAM_SO_LLM,
     )
     return chunk_key, phan_tich_phan_hoi(van_ban)

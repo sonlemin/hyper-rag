@@ -34,6 +34,7 @@ from tenacity import (
     retry_if_exception,
     stop_after_attempt,
     wait_exponential,
+    wait_random,
 )
 
 __all__ = [
@@ -41,6 +42,7 @@ __all__ = [
     "MA_RATE_LIMIT",
     "SO_LAN_THU",
     "TEN_TRUONG_MA_HTTP",
+    "BIEN_DO_JITTER_GIAY",
     "TRAN_CHO_GIAY",
     "ChanNhipQuaLau",
     "cho_bao_lau",
@@ -171,7 +173,22 @@ class ChanNhipQuaLau(RuntimeError):
     code = "CHAN_NHIP_QUA_LAU"
 
 
-_LUI_LUY_THUA = wait_exponential(multiplier=1, min=1, max=TRAN_CHO_GIAY)
+# Biên độ jitter cộng vào mỗi lần lùi lũy thừa, tính bằng giây.
+#
+# **Không có jitter là một lỗi, không phải một thiếu tinh chỉnh.**
+# `adapters/trich_xuat._trich_mot_chunk` chạy song song dưới một `TaskGroup`,
+# nên khi provider chặn nhịp thì *mọi* chunk đang bay cùng ăn 429 trong cùng
+# một khoảnh khắc, cùng tính ra cùng một thời gian chờ, rồi cùng gọi lại đúng
+# lúc - tức chúng tự tái tạo đúng cái burst vừa bị chặn. Jitter phá pha đó.
+#
+# Cộng chứ không nhân: `Retry-After` của provider (khi có) vẫn được tôn trọng
+# nguyên vẹn ở nhánh trên của `cho_bao_lau`, jitter chỉ áp cho nhánh lùi lũy
+# thừa - nhánh mà hệ tự đoán thời gian chờ.
+BIEN_DO_JITTER_GIAY: float = 3.0
+
+_LUI_LUY_THUA = wait_exponential(multiplier=1, min=1, max=TRAN_CHO_GIAY) + wait_random(
+    0, BIEN_DO_JITTER_GIAY
+)
 
 
 def cho_bao_lau(retry_state) -> float:
@@ -193,10 +210,10 @@ def cho_bao_lau(retry_state) -> float:
 async def goi_co_thu_lai(
     ham: Callable[..., Awaitable[Any]],
     *tham_so_vi_tri,
-    so_lan_thu: int = SO_LAN_THU,
-    sleep=None,
-    in_ra=None,
-    ten: str = "lời gọi",
+    _so_lan_thu: int = SO_LAN_THU,
+    _sleep=None,
+    _in_ra=None,
+    _ten: str = "lời gọi",
     **tham_so,
 ):
     """Gọi `ham`, thử lại đúng 429/5xx/lỗi mạng, ném nguyên lỗi cuối cùng.
@@ -209,19 +226,28 @@ async def goi_co_thu_lai(
     nên mọi mốc `audit.moc()` chụp trước vòng thử lại vẫn neo đúng một sự kiện
     của lần thử thành công.
 
-    `sleep=` và `in_ra=` là điểm tiêm cho test: không ngủ thật, không in thật.
+    **Bốn tham số điều khiển mang tiền tố gạch dưới, và đó không phải quy ước
+    thẩm mỹ.** Mọi keyword khác đi thẳng xuống `ham`, tức xuống provider. Đặt
+    tên chúng là `ten`, `sleep`, `in_ra`, `so_lan_thu` thì một provider có tham
+    số trùng tên - `stream`, `timeout`, `stop` đều là tên thật của OpenAI API và
+    `sleep` không phải một cái tên xa lạ - sẽ bị wrapper **nuốt lặng lẽ**: lời
+    gọi đi với cấu hình khác cấu hình người viết ghi ra, không lỗi, không dấu
+    hiệu. Tiền tố gạch dưới đóng cửa đó bằng chính không gian tên: không API
+    provider nào đặt tên tham số bắt đầu bằng `_`.
+
+    `_sleep=` và `_in_ra=` là điểm tiêm cho test: không ngủ thật, không in thật.
     """
     lan = 0
     async for thu in AsyncRetrying(
-        stop=stop_after_attempt(so_lan_thu),
+        stop=stop_after_attempt(_so_lan_thu),
         wait=cho_bao_lau,
         retry=retry_if_exception(nen_thu_lai),
         reraise=True,
-        **({"sleep": sleep} if sleep is not None else {}),
+        **({"sleep": _sleep} if _sleep is not None else {}),
     ):
         with thu:
             lan += 1
-            if lan > 1 and in_ra is not None:
-                in_ra(f"    thử lại {ten} lần {lan}/{so_lan_thu}", flush=True)
+            if lan > 1 and _in_ra is not None:
+                _in_ra(f"    thử lại {_ten} lần {lan}/{_so_lan_thu}", flush=True)
             return await ham(*tham_so_vi_tri, **tham_so)
     raise AssertionError("AsyncRetrying thoát mà không trả kết quả và không ném")

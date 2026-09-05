@@ -705,3 +705,77 @@ def test_file_so_do_hong_khong_lam_hong_ca_lenh_xem_truoc(tmp_path):
     )
     (thu_muc / "rach.json").write_text("{khong phai json", encoding="utf-8")
     assert [d["_ten_file"] for d in mod.cac_so_do_nap(thu_muc)] == ["tot.json"]
+
+
+def test_dong_in_khong_chep_cung_so_dot_hay_khoang_ty_le(tmp_path):
+    """Dòng in ra không được mang một con số chép cứng về các đợt đã đo.
+
+    Vòng review 05/09: câu "hai đợt DeepSeek 1,9% và 2,3%" thành sai ngay ở đợt
+    thứ ba, và khoảng "DeepSeek 0,38-0,39" thành sai khi đợt `that_khu` cho
+    0,42. Cả hai nay đọc lại từ file, nên test này chấm chúng **theo file dựng
+    tay**, không theo `eval/so_do_nap/` thật.
+    """
+    from core.ingest_scan import quet_cac_file
+
+    thu_muc = _so_do(
+        tmp_path,
+        "a.json",
+        "2026-02-01T00:00:00+00:00",
+        [
+            {"model": "deepseek-v4-flash", "loai": "llm", "token_vao": 1000, "token_ra": 400,
+             "chi_phi_usd": 0.9, "nha_cung_cap": "deepseek", "so_lan": 1},
+            {"model": "text-embedding-3-small", "loai": "embedding", "token_vao": 100,
+             "token_ra": 0, "chi_phi_usd": 0.1, "nha_cung_cap": "openai", "so_lan": 1},
+        ],
+        1.0,
+    )
+    _so_do(
+        tmp_path,
+        "b.json",
+        "2026-03-01T00:00:00+00:00",
+        [{"model": "qwen2.5:7b", "loai": "llm", "token_vao": 100, "token_ra": 200,
+          "chi_phi_usd": 0.0, "nha_cung_cap": "ollama", "so_lan": 1}],
+        0.0,
+    )
+    khoang = mod.khoang_ty_le_da_do(thu_muc)
+    assert khoang == {"deepseek-v4-flash": (0.4, 0.4), "qwen2.5:7b": (2.0, 2.0)}
+
+    nguon = tmp_path / "a.md"
+    nguon.write_text(
+        "---\nscope: noi_bo\ncontent_type: runbook\n---\nthan tai lieu", encoding="utf-8"
+    )
+    dong = mod.uoc_tinh_dot(
+        quet_cac_file([nguon]), "deepseek-v4-flash", thu_muc_so_do=thu_muc
+    ).dong_in()
+    assert "qwen2.5:7b 2.00" in dong, "khoảng tỷ lệ dựng từ file, không chép cứng"
+    assert "0,38-0,39" not in dong and "1,04" not in dong
+    assert "Ở 1 đợt đã trả tiền" in dong, "số đợt đếm từ file"
+
+
+def test_dong_embedding_co_tran_so_dot_neu_ten(tmp_path):
+    """Dòng "embedding chiếm bao nhiêu" không được dài thêm mỗi lần nạp."""
+    from core.ingest_scan import quet_cac_file
+
+    thu_muc = None
+    for i in range(mod.SO_DOT_NEU_TEN_EMBEDDING + 2):
+        thu_muc = _so_do(
+            tmp_path,
+            f"dot-{i}.json",
+            f"2026-0{i + 1}-01T00:00:00+00:00",
+            [
+                {"model": "deepseek-v4-flash", "loai": "llm", "token_vao": 1000,
+                 "token_ra": 400, "chi_phi_usd": 0.9, "nha_cung_cap": "deepseek", "so_lan": 1},
+                {"model": "text-embedding-3-small", "loai": "embedding", "token_vao": 100,
+                 "token_ra": 0, "chi_phi_usd": 0.1, "nha_cung_cap": "openai", "so_lan": 1},
+            ],
+            1.0,
+        )
+    nguon = tmp_path / "a.md"
+    nguon.write_text(
+        "---\nscope: noi_bo\ncontent_type: runbook\n---\nthan tai lieu", encoding="utf-8"
+    )
+    dong = mod.uoc_tinh_dot(
+        quet_cac_file([nguon]), "deepseek-v4-flash", thu_muc_so_do=thu_muc
+    ).dong_in()
+    assert dong.count(".json)") == mod.SO_DOT_NEU_TEN_EMBEDDING
+    assert "2 đợt cũ hơn trong khoảng" in dong

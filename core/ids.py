@@ -52,6 +52,20 @@ SPACE_MAX_LEN: int = 64
 # để chặn provider API ngoài, adapter kho (2.11) sẽ hỏi cùng câu đó.
 SPACE_REAL: str = "real"
 
+# Không gian chứa **cùng tập tài liệu đã khử** của `real` nhưng trích bằng
+# provider API ngoài **có chủ đích** (story 2.13, ADR-013). Tên nằm cạnh
+# `SPACE_REAL` chứ không ở `eval/`: nó tồn tại để *không* khớp `la_space_real`,
+# và một hằng đặt ở tầng trên thì luật và ca kiểm luật ở hai tầng khác nhau -
+# `tests/test_wrapper_llm.py` phải import từ module dựng HTML để chấm một luật
+# của `core/`. Ở đây thì hằng và luật đọc được cùng một chỗ.
+#
+# NFR-05 cấm gửi tài liệu **chưa khử** ra API ngoài và cho hai đường ngang nhau
+# (khử trước, hoặc chạy cục bộ); ràng buộc "chỉ provider cục bộ" của AD-12 gắn
+# với **tên space**, không với bộ dữ liệu. Nên tên này phải hợp lệ theo
+# `validate_space` và phải trả `False` ở `la_space_real` - hai điều đó là hợp
+# đồng, không phải một sự trùng hợp, và test khóa cả hai.
+SPACE_THAT_KHU: str = "that_khu"
+
 
 def la_space_real(space: str) -> bool:
     """`space` có thuộc không gian dữ liệu thật không.

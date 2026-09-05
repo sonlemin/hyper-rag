@@ -128,7 +128,7 @@ def test_retry_after_qua_tran_la_bo_cuoc_khong_kep_xuong_tran():
         raise _LoiHttp(429, retry_after=3600)
 
     with pytest.raises(ChanNhipQuaLau) as loi:
-        asyncio.run(goi_co_thu_lai(ham, "p", sleep=_ngu))
+        asyncio.run(goi_co_thu_lai(ham, "p", _sleep=_ngu))
     assert loi.value.code == "CHAN_NHIP_QUA_LAU"
     assert lan["n"] == 1, "không thử lại lần nào sau khi bỏ cuộc"
 
@@ -141,7 +141,7 @@ def test_thu_lai_dung_so_lan_roi_nem_nguyen_loi_cuoi():
         raise _LoiHttp(429)
 
     with pytest.raises(_LoiHttp):
-        asyncio.run(goi_co_thu_lai(ham, "p", sleep=_ngu))
+        asyncio.run(goi_co_thu_lai(ham, "p", _sleep=_ngu))
     assert lan["n"] == SO_LAN_THU
 
 
@@ -154,7 +154,7 @@ def test_thanh_cong_o_lan_thu_hai_tra_ket_qua():
             raise _LoiHttp(503)
         return f"ok:{prompt}"
 
-    assert asyncio.run(goi_co_thu_lai(ham, "p", sleep=_ngu)) == "ok:p"
+    assert asyncio.run(goi_co_thu_lai(ham, "p", _sleep=_ngu)) == "ok:p"
     assert lan["n"] == 2
 
 
@@ -166,7 +166,7 @@ def test_4xx_khac_khong_thu_lai():
         raise _LoiHttp(400)
 
     with pytest.raises(_LoiHttp):
-        asyncio.run(goi_co_thu_lai(ham, "p", sleep=_ngu))
+        asyncio.run(goi_co_thu_lai(ham, "p", _sleep=_ngu))
     assert lan["n"] == 1
 
 
@@ -266,3 +266,81 @@ def test_bo_embedding_thu_lai_dung_mot_lop(policy, khong_gian):
         v = asyncio.run(ham.func(["a", "b"]))
     assert ncc.lan == 3
     assert v.shape == (2, 1536)
+
+
+# ---------------------------------------------------------------------------
+# Không có lớp thử lại thứ hai ở dưới (vòng review 05/09)
+# ---------------------------------------------------------------------------
+
+
+def test_sdk_openai_khong_tu_thu_lai():
+    """SDK provider phải dựng với `max_retries=0`.
+
+    Mặc định của `openai` là 2, tức nó tự thử lại 429/5xx **bên trong** một lời
+    gọi. Cộng lớp của `adapters/thu_lai.py` thì một lời gọi thành 4 x 3 = 12
+    request, và tệ hơn: `Retry-After` cùng trần `TRAN_CHO_GIAY` bị SDK đi vòng,
+    nên `ChanNhipQuaLau` không nổ đúng lúc nó phải nổ - đúng thứ docstring của
+    wrapper viết ra để chặn.
+    """
+    from adapters.llm_wrapper import SDK_KHONG_TU_THU_LAI, OpenAITuongThich
+
+    assert SDK_KHONG_TU_THU_LAI == 0
+    ncc = OpenAITuongThich(ten="deepseek", api_key="x", base_url="https://vi-du")
+    assert ncc._client.max_retries == SDK_KHONG_TU_THU_LAI
+
+
+def test_lui_luy_thua_co_jitter():
+    """Không có jitter thì các chunk song song tự tái tạo đúng burst vừa bị chặn.
+
+    `_trich_mot_chunk` chạy dưới một `TaskGroup`, nên khi provider chặn nhịp thì
+    mọi chunk đang bay cùng ăn 429 trong cùng một khoảnh khắc, cùng tính ra cùng
+    một thời gian chờ, rồi cùng gọi lại đúng lúc.
+    """
+    from adapters import thu_lai
+
+    class _TrangThai:
+        attempt_number = 2
+        idle_for = 0.0
+        outcome = None
+
+    cho = {thu_lai.cho_bao_lau(_TrangThai()) for _ in range(40)}
+    assert len(cho) > 1, "hai lần lùi lũy thừa liên tiếp không được bằng nhau"
+    assert max(cho) <= thu_lai.TRAN_CHO_GIAY + thu_lai.BIEN_DO_JITTER_GIAY
+
+
+def test_retry_after_khong_bi_jitter_lam_lech():
+    """Jitter chỉ áp cho nhánh hệ **tự đoán**, không cho `Retry-After` provider nói."""
+    from adapters import thu_lai
+
+    class _KetQua:
+        @staticmethod
+        def exception():
+            return _LoiHttp(429, retry_after=7)
+
+    class _TrangThai:
+        attempt_number = 2
+        idle_for = 0.0
+        outcome = _KetQua()
+
+    assert {thu_lai.cho_bao_lau(_TrangThai()) for _ in range(20)} == {7.0}
+
+
+def test_tham_so_dieu_khien_khong_nuot_kwarg_cua_provider():
+    """`ten`, `sleep`, `in_ra`, `so_lan_thu` **không** được là tên tham số của wrapper.
+
+    Mọi keyword khác đi thẳng xuống provider. Nếu bốn tham số điều khiển mang
+    tên trần thì một provider có tham số trùng tên bị wrapper nuốt lặng lẽ, và
+    lời gọi đi với cấu hình khác cấu hình người viết ghi ra - không lỗi, không
+    dấu hiệu nào.
+    """
+    nhan: dict = {}
+
+    async def ham(**kw):
+        nhan.update(kw)
+        return "ok"
+
+    kq = asyncio.run(
+        goi_co_thu_lai(ham, ten="tên của provider", sleep=5, in_ra="x", so_lan_thu=99)
+    )
+    assert kq == "ok"
+    assert nhan == {"ten": "tên của provider", "sleep": 5, "in_ra": "x", "so_lan_thu": 99}

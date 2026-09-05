@@ -266,6 +266,13 @@ class AnhDoThi:
     policy_version: str
     tai_lieu: tuple[TaiLieuAnh, ...]
     hyperedge: tuple[HyperedgeAnh, ...]
+    # Vân tay của muối, chỉ có ở ảnh **rút gọn** (`eval/anh_rut_gon.py`); `None`
+    # ở ảnh đầy đủ. Mang nó vào dataclass từ story 2.13: hai ảnh rút gọn chụp
+    # bằng hai muối khác nhau cho hai tập `doc_key` **rời nhau hoàn toàn** dù
+    # thư mục nguồn là một, nên mọi phép so "cùng tài liệu" giữa chúng lặng lẽ
+    # trả lời "không chỗ nào". Trước 2.13 loader nhận khóa này rồi vứt đi, tức
+    # thứ duy nhất phát hiện được ca đó không đọc được từ `AnhDoThi`.
+    muoi_id: str | None = None
 
     @property
     def so_hyperedge(self) -> int:
@@ -383,6 +390,7 @@ def doc_anh_do_thi(duong_dan: str | Path | None = None) -> AnhDoThi:
         policy_version=chuoi["policy_version"],
         tai_lieu=tuple(cac_tai_lieu),
         hyperedge=tuple(cac_he),
+        muoi_id=raw.get("muoi_id"),
     )
 
 

@@ -522,10 +522,10 @@ async def goi_llm_co_thu_lai(
     return await goi_co_thu_lai(
         llm,
         prompt,
-        so_lan_thu=so_lan_thu,
-        sleep=sleep,
-        in_ra=in_ra,
-        ten="LLM",
+        _so_lan_thu=so_lan_thu,
+        _sleep=sleep,
+        _in_ra=in_ra,
+        _ten="LLM",
         **tham_so,
     )
 

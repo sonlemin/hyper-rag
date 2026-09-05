@@ -35,6 +35,11 @@ nạp và nó không đi qua lớp thử lại nào khác. `bo_llm` **không** b
 đường LLM đã có lớp của mình ở trên nó (`adapters/trich_xuat._trich_mot_chunk`
 cho đường nạp, `eval/do_trich_xuat.goi_llm_co_thu_lai` cho đường đo), nên một
 lớp nữa ở đây cho 4x4 = 16 lần thử và kéo dài chính cửa sổ chặn nhịp.
+
+Và **SDK không được tự thử lại**: `AsyncOpenAI` dựng với `max_retries=0`
+(`SDK_KHONG_TU_THU_LAI`). Mặc định 2 của SDK nằm *dưới* lớp của `thu_lai.py`,
+nên nó nhân số request lên 3 lần và đi vòng qua đúng `Retry-After` cùng trần
+chờ mà lớp trên dựng ra để tôn trọng.
 """
 
 import asyncio
@@ -70,6 +75,12 @@ from core.ids import la_space_real
 from core.permission import PermissionContext, current_context
 
 logger = logging.getLogger(__name__)
+
+# Số lần SDK provider được phép tự thử lại **bên trong** một lời gọi. Bằng 0:
+# lớp thử lại duy nhất của hệ là `adapters/thu_lai.py`, và một lớp thứ hai nằm
+# dưới nó thì `SO_LAN_THU` cùng `TRAN_CHO_GIAY` không còn nói về số request
+# thật. Hằng có tên để test assert được vào nó thay vì vào con số 0.
+SDK_KHONG_TU_THU_LAI: int = 0
 
 
 def _in_thu_lai(thong_diep: str, **_) -> None:
@@ -211,8 +222,17 @@ class OpenAITuongThich:
     ):
         self.ten = ten
         self.extra_body = None if extra_body is None else _sao_chep_bang(extra_body)
+        # `max_retries=0` là **bắt buộc**, không phải một tinh chỉnh (story 2.13).
+        # Mặc định của SDK là 2, tức nó tự thử lại 429/5xx *bên trong* một lời
+        # gọi. Cộng với lớp thử lại của `adapters/thu_lai.py` thì một lời gọi
+        # thành 4 x 3 = 12 request, và tệ hơn: `Retry-After` cùng trần
+        # `TRAN_CHO_GIAY` bị SDK đi vòng, nên `ChanNhipQuaLau` không bao giờ nổ
+        # đúng lúc nó phải nổ. Nơi quyết định thử lại bao nhiêu lần và chờ bao
+        # lâu là `adapters/thu_lai.py`, đúng một chỗ.
         self._client = (
-            AsyncOpenAI(api_key=api_key, base_url=base_url) if client is None else client
+            AsyncOpenAI(api_key=api_key, base_url=base_url, max_retries=SDK_KHONG_TU_THU_LAI)
+            if client is None
+            else client
         )
 
     async def hoan_thanh(self, model: str, messages: list[dict], **kwargs) -> KetQuaLLM:
@@ -565,7 +585,11 @@ def bo_embedding(
         # không đi qua lớp nào cả - và nó là phần **đông** lời gọi của một đợt
         # nạp (159/209 ở đợt `khao_sat`), tức chỗ dễ chạm 429 nhất.
         ket_qua = await goi_co_thu_lai(
-            nha_cung_cap.nhung, muc.ten, van_ban, ten=f"embedding {muc.ten}", in_ra=_in_thu_lai
+            nha_cung_cap.nhung,
+            muc.ten,
+            van_ban,
+            _ten=f"embedding {muc.ten}",
+            _in_ra=_in_thu_lai,
         )
         _kiem_hinh_dang(ket_qua, len(van_ban), muc)
         await ghi_quan_sat(

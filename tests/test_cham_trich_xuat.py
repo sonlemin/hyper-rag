@@ -1267,6 +1267,110 @@ def test_so_do_nap_real_khop_dot_nap_04_09():
     assert do.chi_phi_llm_usd == 0.0 and do.chi_phi_embedding_usd == 0.0
 
 
+# Hai con số mà `--uoc-tinh` in ra **trước** đợt nạp `that_khu` ngày 05/09, chép
+# lại đây để đợt thật đối chiếu được với chúng. Chúng là nửa còn thiếu của phép
+# kiểm: một ước tính không ai so lại với hóa đơn là một ước tính không ai biết
+# đúng sai. Số lời gọi phải bằng **tuyệt đối** (nó là số đếm, bằng số chunk);
+# token vào thì được phép thấp hơn khoảng 25-30% vì nó không đếm phần bọc hội
+# thoại của provider, và `UocTinhDot.dong_in()` khai đúng điều đó.
+SO_LOI_GOI_UOC_TINH_THAT_KHU: int = 73
+TOKEN_VAO_UOC_TINH_THAT_KHU: int = 93669
+
+
+def test_so_do_nap_that_khu_khop_dot_nap_05_09():
+    """Khóa số của đợt nạp `that_khu` bằng DeepSeek (05/09) - **file đắt nhất của
+    khóa luận tính theo số tài liệu**, và trước vòng review 05/09 nó là file số
+    đo duy nhất không test nào ghim.
+
+    Bốn điều test này canh:
+
+    - **50/50 tài liệu vào kho, 0 mất.** Đối chứng thẳng với 41/50 của đợt Qwen:
+      9 tài liệu mà đường cục bộ đánh rơi vào được hết bằng DeepSeek, nên tỷ lệ
+      hao hụt 18% của story 2.11 là hao hụt của **bộ trích xuất**, không phải
+      của corpus.
+    - **73 lời gọi LLM, đúng bằng số `--uoc-tinh` đếm trước đợt.** Số lời gọi là
+      số đếm chính xác (bằng số chunk), nên hai con số phải bằng nhau tuyệt đối,
+      không "cùng bậc".
+    - **120.848 token vào so với 93.669 mà `--uoc-tinh` ước**, lệch +29% - đúng
+      khoảng "bọc hội thoại của provider 25-30%" mà `UocTinhDot.dong_in()` tự
+      khai, và đúng chiều nó cảnh báo. Ba con số này chỉ sống trong văn xuôi cho
+      tới vòng review 05/09.
+    - Token ra mỗi lời gọi LLM: 696 mỗi chunk, so với 1.403 của Qwen ở đợt
+      `real` trên **cùng 50 tài liệu đó** - dấu vân tay thứ tư của bộ trích xuất.
+    """
+    from pathlib import Path as _P
+
+    from eval.ngoai_suy import doc_so_do_nap
+
+    import json as _json
+
+    duong_dan = _P("eval/so_do_nap/nap-that-khu.json")
+    do = doc_so_do_nap(duong_dan)
+    assert (do.so_tai_lieu, do.so_tai_lieu_gui) == (50, 50)
+    assert (do.so_tai_lieu_khong_fact, do.so_tai_lieu_tu_choi) == (0, 0)
+    assert do.phan_hao_hut() == 0.0
+    assert (do.token_vao_llm, do.token_ra_llm) == (120848, 50794)
+    assert do.token_embedding == 144491
+    assert do.chi_phi_llm_usd == pytest.approx(0.1202212)
+    assert do.chi_phi_embedding_usd == pytest.approx(0.00288982)
+
+    # `so_lan` đọc thẳng từ file: `SoDoNap` gộp token và tiền chứ không giữ số
+    # lời gọi, mà đúng con số đó mới là chỗ ước tính và thực tế phải bằng nhau
+    # **tuyệt đối** - nó là số đếm, không phải ước lượng.
+    raw = _json.loads(duong_dan.read_text(encoding="utf-8"))
+    dong_llm = next(d for d in raw["theo_model"] if d["loai"] == "llm")
+    assert dong_llm["so_lan"] == SO_LOI_GOI_UOC_TINH_THAT_KHU
+    assert do.token_vao_llm / TOKEN_VAO_UOC_TINH_THAT_KHU == pytest.approx(1.29, abs=5e-3)
+    # Token ra mỗi chunk, dấu vân tay thứ tư của bộ trích xuất.
+    assert do.token_ra_llm / dong_llm["so_lan"] == pytest.approx(696, abs=1)
+
+
+def test_uoc_tinh_that_su_doc_duoc_ty_le_tu_eval_so_do_nap():
+    """`--uoc-tinh` phải **thật sự** lấy được tỷ lệ từ file đã commit.
+
+    Lỗ mà test này bịt (vòng review 05/09): mọi test khác của `--uoc-tinh` hoặc
+    dựng JSON riêng trong `tmp_path`, hoặc assert những chuỗi con mà **nhánh
+    fallback cũng in ra**. Đổi một khóa trong `api.dot_nap.so_do_nap` - `loai`,
+    `token_vao`, `token_ra` - là mọi lần chạy `--uoc-tinh` lặng lẽ rơi xuống
+    nhánh "chưa ước được": không in tổng tiền, không lỗi, và cả bộ test vẫn xanh.
+    """
+    from api.do_chi_phi import THU_MUC_SO_DO, ty_le_token_ra
+
+    ty_le = ty_le_token_ra("deepseek-v4-flash")
+    assert ty_le is not None, (
+        "không tra được tỷ lệ token ra/vào của DeepSeek trong eval/so_do_nap/:"
+        " lược đồ file số đo đã đổi và `--uoc-tinh` đang chạy nhánh fallback"
+    )
+    assert (THU_MUC_SO_DO / ty_le.nguon).exists()
+    assert 0.3 < ty_le.ty_le < 0.5, "ba đợt DeepSeek đã đo cho 0,38-0,42"
+    # Và tỷ lệ của Qwen phải khác hẳn - đó là cả lý do không dùng một hằng chung.
+    qwen = ty_le_token_ra("qwen2.5:7b")
+    assert qwen is not None and qwen.ty_le > 1.0
+
+
+def test_uoc_tinh_tren_thu_muc_that_khong_roi_xuong_nhanh_chua_uoc_duoc(tmp_path):
+    """Đầu ra của `--uoc-tinh` phải mang **tổng tiền**, không chỉ token vào.
+
+    "chưa ước được" là một nhánh hợp lệ (model chưa đo lần nào), nhưng nó không
+    được là nhánh mà một cấu hình đúng rơi vào. Assert vào vế phủ định vì mọi
+    chuỗi con của nhánh tốt cũng có ở nhánh fallback.
+    """
+    from api.do_chi_phi import uoc_tinh_dot
+    from core.ingest_scan import quet_cac_file
+
+    nguon = tmp_path / "a.md"
+    nguon.write_text(
+        "---\nscope: noi_bo\ncontent_type: runbook\n---\nmột thân tài liệu ngắn",
+        encoding="utf-8",
+    )
+    uoc = uoc_tinh_dot(quet_cac_file([nguon]), "deepseek-v4-flash", space="that_khu")
+    assert uoc.ty_le is not None and uoc.token_ra_uoc is not None
+    assert uoc.chi_phi_usd is not None and uoc.chi_phi_usd > 0
+    dong = uoc.dong_in()
+    assert "chưa ước được" not in dong
+    assert "đo được" in dong and "USD" in dong
+
+
 def test_so_tai_lieu_gui_nho_hon_so_nap_duoc_la_loi(tmp_path):
     """Không nạp được nhiều tài liệu hơn số gửi vào; hai số chống nhau trong
     cùng một file có commit thì ít nhất một cái sai."""

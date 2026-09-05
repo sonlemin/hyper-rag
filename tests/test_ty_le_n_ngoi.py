@@ -32,16 +32,19 @@ from eval.ty_le_n_ngoi import (
     NHAN_KHONG_KHOA,
     TOI_THIEU_VAI_N_NGOI,
     HangKhongXacDinh,
+    KhongCoTaiLieuChung,
     ThieuCotDoiChieu,
     TyLe,
     ba_ty_le,
     doi_chieu,
     entity_cua,
+    han_che_theo_tai_lieu,
     hang_cua_hyperedge,
     la_n_ngoi,
     loai_chung,
     loai_theo_doc_key,
     so_vai_da_dien,
+    tai_lieu_chung,
 )
 
 GOC_REPO = Path(__file__).resolve().parent.parent
@@ -111,6 +114,21 @@ THAT_KHU_N_NGOI = 488
 THAT_KHU_NHAY_CAM = 225
 THAT_KHU_NHAY_CAM_N_NGOI = 161
 THAT_KHU_COMPOSITION_RISK = 0
+
+# Số khóa của cột `that_khu` **hạn chế về 41 tài liệu có ở cả hai kho** - mẫu số
+# của *khối đối chứng*, không của bảng chính. Hai mẫu số và cả hai đều đúng:
+# bảng chính báo cáo `that_khu` trên cả 50 tài liệu (phép đo tốt nhất về hình
+# dạng tri thức), còn phép so hai bộ trích xuất phải đứng trên đúng tập tài liệu
+# có mặt ở cả hai vế - kho `real` chỉ có 41 vì Qwen làm rơi 9.
+#
+# Tính lại được ngay trong repo vì hai ảnh rút gọn dùng **chung một muối**: 41
+# `doc_key` đã băm của `real` là tập con thật sự của 50 `doc_key` của `that_khu`.
+THAT_KHU_CHUNG_TAI_LIEU = 41
+THAT_KHU_CHUNG_HYPEREDGE = 630
+THAT_KHU_CHUNG_N_NGOI = 405
+THAT_KHU_CHUNG_NHAY_CAM = 218
+THAT_KHU_CHUNG_NHAY_CAM_N_NGOI = 154
+THAT_KHU_CHUNG_COMPOSITION_RISK = 0
 
 # Ba hạng đóng băng từ story 2.1, ngưỡng nhạy cảm gắn vào số giữa.
 HANG_RUNBOOK = 10
@@ -1184,7 +1202,11 @@ def test_khoi_doi_chung_noi_ro_bo_trich_xuat_la_bien_duy_nhat(tmp_path):
         == 0
     )
     trang = dich.read_text(encoding="utf-8")
-    assert "Đối chứng Qwen / DeepSeek trên cùng 50 tài liệu" in trang
+    # Số tài liệu lấy từ chính hai ảnh, **không** chép cứng vào chuỗi: fixture
+    # này có đúng một tài liệu, và một câu "cùng 50 tài liệu" in trên nó là một
+    # câu nói về thư mục nguồn chứ không về hai thứ đang được so.
+    assert "Đối chứng Qwen / DeepSeek trên 1 tài liệu có ở cả hai kho" in trang
+    assert "50" not in trang.split("Đối chứng Qwen")[1].split("</div>")[0]
     assert "bộ trích xuất là biến duy nhất đi vào" in trang
     assert "bge-m3" in trang and "text-embedding-3-small" in trang
     assert "không vào phép đếm nào" in trang
@@ -1253,7 +1275,7 @@ def test_hai_cot_cung_ba_ty_le_thi_khoi_doi_chung_in_chenh_0(hang, tmp_path):
     """Đối chứng phải in được cả ca "không chênh", không chỉ ca có chênh."""
     import json
 
-    from eval.xem_ty_le import _khoi_doi_chung
+    from eval.xem_ty_le import _khoi_doi_chung, dung_doi_chung
 
     goc = json.loads(_anh_real(tmp_path).read_text(encoding="utf-8"))
     nhu_nhau = dict(goc, space="that_khu")
@@ -1261,13 +1283,53 @@ def test_hai_cot_cung_ba_ty_le_thi_khoi_doi_chung_in_chenh_0(hang, tmp_path):
     b = tmp_path / "b.json"
     a.write_text(json.dumps(goc, ensure_ascii=False), encoding="utf-8")
     b.write_text(json.dumps(nhu_nhau, ensure_ascii=False), encoding="utf-8")
-    cot = [
-        ba_ty_le(doc_anh_do_thi(ANH_SYNTH), hang),
-        ba_ty_le(doc_anh_do_thi(a), hang),
-        ba_ty_le(doc_anh_do_thi(b), hang),
-    ]
-    khoi = _khoi_doi_chung(cot)
+    anh = [doc_anh_do_thi(ANH_SYNTH), doc_anh_do_thi(a), doc_anh_do_thi(b)]
+    cot = [ba_ty_le(x, hang) for x in anh]
+    khoi = _khoi_doi_chung(dung_doi_chung(anh, cot, hang), cot[0])
     assert "chênh +0.0%" in khoi
+    # Hai kho chứa đúng cùng tập tài liệu, nên khối phải nói ra điều đó thay vì
+    # in một câu "bỏ ra 0 tài liệu" đọc như một phép hạn chế đã xảy ra.
+    assert "đứng trên cùng một mẫu số" in khoi
+
+
+def test_khoi_doi_chung_noi_ra_hai_mau_so_khac_nhau_o_dau(hang, tmp_path):
+    """Khối phải in **cả hai** số tài liệu khi hai kho lệch nhau.
+
+    Đây là finding nặng nhất của vòng review 05/09: câu "cùng 50 tài liệu" là
+    phát biểu về *thư mục nguồn*, còn hai kho có 41 và 50. Trang không được để
+    người đọc tự trừ, và càng không được khẳng định hai vế bằng nhau.
+    """
+    import json
+
+    from eval.xem_ty_le import _khoi_doi_chung, dung_doi_chung
+
+    r = json.loads(_anh_real(tmp_path).read_text(encoding="utf-8"))
+    # `that_khu` có thêm một tài liệu thứ hai mà `real` không có.
+    t = json.loads(_anh_that_khu(tmp_path).read_text(encoding="utf-8"))
+    t["tai_lieu"].append(
+        {"doc_key": "r2.md", "sha256": "1" * 64, "scope": "noi_bo",
+         "content_type": "bao_cao_su_co"}
+    )
+    t["hyperedge"].append(
+        {"id": "he-t2", "doc_key": ["r2.md"], "khoa": "noi_bo:bao_cao_su_co",
+         "slots": {"subject": ["C"], "cause": ["D"], "time": ["T"]}}
+    )
+    t["so_tai_lieu"], t["so_hyperedge"] = 2, 2
+    a, b = tmp_path / "r.json", tmp_path / "t.json"
+    a.write_text(json.dumps(r, ensure_ascii=False), encoding="utf-8")
+    b.write_text(json.dumps(t, ensure_ascii=False), encoding="utf-8")
+
+    anh = [doc_anh_do_thi(ANH_SYNTH), doc_anh_do_thi(a), doc_anh_do_thi(b)]
+    cot = [ba_ty_le(x, hang) for x in anh]
+    dc = dung_doi_chung(anh, cot, hang)
+    assert dc.so_tai_lieu_chung == 1
+    assert dc.that_khu_day_du.so_hyperedge == 2, "bảng chính vẫn báo cáo cả hai"
+    assert dc.that_khu.so_hyperedge == 1, "khối đối chứng chỉ tính tài liệu chung"
+
+    khoi = _khoi_doi_chung(dc, cot[0])
+    assert "Hai mẫu số, và chúng khác nhau" in khoi
+    assert "bỏ ra 1" in khoi
+    assert "trên 1 tài liệu có ở cả hai kho" in khoi
 
 
 def test_precision_ghep_cap_cuc_bo_khop_vong_do():
@@ -1333,33 +1395,137 @@ def test_hai_anh_that_dung_cung_muoi():
     assert a["muoi_id"] == b["muoi_id"] == "dffc42de62eed6e1"
 
 
-def test_doi_chung_hai_bo_trich_xuat_tren_cung_tap(hang):
-    """Phép đo có đối chứng: cùng 50 tài liệu, khác đúng bộ trích xuất.
+def test_hai_anh_dung_chung_muoi_va_cung_tap_tai_lieu():
+    """Tiền đề của cả phép đối chứng, kiểm **bằng máy** chứ không bằng `sha256sum` gõ tay.
+
+    Story chỉ khóa `muoi_id` là chưa đủ: cùng muối mới chỉ nói hai file băm bằng
+    một phép băm, chưa nói chúng chứa cùng tài liệu. Nhưng chính vì cùng muối,
+    ba điều dưới đây kiểm được **ngay trong repo**, không cần ảnh đầy đủ và
+    không cần kho đang chạy - `doc_key` đã băm của cùng một tên file là cùng một
+    chuỗi, và `sha256` đã băm của cùng một thân tài liệu cũng vậy.
+
+    Đó là "chỗ máy kiểm được" mà story nói tới; trước vòng review nó chỉ tồn tại
+    dưới dạng một dòng `sha256sum` gõ tay trên máy chủ, tức một phép kiểm không
+    ai chạy lại được.
+    """
+    real = doc_anh_do_thi(ANH_REAL)
+    tk = doc_anh_do_thi(ANH_THAT_KHU)
+
+    assert real.muoi_id == tk.muoi_id, "hai ảnh phải chụp bằng cùng một muối"
+    assert real.doc_key < tk.doc_key, (
+        "41 tài liệu của `real` phải là tập con **thật sự** của 50 tài liệu"
+        " `that_khu`: hai kho nạp từ cùng một thư mục nguồn, Qwen làm rơi 9"
+    )
+    sha_tk = {t.doc_key: t.sha256 for t in tk.tai_lieu}
+    nhan_tk = {t.doc_key: (t.scope, t.content_type) for t in tk.tai_lieu}
+    for t in real.tai_lieu:
+        assert t.sha256 == sha_tk[t.doc_key], (
+            f"thân tài liệu {t.doc_key} khác nhau giữa hai kho: mất phép đối chứng"
+        )
+        assert (t.scope, t.content_type) == nhan_tk[t.doc_key]
+
+
+def test_doi_chung_hai_bo_trich_xuat_tren_tap_tai_lieu_chung(hang):
+    """Phép đo có đối chứng, tính trên **41 tài liệu có ở cả hai kho**.
 
     Đây là thứ story 2.11 không dựng được và là lý do story 2.13 tồn tại. Ba dấu
     vân tay của 2.11 đo `real` với `synth` - hai tập tài liệu *khác nhau*, nên
-    chúng trộn hình dạng tri thức với chất lượng trích xuất. Ở đây tập là một.
-    """
-    real = ba_ty_le(doc_anh_do_thi(ANH_REAL), hang)
-    tk = ba_ty_le(doc_anh_do_thi(ANH_THAT_KHU), hang)
+    chúng trộn hình dạng tri thức với chất lượng trích xuất.
 
-    # Qwen đẩy **mọi** hyperedge lên >= 3 vai; DeepSeek để 32,2% ở 2 vai.
+    **Và hạn chế là bắt buộc, không phải một tinh chỉnh.** Thư mục nguồn đúng là
+    cùng 50 file từng byte, nhưng kho `real` chỉ có 41 - so 41 với 50 là trộn
+    thêm 9 tài liệu chỉ một vế có, vào đúng con số được gọi là "có đối chứng".
+    Vòng review 05/09 bắt được điều đó khi chênh đang ghi là +32,2 / +28,4; số
+    đúng là +35,7 / +29,4.
+    """
+    real_day_du = doc_anh_do_thi(ANH_REAL)
+    tk_day_du = doc_anh_do_thi(ANH_THAT_KHU)
+    chung = tai_lieu_chung(real_day_du, tk_day_du)
+    assert len(chung) == THAT_KHU_CHUNG_TAI_LIEU
+
+    real = ba_ty_le(han_che_theo_tai_lieu(real_day_du, chung), hang)
+    tk = ba_ty_le(han_che_theo_tai_lieu(tk_day_du, chung), hang)
+    assert tk.so_tai_lieu == THAT_KHU_CHUNG_TAI_LIEU
+    assert tk.so_hyperedge == THAT_KHU_CHUNG_HYPEREDGE
+    assert tk.overall_n_ary == TyLe(
+        "Overall N-ary", THAT_KHU_CHUNG_N_NGOI, THAT_KHU_CHUNG_HYPEREDGE
+    )
+    assert tk.sensitive_n_ary == TyLe(
+        "Sensitive N-ary", THAT_KHU_CHUNG_NHAY_CAM_N_NGOI, THAT_KHU_CHUNG_NHAY_CAM
+    )
+    assert tk.composition_risk == TyLe(
+        "Composition-Risk", THAT_KHU_CHUNG_COMPOSITION_RISK, THAT_KHU_CHUNG_NHAY_CAM
+    )
+    # `real` đã là 41 tài liệu nên phép hạn chế không đổi gì ở vế đó - nhưng nó
+    # phải được *chạy*, không được giả định: một lần nạp lại `real` là giả định
+    # đó sai và không gì báo.
+    assert real.so_hyperedge == REAL_HYPEREDGE
+
+    # Qwen đẩy **mọi** hyperedge lên >= 3 vai; DeepSeek để 35,7% ở 2 vai.
     assert real.phan_hyperedge_hai_vai() == 0.0
-    assert tk.phan_hyperedge_hai_vai() == pytest.approx(0.322, abs=5e-3)
-    # Vai `owner` là dấu rõ nhất: 96,5% so với 5,6% trên **cùng** tài liệu, mà
+    assert tk.phan_hyperedge_hai_vai() == pytest.approx(0.357, abs=5e-3)
+    # Vai `owner` là dấu rõ nhất: 96,5% so với 5,9% trên **cùng** tài liệu, mà
     # 30/41 tài liệu là runbook không nêu người phụ trách.
     assert real.phan_bo_vai["owner"] / real.so_hyperedge == pytest.approx(0.965, abs=5e-3)
-    assert tk.phan_bo_vai["owner"] / tk.so_hyperedge == pytest.approx(0.056, abs=5e-3)
+    assert tk.phan_bo_vai["owner"] / tk.so_hyperedge == pytest.approx(0.059, abs=5e-3)
     # Và `owner` phải là **vai lệch nhiều nhất** giữa hai cột, không phải một vai
     # tình cờ: đó mới là phát biểu "Qwen tự điền người phụ trách".
     assert real.vai_da_dien_nhieu_nhat(tk)[0] == "owner"
     # Chênh ba tỷ lệ, con số mà chương 4 trích.
     assert real.overall_n_ary.ti_le - tk.overall_n_ary.ti_le == pytest.approx(
-        0.322, abs=5e-3
+        0.357, abs=5e-3
     )
     assert real.sensitive_n_ary.ti_le - tk.sensitive_n_ary.ti_le == pytest.approx(
-        0.284, abs=5e-3
+        0.294, abs=5e-3
     )
+
+
+def test_han_che_giu_hyperedge_khi_moi_doc_key_nam_trong_tap_giu(hang):
+    """Luật giữ là "**mọi** `doc_key` trong tập giữ", không phải "có một".
+
+    Một hyperedge hợp nhất từ một tài liệu được giữ và một tài liệu bị bỏ tồn
+    tại *vì cả hai*, nên đếm nó là đếm một fact quy được một phần cho tài liệu
+    ngoài tập so. Trên hai ảnh thật của story 2.13 hai luật cho cùng con số
+    (không hyperedge nào đa nguồn), nên ca này phải dựng tay - nếu không lựa
+    chọn nằm trong code mà không có gì chấm.
+    """
+    anh = _anh(
+        [
+            _he("chi-a", "noi_bo:runbook", {"subject": ["x"]}, doc_key=("a.md",)),
+            _he("a-va-b", "noi_bo:runbook", {"subject": ["y"]}, doc_key=("a.md", "b.md")),
+            _he("chi-b", "noi_bo:runbook", {"subject": ["z"]}, doc_key=("b.md",)),
+        ],
+        tai_lieu=(("a.md", "noi_bo", "runbook"), ("b.md", "noi_bo", "runbook")),
+    )
+    giu = han_che_theo_tai_lieu(anh, {"a.md"})
+    assert [h.id for h in giu.hyperedge] == ["chi-a"]
+    assert giu.so_tai_lieu == 1
+    assert giu.so_hyperedge == 1
+
+
+def test_han_che_ve_tap_rong_la_loi_co_ma_khong_phai_anh_rong():
+    """Hai ảnh chụp bằng **hai muối khác nhau** cho phép giao rỗng.
+
+    Trả một ảnh rỗng thì ba tỷ lệ ra `None` và khối đối chứng in ba dòng "không
+    so được" - đọc như một kết quả chứ không như một lỗi cấu hình.
+    """
+    anh = _anh([_he("a", "noi_bo:runbook", {"subject": ["x"]})])
+    with pytest.raises(KhongCoTaiLieuChung) as loi:
+        han_che_theo_tai_lieu(anh, {"khong-co-file-nay.md"})
+    assert loi.value.code == "KHONG_CO_TAI_LIEU_CHUNG"
+
+
+def test_tai_lieu_chung_la_phep_giao_cua_moi_anh(hang):
+    a = _anh(
+        [_he("a", "noi_bo:runbook", {"subject": ["x"]}, doc_key=("a.md",))],
+        tai_lieu=(("a.md", "noi_bo", "runbook"), ("b.md", "noi_bo", "runbook")),
+    )
+    b = _anh(
+        [_he("b", "noi_bo:runbook", {"subject": ["x"]}, doc_key=("b.md",))],
+        tai_lieu=(("b.md", "noi_bo", "runbook"), ("c.md", "noi_bo", "runbook")),
+    )
+    assert tai_lieu_chung(a, b) == frozenset({"b.md"})
+    assert tai_lieu_chung(a) == frozenset({"a.md", "b.md"})
 
 
 def test_chan_doan_composition_risk_cua_that_khu(hang):
@@ -1376,3 +1542,89 @@ def test_chan_doan_composition_risk_cua_that_khu(hang):
     assert kq.so_nhay_cam_co_entity_lo == 6
     assert kq.so_nhay_cam_lo_mot_phan == 6
     assert kq.trung_binh_phan_entity_lo == pytest.approx(0.339, abs=5e-3)
+
+
+def test_hai_anh_khac_muoi_thi_tu_choi_ca_dot(tmp_path, capsys):
+    """Hai ảnh rút gọn chụp bằng **hai muối khác nhau** là từ chối, không phải in tiếp.
+
+    Đây là ca im lặng theo cách tệ nhất: hai muối cho hai tập id **rời nhau hoàn
+    toàn** dù thư mục nguồn là một, nên phép giao `doc_key` ra rỗng và mọi câu
+    hỏi dạng "entity này còn xuất hiện ở đâu" trả lời "không chỗ nào" - đúng
+    hình dạng của một kết quả, không của một lỗi.
+    """
+    import json
+
+    from eval.anh_rut_gon import rut_gon_anh
+    from eval.xem_ty_le import main
+
+    def rut(nguon: Path, muoi: str, ten: str) -> Path:
+        d = tmp_path / ten
+        d.write_text(
+            json.dumps(
+                rut_gon_anh(json.loads(nguon.read_text(encoding="utf-8")), muoi),
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        return d
+
+    a = rut(_anh_real(tmp_path), "muoi-mot-du-dai-0123456789abcdef", "real_rut_gon.json")
+    b = rut(
+        _anh_that_khu(tmp_path),
+        "muoi-hai-khac-han-0123456789abcdef",
+        "that_khu_rut_gon.json",
+    )
+    dich = tmp_path / "ty_le.html"
+    assert main([str(dich), "--anh-real", str(a), "--anh-that-khu", str(b)]) == 1
+    err = capsys.readouterr().err
+    assert "hai muối khác nhau" in err and "--muoi" in err
+    assert not dich.exists()
+
+
+def test_cung_muoi_thi_cap_anh_di_qua_rao(tmp_path):
+    """Nửa còn lại của rào: cùng muối thì không chặn gì."""
+    import json
+
+    from eval.anh_rut_gon import rut_gon_anh
+    from eval.xem_ty_le import ly_do_tu_choi_cap_muoi
+
+    muoi = "mot-muoi-duy-nhat-0123456789abcdef"
+    goi = []
+    for nguon, ten in ((_anh_real(tmp_path), "real_rut_gon.json"),
+                       (_anh_that_khu(tmp_path), "that_khu_rut_gon.json")):
+        d = tmp_path / ten
+        d.write_text(
+            json.dumps(
+                rut_gon_anh(json.loads(nguon.read_text(encoding="utf-8")), muoi),
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        goi.append(doc_anh_do_thi(d))
+    assert ly_do_tu_choi_cap_muoi(*goi) is None
+    # Ảnh **đầy đủ** không khai muối; cặp đó không bị rào này chạm tới.
+    assert ly_do_tu_choi_cap_muoi(
+        doc_anh_do_thi(_anh_real(tmp_path)), goi[1]
+    ) is None
+
+
+def test_canh_bao_qwen_chi_vao_cot_real_khong_vao_cot_that_khu(tmp_path, capsys):
+    """Hai bộ lọc `space_goc(...) == SPACE_REAL` nằm cách nhau ~350 dòng.
+
+    Chúng trôi khỏi nhau được, và mọi assert dạng "có chứa chuỗi" vẫn xanh khi
+    một lần gán nhầm cột dán nhãn Qwen lên `that_khu` - cột trích bằng DeepSeek.
+    Nên test này đếm số lần xuất hiện và chấm cả vế phủ định.
+    """
+    from eval.xem_ty_le import main
+
+    assert (
+        main([str(tmp_path / "x.html"), "--anh-real", str(_anh_real(tmp_path)),
+              "--anh-that-khu", str(_anh_that_khu(tmp_path))])
+        == 0
+    )
+    ra = capsys.readouterr().out
+    assert ra.count("KHÔNG khôi phục được mỏ neo Composition-Risk") == 1
+    assert "cột real KHÔNG khôi phục" in ra
+    assert "cột that_khu KHÔNG khôi phục" not in ra
+    assert ra.count("trích bằng Qwen 2.5 7B cục bộ") == 1
+    assert "cột that_khu trích bằng Qwen" not in ra

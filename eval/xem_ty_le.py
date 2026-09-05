@@ -44,12 +44,14 @@ import argparse
 import html
 import re
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Sequence
 
 from adapters.sensitivity_loader import DUONG_DAN_MAC_DINH as HANG_MAC_DINH
 from adapters.sensitivity_loader import SensitivityRanksInvalid, tai_hang_do_nhay
-from eval.anh_rut_gon import la_space_rut_gon, space_goc
+from core.ids import SPACE_REAL, SPACE_THAT_KHU
+from eval.anh_rut_gon import space_goc
 from eval.cau_hoi import AnhDoThiKhongHopLe, doc_anh_do_thi
 from eval.ty_le_n_ngoi import (
     NGUONG_NHAY_CAM,
@@ -57,11 +59,14 @@ from eval.ty_le_n_ngoi import (
     TOI_THIEU_VAI_N_NGOI,
     BaTyLe,
     HangKhongXacDinh,
+    KhongCoTaiLieuChung,
     ba_ty_le,
     doi_chieu,
     dong_tom_tat,
+    han_che_theo_tai_lieu,
     hop_hang,
     hop_loai,
+    tai_lieu_chung,
 )
 
 _GOC = Path(__file__).resolve().parent
@@ -81,15 +86,13 @@ ANH_KHAO_SAT: Path = _GOC / "anh_do_thi" / "khao_sat.json"
 # (`real_rut_gon`, có commit). Ba tỷ lệ ra bằng nhau trên hai dạng - đó chính là
 # tính chất làm bản rút gọn dùng được - còn tiêu đề cột thì khác, nên người đọc
 # trang luôn biết mình đang nhìn dạng nào.
-SPACE_REAL: str = "real"
 
-# Cột thứ tư (story 2.13): **cùng 50 tài liệu đã khử** của `real`, trích bằng
-# DeepSeek thay vì Qwen cục bộ. Tên space cố ý **không** khớp `core.ids
-# .la_space_real` (không phải `real`, không kết thúc `_real`), vì nó chạy
-# provider API ngoài **có chủ đích**: bản đã khử được phép ra API ngoài
-# (NFR-05), và ràng buộc cục bộ của AD-12 gắn với space `real` chứ không với bộ
-# dữ liệu. Cũng **không có mặc định**, cùng lý do với `--anh-real`.
-SPACE_THAT_KHU: str = "that_khu"
+# Hai tên space dưới đây **import từ `core/ids.py`**, không khai lại: luật
+# `la_space_real` sống ở đó, và một bản sao tên ở tầng này là chỗ hai bên trôi
+# khỏi nhau. Cột thứ tư (story 2.13) là **cùng tập tài liệu đã khử** của `real`,
+# trích bằng DeepSeek thay vì Qwen cục bộ; tên nó cố ý không khớp
+# `la_space_real` vì nó chạy provider API ngoài có chủ đích (ADR-013). Cũng
+# **không có mặc định**, cùng lý do với `--anh-real`.
 
 # Vòng đo chốt của story 2.6 và precision *ghép cặp* trên mẫu số tổng của nó -
 # cổng R2 chính thức (`eval/cham_trich_xuat.py`). Ghi ra trang vì ba tỷ lệ đứng
@@ -424,22 +427,66 @@ def _khoi_bo_trich_xuat_khac(bo: Sequence[BaTyLe]) -> str:
     )
 
 
-def _cot_cua(bo: Sequence[BaTyLe], space: str) -> BaTyLe | None:
-    """Cột của một space (nhận cả bản rút gọn), hoặc `None` nếu trang không có nó."""
-    for b in bo:
-        if space_goc(b.space) == space:
-            return b
-    return None
+@dataclass(frozen=True)
+class DoiChung:
+    """Phép đối chứng hai bộ trích xuất, tính trên **tập tài liệu chung**.
+
+    Vì sao nó là một kiểu riêng chứ không phải hai `BaTyLe` lấy thẳng từ bảng
+    chính: hai mẫu số **khác nhau và cả hai đều đúng**, mỗi cái trả lời một câu
+    hỏi khác.
+
+    - Bảng chính báo cáo `that_khu` trên **cả 50 tài liệu**. Đó là phép đo tốt
+      nhất về hình dạng tri thức thật, và không có lý do gì bỏ đi 9 tài liệu chỉ
+      vì một bộ trích xuất khác đã làm mất chúng.
+    - Khối đối chứng đo chênh giữa **hai bộ trích xuất**, nên nó phải đứng trên
+      đúng tập tài liệu có mặt ở cả hai kho. Thư mục nguồn đúng là cùng 50 file
+      từng byte, nhưng kho `real` chỉ có 41 - Qwen làm rơi 9. So 41 với 50 là
+      trộn 9 tài liệu một vế vào một con số được gọi là "có đối chứng".
+
+    `so_bo` là số tài liệu bị bỏ ra khỏi mỗi vế, để trang nói được ra chỗ hai
+    mẫu số khác nhau thay vì để người đọc tự trừ.
+    """
+
+    real: BaTyLe
+    that_khu: BaTyLe
+    real_day_du: BaTyLe
+    that_khu_day_du: BaTyLe
+    so_tai_lieu_chung: int
+
+
+def dung_doi_chung(
+    anh: Sequence, bo: Sequence[BaTyLe], hang: Mapping[str, int]
+) -> DoiChung | None:
+    """Dựng phép đối chứng từ ảnh chụp gốc; `None` khi trang thiếu một trong hai cột.
+
+    Nhận **ảnh chụp** chứ không chỉ `BaTyLe`: phép hạn chế cần danh sách tài
+    liệu và danh sách hyperedge, tức thứ `BaTyLe` đã đếm xong và vứt đi. Luật
+    hạn chế sống ở `eval/ty_le_n_ngoi.han_che_theo_tai_lieu`, có test riêng;
+    ở đây chỉ là chỗ nối.
+    """
+    cap = {}
+    for a, b in zip(anh, bo):
+        goc = space_goc(b.space)
+        if goc in (SPACE_REAL, SPACE_THAT_KHU):
+            cap[goc] = (a, b)
+    if SPACE_REAL not in cap or SPACE_THAT_KHU not in cap:
+        return None
+    (anh_r, cot_r), (anh_t, cot_t) = cap[SPACE_REAL], cap[SPACE_THAT_KHU]
+    chung = tai_lieu_chung(anh_r, anh_t)
+    return DoiChung(
+        real=ba_ty_le(han_che_theo_tai_lieu(anh_r, chung), hang),
+        that_khu=ba_ty_le(han_che_theo_tai_lieu(anh_t, chung), hang),
+        real_day_du=cot_r,
+        that_khu_day_du=cot_t,
+        so_tai_lieu_chung=len(chung),
+    )
 
 
 def dong_doi_chung(cot_real: BaTyLe, cot_that_khu: BaTyLe) -> list[str]:
-    """Chênh ba tỷ lệ giữa hai cột **cùng tập tài liệu**, `that_khu` làm mốc.
+    """Chênh ba tỷ lệ giữa hai cột đã hạn chế về cùng tập tài liệu.
 
-    Đây là phép đo có đối chứng mà story 2.11 không có: hai cột chứa cùng 50 tài
-    liệu đã khử, cùng từng byte, nên chênh giữa chúng không trộn được với chênh
-    về hình dạng tri thức. Mốc là `that_khu` vì nó là cột **cùng bộ trích xuất
-    với `synth`**, tức cột duy nhất trong hai cột này neo được vào một precision
-    đã đo.
+    Mốc là `that_khu` vì nó là cột **cùng bộ trích xuất với `synth`**, tức cột
+    duy nhất trong hai cột này neo được vào một precision đã đo.
     """
     ra: list[str] = []
     for a, b in zip(cot_real.bo_ba(), cot_that_khu.bo_ba()):
@@ -454,37 +501,85 @@ def dong_doi_chung(cot_real: BaTyLe, cot_that_khu: BaTyLe) -> list[str]:
     return ra
 
 
+def cau_ve_mau_so(dc: DoiChung) -> str:
+    """Một câu nói ra hai mẫu số khác nhau ở chỗ nào; không con số nào chép cứng."""
+    bo_r = dc.real_day_du.so_tai_lieu - dc.so_tai_lieu_chung
+    bo_t = dc.that_khu_day_du.so_tai_lieu - dc.so_tai_lieu_chung
+    if not bo_r and not bo_t:
+        return (
+            f"Hai kho chứa đúng cùng <b>{dc.so_tai_lieu_chung}</b> tài liệu, nên"
+            " khối này và bảng chính đứng trên cùng một mẫu số."
+        )
+    phan = []
+    if bo_t:
+        phan.append(
+            f"<code>{html.escape(dc.that_khu_day_du.space)}</code> có"
+            f" <b>{dc.that_khu_day_du.so_tai_lieu}</b> tài liệu trong kho (bỏ ra {bo_t})"
+        )
+    if bo_r:
+        phan.append(
+            f"<code>{html.escape(dc.real_day_du.space)}</code> có"
+            f" <b>{dc.real_day_du.so_tai_lieu}</b> (bỏ ra {bo_r})"
+        )
+    return (
+        "<b>Hai mẫu số, và chúng khác nhau.</b> Thư mục nguồn của hai space là"
+        " cùng một tập file, cùng nội dung từng byte; hai <i>kho</i> thì không - "
+        + ", ".join(phan)
+        + f". Khối này vì vậy tính lại ba tỷ lệ trên <b>{dc.so_tai_lieu_chung}</b>"
+        " tài liệu có mặt ở <b>cả hai</b> kho, còn bảng chính bên dưới báo cáo mỗi"
+        " cột trên toàn bộ kho của nó - đó mới là phép đo tốt nhất về hình dạng tri"
+        " thức của từng cột. So thẳng hai cột của bảng chính là trộn vào chênh"
+        " lệch cả phần tài liệu chỉ một vế có."
+    )
+
+
 def cau_ve_mo_neo(cot_that_khu: BaTyLe, moc: BaTyLe) -> str:
     """Phát biểu về mỏ neo Composition-Risk, dựng từ **chính hai cột**, không chép tay.
 
     Story 2.10 mất mỏ neo khi mẫu số chuyển sang 50 bản ghi giả lập do chính bên
     dựng corpus viết; story 2.11 không lấy lại được vì cột `real` trích bằng một
     bộ trích xuất khác nên chênh của nó không đọc được. Cột `that_khu` đóng đúng
-    lỗ đó: **tài liệu thật, cùng bộ trích xuất với cột mốc**, nên chênh của nó
-    nói về hình dạng tri thức chứ không về bộ trích xuất.
+    lỗ đó: tài liệu thật, cùng bộ trích xuất với cột mốc, nên chênh của nó nói
+    về hình dạng tri thức chứ không về bộ trích xuất.
 
-    Câu vẫn phải nêu điều còn lại chưa khử được, và đó là hai thứ: hai cột không
-    cùng trục loại nội dung, và precision của DeepSeek đo trên corpus dựng chứ
-    chưa đo trên tài liệu công ty.
+    **Con số quan trọng không phải số 0 mà là số ca nhạy cảm có nổi *một* entity
+    còn lộ.** Composition-Risk bằng 0 đọc được hai cách hoàn toàn khác nhau - 0
+    vì luôn còn đúng một mảnh không lộ, hay 0 vì gần như không mảnh nào lộ - và
+    chỉ cách thứ hai mới nói rằng mỏ neo đang bị chặn trên bởi lỗ chuẩn hóa thực
+    thể của story 2.12. Số đó có sẵn ở `so_nhay_cam_co_entity_lo`, nên câu kết
+    luận in thẳng nó ra thay vì đẩy người đọc xuống cuối trang.
+
+    **Gọi với cột `that_khu` của bảng chính, không với cột đã hạn chế.** Kết luận
+    này nói về phép đo được báo cáo - toàn bộ kho của cột đó - còn phép hạn chế
+    về tập tài liệu chung chỉ phục vụ việc so hai bộ trích xuất. Trộn hai mẫu số
+    ở đây là để chương 4 trích một con số mà không bảng nào trên trang in ra.
+
+    Câu vẫn phải nêu điều còn lại chưa khử được: hai cột không cùng trục loại
+    nội dung, và precision của DeepSeek đo trên corpus dựng chứ chưa đo trên tài
+    liệu công ty.
     """
     cr, cr_moc = cot_that_khu.composition_risk, moc.composition_risk
+    lo, lo_moc = cot_that_khu.so_nhay_cam_co_entity_lo, moc.so_nhay_cam_co_entity_lo
     if cr.mau_so == 0:
         do = "mẫu số nhạy cảm rỗng nên tỷ lệ 3 không tính được"
-    elif cr.tu_so == 0 and cr_moc.tu_so == 0:
-        do = (
-            f"cả hai cột cùng ra 0 ({cr.mo_ta()} so với {cr_moc.mo_ta()} ở"
-            f" <code>{html.escape(moc.space)}</code>) - một số 0 đo được trên tài"
-            " liệu thật, không phải một mẫu số hỏng; ba số chẩn đoán ở cuối trang"
-            " nói nó là 0 vì luôn còn đúng một mảnh không lộ hay vì không mảnh nào lộ"
-        )
     else:
         do = (
             f"{cr.mo_ta()} so với {cr_moc.mo_ta()} ở"
             f" <code>{html.escape(moc.space)}</code>"
         )
+        if cr.tu_so == 0:
+            do += (
+                ", và <b>số 0 đó bị chặn trên bởi lỗ của story 2.12</b>: chỉ"
+                f" <b>{lo}/{cr.mau_so}</b> ca nhạy cảm có nổi <i>một</i> entity còn"
+                f" lộ ở vùng không nhạy cảm ({lo_moc}/{cr_moc.mau_so} ở"
+                f" <code>{html.escape(moc.space)}</code>). Hai tài liệu thật gần"
+                " như không bao giờ sinh chung một id entity vì chuẩn hóa thực thể"
+                " chưa làm, nên số 0 này nói <b>chưa chuẩn hóa</b>, không nói tri"
+                " thức doanh nghiệp kín"
+            )
     return (
         f"<b>Mỏ neo Composition-Risk:</b> cột <code>{html.escape(cot_that_khu.space)}</code>"
-        " đo trên **tài liệu thật** bằng **cùng bộ trích xuất** với cột mốc"
+        " đo trên <b>tài liệu thật</b> bằng <b>cùng bộ trích xuất</b> với cột mốc"
         f" <code>{html.escape(moc.space)}</code>, nên chênh của nó đọc được như một"
         f" phát biểu về hình dạng tri thức. Kết quả: {do}."
         " Hai điều còn lại chưa khử được: hai cột vẫn không cùng trục loại nội dung"
@@ -494,37 +589,38 @@ def cau_ve_mo_neo(cot_that_khu: BaTyLe, moc: BaTyLe) -> str:
     )
 
 
-def _khoi_doi_chung(bo: Sequence[BaTyLe]) -> str:
-    """Khối đối chứng Qwen/DeepSeek trên **cùng 50 tài liệu** (story 2.13).
+def _khoi_doi_chung(dc: DoiChung | None, moc: BaTyLe) -> str:
+    """Khối đối chứng Qwen/DeepSeek trên **tập tài liệu chung** (story 2.13).
 
     Chỉ in khi trang có cả hai cột. Story 2.11 chỉ mô tả được chênh giữa hai bộ
-    trích xuất bằng ba dấu vân tay trên hai tập *khác nhau*; ở đây tập là một,
-    nên cùng ba dấu đó thành một phép đo có đối chứng.
+    trích xuất bằng ba dấu vân tay trên hai tập *khác nhau*; ở đây tập là một, và
+    khối tự nói ra tập đó gồm bao nhiêu tài liệu và mỗi vế bỏ ra bao nhiêu.
     """
-    cot_real = _cot_cua(bo, SPACE_REAL)
-    cot_tk = _cot_cua(bo, SPACE_THAT_KHU)
-    if cot_real is None or cot_tk is None:
+    if dc is None:
         return ""
-    dau = "".join(f"<li>{d}</li>" for d in dau_van_tay_bo_trich_xuat(cot_real, cot_tk))
-    chenh = "".join(f"<li>{d}</li>" for d in dong_doi_chung(cot_real, cot_tk))
+    dau = "".join(f"<li>{d}</li>" for d in dau_van_tay_bo_trich_xuat(dc.real, dc.that_khu))
+    chenh = "".join(f"<li>{d}</li>" for d in dong_doi_chung(dc.real, dc.that_khu))
     return (
-        '<div class="canh-bao"><b>Đối chứng Qwen / DeepSeek trên cùng 50 tài liệu.</b>'
-        f" Cột <code>{html.escape(cot_real.space)}</code> và cột"
-        f" <code>{html.escape(cot_tk.space)}</code> chứa <b>cùng một tập tài liệu đã"
-        " khử</b>, cùng nội dung từng byte; <b>bộ trích xuất là biến duy nhất đi vào"
-        " ba tỷ lệ</b> (Qwen 2.5 7B cục bộ so với DeepSeek)."
+        '<div class="canh-bao"><b>Đối chứng Qwen / DeepSeek trên'
+        f" {dc.so_tai_lieu_chung} tài liệu có ở cả hai kho.</b>"
+        f" Cột <code>{html.escape(dc.real_day_du.space)}</code> và cột"
+        f" <code>{html.escape(dc.that_khu_day_du.space)}</code> nạp từ <b>cùng một"
+        " thư mục nguồn</b>, cùng nội dung từng byte; trên tập tài liệu chung thì"
+        " <b>bộ trích xuất là biến duy nhất đi vào ba tỷ lệ</b> (Qwen 2.5 7B cục bộ"
+        " so với DeepSeek)."
         " Model embedding cũng khác (<code>bge-m3</code> so với"
         " <code>text-embedding-3-small</code>), nhưng ba định nghĩa đếm của ADR-012"
         " đọc số vai được điền, hạng theo <code>content_type</code> và entity chung"
         " giữa các hyperedge - <b>không đọc một vector nào</b>, nên model embedding"
         " không vào phép đếm nào."
-        f"<br>Ba tỷ lệ, hai cột:<ul>{chenh}</ul>"
+        f"<br>{cau_ve_mau_so(dc)}"
+        f"<br>Ba tỷ lệ, hai cột trên tập chung:<ul>{chenh}</ul>"
         f"Ba dấu vân tay của bộ trích xuất, tính từ chính hai ảnh chụp:<ol>{dau}</ol>"
-        f"{cau_ve_mo_neo(cot_tk, bo[0])}</div>"
+        f"{cau_ve_mo_neo(dc.that_khu_day_du, moc)}</div>"
     )
 
 
-def dung_html(*bo: BaTyLe, ten_hang: Mapping[int, str]) -> str:
+def dung_html(*bo: BaTyLe, ten_hang: Mapping[int, str], doi_chung: DoiChung | None = None) -> str:
     """Dựng toàn bộ trang từ N kết quả đã tính. Hàm thuần, không I/O.
 
     Cột đầu là mốc của mọi phép chênh. Chữ ký cũ hai vị trí vẫn gọi được, chỉ
@@ -561,7 +657,7 @@ def dung_html(*bo: BaTyLe, ten_hang: Mapping[int, str]) -> str:
         f" còn xuất hiện ở ít nhất một hyperedge không nhạy cảm. Trang này đọc hai ảnh"
         f" chụp đã commit, không chạm kho.</p>"
         f"{_khoi_bo_trich_xuat_khac(bo)}"
-        f"{_khoi_doi_chung(bo)}"
+        f"{_khoi_doi_chung(doi_chung, bo[0])}"
         f"{tom_tat}"
         f"<h2>Ba tỷ lệ, {len(bo)} cột cạnh nhau</h2>"
         f'<p class="chu">Mọi chênh lệch tính so với cột mốc'
@@ -664,6 +760,32 @@ def ly_do_tu_choi_anh(duong_dan, space: str, anh) -> str | None:
     )
 
 
+def ly_do_tu_choi_cap_muoi(a, b) -> str | None:
+    """Lý do từ chối một cặp ảnh **rút gọn** chụp bằng hai muối khác nhau.
+
+    Ca này im lặng theo cách tệ nhất. Hai ảnh băm bằng hai muối khác nhau cho
+    hai tập id **rời nhau hoàn toàn** dù thư mục nguồn là một, nên phép giao
+    `doc_key` ra rỗng và mọi câu hỏi dạng "entity này còn xuất hiện ở đâu" trả
+    lời "không chỗ nào" - đúng hình dạng của một kết quả, không của một lỗi.
+
+    Chỉ áp khi **cả hai** ảnh tự khai muối. Một ảnh đầy đủ (`muoi_id` là `None`)
+    mang id thật nên nó so được với chính nó, còn cặp đầy đủ + rút gọn thì đã
+    hỏng ở chỗ khác và `han_che_theo_tai_lieu` dội `KhongCoTaiLieuChung`.
+
+    Hàm thuần để test chấm được hai chiều mà không cần dựng file.
+    """
+    if a.muoi_id is None or b.muoi_id is None or a.muoi_id == b.muoi_id:
+        return None
+    return (
+        f"ảnh chụp {a.space!r} mang muoi_id {a.muoi_id!r} còn {b.space!r} mang"
+        f" {b.muoi_id!r}: hai bản rút gọn chụp bằng **hai muối khác nhau**. Mọi id"
+        " của hai file là hai tập rời nhau dù thư mục nguồn là một, nên khối đối"
+        " chứng sẽ không tìm thấy một tài liệu chung nào và in ra điều đó như một"
+        " kết quả. Chụp lại một trong hai bằng đúng muối của bên kia"
+        " (--muoi /root/hyper-rag-data/muoi-anh-rut-gon.txt)"
+    )
+
+
 def _doc(duong_dan: Path, space: str):
     """Đọc một ảnh chụp, kiểm nó đúng space của cột; thiếu file thì nói luôn lệnh dựng lại."""
     if not Path(duong_dan).exists():
@@ -696,8 +818,18 @@ def main(argv: list[str] | None = None) -> int:
             anh.append(_doc(ts.anh_real, SPACE_REAL))
         if ts.anh_that_khu is not None:
             anh.append(_doc(ts.anh_that_khu, SPACE_THAT_KHU))
+        if ts.anh_real is not None and ts.anh_that_khu is not None:
+            ly_do = ly_do_tu_choi_cap_muoi(anh[-2], anh[-1])
+            if ly_do:
+                raise AnhDoThiKhongHopLe([ly_do])
         bo = tuple(ba_ty_le(a, hang) for a in anh)
-    except (AnhDoThiKhongHopLe, HangKhongXacDinh, SensitivityRanksInvalid) as loi:
+        doi_chung = dung_doi_chung(anh, bo, hang)
+    except (
+        AnhDoThiKhongHopLe,
+        HangKhongXacDinh,
+        KhongCoTaiLieuChung,
+        SensitivityRanksInvalid,
+    ) as loi:
         print(str(loi), file=sys.stderr)
         return 1
 
@@ -706,7 +838,9 @@ def main(argv: list[str] | None = None) -> int:
     dich = Path(ts.dich) if ts.dich is not None else DUONG_DAN_HTML
     try:
         dich.parent.mkdir(parents=True, exist_ok=True)
-        dich.write_text(dung_html(*bo, ten_hang=ten_hang), encoding="utf-8")
+        dich.write_text(
+            dung_html(*bo, ten_hang=ten_hang, doi_chung=doi_chung), encoding="utf-8"
+        )
     except OSError as loi:
         print(f"không ghi được {dich}: {loi}", file=sys.stderr)
         return 1
@@ -760,18 +894,19 @@ def main(argv: list[str] | None = None) -> int:
             f"  => cột {b.space} KHÔNG khôi phục được mỏ neo Composition-Risk mà"
             " story 2.10 mất"
         )
-    cot_real, cot_tk = _cot_cua(bo, SPACE_REAL), _cot_cua(bo, SPACE_THAT_KHU)
-    if cot_real is not None and cot_tk is not None:
+    if doi_chung is not None:
         print(
-            f"đối chứng {cot_real.space} / {cot_tk.space}: cùng 50 tài liệu đã khử,"
-            " cùng nội dung từng byte - bộ trích xuất là biến duy nhất đi vào ba tỷ"
-            " lệ (model embedding khác nhau nhưng không vào phép đếm nào của ADR-012):"
+            f"đối chứng {doi_chung.real_day_du.space} / {doi_chung.that_khu_day_du.space}"
+            f" trên {doi_chung.so_tai_lieu_chung} tài liệu có ở cả hai kho - bộ trích"
+            " xuất là biến duy nhất đi vào ba tỷ lệ (model embedding khác nhau nhưng"
+            " không vào phép đếm nào của ADR-012):"
         )
-        for d in dong_doi_chung(cot_real, cot_tk):
+        print("  - " + _bo_the(cau_ve_mau_so(doi_chung)))
+        for d in dong_doi_chung(doi_chung.real, doi_chung.that_khu):
             print("  - " + _bo_the(d))
-        for d in dau_van_tay_bo_trich_xuat(cot_real, cot_tk):
+        for d in dau_van_tay_bo_trich_xuat(doi_chung.real, doi_chung.that_khu):
             print("  - " + _bo_the(d))
-        print("  => " + _bo_the(cau_ve_mo_neo(cot_tk, trai)))
+        print("  => " + _bo_the(cau_ve_mo_neo(doi_chung.that_khu_day_du, trai)))
     print(f"ghi {dich}")
     return 0
 

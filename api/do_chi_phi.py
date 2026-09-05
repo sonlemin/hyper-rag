@@ -36,6 +36,7 @@ import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Mapping
 
 from adapters.chunking import cau_hinh_chunk, chia_chunk, dem_token
 from adapters.ingest import (
@@ -89,9 +90,11 @@ TIEN_TO_LENH: str = "uv run python -m api.do_chi_phi"
 CO_UOC_TINH: str = "--uoc-tinh"
 
 # Thư mục file số đo của các đợt đã chạy. `--uoc-tinh` đọc nó để lấy tỷ lệ
-# token ra/vào **đo được**, không dùng một hằng: Qwen cho 1,04 còn DeepSeek cho
-# 0,38-0,39, lệch nhau gần ba lần, nên một hằng chung cho cả hai là một con số
-# không nói về đợt nào. Đọc *file dữ liệu*, không import `eval/`: chiều import
+# token ra/vào **đo được**, không dùng một hằng: đường cục bộ và đường API ngoài
+# lệch nhau khoảng ba lần, nên một hằng chung cho cả hai là một con số không nói
+# về đợt nào. Khoảng cụ thể của từng model **đọc lại từ file mỗi lần chạy**
+# (`khoang_ty_le_da_do`), không chép vào bình luận này: một con số chép ở đây
+# lỗi thời ngay ở đợt kế. Đọc *file dữ liệu*, không import `eval/`: chiều import
 # cấm `api/` -> `eval/` (`tests/test_import_lint.py`).
 THU_MUC_SO_DO: Path = REPO_ROOT / "eval" / "so_do_nap"
 
@@ -237,6 +240,32 @@ def ty_le_token_ra(model: str, thu_muc: Path | None = None) -> TyLeTokenRa | Non
     return None
 
 
+# Số đợt tối đa nêu tên trong dòng "embedding chiếm bao nhiêu". Không có trần
+# thì dòng đó dài thêm mỗi lần nạp, và một dòng dài dần là một dòng người ta
+# thôi đọc. Ba đợt gần nhất đủ để thấy con số ổn định hay không; phần còn lại
+# gộp thành một khoảng.
+SO_DOT_NEU_TEN_EMBEDDING: int = 3
+
+
+def khoang_ty_le_da_do(thu_muc: Path | None = None) -> dict[str, tuple[float, float]]:
+    """`{model: (tỷ lệ nhỏ nhất, lớn nhất)}` trên mọi đợt đã đo. Đọc lại từ file.
+
+    Dùng cho một câu duy nhất: nói vì sao token ra **không** ước bằng một hằng
+    chung. Câu đó từng chép cứng "Qwen 1,04 và DeepSeek 0,38-0,39", và nó sai
+    ngay ở đợt DeepSeek thứ ba (0,42). Một câu giải thích mà tự nó lỗi thời thì
+    người đọc mất luôn lý do tin phần còn lại của dòng.
+    """
+    gom: dict[str, list[float]] = {}
+    for d in cac_so_do_nap(thu_muc):
+        for dong in d["theo_model"]:
+            if not isinstance(dong, dict) or dong.get("loai") != LOAI_LLM:
+                continue
+            vao, ra = dong.get("token_vao"), dong.get("token_ra")
+            if isinstance(vao, int) and isinstance(ra, int) and vao > 0:
+                gom.setdefault(str(dong.get("model")), []).append(ra / vao)
+    return {m: (min(v), max(v)) for m, v in sorted(gom.items())}
+
+
 def phan_embedding_da_do(thu_muc: Path | None = None) -> list[tuple[str, float]]:
     """`[(tên file, phần USD của embedding)]` của những đợt **có trả tiền**.
 
@@ -277,7 +306,9 @@ class UocTinhDot:
       theo một hằng; chưa đo lần nào thì không ước.
 
     Embedding không có mặt trong con số tiền, chỉ có mặt trong một dòng nói phần
-    nó đã chiếm ở các đợt đã trả tiền.
+    nó đã chiếm ở các đợt đã trả tiền - **đọc lại từ file mỗi lần chạy**, không
+    chép cứng: ba đợt DeepSeek tính tới 05/09 cho 1,9%, 2,3% và 2,3%, và một câu
+    "hai đợt" viết cứng ở đây sẽ sai ngay ở đợt thứ ba.
     """
 
     model: str
@@ -291,6 +322,17 @@ class UocTinhDot:
     chi_phi_usd: float | None
     chi_phi_vao_usd: float
     phan_embedding: tuple[tuple[str, float], ...]
+    khoang_ty_le: Mapping[str, tuple[float, float]]
+
+    def _vi_sao_khong_hang(self) -> str:
+        """Câu giải thích "không dùng một hằng chung", dựng từ chính các đợt đã đo."""
+        if len(self.khoang_ty_le) < 2:
+            return ""
+        phan = ", ".join(
+            f"{m} {a:.2f}" if a == b else f"{m} {a:.2f}-{b:.2f}"
+            for m, (a, b) in self.khoang_ty_le.items()
+        )
+        return f", không theo một hằng chung: {phan}"
 
     def dong_in(self) -> str:
         dong = [
@@ -312,19 +354,27 @@ class UocTinhDot:
                 f"  Token ra ước {self.token_ra_uoc} theo tỷ lệ ra/vào"
                 f" **{self.ty_le.ty_le:.3f} đo được** ở {self.ty_le.nguon}"
                 f" ({self.ty_le.token_ra}/{self.ty_le.token_vao}, đợt"
-                f" {self.ty_le.ngay[:10]}), không theo một hằng: Qwen cục bộ cho"
-                " 1,04 còn DeepSeek cho 0,38-0,39."
+                f" {self.ty_le.ngay[:10]}){self._vi_sao_khong_hang()}."
             )
             dong.append(
                 f"  Khoảng **{self.chi_phi_usd:.6f} USD** theo đơn giá danh mục"
                 f" (riêng token vào {self.chi_phi_vao_usd:.6f})."
             )
         if self.phan_embedding:
-            phan = ", ".join(f"{p:.1%} ({ten})" for ten, p in self.phan_embedding)
+            neu_ten = self.phan_embedding[:SO_DOT_NEU_TEN_EMBEDDING]
+            phan = ", ".join(f"{p:.1%} ({ten})" for ten, p in neu_ten)
+            con_lai = len(self.phan_embedding) - len(neu_ten)
+            if con_lai:
+                khac = [p for _, p in self.phan_embedding[len(neu_ten):]]
+                phan += (
+                    f"; {con_lai} đợt cũ hơn trong khoảng"
+                    f" {min(khac):.1%}-{max(khac):.1%}"
+                )
             dong.append(
                 f"  Embedding **không được ước**: số lời gọi của nó phụ thuộc số"
                 " entity và hyperedge mà LLM sắp sinh ra, tức phụ thuộc đúng thứ"
-                f" chưa chạy. Ở các đợt đã trả tiền nó chiếm {phan} tổng USD."
+                f" chưa chạy. Ở {len(self.phan_embedding)} đợt đã trả tiền nó chiếm"
+                f" {phan} tổng USD."
             )
         else:
             dong.append(
@@ -370,6 +420,7 @@ def uoc_tinh_dot(
         chi_phi_usd=None if token_ra is None else muc.chi_phi_usd(token_vao, token_ra),
         chi_phi_vao_usd=muc.chi_phi_usd(token_vao, 0),
         phan_embedding=tuple(phan_embedding_da_do(thu_muc_so_do)),
+        khoang_ty_le=khoang_ty_le_da_do(thu_muc_so_do),
     )
 
 
