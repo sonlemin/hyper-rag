@@ -44,6 +44,7 @@ from neo4j.exceptions import (
     ServiceUnavailable,
 )
 
+from adapters.cua_khoa_doc import khoa_doc
 from adapters.doi_chieu import KHO_GRAPH, ghi_vao_so, ten_kho_vector
 from adapters.ingest_labels import (
     bat_buoc_ngu_canh_he_thong,
@@ -433,10 +434,11 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
 
     def _tham_so_loc(self, context) -> dict:
         tham_so = {"space": context.space}
-        if not context.bypass_filter:
+        loc_theo = khoa_doc(context, GRAPH_NAMESPACE).loc_theo
+        if loc_theo is not None:
             # sorted() để hai lần gọi cùng tập khóa ra cùng một câu, thứ giúp
             # so sánh giữa các lần chạy và đọc log dễ hơn.
-            tham_so["keys"] = sorted(context.keys_for(GRAPH_NAMESPACE))
+            tham_so["keys"] = sorted(loc_theo)
         return tham_so
 
     def _co_khoa_de_doc(self, context) -> bool:
@@ -445,8 +447,12 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
         Gửi `IN []` là nhờ Neo4j lọc hộ một danh sách rỗng: đúng kết quả nhưng
         sai nguyên tắc, vì nó biến "không có quyền" thành một truy vấn bình
         thường. Nhánh đúng là không chạm kho.
+
+        Luật sống ở `adapters/cua_khoa_doc.py`, dùng chung với hai adapter kia
+        (retro Epic 1 F5). Method này giữ nguyên tên và nguyên chữ ký để mọi
+        điểm gọi cùng mọi test cũ không đổi.
         """
-        return context.bypass_filter or bool(context.keys_for(GRAPH_NAMESPACE))
+        return not khoa_doc(context, GRAPH_NAMESPACE).khong_thay_gi
 
     async def _chay(self, cypher: str, *, ghi: bool = False, **tham_so) -> list[dict]:
         """Một chỗ duy nhất gửi Cypher đi, để không có đường đọc thứ hai.

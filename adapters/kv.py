@@ -51,6 +51,7 @@ from pathlib import Path
 
 from hypergraphrag.base import BaseKVStorage
 
+from adapters.cua_khoa_doc import khoa_doc
 from adapters.doi_chieu import ghi_vao_so, ten_kho_kv, ten_kho_vector
 from adapters.ingest_labels import (
     IngestLabelMissing,
@@ -250,10 +251,12 @@ class JsonACLKVStorage(BaseKVStorage):
         Ngữ cảnh hệ thống không mang `allowed_keys` và hỏi nó là lỗi lập
         trình, nên "đọc thô" phải là một giá trị riêng chứ không phải một tập
         rỗng: tập rỗng ở đây có nghĩa ngược hẳn - vai không thấy gì cả.
+
+        Luật sống ở `adapters/cua_khoa_doc.py` (retro Epic 1 F5); hai method
+        này giữ nguyên chữ ký vì đường đọc KV lọc từng bản ghi nên nó cần đúng
+        hình dạng `frozenset | None`.
         """
-        if context.bypass_filter:
-            return None
-        return context.keys_for(KV_PERMISSION_NAMESPACE)
+        return khoa_doc(context, KV_PERMISSION_NAMESPACE).loc_theo
 
     @staticmethod
     def _khong_thay_gi(khoa_duoc_phep) -> bool:
@@ -261,6 +264,9 @@ class JsonACLKVStorage(BaseKVStorage):
 
         Nạp file rồi lọc ra hết cũng cho cùng kết quả, nhưng nó biến "không có
         quyền" thành một lần đọc kho bình thường. Nhánh đúng là không chạm.
+
+        Nhận *giá trị* chứ không nhận context, vì bốn điểm gọi đều đã có
+        `khoa_duoc_phep` trong tay và hỏi lại context là hỏi hai lần một câu.
         """
         return khoa_duoc_phep is not None and not khoa_duoc_phep
 

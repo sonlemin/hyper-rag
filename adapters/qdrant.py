@@ -35,6 +35,7 @@ from typing import Mapping
 from hypergraphrag.base import BaseVectorStorage
 from qdrant_client import AsyncQdrantClient, models
 
+from adapters.cua_khoa_doc import khoa_doc
 from adapters.doi_chieu import KHO_GRAPH, ghi_vao_so, ten_kho_kv, ten_kho_vector
 from adapters.ingest_labels import (
     bat_buoc_ngu_canh_he_thong,
@@ -813,10 +814,12 @@ class QdrantVectorDBStorage(BaseVectorStorage):
         context = current_context()
         ten = self._ten_collection(context)
         bo_loc = None
-        if not context.bypass_filter:
-            khoa_duoc_phep = context.keys_for(self.namespace)
-            if not khoa_duoc_phep:
-                return []
+        cua = khoa_doc(context, self.namespace)
+        if cua.khong_thay_gi:
+            # Không chạm kho: xem `adapters/cua_khoa_doc.py`.
+            return []
+        if not cua.doc_tho:
+            khoa_duoc_phep = cua.khoa
             bo_loc = models.Filter(
                 must=[
                     models.FieldCondition(

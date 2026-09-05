@@ -76,7 +76,7 @@
 #   nếu chạy repair thì chép lại khối chú thích từ git history.
 
 generated: 08-31-2026 21:50
-last_updated: 09-05-2026 18:21
+last_updated: 09-05-2026 19:34
 project: hyper_graph_rag
 project_key: NOKEY
 tracking_system: file-system
@@ -224,7 +224,7 @@ action_items:
     action: "Thêm test canh api/ không che lại và không bỏ che, đỏ ngay khi endpoint
       dữ liệu đầu tiên trả nội dung (story 3.3)"
     owner: "sonlm"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-01.md"
   - id: "epic-1-retro-item-8-chốt-cách-đếm-ngân-sách-500-800-dòng-của"
     epic: 1
@@ -238,7 +238,7 @@ action_items:
     action: "Gom cửa tập khóa rỗng của ba adapter về một hình dạng dùng chung, trước
       khi Epic 5 mở đường grant"
     owner: "sonlm"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-01.md"
   - id: "epic-2-retro-item-10-thêm-story-2-13-vào-epics-md-epic-2-kèm"
     epic: 2
