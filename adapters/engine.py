@@ -85,6 +85,7 @@ from adapters.qdrant import (
     QDRANT_URL_KEY,
     QdrantVectorDBStorage,
 )
+from adapters.nhom_phu_trach import NHOM_PHU_TRACH_KEY
 from adapters.sensitivity_loader import SENSITIVITY_RANKS_KEY
 from adapters.tu_dien_thuc_the import ENTITY_DICTIONARY_KEY
 
@@ -110,10 +111,14 @@ TEN_GRAPH: str = Neo4jACLGraphStorage.__name__
 # mặc định 0.2 của chính adapter.
 # Hai khóa vào ở story 2.1: `neo4j_database` (khoản nợ vòng đời kết nối
 # Neo4j) và `sensitivity_ranks_path` (bảng hạng độ nhạy của luật hợp nhất khóa).
-# Khóa cuối vào ở story 2.12: `entity_dictionary_path` (từ điển thực thể chuẩn
+# Khóa vào ở story 2.12: `entity_dictionary_path` (từ điển thực thể chuẩn
 # theo scope, FR-32). Nó đi cùng đường với bảng hạng - không phải khóa kết nối,
 # nhưng `asdict(self)` là thứ duy nhất xuống tới `trich_xuat_chunks`, nên nó
 # phải là một field của engine chứ không một tham số truyền tay.
+# Khóa cuối vào ở story 3.1 (trả nợ): `owner_groups_path` (bảng nhóm phụ trách
+# của dấu che `owner`). Cùng lý do và cùng đường với hai khóa trên - adapter
+# graph đọc nó từ `global_config`, nên không có field này thì bảng nhóm là một
+# hằng của tiến trình và không cấu hình nào chạm được.
 KHOA_CAU_HINH_KHO: tuple[str, ...] = (
     QDRANT_URL_KEY,
     QDRANT_API_KEY_KEY,
@@ -125,6 +130,7 @@ KHOA_CAU_HINH_KHO: tuple[str, ...] = (
     HEALTH_RETRIES_KEY,
     HEALTH_DELAY_KEY,
     SENSITIVITY_RANKS_KEY,
+    NHOM_PHU_TRACH_KEY,
     ENTITY_DICTIONARY_KEY,
 )
 
@@ -165,12 +171,17 @@ BIEN_MOI_TRUONG: dict[str, str] = {
 # Từ điển thực thể nằm cùng chỗ và vì cùng lý do: đổi từ điển là đổi id entity
 # và id hyperedge, tức re-ingest. Hai môi trường hai từ điển là hai kho không so
 # được với nhau, đúng như hai bảng hạng khác nhau.
+# Bảng nhóm phụ trách cũng vậy, và còn chặt hơn: nó là tên nhóm mà mọi vai đọc
+# được trong câu trả lời FR-14, nên hai môi trường hai bảng là hai hệ nói hai
+# tên cho cùng một tài liệu. Nó ở đây để bốn cấu hình đo của story 3.2 chứng
+# minh được rằng chênh lệch của chúng không đến từ bảng nhóm.
 KHOA_KHONG_LAY_TU_MOI_TRUONG: frozenset[str] = frozenset(
     {
         HEALTH_RETRIES_KEY,
         HEALTH_DELAY_KEY,
         COSINE_THRESHOLD_KEY,
         SENSITIVITY_RANKS_KEY,
+        NHOM_PHU_TRACH_KEY,
         ENTITY_DICTIONARY_KEY,
     }
 )
@@ -270,6 +281,11 @@ class EngineACL(HyperGraphRAG):
     # (`config/hang-do-nhay.yaml`); ba adapter nạp nó qua cùng một cửa nên
     # chúng không thể chạy trên hai bảng khác nhau.
     sensitivity_ranks_path: str | None = None
+    # Đường dẫn file nhóm phụ trách (story 3.1, FR-14). `None` nghĩa là dùng
+    # bảng chốt của repo (`config/nhom-phu-trach.yaml`). Cùng hình dạng với
+    # dòng trên vì cùng lý do: `asdict(self)` là thứ duy nhất xuống tới adapter
+    # graph, nên một bảng nhóm cấu hình được phải là một field của engine.
+    owner_groups_path: str | None = None
     # Đường dẫn file từ điển thực thể chuẩn theo scope (story 2.12, FR-32).
     # `None` nghĩa là **không có từ điển**, không phải "dùng file chốt của repo":
     # đường trích xuất khi đó chạy y hệt trước story này - prompt không có khối

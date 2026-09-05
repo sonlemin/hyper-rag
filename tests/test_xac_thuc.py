@@ -688,8 +688,70 @@ def test_co_demo_va_admin_cua_seed_that_duoc_ghim_bang_gia_tri():
     """
     cac_muc = nap_tai_khoan()
     assert {m.ten for m in cac_muc if m.tai_khoan.admin} == {"dev01"}
-    assert {m.ten for m in cac_muc if m.tai_khoan.demo} == {"dev01"}
-    assert {m.ten for m in cac_muc} == {"ts01", "dev01"}
+    assert {m.ten for m in cac_muc if m.tai_khoan.demo} == {"dev01", "demo01"}
+    assert {m.ten for m in cac_muc} == {"ts01", "dev01", "demo01"}
+
+
+def test_seed_that_co_dung_mot_tai_khoan_bat_mot_co():
+    """Phép "demo **hoặc** admin" phải chấm được trên **cấu hình sẽ chạy**.
+
+    `test_cua_demo_hoac_admin_la_phep_hoac` chấm bốn tổ hợp trên một
+    `ClaimNguoiHoi` dựng tay. Seed thật thì chỉ có "cả hai" (`dev01`) và "không
+    có gì" (`ts01`), nên qua HTTP không ca nào phân biệt được phép **hoặc** với
+    phép **và**: `demo and admin` cho đúng cùng kết quả trên cả hai tài khoản.
+    `demo01` là ca thứ ba, và nó là ca duy nhất bắt được đột biến đó.
+    """
+    mot_co = [
+        m.ten
+        for m in nap_tai_khoan()
+        if m.tai_khoan.demo is not m.tai_khoan.admin
+    ]
+    assert mot_co == ["demo01"], mot_co
+
+
+def test_tai_khoan_demo_khong_admin_qua_cua_bang_chinh_co_cua_seed_that(
+    monkeypatch,
+):
+    """`demo01` gọi `/auth/tai-khoan` ra 200, và hai cờ lấy từ seed thật.
+
+    Ca đi qua HTTP chứ không gọi thẳng `doi_demo_hoac_admin`: cửa quyền phải
+    chứng minh được ở chỗ nó thật sự đứng, tức trên một token do
+    `POST /auth/login` phát ra từ một dòng bảng mang đúng hai cờ của
+    `config/tai-khoan.yaml`. Bảng `users` vẫn là bản giả (bộ này không cần
+    Postgres), nhưng **hai cờ thì không giả**: chúng đọc từ chính seed, nên đổi
+    `demo: false` cho `demo01` trong file cấu hình là ca này đỏ.
+    """
+    muc = next(m for m in nap_tai_khoan() if m.ten == "demo01")
+    assert (muc.tai_khoan.demo, muc.tai_khoan.admin) == (True, False)
+
+    ten_go = "DEMO01"
+    kho = KhoGia(
+        {
+            ten_go: _dong(
+                muc.ten,
+                role=muc.tai_khoan.danh_tinh.vai,
+                demo=muc.tai_khoan.demo,
+                admin=muc.tai_khoan.admin,
+            )
+        }
+    )
+    monkeypatch.setenv(BIEN_KHOA_KY, KHOA_TEST)
+
+    async def _mo():
+        return kho
+
+    monkeypatch.setattr(api_main, "mo_kho_tai_khoan", _mo)
+    with TestClient(api_main.app) as c:
+        kq = c.post("/auth/login", json={"tai_khoan": ten_go, "mat_khau": MAT_KHAU})
+        assert kq.status_code == 200, kq.text
+        tok = kq.json()["token"]
+        claim = jwt.decode(tok, KHOA_TEST, algorithms=["HS256"])
+        assert (claim["demo"], claim["admin"]) == (True, False)
+        ra = c.get("/auth/tai-khoan", headers={"Authorization": f"Bearer {tok}"})
+    assert ra.status_code == 200, ra.text
+    assert {m["tai_khoan"] for m in ra.json()["tai_khoan"]} == {
+        m.ten for m in nap_tai_khoan()
+    }
 
 
 def _cost(hash_mk: str) -> int:

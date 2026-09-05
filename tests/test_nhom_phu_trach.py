@@ -304,3 +304,102 @@ def test_bang_hang_hong_thi_van_ra_ma_cua_module_nay(tmp_path, monkeypatch):
         tai_nhom_phu_trach(xau)
     assert loi.value.code == "NHOM_PHU_TRACH_INVALID"
     assert "bảng hạng" in str(loi.value)
+
+
+# --- Khe tiêm: bảng nhóm đọc từ `global_config` -----------------------------
+#
+# Trả khoản ledger "bảng nhóm phụ trách không cấu hình được qua `global_config`,
+# khác bảng hạng độ nhạy đứng ngay cạnh nó". Bốn ca dưới đây chấm cả hai nửa của
+# khe tiêm: cửa `bang_nhom_cho` cho bảng nào, và adapter graph dùng bảng nào.
+
+BANG_NHOM_KHAC = "version: 1\nnhom: {runbook: Nhom Cua Test}\n"
+
+
+def _ghi(tmp_path, ten: str, noi_dung: str):
+    duong = tmp_path / ten
+    duong.write_text(noi_dung, encoding="utf-8")
+    return duong
+
+
+def test_cau_hinh_tro_sang_bang_nhom_khac_thi_adapter_dung_bang_do(tmp_path):
+    """Đúng hình dạng `bang_hang_cho`: một engine trỏ sang file khác thì dùng file đó."""
+    from adapters.nhom_phu_trach import NHOM_PHU_TRACH_KEY, bang_nhom_cho
+    from tests.gia_lap_neo4j import Neo4jGhiLai
+    from tests.ho_tro_neo4j import dung_adapter
+
+    duong = _ghi(tmp_path, "nhom.yaml", BANG_NHOM_KHAC)
+    cau_hinh = {NHOM_PHU_TRACH_KEY: str(duong)}
+
+    assert bang_nhom_cho(cau_hinh).nhom_cua("runbook") == "Nhom Cua Test"
+    adapter = dung_adapter(Neo4jGhiLai(), **cau_hinh)
+    assert adapter._nhom_phu_trach("noi_bo:runbook") == "Nhom Cua Test"
+    # Tập nhóm mà `la_dau_che` dựng lại cũng phải là của bảng đang chạy: lấy
+    # bảng của repo ở đó nghĩa là `get_node` không nhận ra chính dấu che mà
+    # `_che` vừa sinh, rồi `vendor/.../operate.py:1039` nổ `TypeError`.
+    assert adapter._bang_nhom.ten_nhom == frozenset({"Nhom Cua Test"})
+
+
+def test_vang_khoa_thi_dung_dung_bang_cua_repo():
+    """Vắng khóa là bảng chốt của repo, và là **đúng đối tượng đã nhớ**.
+
+    Nạp lại một bản sao cũng cho cùng nội dung, nên một ca so nội dung sẽ không
+    thấy đường chạy hôm nay đọc thêm một file ở mỗi lần dựng adapter.
+    """
+    from adapters.nhom_phu_trach import bang_nhom_cho
+    from tests.gia_lap_neo4j import Neo4jGhiLai
+    from tests.ho_tro_neo4j import dung_adapter
+
+    assert bang_nhom_cho(None) is bang_nhom_mac_dinh()
+    assert bang_nhom_cho({}) is bang_nhom_mac_dinh()
+    assert dung_adapter(Neo4jGhiLai())._bang_nhom is bang_nhom_mac_dinh()
+
+
+def test_bang_nhom_doi_chieu_voi_bang_hang_cua_cung_cau_hinh(tmp_path):
+    """Loại nội dung đối chiếu với bảng hạng **của chính cấu hình đó**.
+
+    Đây là lỗi tiềm ẩn mà khe tiêm phải sửa cùng lúc: `_kiem` vốn gọi thẳng
+    `bang_hang_mac_dinh()`, nên một engine trỏ `sensitivity_ranks_path` sang
+    file khác thì bảng nhóm của nó bị chấm bằng bảng hạng *của repo*. Loại nội
+    dung chỉ có ở bảng mới bị từ chối nạp, và hai bảng của một adapter chạy trên
+    hai nguồn khác nhau.
+    """
+    from adapters.nhom_phu_trach import (
+        NHOM_PHU_TRACH_KEY,
+        bang_nhom_cho,
+        tai_nhom_phu_trach,
+    )
+    from adapters.sensitivity_loader import SENSITIVITY_RANKS_KEY
+    from tests.gia_lap_neo4j import Neo4jGhiLai
+    from tests.ho_tro_neo4j import dung_adapter
+
+    loai_moi = "loai_moi_cua_test"
+    assert loai_moi not in bang_hang_mac_dinh().hang
+    hang = _ghi(tmp_path, "hang.yaml", f"version: 1\nranks: {{runbook: 10, {loai_moi}: 99}}\n")
+    nhom = _ghi(tmp_path, "nhom.yaml", f"version: 1\nnhom: {{{loai_moi}: Nhom Moi}}\n")
+    cau_hinh = {SENSITIVITY_RANKS_KEY: str(hang), NHOM_PHU_TRACH_KEY: str(nhom)}
+
+    assert bang_nhom_cho(cau_hinh).nhom_cua(loai_moi) == "Nhom Moi"
+    assert dung_adapter(Neo4jGhiLai(), **cau_hinh)._nhom_phu_trach(
+        f"noi_bo:{loai_moi}"
+    ) == "Nhom Moi"
+    # Cùng file nhóm ấy, đối chiếu với bảng hạng của repo, phải bị từ chối: đó
+    # là phép đo cho thấy ca trên thật sự đọc bảng hạng của cấu hình.
+    with pytest.raises(NhomPhuTrachInvalid) as loi:
+        tai_nhom_phu_trach(nhom)
+    assert loai_moi in str(loi.value)
+
+
+def test_bang_hang_hep_khong_lam_bang_nhom_cua_repo_hong(tmp_path):
+    """Trỏ riêng `sensitivity_ranks_path` không kéo theo bảng nhóm của repo.
+
+    Bảng nhóm của repo giữ nguyên cặp của nó với `config/hang-do-nhay.yaml`, nên
+    một bảng hạng hẹp - thứ bộ test và `eval/` vẫn dựng để đảo thứ tự hai loại -
+    không từ chối 13 hàng vì một lý do không liên quan tới chúng. Phép đối chiếu
+    bắt lỗi gõ trong một file so với bảng hạng mà file đó được viết ra để đi
+    cùng; nó không phải một phép ràng buộc giữa hai file bất kỳ.
+    """
+    from adapters.nhom_phu_trach import bang_nhom_cho
+    from adapters.sensitivity_loader import SENSITIVITY_RANKS_KEY
+
+    hang = _ghi(tmp_path, "hang.yaml", "version: 1\nranks: {runbook: 10}\n")
+    assert bang_nhom_cho({SENSITIVITY_RANKS_KEY: str(hang)}) is bang_nhom_mac_dinh()

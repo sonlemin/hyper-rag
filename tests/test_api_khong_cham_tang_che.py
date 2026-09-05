@@ -14,6 +14,11 @@ tuyến xác thực, nên câu "chỉ có `/health`" không phát biểu đượ
 "mỗi hàm cấp module phải khai kèm lý do nó không trả nội dung tri thức"
 (`HAM_MAIN_CO_LY_DO`). Mệnh đề vẫn chưa được chứng minh và vẫn ngừng ở 3.3.
 
+**Cửa xác thực nay mặc định đóng** (trả khoản ledger của 3.1). Tuyến đóng đăng
+ký vào `api.main.cua_dong`, router mang `Depends(_claim)`; ba ca cuối file chấm
+chính cơ chế ấy trên `app.routes` thay vì đọc AST tìm một lời gọi trong thân
+handler.
+
 **Hai vế, và chúng hỏng theo hai cách khác nhau.**
 
 *Không che lại.* Che là việc của tầng adapter (AD-9): mọi method đọc trong danh
@@ -251,61 +256,132 @@ def test_main_khong_dung_ngu_canh_quyen_nao():
 
 
 # Tuyến của `api/main.py` **không** đi qua cửa xác thực, kèm lý do. Hai dòng,
-# và cả hai là ngoại lệ có lập luận chứ không phải chỗ chưa làm.
+# và cả hai là ngoại lệ có lập luận chứ không phải chỗ chưa làm. Danh mục
+# **đóng**: mọi tuyến khác đăng ký vào `api.main.cua_dong` và nhận cửa từ
+# framework, nên thêm một dòng ở đây là một quyết định mở một endpoint.
 TUYEN_KHONG_XAC_THUC: dict[str, str] = {
     "/health": "healthcheck của compose; một healthcheck đòi token là một container không bao giờ healthy",
     "/auth/login": "chính là chỗ phát token, nên nó không thể đòi một token có sẵn",
 }
 
 
-def test_moi_tuyen_deu_di_qua_cua_xac_thuc_tru_hai_ngoai_le_co_ly_do():
-    """Xác thực hôm nay là **opt-in từng handler**, nên nó phải có cơ chế canh.
+def _trai_phang(cac):
+    """Tuyến thật sự phục vụ được, duỗi qua mọi lớp `include_router`.
 
-    `api/main.py` không có middleware nào bắt buộc token; mỗi handler tự gọi
-    `_claim`. Một handler mới quên gọi là một endpoint mở, và không có gì trong
-    repo phát hiện điều đó - trong khi mọi luật khác ở đây đều có test canh.
-
-    Đọc `app.routes` chứ không đọc AST: thứ cần chấm là *tuyến thật sự được
-    đăng ký*, kể cả tuyến đến từ một `include_router`. Rồi truy ngược về hàm
-    xử lý và hỏi thân nó có gọi `_claim` không.
+    FastAPI 0.141 không chép tuyến của một router vào `app.routes` lúc
+    `include_router` nữa; nó để lại một `_IncludedRouter` và dựng danh sách thật
+    khi cần (`effective_candidates()`). Duyệt `app.routes` mà không duỗi lớp đó
+    cho một danh sách **không có tuyến nào của mình** - và một ca "mọi tuyến đều
+    có cửa" chạy trên danh sách rỗng thì xanh vĩnh viễn.
     """
+    for t in cac:
+        if hasattr(t, "effective_candidates"):
+            yield from _trai_phang(t.effective_candidates())
+        elif getattr(t, "path", None) is not None and getattr(t, "endpoint", None) is not None:
+            yield t
+        elif hasattr(t, "routes"):
+            yield from _trai_phang(t.routes)
+
+
+def _tuyen_cua_app() -> list:
+    """Tuyến của `api/main.py` trừ bốn tuyến tài liệu mà FastAPI tự thêm."""
     from api.main import app
 
-    cay = _cay(REPO_ROOT / "api" / "main.py")
-    goi_claim = {
-        n.name
-        for n in ast.walk(cay)
-        if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef)
-        and any(
-            isinstance(g, ast.Call)
-            and (getattr(g.func, "id", None) or getattr(g.func, "attr", None)) == "_claim"
-            for g in ast.walk(n)
-        )
-    }
-    ho: list[str] = []
-    for tuyen in app.routes:
-        duong = getattr(tuyen, "path", None)
-        diem_vao = getattr(tuyen, "endpoint", None)
-        if duong is None or diem_vao is None:
-            continue
-        if duong in TUYEN_KHONG_XAC_THUC or duong.startswith("/openapi"):
-            continue
-        if duong in ("/docs", "/redoc", "/docs/oauth2-redirect"):
-            continue
-        if getattr(diem_vao, "__name__", "") not in goi_claim:
-            ho.append(f"{duong} -> {getattr(diem_vao, '__name__', diem_vao)!r}")
-    assert not ho, (
-        "Tuyến không đi qua `_claim` và không khai trong `TUYEN_KHONG_XAC_THUC`."
-        " Xác thực là opt-in từng handler, nên một handler quên gọi là một"
-        f" endpoint mở:\n  " + "\n  ".join(ho)
+    bo_qua = {"/docs", "/redoc", "/docs/oauth2-redirect"}
+    tuyen = [
+        t
+        for t in _trai_phang(app.routes)
+        if t.path not in bo_qua and not t.path.startswith("/openapi")
+    ]
+    # Danh sách rỗng là cách im lặng nhất mà ba ca dưới có thể hỏng: chúng đều
+    # là "không tuyến nào vi phạm", nên không tuyến nào cũng là xanh.
+    assert tuyen, "không đọc được tuyến nào của `api/main.py`"
+    return tuyen
+
+
+def _cua_khai_o_tuyen(tuyen) -> bool:
+    """Tuyến có mang `Depends(_claim)` **khai ở chính tuyến** hay không.
+
+    Đọc `route.dependencies`, tức danh sách mà router và decorator truyền vào -
+    không phải `route.dependant`, thứ còn gom cả dependency của tham số handler.
+    Phân biệt ấy là cả nội dung của ca: cửa phải đứng ở tuyến trước khi thân hàm
+    chạy, chứ không phải là một tham số mà handler sau nhớ khai.
+    """
+    from api.main import _claim
+
+    return any(
+        getattr(d, "dependency", None) is _claim
+        for d in getattr(tuyen, "dependencies", ())
     )
+
+
+def test_moi_tuyen_deu_di_qua_cua_xac_thuc_tru_hai_ngoai_le_co_ly_do():
+    """Cửa xác thực **mặc định đóng**, và ca này chấm cơ chế chứ không chấm thân hàm.
+
+    Story 3.1 để cửa ở dạng opt-in: mỗi handler tự gõ `await _claim(request)`,
+    và ca này truy ngược tên hàm trong AST của riêng `api/main.py`. Hai chỗ hở:
+    một handler quên gõ dòng ấy là một endpoint mở, và một handler sống ở module
+    khác vào bằng `include_router` thì `endpoint.__name__` không nằm trong tập
+    tên quét được nên thông điệp nói sai nguyên nhân.
+
+    Nay tuyến đóng đăng ký vào `api.main.cua_dong`, router mang
+    `Depends(_claim)`, nên cửa là mặc định của framework. Ca này duyệt
+    `app.routes` và hỏi từng tuyến có mang cửa ấy không; tuyến nào không mang
+    phải khai trong `TUYEN_KHONG_XAC_THUC`. Nó đọc tuyến thật sự được đăng ký
+    nên nó không quan tâm handler sống ở module nào.
+    """
+    ho = [
+        f"{t.path} -> {getattr(t.endpoint, '__name__', t.endpoint)!r}"
+        for t in _tuyen_cua_app()
+        if t.path not in TUYEN_KHONG_XAC_THUC and not _cua_khai_o_tuyen(t)
+    ]
+    assert not ho, (
+        "Tuyến không mang `Depends(_claim)` và không khai trong"
+        " `TUYEN_KHONG_XAC_THUC`. Cửa xác thực là mặc định đóng: đăng ký tuyến"
+        " vào `api.main.cua_dong` thay vì vào `app` hay `cua_mo`, hoặc khai nó"
+        f" là ngoại lệ kèm lý do:\n  " + "\n  ".join(ho)
+    )
+
+
+def test_hai_tuyen_mo_that_su_khong_mang_cua():
+    """Chiều ngược lại: danh mục mở phải mô tả đúng hiện trạng.
+
+    Một tuyến khai là ngoại lệ mà thật ra vẫn mang cửa là một dòng nói sai về
+    hệ, và nó làm người đọc tin rằng `/health` đòi token trong khi không.
+    """
+    sai = [
+        t.path
+        for t in _tuyen_cua_app()
+        if t.path in TUYEN_KHONG_XAC_THUC and _cua_khai_o_tuyen(t)
+    ]
+    assert not sai, f"khai là ngoại lệ nhưng vẫn mang cửa xác thực: {sai}"
+
+
+def test_them_mot_tuyen_khong_khai_va_khong_co_cua_thi_ca_tren_do():
+    """Đột biến chạy được, không phải một lời hứa trong docstring.
+
+    Dựng một app mang đúng hình dạng sai mà ca trên sinh ra để bắt - một tuyến
+    đăng ký thẳng vào `app`, không vào `cua_dong` và không khai ngoại lệ - rồi
+    khẳng định phép chấm trả về "hở". Không có ca này thì `_cua_khai_o_tuyen`
+    có thể trả `True` cho mọi thứ và ca trên vẫn xanh.
+    """
+    from fastapi import FastAPI
+
+    dot_bien = FastAPI()
+
+    @dot_bien.get("/tuyen-quen-cua")
+    async def _quen() -> dict:
+        return {}
+
+    tuyen = [t for t in dot_bien.routes if getattr(t, "path", "") == "/tuyen-quen-cua"]
+    assert len(tuyen) == 1
+    assert _cua_khai_o_tuyen(tuyen[0]) is False
+    assert tuyen[0].path not in TUYEN_KHONG_XAC_THUC
 
 
 def test_hai_ngoai_le_khong_xac_thuc_van_la_tuyen_co_that():
     """Một miễn trừ chết là một dòng không ai dám xóa vì không ai biết nó canh gì."""
-    from api.main import app
-
-    co_that = {getattr(t, "path", None) for t in app.routes}
+    co_that = {t.path for t in _tuyen_cua_app()}
     thieu = sorted(set(TUYEN_KHONG_XAC_THUC) - co_that)
     assert not thieu, f"khai trỏ vào tuyến không còn tồn tại: {thieu}"
     for duong, ly_do in TUYEN_KHONG_XAC_THUC.items():

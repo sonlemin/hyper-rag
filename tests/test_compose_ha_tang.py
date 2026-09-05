@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pytest
 
+from adapters.identity_seed import nap_tai_khoan
 from adapters.llm_wrapper import BIEN_EMBEDDING_MODEL, BIEN_LLM_MODEL, BIEN_MOI_TRUONG_MODEL
 from adapters.model_catalog import LOAI_EMBEDDING, LOAI_LLM, danh_muc_mac_dinh
 from tests.ho_tro_compose import KHO_PHAI_CHO, doc_compose, doc_env
@@ -208,7 +209,13 @@ def test_file_cuc_bo_khong_ghim_ollama_host():
 
 # Biến mang secret. Chúng chỉ sống trong `.env` gốc repo (đã gitignore); ba file
 # tham số môi trường có commit thì không được chứa cái nào (Consistency
-# Conventions "Cấu hình"). Story 3.1 thêm khóa ký JWT và hai mật khẩu demo.
+# Conventions "Cấu hình"). Story 3.1 thêm khóa ký JWT và mật khẩu của từng tài
+# khoản seed.
+#
+# Phần mật khẩu **dẫn xuất từ chính seed**, không gõ tay: thêm một tài khoản mà
+# quên thêm một dòng ở đây là một mật khẩu được phép nằm trong một file có
+# commit, và không gì đỏ. Cùng lý do với vòng lặp của
+# `tests/test_xac_thuc.py::test_mat_khau_seed_that_dang_nhap_duoc`.
 BIEN_SECRET = {
     "OPENAI_API_KEY",
     "DEEPSEEK_API_KEY",
@@ -216,9 +223,7 @@ BIEN_SECRET = {
     "POSTGRES_PASSWORD",
     "QDRANT_API_KEY",
     "JWT_SECRET",
-    "DEMO_MAT_KHAU_TS01",
-    "DEMO_MAT_KHAU_DEV01",
-}
+} | {f"DEMO_MAT_KHAU_{m.ten.upper()}" for m in nap_tai_khoan()}
 
 
 def test_file_cuc_bo_khong_chua_secret():

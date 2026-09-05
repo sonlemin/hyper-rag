@@ -9,8 +9,14 @@ story 3.3 - chỗ endpoint đầu tiên thật sự đọc tri thức. Dựng en
 dựng một thứ chưa ai gọi, và nó kéo theo ba kết nối phải khỏe trước khi một
 người đăng nhập được.
 
-**`/health` cố ý nằm ngoài mọi cửa.** Nó là healthcheck của compose: một
-healthcheck đòi token là một container không bao giờ `healthy`.
+**Cửa xác thực mặc định đóng.** Tuyến đăng ký vào `cua_dong`, và router đó
+mang `Depends(_claim)` nên mọi tuyến của nó đi qua cửa bằng cơ chế của
+framework. Trước đó cửa là opt-in: mỗi handler tự gõ `await _claim(request)`
+trong thân hàm, và một dòng bị quên là một endpoint không xác thực mà không cơ
+chế nào cản. Hai tuyến được mở phải khai vào `cua_mo` và có lý do, hôm nay đúng
+hai: `/health` là healthcheck của compose (một healthcheck đòi token là một
+container không bao giờ `healthy`), và `/auth/login` chính là chỗ phát token nên
+nó không thể đòi một token có sẵn.
 
 **Không có endpoint dữ liệu nào ở đây.** `tests/test_api_khong_cham_tang_che.py`
 canh điều đó, và nó là chỗ story 3.3 phải dừng lại để trả lời câu "nội dung ra
@@ -19,9 +25,10 @@ khỏi handler này đã đi qua tầng che chưa".
 
 import logging
 from contextlib import asynccontextmanager
+from typing import Annotated
 
 import anyio.to_thread
-from fastapi import FastAPI, Request
+from fastapi import APIRouter, Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from adapters.identity_seed import IdentitySeedInvalid, nap_tai_khoan
@@ -122,20 +129,39 @@ async def _loi_xac_thuc(request: Request, loi: LoiXacThuc) -> JSONResponse:
     )
 
 
-@app.get("/health")
-async def health() -> dict:
-    return {"status": "ok"}
-
-
 async def _claim(request: Request) -> ClaimNguoiHoi:
-    """Claim của token trong header `Authorization`; mọi ca hỏng là một mã."""
+    """Claim của token trong header `Authorization`; mọi ca hỏng là một mã.
+
+    Vừa là dependency của `cua_dong` (nên nó chạy trước mọi handler đóng, kể cả
+    handler không cần đọc claim), vừa là dependency của tham số ở hai handler
+    cần chính giá trị ấy. FastAPI nhớ kết quả trong một request nên nó chỉ chạy
+    một lần, và không có đường nào để hai lớp đọc hai token khác nhau.
+    """
     return doc_token(
         token_tu_header(request.headers.get("authorization")),
         request.app.state.khoa_ky,
     )
 
 
-@app.post("/auth/login")
+# Hai router, và sự khác nhau giữa chúng là **cơ chế** chứ không phải quy ước.
+# `cua_dong` là chỗ mặc định của một tuyến mới: nó mang `Depends(_claim)` nên
+# tuyến nào vào đây cũng đòi token mà người viết không phải nhớ gõ gì. `cua_mo`
+# là danh mục **đóng** của ngoại lệ, hôm nay đúng hai tuyến kèm lý do ở docstring
+# đầu file, và `tests/test_api_khong_cham_tang_che.py` đòi tập tuyến không có cửa
+# đúng bằng danh mục đó.
+cua_mo = APIRouter()
+cua_dong = APIRouter(dependencies=[Depends(_claim)])
+
+# Claim đã kiểm, dùng làm tham số của handler cần đọc chính nó.
+Claim = Annotated[ClaimNguoiHoi, Depends(_claim)]
+
+
+@cua_mo.get("/health")
+async def health() -> dict:
+    return {"status": "ok"}
+
+
+@cua_mo.post("/auth/login")
 async def dang_nhap(request: Request) -> dict:
     """Đổi tài khoản + mật khẩu lấy một JWT HS256 sống 12 giờ.
 
@@ -183,8 +209,8 @@ async def dang_nhap(request: Request) -> dict:
     return {"token": token, "token_type": "bearer"}
 
 
-@app.get("/auth/toi")
-async def toi(request: Request) -> dict:
+@cua_dong.get("/auth/toi")
+async def toi(c: Claim) -> dict:
     """Claim của chính token đang cầm: ai, vai gì, không gian nào, cờ nào.
 
     Không chạm kho tri thức và không dựng ngữ cảnh quyền: nó chỉ đọc lại thứ đã
@@ -192,7 +218,6 @@ async def toi(request: Request) -> dict:
     dùng nó để chấm ca "token thiếu / hết hạn / sai chữ ký" tách khỏi ca thiếu
     quyền demo/admin.
     """
-    c = await _claim(request)
     return {
         "tai_khoan": c.sub,
         "vai": c.role,
@@ -202,8 +227,8 @@ async def toi(request: Request) -> dict:
     }
 
 
-@app.get("/auth/tai-khoan")
-async def danh_sach_tai_khoan(request: Request) -> dict:
+@cua_dong.get("/auth/tai-khoan")
+async def danh_sach_tai_khoan(c: Claim) -> dict:
     """Danh sách tài khoản seed - **đòi `demo` hoặc `admin`** (nền FR-18).
 
     Người tiêu thụ đầu tiên của cửa quyền hai cờ: nhịp demo và cổng M2 (story
@@ -214,7 +239,7 @@ async def danh_sach_tai_khoan(request: Request) -> dict:
     Đọc từ seed chứ không từ bảng `users`, và **không** trả `mat_khau_hash`: cái
     ra khỏi đây là danh mục, không phải bản sao của bảng.
     """
-    doi_demo_hoac_admin(await _claim(request))
+    doi_demo_hoac_admin(c)
     # Seed đọc lại từ đĩa ở mỗi lời gọi, nên nó hỏng được **sau** khi lifespan
     # đã nạp nó thành công một lần: ai đó sửa file trên máy chủ, hay volume
     # `config/` rớt. Để `IdentitySeedInvalid` hay `OSError` thoát ra là một 500
@@ -242,3 +267,9 @@ async def danh_sach_tai_khoan(request: Request) -> dict:
             for m in cac_muc
         ]
     }
+
+
+# Đăng ký sau khi mọi tuyến đã khai, một chỗ, để đọc file này là thấy ngay tập
+# tuyến mở và tập tuyến đóng.
+app.include_router(cua_mo)
+app.include_router(cua_dong)

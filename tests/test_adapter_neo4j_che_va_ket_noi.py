@@ -166,7 +166,10 @@ def test_node_mang_san_owner_group_khong_di_vao_dau_che(
             nhom={k: v for k, v in day_du.nhom.items() if k != he["content_type"]},
             version=day_du.version,
         )
-        monkeypatch.setattr(mod_neo4j, "bang_nhom_mac_dinh", lambda: thieu)
+        # Khe tiêm của adapter là `bang_nhom_cho(global_config)`, nên bản
+        # thiếu một hàng đi vào bằng đúng cửa ấy - không phải bằng cách thay
+        # bảng mặc định của tiến trình.
+        monkeypatch.setattr(mod_neo4j, "bang_nhom_cho", lambda cau_hinh: thieu)
 
     async def chay():
         _, adapter = await graph_da_nap(khong_gian, policy)

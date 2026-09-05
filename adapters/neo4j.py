@@ -55,7 +55,7 @@ from adapters.mask_contract import (
     MaskContractViolated,
     kiem_ket_qua_che,
 )
-from adapters.nhom_phu_trach import bang_nhom_mac_dinh
+from adapters.nhom_phu_trach import bang_nhom_cho
 from adapters.sensitivity_loader import bang_hang_cho
 from core.ids import normalize_id, validate_space
 from core.keys import CHUA_GHI, FILTER_KEY_FIELD, split_key
@@ -283,6 +283,12 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
         # Bảng hạng độ nhạy, nạp lúc dựng adapter: cùng nguồn với hai adapter
         # kia, nên ba đường ghi không chạy trên hai bảng hạng khác nhau.
         self._bang_hang = bang_hang_cho(cau_hinh)
+        # Bảng nhóm phụ trách, cùng khe tiêm và cùng lúc: nó đọc `global_config`
+        # của chính adapter này, không phải một hằng của tiến trình. Vắng khóa
+        # thì `bang_nhom_cho` trả đúng bảng đã nhớ của repo, nên đường chạy hôm
+        # nay không đọc thêm file nào. Bảng hạng để đối chiếu cũng lấy từ cấu
+        # hình này, nên một adapter không bao giờ chạy trên hai bảng lệch nhau.
+        self._bang_nhom = bang_nhom_cho(cau_hinh)
 
     @staticmethod
     def _so_duong(cau_hinh, khoa: str, mac_dinh, kieu, *, toi_thieu):
@@ -984,7 +990,7 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
             return None
         id_chuan = normalize_id(node_id)
         if not context.bypass_filter and la_dau_che(
-            id_chuan, bang_nhom_mac_dinh().ten_nhom
+            id_chuan, self._bang_nhom.ten_nhom
         ):
             return self._node_da_che(id_chuan)
         space = self._nhan_space(context)
@@ -1306,13 +1312,13 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
             " phía phải có đúng một đầu là hyperedge"
         )
 
-    @staticmethod
-    def _nhom_phu_trach(khoa: str) -> str | None:
+    def _nhom_phu_trach(self, khoa: str) -> str | None:
         """Tên nhóm phụ trách suy từ `content_type` của khóa, `None` nếu chưa khai.
 
         Một chỗ tra, không hai: mọi bản ghi rời adapter này đi qua `_che`, nên
-        đặt phép tra ở đó là đủ cho cả sáu method đọc. Bảng đọc một lần cho mỗi
-        tiến trình (`bang_nhom_mac_dinh`), cùng luật đóng băng với bảng hạng.
+        đặt phép tra ở đó là đủ cho cả sáu method đọc. Bảng nạp lúc dựng adapter
+        từ `global_config` (`bang_nhom_cho`), cùng khe tiêm và cùng luật đóng
+        băng với bảng hạng - hai bảng của một adapter đến từ một cấu hình.
 
         Khóa hỏng thì trả `None` chứ không nổ: `split_key` đã có cửa riêng ở
         đường ghi, và ở đường đọc một khóa không tách được vẫn phải che - chỉ là
@@ -1323,10 +1329,9 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
             _, content_type = split_key(khoa)
         except (TypeError, ValueError):
             return None
-        return bang_nhom_mac_dinh().nhom_cua(content_type)
+        return self._bang_nhom.nhom_cua(content_type)
 
-    @classmethod
-    def _che(cls, ban_ghi: dict, context, khoa: str | None) -> dict:
+    def _che(self, ban_ghi: dict, context, khoa: str | None) -> dict:
         """Cửa duy nhất gọi tầng che, để không method nào quên gọi (AD-9).
 
         Ngữ cảnh hệ thống đọc thô nên không che. Khóa truyền vào là khóa của
@@ -1363,7 +1368,7 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
             )
         if OWNER_GROUP_FIELD in ban_ghi:
             ban_ghi = {k: v for k, v in ban_ghi.items() if k != OWNER_GROUP_FIELD}
-        nhom = cls._nhom_phu_trach(khoa)
+        nhom = self._nhom_phu_trach(khoa)
         if nhom is not None:
             ban_ghi = {**ban_ghi, OWNER_GROUP_FIELD: nhom}
         da_che = kiem_ket_qua_che(mask(ban_ghi, context, khoa), ban_ghi, repr(ban_ghi))

@@ -498,17 +498,22 @@ def test_do1_lop_e_thieu_ngu_canh_la_fail_closed(workspace_dir, khong_gian, poli
 
 
 def test_seed_danh_tinh_doc_duoc_hai_vai():
-    """Seed của cổng M1: hai danh tính, hai vai, hai tài khoản phân biệt.
+    """Seed của cổng M1: hai vai, và mỗi danh tính là một tài khoản phân biệt.
 
     Story 3.1 mở rộng file thành `config/tai-khoan.yaml` version 2 (hash bcrypt,
     nhóm, cờ demo/admin), nhưng phần mà M1 đứng lên vẫn là ba trường danh tính,
     và `nap_danh_tinh` vẫn là cửa trả đúng ba trường ấy.
+
+    Số tài khoản lên 3 khi story 3.1 trả khoản nợ "seed không có tài khoản nào
+    bật đúng một cờ" (`demo01`). **Hai vai** thì không đổi, và đó mới là thứ cổng
+    M1 đứng lên: bảng chính sách khai đúng hai vai, nên một vai thứ ba trong seed
+    là một ngữ cảnh quyền không tra được. Ca này vì vậy ghim tập vai chứ không
+    ghim số dòng.
     """
     danh_tinh = nap_danh_tinh()
-    assert len(danh_tinh) == 2
     assert all(isinstance(dt, DanhTinh) for dt in danh_tinh)
     assert {dt.vai for dt in danh_tinh} == {"tech_support", "devops"}
-    assert len({dt.tai_khoan for dt in danh_tinh}) == 2
+    assert len({dt.tai_khoan for dt in danh_tinh}) == len(danh_tinh) == 3
     assert DUONG_DAN_TAI_KHOAN.exists()
 
 

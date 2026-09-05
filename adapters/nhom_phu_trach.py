@@ -29,7 +29,9 @@ from typing import Mapping
 import yaml
 
 from adapters.sensitivity_loader import (
+    BangHangDoNhay,
     SensitivityRanksInvalid,
+    bang_hang_cho,
     bang_hang_mac_dinh,
 )
 from core.ids import normalize_id
@@ -39,6 +41,11 @@ from core.ids import normalize_id
 DUONG_DAN_MAC_DINH: Path = (
     Path(__file__).resolve().parent.parent / "config" / "nhom-phu-trach.yaml"
 )
+
+# Khóa cấu hình đọc từ `global_config`, cùng hình dạng và cùng lý do với
+# `SENSITIVITY_RANKS_KEY` của bảng hạng đứng ngay cạnh nó. Vắng thì rơi về
+# `DUONG_DAN_MAC_DINH`.
+NHOM_PHU_TRACH_KEY = "owner_groups_path"
 
 # Lược đồ đóng của file, cùng lý do với `KHOA_GOC` của bảng hạng: một khóa gõ
 # thiếu một chữ mà file vẫn nạp được nghĩa là bảng rỗng chạy tiếp.
@@ -121,8 +128,19 @@ class BangNhomPhuTrach:
         return frozenset(self.nhom.values())
 
 
-def tai_nhom_phu_trach(path: str | Path) -> BangNhomPhuTrach:
-    """Nạp một file nhóm phụ trách thành `BangNhomPhuTrach` đã kiểm."""
+def tai_nhom_phu_trach(
+    path: str | Path, *, bang_hang: BangHangDoNhay | None = None
+) -> BangNhomPhuTrach:
+    """Nạp một file nhóm phụ trách thành `BangNhomPhuTrach` đã kiểm.
+
+    `bang_hang` là bảng hạng độ nhạy dùng để đối chiếu loại nội dung; `None`
+    nghĩa là bảng chốt của repo. Nó là tham số chứ không phải một lời gọi
+    `bang_hang_mac_dinh()` nằm sẵn trong ruột vì một cấu hình trỏ
+    `sensitivity_ranks_path` sang file khác sẽ đối chiếu bảng nhóm với một bảng
+    hạng **không phải bảng nó đang chạy**: loại nội dung chỉ có ở bảng mới thì
+    bị từ chối nạp, còn loại chỉ có ở bảng mặc định thì lọt qua rồi không bao
+    giờ tra trúng. Hai bảng của cùng một adapter phải đến từ cùng một cấu hình.
+    """
     duong_dan = Path(path)
     try:
         noi_dung = duong_dan.read_bytes()
@@ -144,12 +162,12 @@ def tai_nhom_phu_trach(path: str | Path) -> BangNhomPhuTrach:
             f"YAML hỏng ở {duong_dan}: {str(loi).replace(chr(10), ' ')}"
         ) from loi
     try:
-        return BangNhomPhuTrach(nhom=_kiem(raw), version=version)
+        return BangNhomPhuTrach(nhom=_kiem(raw, bang_hang), version=version)
     except NhomPhuTrachInvalid as loi:
         raise NhomPhuTrachInvalid(f"{duong_dan}: {loi}") from None
 
 
-def _kiem(raw) -> Mapping[str, str]:
+def _kiem(raw, bang_hang: BangHangDoNhay | None = None) -> Mapping[str, str]:
     """Kiểm lược đồ rồi trả bảng bất biến; mọi lỗi là `NhomPhuTrachInvalid`."""
     if not isinstance(raw, dict):
         raise NhomPhuTrachInvalid(
@@ -172,7 +190,7 @@ def _kiem(raw) -> Mapping[str, str]:
     # cho mọi cách hỏng", nên bọc lại kèm nguyên nhân thật thay vì để hai mã
     # lỗi cùng thoát ra từ một cửa.
     try:
-        co_hang = bang_hang_mac_dinh().hang
+        co_hang = (bang_hang or bang_hang_mac_dinh()).hang
     except SensitivityRanksInvalid as loi:
         raise NhomPhuTrachInvalid(
             f"không đối chiếu được với bảng hạng độ nhạy: {loi}"
@@ -244,6 +262,34 @@ def bang_nhom_mac_dinh() -> BangNhomPhuTrach:
     if _MAC_DINH is None:
         _MAC_DINH = tai_nhom_phu_trach(DUONG_DAN_MAC_DINH)
     return _MAC_DINH
+
+
+def bang_nhom_cho(cau_hinh: Mapping | None) -> BangNhomPhuTrach:
+    """Bảng nhóm mà một adapter dùng, suy từ `global_config` của nó.
+
+    Cửa chung, cùng hình dạng với `adapters.sensitivity_loader.bang_hang_cho`:
+    khóa cấu hình vắng thì dùng bảng chốt của repo, có thì nạp file được trỏ
+    tới. Một chỗ, để hai adapter không nói hai tên nhóm cho cùng một tài liệu
+    vì một cái đọc cấu hình còn cái kia thì không.
+
+    Bảng hạng để đối chiếu lấy từ **cùng cấu hình đó**, không phải bảng chốt
+    của repo: một engine trỏ `sensitivity_ranks_path` sang file khác mà bảng
+    nhóm vẫn bị chấm bằng bảng hạng của repo thì loại nội dung chỉ có ở bảng mới
+    bị từ chối nạp, còn loại chỉ có ở bảng repo thì lọt qua rồi không bao giờ
+    tra trúng.
+
+    Khóa vắng thì trả đúng đối tượng đã nhớ của `bang_nhom_mac_dinh()`, tức bảng
+    của repo **giữ nguyên cặp của nó** với `config/hang-do-nhay.yaml`. Đối chiếu
+    nó với một bảng hạng lạ là sai chỗ: phép đối chiếu bắt lỗi gõ trong một file
+    so với bảng hạng mà file đó được viết ra để đi cùng, và một bảng hạng hẹp -
+    thứ bộ test và `eval/` vẫn dựng - sẽ từ chối cả 13 hàng của repo vì một lý
+    do không liên quan tới chúng. Loại nội dung có hạng mà chưa khai nhóm rơi về
+    `[owner:group]`, đúng hành vi đã đặc tả.
+    """
+    duong_dan = (cau_hinh or {}).get(NHOM_PHU_TRACH_KEY)
+    if not duong_dan:
+        return bang_nhom_mac_dinh()
+    return tai_nhom_phu_trach(duong_dan, bang_hang=bang_hang_cho(cau_hinh))
 
 
 def nap_nhom(path: str | Path | None = None) -> Mapping[str, str]:

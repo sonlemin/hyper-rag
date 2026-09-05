@@ -14,7 +14,7 @@
 #                  `core.identity.ngu_canh_cua` - vai la thi `RoleUnknown`.
 # khong_gian     - khoang du lieu (AD-12). `synth` la khoang du lieu tong hop;
 #                  bo test doi truong nay sang mot khoang rieng cho tung phien.
-# mat_khau_hash  - bcrypt. **Chi hash vao git.** Mat khau thuong song trong
+# mat_khau_hash  - bcrypt cost 12. **Chi hash vao git.** Mat khau thuong song trong
 #                  `.env` goc repo (da gitignore), bien `DEMO_MAT_KHAU_<TAI
 #                  KHOAN>`; xem `.env.example`. Doi mat khau la sinh lai hash
 #                  bang `bcrypt.hashpw(..., bcrypt.gensalt(rounds=12))` roi dan
@@ -47,3 +47,15 @@ tai_khoan:
     nhom: DevOps
     demo: true
     admin: true
+  # Tai khoan bat DUNG MOT trong hai co. Khong co no thi phep "demo hoac admin"
+  # cua `api.xac_thuc.doi_demo_hoac_admin` chi duoc chung minh tren ban gia dung
+  # tay: qua HTTP, hai tai khoan tren chi phan biet duoc "co ca hai" voi "khong
+  # co gi", va mot dot bien doi phep HOAC thanh phep VA van xanh het bo test.
+  # Cho phan biet that su la endpoint chi-`admin` cua story 3.2.
+  - tai_khoan: demo01
+    vai: tech_support
+    khong_gian: synth
+    mat_khau_hash: "$2b$12$rszVi3ZWwaiz4ofXu14SI.zk14ZydNfHzOA86xVlLypn4UBGIV4JC"
+    nhom: Tech Support
+    demo: true
+    admin: false
