@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "ngay": "2026-09-05T01:23:17.968384+00:00",
+  "lenh": "uv run python -m api.do_chi_phi /root/hyper-rag-data/that-khu --space that_khu --xuat-json eval/so_do_nap/nap-that-khu.json",
+  "space": "that_khu",
+  "dot_id": "6278dd870758436dba46066f97eb34d2",
+  "so_tai_lieu": 50,
+  "so_tai_lieu_gui": 50,
+  "so_tai_lieu_khong_fact": 0,
+  "so_tai_lieu_tu_choi": 0,
+  "theo_model": [
+    {
+      "model": "deepseek-v4-flash",
+      "loai": "llm",
+      "nha_cung_cap": "deepseek",
+      "so_lan": 73,
+      "token_vao": 120848,
+      "token_ra": 50794,
+      "chi_phi_usd": 0.1202212
+    },
+    {
+      "model": "text-embedding-3-small",
+      "loai": "embedding",
+      "nha_cung_cap": "openai",
+      "so_lan": 188,
+      "token_vao": 144491,
+      "token_ra": 0,
+      "chi_phi_usd": 0.00288982
+    }
+  ],
+  "tong": {
+    "so_lan": 261,
+    "token_vao": 265339,
+    "token_ra": 50794,
+    "chi_phi_usd": 0.12311102
+  }
+}

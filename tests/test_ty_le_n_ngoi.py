@@ -48,6 +48,7 @@ GOC_REPO = Path(__file__).resolve().parent.parent
 ANH_SYNTH = GOC_REPO / "eval" / "anh_do_thi" / "synth.json"
 ANH_KHAO_SAT = GOC_REPO / "eval" / "anh_do_thi" / "khao_sat.json"
 ANH_REAL = GOC_REPO / "eval" / "anh_do_thi" / "real_rut_gon.json"
+ANH_THAT_KHU = GOC_REPO / "eval" / "anh_do_thi" / "that_khu_rut_gon.json"
 
 # Số khóa của space `synth`, đếm ngày 04/09/2026 trên ảnh chụp
 # `eval/anh_do_thi/synth.json` (254 hyperedge / 50 tài liệu, chụp 03/09/2026).
@@ -89,6 +90,27 @@ REAL_N_NGOI = 369
 REAL_NHAY_CAM = 144
 REAL_NHAY_CAM_N_NGOI = 144
 REAL_COMPOSITION_RISK = 0
+
+# Số khóa của space `that_khu`, đếm ngày 05/09/2026 trên ảnh chụp **rút gọn**
+# `eval/anh_do_thi/that_khu_rut_gon.json` (720 hyperedge / 50 tài liệu, chụp
+# 05/09 ngay sau đợt nạp `6278dd87`). **Cùng 50 tài liệu đã khử với `real`, cùng
+# nội dung từng byte** (sha256 từng file khớp), cùng muối băm - khác đúng ở bộ
+# trích xuất: `deepseek-v4-flash` thay cho `qwen2.5:7b`.
+#
+# **50 chứ không 41**: DeepSeek trích được fact từ **cả 50** tài liệu, gồm cả ba
+# tài liệu mà soát tay 05/09 xếp là "giới hạn corpus, bộ trích xuất nào cũng trả
+# rỗng" (`ts-r-08`, `ts-r-10` 311 byte, `ts-r-11` 416 byte). Phép đo này **bác
+# bỏ** cách phân loại đó: cả 9 ca mất của đường Qwen là lỗi bộ trích xuất, tức
+# 18%, không phải 12%.
+#
+# Ba tỷ lệ thấp hơn `real` rất xa (67,8% so với 100,0%) và đó là điều phải đọc:
+# hai con số 100% của `real` là hằng của bộ trích xuất, còn 67,8% là một phép đo.
+THAT_KHU_HYPEREDGE = 720
+THAT_KHU_TAI_LIEU = 50
+THAT_KHU_N_NGOI = 488
+THAT_KHU_NHAY_CAM = 225
+THAT_KHU_NHAY_CAM_N_NGOI = 161
+THAT_KHU_COMPOSITION_RISK = 0
 
 # Ba hạng đóng băng từ story 2.1, ngưỡng nhạy cảm gắn vào số giữa.
 HANG_RUNBOOK = 10
@@ -1275,3 +1297,82 @@ def test_precision_ghep_cap_cuc_bo_khop_vong_do():
     )
     assert verdict_r2(PRECISION_GHEP_CAP_CUC_BO) != "ĐẠT", "48,2% dưới cổng 60%"
     assert PRECISION_GHEP_CAP_CUC_BO < PRECISION_GHEP_CAP
+
+
+# ---------------------------------------------------------------------------
+# Số khóa của space `that_khu` và phép đối chứng hai bộ trích xuất (story 2.13)
+# ---------------------------------------------------------------------------
+
+
+def test_so_khoa_cua_space_that_khu(hang):
+    """Ba tỷ lệ của 50 tài liệu thật trích bằng DeepSeek, trên ảnh rút gọn đã commit."""
+    kq = ba_ty_le(doc_anh_do_thi(ANH_THAT_KHU), hang)
+    assert kq.space == "that_khu_rut_gon"
+    assert kq.so_tai_lieu == THAT_KHU_TAI_LIEU
+    assert kq.so_hyperedge == THAT_KHU_HYPEREDGE
+    assert kq.overall_n_ary == TyLe("Overall N-ary", THAT_KHU_N_NGOI, THAT_KHU_HYPEREDGE)
+    assert kq.sensitive_n_ary == TyLe(
+        "Sensitive N-ary", THAT_KHU_NHAY_CAM_N_NGOI, THAT_KHU_NHAY_CAM
+    )
+    assert kq.composition_risk == TyLe(
+        "Composition-Risk", THAT_KHU_COMPOSITION_RISK, THAT_KHU_NHAY_CAM
+    )
+
+
+def test_hai_anh_that_dung_cung_muoi():
+    """`real` và `that_khu` phải băm bằng **cùng một muối**, nếu không hai cột không so được.
+
+    Hai bản rút gọn dựng bằng hai muối khác nhau cho hai tập id rời nhau hoàn
+    toàn: mọi phép so "cùng entity xuất hiện ở đâu" giữa hai cột sẽ im lặng trả
+    lời "không chỗ nào". Đó là kiểu hỏng không đỏ, nên chỗ canh phải là đây.
+    """
+    import json as _json
+
+    a = _json.loads(ANH_THAT_KHU.read_text(encoding="utf-8"))
+    b = _json.loads(ANH_REAL.read_text(encoding="utf-8"))
+    assert a["muoi_id"] == b["muoi_id"] == "dffc42de62eed6e1"
+
+
+def test_doi_chung_hai_bo_trich_xuat_tren_cung_tap(hang):
+    """Phép đo có đối chứng: cùng 50 tài liệu, khác đúng bộ trích xuất.
+
+    Đây là thứ story 2.11 không dựng được và là lý do story 2.13 tồn tại. Ba dấu
+    vân tay của 2.11 đo `real` với `synth` - hai tập tài liệu *khác nhau*, nên
+    chúng trộn hình dạng tri thức với chất lượng trích xuất. Ở đây tập là một.
+    """
+    real = ba_ty_le(doc_anh_do_thi(ANH_REAL), hang)
+    tk = ba_ty_le(doc_anh_do_thi(ANH_THAT_KHU), hang)
+
+    # Qwen đẩy **mọi** hyperedge lên >= 3 vai; DeepSeek để 32,2% ở 2 vai.
+    assert real.phan_hyperedge_hai_vai() == 0.0
+    assert tk.phan_hyperedge_hai_vai() == pytest.approx(0.322, abs=5e-3)
+    # Vai `owner` là dấu rõ nhất: 96,5% so với 5,6% trên **cùng** tài liệu, mà
+    # 30/41 tài liệu là runbook không nêu người phụ trách.
+    assert real.phan_bo_vai["owner"] / real.so_hyperedge == pytest.approx(0.965, abs=5e-3)
+    assert tk.phan_bo_vai["owner"] / tk.so_hyperedge == pytest.approx(0.056, abs=5e-3)
+    # Và `owner` phải là **vai lệch nhiều nhất** giữa hai cột, không phải một vai
+    # tình cờ: đó mới là phát biểu "Qwen tự điền người phụ trách".
+    assert real.vai_da_dien_nhieu_nhat(tk)[0] == "owner"
+    # Chênh ba tỷ lệ, con số mà chương 4 trích.
+    assert real.overall_n_ary.ti_le - tk.overall_n_ary.ti_le == pytest.approx(
+        0.322, abs=5e-3
+    )
+    assert real.sensitive_n_ary.ti_le - tk.sensitive_n_ary.ti_le == pytest.approx(
+        0.284, abs=5e-3
+    )
+
+
+def test_chan_doan_composition_risk_cua_that_khu(hang):
+    """Composition-Risk 0 trên `that_khu` là 0 **vì thiếu chồng lấn entity**, không vì kín.
+
+    Con số quan trọng không phải số 0 mà là 6/225: chỉ 6 trong 225 ca nhạy cảm
+    có *một* entity còn lộ ở vùng không nhạy cảm. Trên `synth` là 26/81 và trên
+    `khao_sat` là 40/151. Hai tài liệu thật hiếm khi sinh chung một id entity vì
+    chuẩn hóa thực thể chưa làm (story 2.12), nên mỏ neo này còn bị chặn trên bởi
+    chính lỗ đó - phải phát biểu ra, đừng đọc số 0 thành "tri thức doanh nghiệp kín".
+    """
+    kq = ba_ty_le(doc_anh_do_thi(ANH_THAT_KHU), hang)
+    assert kq.composition_risk.tu_so == 0
+    assert kq.so_nhay_cam_co_entity_lo == 6
+    assert kq.so_nhay_cam_lo_mot_phan == 6
+    assert kq.trung_binh_phan_entity_lo == pytest.approx(0.339, abs=5e-3)
