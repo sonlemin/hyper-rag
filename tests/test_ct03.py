@@ -678,16 +678,41 @@ def test_khong_ghi_trang_cua_space_la_vao_cay_repo(tmp_path):
     assert ly_do_tu_choi_space("real", tmp_path / "real.html", "real") is None
 
 
-def test_hai_space_duoc_ghi_trong_repo_khop_chup_do_thi():
-    """Hai danh sách cho phép phải nói cùng một điều.
+def test_ba_cong_cu_dung_chung_mot_danh_sach_space():
+    """Ba công cụ ghi vật có commit phải nói cùng một điều, và bằng **một** bản.
 
-    Ảnh chụp và trang CT-03 cùng là vật có commit sinh ra từ một space; để hai
-    danh sách lệch nhau là một space chụp được mà không dựng trang được, hoặc
-    ngược lại - và không ai đọc ra lý do.
+    Ảnh chụp đồ thị, trang CT-03 và file đề xuất bí danh cùng là vật có commit
+    sinh ra từ một space. Để ba danh sách lệch nhau là một space chụp được mà
+    không dựng trang được, hoặc tệ hơn, một space dữ liệu thật lọt qua đúng một
+    trong ba cửa.
+
+    Tới story 2.12 luật này sống ở **ba** bản `frozenset` chép tay và test cũ
+    chỉ ghim được hai; bản thứ ba (`de_xuat_bi_danh`, thêm ở 2.12) không có gì
+    canh. Retro Epic 2 gom cả ba về `eval/rao_ghi_repo.py`. Test khẳng định
+    phép gom đó còn nguyên: ba tên phải trỏ vào **cùng một object**, nên một
+    lần chép lại giá trị ở một module là đỏ ngay, không đợi ba giá trị trôi xa
+    nhau rồi mới thấy.
     """
     from eval.chup_do_thi import SPACE_GHI_TRONG_REPO as CUA_ANH
+    from eval.de_xuat_bi_danh import SPACE_GHI_TRONG_REPO as CUA_DE_XUAT
+    from eval.rao_ghi_repo import SPACE_GHI_TRONG_REPO as NGUON
 
-    assert SPACE_GHI_TRONG_REPO == CUA_ANH == frozenset({"synth", "khao_sat"})
+    assert SPACE_GHI_TRONG_REPO is NGUON
+    assert CUA_ANH is NGUON
+    assert CUA_DE_XUAT is NGUON
+    assert NGUON == frozenset({"synth", "khao_sat"})
+
+
+def test_hai_space_du_lieu_that_khong_bao_gio_vao_danh_sach():
+    """`real` và `that_khu` chứa tài liệu công ty, kể cả bản đã khử (ADR-013).
+
+    Chúng vào repo được ở dạng rút gọn có muối, và đó là một đường khác không
+    đi qua danh sách này. Một ngày nào đó ai đó thêm `that_khu` vào đây "cho
+    tiện chụp" thì đây là dòng đỏ lên.
+    """
+    from eval.rao_ghi_repo import SPACE_GHI_TRONG_REPO as NGUON
+
+    assert "real" not in NGUON and "that_khu" not in NGUON
 
 
 def test_duong_dan_html_mang_ten_space():

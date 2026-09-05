@@ -42,6 +42,7 @@ from typing import Mapping, Sequence
 
 from adapters.model_catalog import LOAI_LLM, ModelUnknown, danh_muc_mac_dinh
 from eval.anh_rut_gon import la_space_rut_gon
+from eval.rao_ghi_repo import SPACE_GHI_TRONG_REPO
 from eval.cau_hoi import AnhDoThi, doc_anh_do_thi
 
 REPO_ROOT: Path = Path(__file__).resolve().parent.parent
@@ -408,13 +409,14 @@ def dung_de_xuat(
     }
 
 
-# Chỉ hai space **dựng** được ghi file đề xuất vào cây repo, đúng cùng danh sách
-# và cùng lý do với `eval/chup_do_thi.py::SPACE_GHI_TRONG_REPO`: file đề xuất
-# liệt kê **nguyên văn tên entity**, nên với space dữ liệu thật nó là nội dung
-# tài liệu công ty. Rào ở đây chứ không chỉ ở `.gitignore`: thứ tự hai dòng
-# trong `.gitignore` là một hàng rào mà một lần sửa file đó vô hiệu hóa được, và
-# `git add -f` thì đi thẳng qua nó.
-SPACE_GHI_TRONG_REPO: frozenset[str] = frozenset({"synth", "khao_sat"})
+# Vật mà module này ghi ra: file đề xuất bí danh, liệt kê **nguyên văn tên
+# entity**, nên với space dữ liệu thật nó là nội dung tài liệu công ty. Rào ở
+# đây chứ không chỉ ở `.gitignore`: thứ tự hai dòng trong `.gitignore` là một
+# hàng rào mà một lần sửa file đó vô hiệu hóa được, và `git add -f` thì đi thẳng
+# qua nó.
+#
+# Danh sách và lý do của nó ở `eval/rao_ghi_repo.py`, dùng chung với
+# `eval/chup_do_thi.py` và `eval/ct03.py` (retro Epic 2).
 
 
 def ly_do_tu_choi_dich(

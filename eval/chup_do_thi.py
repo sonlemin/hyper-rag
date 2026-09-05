@@ -66,6 +66,7 @@ from core.keys import CHUA_GHI
 from core.permission import use_context
 from core.slots import SLOT_ROLES
 from core.system_context import system_context
+from eval.rao_ghi_repo import SPACE_GHI_TRONG_REPO
 from eval.anh_rut_gon import (
     HAU_TO_RUT_GON,
     BamTrung,
@@ -87,20 +88,14 @@ POLICY_MAC_DINH = REPO_ROOT / "config" / "policy-toi-gian.yaml"
 # Namespace graph của upstream; cùng chuỗi mà `EngineACL` truyền xuống adapter.
 NAMESPACE_GRAPH: str = "chunk_entity_relation"
 
-# Space được phép ghi ảnh chụp vào cây repo. **Danh sách cho phép, không danh
-# sách cấm** (vòng review 03/09): script chạy dưới cờ system và dump nguyên văn
-# giá trị mọi slot của mọi hyperedge, gồm cả `bi_mat_ha_tang`. Một
+# Vật mà module này ghi ra: ảnh chụp đồ thị, chạy dưới cờ system và dump nguyên
+# văn giá trị mọi slot của mọi hyperedge, gồm cả `bi_mat_ha_tang`. Một
 # `--space real` ghi vào `eval/anh_do_thi/real.json` là đưa dữ liệu công ty vào
-# lịch sử git, đúng thứ Policy của AGENTS.md cấm. Muốn chụp space khác thì phải
-# `--dich` ra ngoài cây repo, và khi đó người chạy đã tự khai là mình biết mình
-# đang cầm cái gì.
+# lịch sử git. Muốn chụp space khác thì phải `--dich` ra ngoài cây repo, và khi
+# đó người chạy đã tự khai là mình biết mình đang cầm cái gì.
 #
-# Story 2.10 thêm `khao_sat`: 50 bản ghi khảo sát ba tỷ lệ n-ngôi là tài liệu
-# **giả lập** dựng trong repo (`eval/khao_sat/`), không phải dữ liệu công ty,
-# nên ảnh chụp của nó dump được vào cây repo mà không rò gì. Nó *phải* có commit
-# vì nó là nguồn duy nhất của ba con số mà chương 4 báo cáo, và ADR-012 đòi
-# người đọc repo tính lại được ba tỷ lệ mà không cần kho đang chạy.
-SPACE_GHI_TRONG_REPO: frozenset[str] = frozenset({"synth", "khao_sat"})
+# Danh sách và lý do của nó ở `eval/rao_ghi_repo.py`, một bản duy nhất cho cả ba
+# công cụ chịu luật này (retro Epic 2).
 
 # Muối của bản rút gọn, giữ **ngoài repo** (`extra/` đã gitignore). Đây chỉ là
 # đường mặc định trên máy dev; trên máy chủ `extra/` không được đồng bộ (xem

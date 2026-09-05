@@ -79,6 +79,7 @@ from adapters.neo4j import (
 )
 from adapters.policy_loader import load_policy
 from core.facts import TEN_VAI_TIENG_VIET
+from eval.rao_ghi_repo import SPACE_GHI_TRONG_REPO
 from core.keys import FILTER_KEY_FIELD
 from core.permission import use_context
 from core.policy import PolicyInvalid
@@ -151,15 +152,13 @@ MAU_SO_THUAN = re.compile(r"^[\d\s./:%,+\-]*\d[\d\s./:%,+\-]*$")
 # cao hơn là để hai câu mệnh lệnh mở trang.
 SO_TU_TOI_DA_CUA_TEN: int = 8
 
-# Space được phép ghi trang CT-03 vào cây repo. **Danh sách cho phép, không danh
-# sách cấm**, cùng hình dạng và cùng lý do với `SPACE_GHI_TRONG_REPO` của
-# `eval/chup_do_thi.py`: trang dump nguyên văn **tên entity** của mọi ca đa
-# nguồn, và ảnh PNG chụp lại trang thì **có commit**. Một `--space real` ở story
-# 2.11 rồi chụp màn hình là đưa tên thực thể của dữ liệu công ty vào lịch sử
-# git, đúng thứ Policy của AGENTS.md cấm. Muốn chạy space khác thì phải `--dich`
-# ra ngoài cây repo, và khi đó người chạy đã tự khai là mình biết mình đang cầm
-# cái gì.
-SPACE_GHI_TRONG_REPO: frozenset[str] = frozenset({"synth", "khao_sat"})
+# Vật mà module này ghi ra: trang CT-03, dump nguyên văn **tên entity** của mọi
+# ca đa nguồn, và ảnh PNG chụp lại trang thì **có commit**. Một `--space real`
+# rồi chụp màn hình là đưa tên thực thể của dữ liệu công ty vào lịch sử git.
+# Muốn chạy space khác thì phải `--dich` ra ngoài cây repo.
+#
+# Danh sách và lý do của nó ở `eval/rao_ghi_repo.py`, dùng chung với
+# `eval/chup_do_thi.py` và `eval/de_xuat_bi_danh.py` (retro Epic 2).
 
 # Ba biến môi trường không có mặc định nào an toàn, cùng bộ với
 # `eval/chup_do_thi.py`. `scripts/chay-may-chu.sh` dựng sẵn đủ bộ.
