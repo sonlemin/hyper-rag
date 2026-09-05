@@ -1748,6 +1748,18 @@ def test_pred_da_bi_quy_loi_khong_dem_tiep_vao_thua():
     assert ma_tran["time"]["remediation"] == 1
 
 
+# Bốn vòng chạy qua API ngoài (story 2.6). Chúng là mẫu số của cổng R2 và của
+# bảng ngoại suy FR-30, nên số của chúng khóa ở đây.
+VONG_API: tuple[str, ...] = ("v0-deepseek-goc", "v1-deepseek", "v1-gpt-4o-mini", "v1-gpt-4o")
+
+# Vòng thứ năm chạy **model cục bộ** (`qwen2.5:7b`, 0 USD). Nó không phải một
+# ứng viên của R2: nó là phép đo trả lời câu "precision của đường cục bộ là bao
+# nhiêu", câu mà story 2.11 phải để trống và trang tỷ lệ phải in ra như một lỗ
+# hổng. Tách khỏi `VONG_API` chứ không trộn vào, vì mọi phát biểu của 2.6 đều là
+# phát biểu về API ngoài.
+VONG_CUC_BO: str = "v2-qwen-cuc-bo"
+
+
 def test_khoa_so_bon_vong_va_verdict_bon_cot(bo_vang):
     """Spec và sprint-status trích số của cả bốn vòng, không chỉ v1-deepseek."""
     from eval.do_trich_xuat import THU_MUC_KET_QUA, doc_moi_vong
@@ -1764,7 +1776,8 @@ def test_khoa_so_bon_vong_va_verdict_bon_cot(bo_vang):
         "v1-gpt-4o-mini": 0.577,
         "v1-gpt-4o": 0.571,
     }
-    vong = {v.vong: v for v in doc_moi_vong(THU_MUC_KET_QUA)}
+    assert set(cho_doi) == set(VONG_API)
+    vong = {v.vong: v for v in doc_moi_vong(THU_MUC_KET_QUA) if v.vong in VONG_API}
     assert set(vong) == set(cho_doi)
     for ten, v in vong.items():
         pred = v.facts_theo_tai_lieu()
@@ -1786,6 +1799,41 @@ def test_khoa_so_bon_vong_va_verdict_bon_cot(bo_vang):
     assert sorted(duoi) == ["v0-deepseek-goc", "v1-gpt-4o", "v1-gpt-4o-mini"]
 
 
+def test_vong_cuc_bo_duoi_cong_r2_va_thap_hon_deepseek(bo_vang):
+    """Precision của đường cục bộ, con số mà story 2.11 phải để trống.
+
+    Cột `real` của trang tỷ lệ in "precision đường Qwen chưa đo lần nào" từ
+    story 2.11. Vòng `v2-qwen-cuc-bo` (04/09, 0 USD vì chạy trên máy chủ) đo nó
+    trên **đúng mẫu số của R2**: cùng 8 tài liệu chấm, cùng prompt, cùng bộ
+    tách. Kết quả là **48,2% ghép cặp, DƯỚI cổng 60%**, so với 70,7% của
+    DeepSeek trên cùng mẫu số đó.
+
+    Con số này là thứ định lượng được chênh hai bộ trích xuất mà story 2.11 chỉ
+    mô tả được bằng ba dấu vân tay hình dạng, nên nó khóa ở đây và trang tỷ lệ
+    phải đọc nó thay vì in câu "chưa đo".
+    """
+    from eval.do_trich_xuat import THU_MUC_KET_QUA, doc_moi_vong
+
+    vong = {v.vong: v for v in doc_moi_vong(THU_MUC_KET_QUA)}
+    v = vong[VONG_CUC_BO]
+    assert v.model == "qwen2.5:7b" and v.nha_cung_cap == "ollama"
+    assert v.chi_phi_usd() == 0.0, "vòng cục bộ không tốn tiền; 0 USD là thật, không phải thiếu số"
+
+    cap = cham_bo(bo_vang, v.facts_theo_tai_lieu())
+    muc = cham_bo_muc_tai_lieu(bo_vang, v.facts_theo_tai_lieu())
+    assert cap.chi_so.precision == pytest.approx(0.482, abs=5e-4)
+    assert cap.chi_so.recall == pytest.approx(0.444, abs=5e-4)
+    assert mau_so_phu(cap).precision == pytest.approx(0.373, abs=5e-4)
+    assert muc.chi_so.precision == pytest.approx(0.576, abs=5e-4)
+    assert verdict_r2(cap.chi_so.precision) != VERDICT_DAT, "48,2% dưới cổng 60%"
+
+    ds = cham_bo(bo_vang, vong["v1-deepseek"].facts_theo_tai_lieu())
+    assert cap.chi_so.precision < ds.chi_so.precision - 0.2, (
+        "chênh Qwen với DeepSeek trên cùng mẫu số phải còn rộng;"
+        " hẹp lại thì mọi phát biểu về cột `real` của 2.11 phải đọc lại"
+    )
+
+
 def test_gpt_4o_khong_tot_hon_deepseek_o_bat_ky_cot_nao(bo_vang):
     """Câu "bậc 1 của R2 không có căn cứ" đứng trên bốn phép so này."""
     from eval.do_trich_xuat import THU_MUC_KET_QUA, doc_ket_qua
@@ -1805,14 +1853,39 @@ def test_gpt_4o_khong_tot_hon_deepseek_o_bat_ky_cot_nao(bo_vang):
 
 
 def test_bon_vong_khong_co_ban_ghi_bi_loai():
-    """Khoản ledger PHAN_HOI_BI_CAT đóng dựa vào đúng hai con số này."""
+    """Khoản ledger PHAN_HOI_BI_CAT đóng dựa vào đúng hai con số này.
+
+    Chỉ bốn vòng **API ngoài**: khoản ledger đó là một phát biểu về đường
+    DeepSeek/GPT, và vòng cục bộ có bản ghi bị loại thật (test ngay dưới đếm
+    chúng). Gộp cả năm vào đây thì hoặc test đỏ vì một vòng khác loại, hoặc
+    phải nới assert và mất chính thứ nó canh.
+    """
     from eval.do_trich_xuat import THU_MUC_KET_QUA, doc_moi_vong
 
-    for v in doc_moi_vong(THU_MUC_KET_QUA):
+    vong = [v for v in doc_moi_vong(THU_MUC_KET_QUA) if v.vong in VONG_API]
+    assert len(vong) == len(VONG_API)
+    for v in vong:
         assert v.loai_theo_ma() == {}, v.vong
         assert v.so_chunk_hong() == 0, v.vong
         assert v.so_fact_tho() == v.so_hop_le(), v.vong
         assert max(c.token_ra for t in v.tai_lieu for c in t.chunks) < 8192, v.vong
+
+
+def test_vong_cuc_bo_co_ban_ghi_bi_loai_va_no_la_du_lieu():
+    """Vòng cục bộ loại 2 bản ghi vì vai lạ; đó là số đọc được, không phải lỗi harness.
+
+    Trên **8 tài liệu chấm** đã khử và đã commit, Qwen vẫn sinh 2 bản ghi mang
+    vai ngoài danh mục 8 vai. Nó cùng họ với 4 ca JSON hỏng của đợt nạp 50 tài
+    liệu thật (story 2.11) nhưng nhẹ hơn nhiều, nên nó là cận dưới của tỷ lệ
+    hỏng chứ không phải một mẫu số thay thế.
+    """
+    from eval.do_trich_xuat import THU_MUC_KET_QUA, doc_moi_vong
+
+    v = {x.vong: x for x in doc_moi_vong(THU_MUC_KET_QUA)}[VONG_CUC_BO]
+    assert v.loai_theo_ma() == {"VAI_LA": 2}, v.loai_theo_ma()
+    assert v.so_chunk_hong() == 0, "không chunk nào hỏng JSON ở mẫu số 8 tài liệu"
+    assert v.so_fact_tho() - v.so_hop_le() == 2
+    assert max(c.token_ra for t in v.tai_lieu for c in t.chunks) < 8192
 
 
 SO_KHOA_NGOAI_SUY = {
@@ -2278,14 +2351,24 @@ def test_uoc_tinh_cung_bac_voi_vong_da_do_that():
 
     vong = doc_moi_vong(THU_MUC_KET_QUA)
     so_file = len(list(THU_MUC_KET_QUA.glob("*" + DUOI_FILE)))
-    assert len(vong) == so_file >= 4, (len(vong), so_file)
-    da_cham = 0
+    assert len(vong) == so_file >= 5, (len(vong), so_file)
+    da_cham = tien = 0
     for v in vong:
         u = uoc_tinh_vong(v.model)
+        # Số lời gọi chấm được ở **mọi** vòng, kể cả vòng 0 USD: nó không phụ
+        # thuộc đơn giá, và nó là nửa quan trọng hơn của phép ước.
         assert u.so_loi_goi == v.so_chunk(), v.vong
-        assert 0.4 <= u.chi_phi_usd / v.chi_phi_usd() <= 2.5, (v.vong, u.chi_phi_usd)
         da_cham += 1
+        if v.chi_phi_usd() == 0.0:
+            # Vòng chạy model cục bộ: đơn giá 0 ở cả hai đầu nên tỷ lệ tiền là
+            # 0/0. Bỏ qua vế tiền chứ không kẹp mẫu số về một số dương giả -
+            # một tỷ lệ dựng từ mẫu số bịa thì đọc như một phép chấm đã chạy.
+            assert u.chi_phi_usd == 0.0, (v.vong, "model cục bộ mà ước ra tiền")
+            continue
+        assert 0.4 <= u.chi_phi_usd / v.chi_phi_usd() <= 2.5, (v.vong, u.chi_phi_usd)
+        tien += 1
     assert da_cham == so_file, "mọi file vòng phải được chấm, không gộp theo model"
+    assert tien == len(VONG_API), "cả bốn vòng API phải được chấm vế tiền"
 
 
 def test_uoc_tinh_tren_bo_vang_rong_thi_nem_chu_khong_in_0_usd(bo_vang):

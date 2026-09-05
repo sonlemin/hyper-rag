@@ -33,7 +33,13 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 CAM_IMPORT = {
     "core": {"adapters", "api", "redteam", "web", "tests", "hypergraphrag", "vendor"},
     "adapters": {"api", "redteam", "web", "tests"},
-    "api": {"web", "tests"},
+    # `api/` không import `eval/` (story 2.13). AGENTS.md khai chiều này từ đầu
+    # (`eval/` -> `core/` + `adapters/`, một chiều), nhưng cho tới 2.13 nó chỉ
+    # sống trong văn xuôi: `api/do_chi_phi.py` cần `dem_token` cho `--uoc-tinh`
+    # và đường ngắn nhất là import thẳng `eval.do_trich_xuat`, kéo cả harness đo
+    # cùng bộ vàng vào tiến trình nạp. Luật nay canh bằng máy, và chỗ dùng chung
+    # phải hạ xuống `adapters/`.
+    "api": {"eval", "web", "tests"},
     "redteam": {"api", "web", "tests"},
     # `eval/` không import `vendor/` (story 2.8, khoản ledger 2.6). Luật chia
     # chunk của vendor đi qua `adapters/chunking.py`, đó là chỗ duy nhất parity

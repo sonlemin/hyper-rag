@@ -28,6 +28,10 @@ eval/anh_do_thi/*.bak.json
 # đã từ chối ghi nó vào cây repo (`ly_do_tu_choi_dich`), dòng này là hàng rào
 # thứ hai cho ca ai đó chép tay file về từ máy chủ.
 eval/anh_do_thi/real*.json
+# Cùng luật cho space `that_khu` (story 2.13): cùng 50 tài liệu đó, chỉ khác bộ
+# trích xuất. Nội dung tuy **đã khử** vẫn là văn bản công ty, nên bản đầy đủ
+# không vào git dù nó đi được ra API ngoài.
+eval/anh_do_thi/that_khu*.json
 # Bản **rút gọn** thì ngược lại: nó *phải* có commit. Mọi id entity và `doc_key`
 # đã thành băm có muối (muối giữ ngoài repo), nên nó không mang một giá trị nào,
 # còn ba tỷ lệ n-ngôi thì tính lại được từ nó - đó là chỗ đứng để

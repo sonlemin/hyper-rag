@@ -15,6 +15,14 @@ Cột thứ ba `real` (story 2.11) là **tùy chọn** và không có đường 
 ảnh chụp của space `real` dump nguyên văn giá trị mọi slot của tài liệu công ty
 nên nó nằm ngoài cây repo. Thiếu cờ `--anh-real` thì trang in hai cột như cũ.
 
+Cột thứ tư `that_khu` (story 2.13) là **cùng 50 tài liệu đã khử đó**, trích bằng
+DeepSeek thay vì Qwen cục bộ - bản đã khử được phép ra API ngoài (NFR-05), và
+ràng buộc provider cục bộ của AD-12 gắn với space `real` chứ không với bộ dữ
+liệu. Có cả hai cột thì trang in thêm một khối **đối chứng**: cùng một tập tài
+liệu, khác đúng bộ trích xuất, nên chênh giữa hai cột là phép đo về chính chênh
+Qwen/DeepSeek mà story 2.11 chỉ mô tả được bằng ba dấu vân tay trên hai tập khác
+nhau. Nó cũng là chỗ phát biểu được mỏ neo Composition-Risk mà story 2.10 mất.
+
 Ba điều trang phải nói ra ở đầu, không đẩy xuống chân trang:
 
 - Ba tỷ lệ là tỷ lệ trên tập fact **hệ trích được**, không phải tập fact có
@@ -23,6 +31,9 @@ Ba điều trang phải nói ra ở đầu, không đẩy xuống chân trang:
   mỏ neo độc lập cho corpus 2.8.
 - Cột `real` đo trên tài liệu thật nhưng trích bằng **một bộ trích xuất khác**
   (Qwen 2.5 7B cục bộ, precision chưa đo), nên chênh của nó trộn hai nguyên nhân.
+- Cột `that_khu` đo trên cùng tập tài liệu đó bằng DeepSeek, nên nó cùng bộ trích
+  xuất với `synth`; điều **chưa** khử được là hai cột vẫn khác trục loại nội dung,
+  và precision ghép cặp đo trên corpus dựng chứ chưa đo trên tài liệu công ty.
 
 Trang này **không in id hay giá trị slot** của bất kỳ hyperedge nào; điểm lộ duy
 nhất của cột `real` là chuỗi `content_type`/`scope`, tức nhãn phân loại. Nó vẫn
@@ -72,6 +83,14 @@ ANH_KHAO_SAT: Path = _GOC / "anh_do_thi" / "khao_sat.json"
 # trang luôn biết mình đang nhìn dạng nào.
 SPACE_REAL: str = "real"
 
+# Cột thứ tư (story 2.13): **cùng 50 tài liệu đã khử** của `real`, trích bằng
+# DeepSeek thay vì Qwen cục bộ. Tên space cố ý **không** khớp `core.ids
+# .la_space_real` (không phải `real`, không kết thúc `_real`), vì nó chạy
+# provider API ngoài **có chủ đích**: bản đã khử được phép ra API ngoài
+# (NFR-05), và ràng buộc cục bộ của AD-12 gắn với space `real` chứ không với bộ
+# dữ liệu. Cũng **không có mặc định**, cùng lý do với `--anh-real`.
+SPACE_THAT_KHU: str = "that_khu"
+
 # Vòng đo chốt của story 2.6 và precision *ghép cặp* trên mẫu số tổng của nó -
 # cổng R2 chính thức (`eval/cham_trich_xuat.py`). Ghi ra trang vì ba tỷ lệ đứng
 # trên tập fact mà hệ trích được, và người đọc phải thấy con số đó cùng lúc với
@@ -86,6 +105,14 @@ SPACE_REAL: str = "real"
 # `tests/test_ty_le_n_ngoi.py::test_precision_ghep_cap_khop_vong_chot`.
 VONG_CHOT_2_6: str = "v1-deepseek"
 PRECISION_GHEP_CAP: float = 0.707
+
+# Vòng đo đường **cục bộ** (story 2.13). Story 2.11 phải để trống chỗ này và
+# trang in ra câu "chưa đo lần nào"; vòng `v2-qwen-cuc-bo` đo nó trên đúng mẫu
+# số của R2 - cùng 8 tài liệu chấm, cùng prompt, cùng bộ tách - nên câu đó nay
+# thay bằng một con số. Cùng luật chép tay và cùng chỗ canh với hằng ở trên
+# (`tests/test_ty_le_n_ngoi.py::test_precision_ghep_cap_cuc_bo_khop_vong_do`).
+VONG_CUC_BO_2_13: str = "v2-qwen-cuc-bo"
+PRECISION_GHEP_CAP_CUC_BO: float = 0.482
 
 # Lệnh sinh ra ảnh chụp còn thiếu. In nguyên văn ra stderr thay vì một câu
 # "thiếu file": người chạy phải dựng lại được bước trước mà không đi tra tài liệu.
@@ -104,6 +131,14 @@ LENH_CHUP: Mapping[str, str] = {
         " --muoi /root/hyper-rag-data/muoi-anh-rut-gon.txt"
         " (rồi scp eval/anh_do_thi/real_rut_gon.json về và commit; bản **đầy đủ**"
         " thì --dich ra ngoài cây repo và không bao giờ commit)"
+    ),
+    SPACE_THAT_KHU: (
+        "scripts/chay-may-chu.sh nap /root/hyper-rag-data/that-khu --space that_khu"
+        " --xuat-json eval/so_do_nap/nap-that-khu.json"
+        " && HYPER_RAG_MODULE=eval.chup_do_thi scripts/chay-may-chu.sh chup"
+        " --space that_khu --rut-gon --muoi /root/hyper-rag-data/muoi-anh-rut-gon.txt"
+        " (cùng muối với real - `muoi_id` phải bằng nhau, đó là chỗ máy kiểm được"
+        " hai cột dựng trên cùng một phép băm)"
     ),
 }
 
@@ -353,9 +388,9 @@ def _khoi_bo_trich_xuat_khac(bo: Sequence[BaTyLe]) -> str:
     con số chứ không phải một ghi chú phương pháp. `synth` và `khao_sat` trích
     bằng DeepSeek với precision ghép cặp đã đo ở story 2.6; `real` chỉ chạy được
     provider cục bộ (AD-12) nên nó trích bằng Qwen 2.5 7B, và precision của
-    đường đó chưa đo lần nào.
+    đường đó đo ở story 2.13 - thấp hơn hẳn, dưới cổng R2.
 
-    Câu "precision chưa đo" một mình là không đủ, và đó là bài học của lần đọc
+    Một con số precision một mình vẫn là không đủ, và đó là bài học của lần đọc
     04/09: cột `real` ra **100%** ở cả hai tỷ lệ đầu, và một người đọc thấy 100%
     mà không có số đối chiếu sẽ đọc thành một kết quả rất tốt. Nên khối này in
     ba dấu vân tay đo được của bộ trích xuất ngay cạnh con số, và phát biểu
@@ -374,14 +409,118 @@ def _khoi_bo_trich_xuat_khac(bo: Sequence[BaTyLe]) -> str:
         " (AD-12), nên tài liệu thật được trích bằng <b>Qwen 2.5 7B cục bộ</b>,"
         f" còn <code>synth</code> và <code>khao_sat</code> trích bằng DeepSeek với"
         f" precision ghép cặp <b>{PRECISION_GHEP_CAP:.1%}</b> đã đo ở story 2.6."
-        " Precision của đường Qwen <b>chưa đo lần nào</b>: bộ vàng trích xuất của"
-        " story 2.5 đo DeepSeek trên corpus dựng, không có bộ vàng nào cho"
-        " <code>real</code>."
+        " Precision của đường Qwen <b>nay đã đo</b> (story 2.13, vòng"
+        f" <code>{html.escape(VONG_CUC_BO_2_13)}</code> trên cùng 8 tài liệu chấm"
+        f" của bộ vàng): <b>{PRECISION_GHEP_CAP_CUC_BO:.1%}</b>, tức <b>dưới cổng"
+        " R2 60%</b> và thấp hơn DeepSeek"
+        f" {PRECISION_GHEP_CAP - PRECISION_GHEP_CAP_CUC_BO:.1%} điểm trên đúng mẫu"
+        " số đó. Con số này đo trên corpus dựng, không trên tài liệu công ty -"
+        " nó nói đường Qwen kém hơn ở đâu, không nói ba tỷ lệ dưới đây sai bao nhiêu."
         f"<br>Ba dấu vân tay đo được từ chính hai ảnh chụp:<ol>{bang_chung}</ol>"
         "<b>Kết luận: cột <code>real</code> không khôi phục được mỏ neo"
         " Composition-Risk mà story 2.10 mất.</b> Nó đo trên tài liệu thật, đúng"
         " thứ PRD muốn, nhưng ba con số của nó nói về chênh lệch giữa hai bộ trích"
         " xuất nhiều hơn nói về hình dạng tri thức doanh nghiệp.</div>"
+    )
+
+
+def _cot_cua(bo: Sequence[BaTyLe], space: str) -> BaTyLe | None:
+    """Cột của một space (nhận cả bản rút gọn), hoặc `None` nếu trang không có nó."""
+    for b in bo:
+        if space_goc(b.space) == space:
+            return b
+    return None
+
+
+def dong_doi_chung(cot_real: BaTyLe, cot_that_khu: BaTyLe) -> list[str]:
+    """Chênh ba tỷ lệ giữa hai cột **cùng tập tài liệu**, `that_khu` làm mốc.
+
+    Đây là phép đo có đối chứng mà story 2.11 không có: hai cột chứa cùng 50 tài
+    liệu đã khử, cùng từng byte, nên chênh giữa chúng không trộn được với chênh
+    về hình dạng tri thức. Mốc là `that_khu` vì nó là cột **cùng bộ trích xuất
+    với `synth`**, tức cột duy nhất trong hai cột này neo được vào một precision
+    đã đo.
+    """
+    ra: list[str] = []
+    for a, b in zip(cot_real.bo_ba(), cot_that_khu.bo_ba()):
+        if a.ti_le is None or b.ti_le is None:
+            ra.append(f"<b>{html.escape(a.ten)}</b>: không so được (mẫu số rỗng ở một bên)")
+            continue
+        ra.append(
+            f"<b>{html.escape(a.ten)}</b>: {a.mo_ta()} ở <code>{html.escape(cot_real.space)}</code>"
+            f" so với {b.mo_ta()} ở <code>{html.escape(cot_that_khu.space)}</code>"
+            f" (chênh {a.ti_le - b.ti_le:+.1%})"
+        )
+    return ra
+
+
+def cau_ve_mo_neo(cot_that_khu: BaTyLe, moc: BaTyLe) -> str:
+    """Phát biểu về mỏ neo Composition-Risk, dựng từ **chính hai cột**, không chép tay.
+
+    Story 2.10 mất mỏ neo khi mẫu số chuyển sang 50 bản ghi giả lập do chính bên
+    dựng corpus viết; story 2.11 không lấy lại được vì cột `real` trích bằng một
+    bộ trích xuất khác nên chênh của nó không đọc được. Cột `that_khu` đóng đúng
+    lỗ đó: **tài liệu thật, cùng bộ trích xuất với cột mốc**, nên chênh của nó
+    nói về hình dạng tri thức chứ không về bộ trích xuất.
+
+    Câu vẫn phải nêu điều còn lại chưa khử được, và đó là hai thứ: hai cột không
+    cùng trục loại nội dung, và precision của DeepSeek đo trên corpus dựng chứ
+    chưa đo trên tài liệu công ty.
+    """
+    cr, cr_moc = cot_that_khu.composition_risk, moc.composition_risk
+    if cr.mau_so == 0:
+        do = "mẫu số nhạy cảm rỗng nên tỷ lệ 3 không tính được"
+    elif cr.tu_so == 0 and cr_moc.tu_so == 0:
+        do = (
+            f"cả hai cột cùng ra 0 ({cr.mo_ta()} so với {cr_moc.mo_ta()} ở"
+            f" <code>{html.escape(moc.space)}</code>) - một số 0 đo được trên tài"
+            " liệu thật, không phải một mẫu số hỏng; ba số chẩn đoán ở cuối trang"
+            " nói nó là 0 vì luôn còn đúng một mảnh không lộ hay vì không mảnh nào lộ"
+        )
+    else:
+        do = (
+            f"{cr.mo_ta()} so với {cr_moc.mo_ta()} ở"
+            f" <code>{html.escape(moc.space)}</code>"
+        )
+    return (
+        f"<b>Mỏ neo Composition-Risk:</b> cột <code>{html.escape(cot_that_khu.space)}</code>"
+        " đo trên **tài liệu thật** bằng **cùng bộ trích xuất** với cột mốc"
+        f" <code>{html.escape(moc.space)}</code>, nên chênh của nó đọc được như một"
+        f" phát biểu về hình dạng tri thức. Kết quả: {do}."
+        " Hai điều còn lại chưa khử được: hai cột vẫn không cùng trục loại nội dung"
+        " (khối cảnh báo ở dưới), và precision ghép cặp"
+        f" {PRECISION_GHEP_CAP:.1%} đo trên corpus dựng của story 2.5, chưa đo lần nào"
+        " trên tài liệu công ty."
+    )
+
+
+def _khoi_doi_chung(bo: Sequence[BaTyLe]) -> str:
+    """Khối đối chứng Qwen/DeepSeek trên **cùng 50 tài liệu** (story 2.13).
+
+    Chỉ in khi trang có cả hai cột. Story 2.11 chỉ mô tả được chênh giữa hai bộ
+    trích xuất bằng ba dấu vân tay trên hai tập *khác nhau*; ở đây tập là một,
+    nên cùng ba dấu đó thành một phép đo có đối chứng.
+    """
+    cot_real = _cot_cua(bo, SPACE_REAL)
+    cot_tk = _cot_cua(bo, SPACE_THAT_KHU)
+    if cot_real is None or cot_tk is None:
+        return ""
+    dau = "".join(f"<li>{d}</li>" for d in dau_van_tay_bo_trich_xuat(cot_real, cot_tk))
+    chenh = "".join(f"<li>{d}</li>" for d in dong_doi_chung(cot_real, cot_tk))
+    return (
+        '<div class="canh-bao"><b>Đối chứng Qwen / DeepSeek trên cùng 50 tài liệu.</b>'
+        f" Cột <code>{html.escape(cot_real.space)}</code> và cột"
+        f" <code>{html.escape(cot_tk.space)}</code> chứa <b>cùng một tập tài liệu đã"
+        " khử</b>, cùng nội dung từng byte; <b>bộ trích xuất là biến duy nhất đi vào"
+        " ba tỷ lệ</b> (Qwen 2.5 7B cục bộ so với DeepSeek)."
+        " Model embedding cũng khác (<code>bge-m3</code> so với"
+        " <code>text-embedding-3-small</code>), nhưng ba định nghĩa đếm của ADR-012"
+        " đọc số vai được điền, hạng theo <code>content_type</code> và entity chung"
+        " giữa các hyperedge - <b>không đọc một vector nào</b>, nên model embedding"
+        " không vào phép đếm nào."
+        f"<br>Ba tỷ lệ, hai cột:<ul>{chenh}</ul>"
+        f"Ba dấu vân tay của bộ trích xuất, tính từ chính hai ảnh chụp:<ol>{dau}</ol>"
+        f"{cau_ve_mo_neo(cot_tk, bo[0])}</div>"
     )
 
 
@@ -422,6 +561,7 @@ def dung_html(*bo: BaTyLe, ten_hang: Mapping[int, str]) -> str:
         f" còn xuất hiện ở ít nhất một hyperedge không nhạy cảm. Trang này đọc hai ảnh"
         f" chụp đã commit, không chạm kho.</p>"
         f"{_khoi_bo_trich_xuat_khac(bo)}"
+        f"{_khoi_doi_chung(bo)}"
         f"{tom_tat}"
         f"<h2>Ba tỷ lệ, {len(bo)} cột cạnh nhau</h2>"
         f'<p class="chu">Mọi chênh lệch tính so với cột mốc'
@@ -478,6 +618,16 @@ def _tham_so(argv: list[str]) -> argparse.Namespace:
         metavar="FILE",
         help="ảnh chụp đồ thị space real - **không có mặc định**, file này nằm"
         " ngoài cây repo (story 2.11); thiếu cờ thì trang in hai cột như cũ",
+    )
+    p.add_argument(
+        "--anh-that-khu",
+        type=Path,
+        default=None,
+        dest="anh_that_khu",
+        metavar="FILE",
+        help="ảnh chụp đồ thị space that_khu - cùng 50 tài liệu đã khử của real,"
+        " trích bằng DeepSeek (story 2.13). Cũng **không có mặc định**: bản đầy"
+        " đủ nằm ngoài cây repo, bản rút gọn ở eval/anh_do_thi/that_khu_rut_gon.json",
     )
     p.add_argument(
         "--hang",
@@ -544,6 +694,8 @@ def main(argv: list[str] | None = None) -> int:
         anh = [_doc(ts.anh_synth, "synth"), _doc(ts.anh_khao_sat, "khao_sat")]
         if ts.anh_real is not None:
             anh.append(_doc(ts.anh_real, SPACE_REAL))
+        if ts.anh_that_khu is not None:
+            anh.append(_doc(ts.anh_that_khu, SPACE_THAT_KHU))
         bo = tuple(ba_ty_le(a, hang) for a in anh)
     except (AnhDoThiKhongHopLe, HangKhongXacDinh, SensitivityRanksInvalid) as loi:
         print(str(loi), file=sys.stderr)
@@ -597,8 +749,10 @@ def main(argv: list[str] | None = None) -> int:
             continue
         print(
             f"cảnh báo: cột {b.space} trích bằng Qwen 2.5 7B cục bộ (AD-12),"
-            " precision chưa đo lần nào - ba tỷ lệ của nó là hiện tượng của bộ"
-            " trích xuất, không phải của tri thức:"
+            f" precision ghép cặp {PRECISION_GHEP_CAP_CUC_BO:.1%} (vòng"
+            f" {VONG_CUC_BO_2_13}, dưới cổng R2 60%; DeepSeek"
+            f" {PRECISION_GHEP_CAP:.1%} trên cùng mẫu số) - ba tỷ lệ của nó là"
+            " hiện tượng của bộ trích xuất, không phải của tri thức:"
         )
         for d in dau_van_tay_bo_trich_xuat(b, trai):
             print("  - " + _bo_the(d))
@@ -606,6 +760,18 @@ def main(argv: list[str] | None = None) -> int:
             f"  => cột {b.space} KHÔNG khôi phục được mỏ neo Composition-Risk mà"
             " story 2.10 mất"
         )
+    cot_real, cot_tk = _cot_cua(bo, SPACE_REAL), _cot_cua(bo, SPACE_THAT_KHU)
+    if cot_real is not None and cot_tk is not None:
+        print(
+            f"đối chứng {cot_real.space} / {cot_tk.space}: cùng 50 tài liệu đã khử,"
+            " cùng nội dung từng byte - bộ trích xuất là biến duy nhất đi vào ba tỷ"
+            " lệ (model embedding khác nhau nhưng không vào phép đếm nào của ADR-012):"
+        )
+        for d in dong_doi_chung(cot_real, cot_tk):
+            print("  - " + _bo_the(d))
+        for d in dau_van_tay_bo_trich_xuat(cot_real, cot_tk):
+            print("  - " + _bo_the(d))
+        print("  => " + _bo_the(cau_ve_mo_neo(cot_tk, trai)))
     print(f"ghi {dich}")
     return 0
 

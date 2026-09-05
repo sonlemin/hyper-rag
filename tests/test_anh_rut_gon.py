@@ -498,6 +498,62 @@ def test_gitignore_chan_ban_day_du_va_mo_ban_rut_gon():
 
 
 # ---------------------------------------------------------------------------
+# Cùng cặp rào cho space `that_khu` (story 2.13)
+# ---------------------------------------------------------------------------
+
+
+def test_ban_day_du_cua_that_khu_khong_vao_duoc_cay_repo():
+    """Chiều một, cho space thứ hai của tài liệu công ty.
+
+    `that_khu` chứa **cùng 50 tài liệu đã khử** của `real`, chỉ khác bộ trích
+    xuất. Đã khử không có nghĩa là công khai: nội dung vẫn là văn bản công ty,
+    nên bản đầy đủ không vào git dù nó đi được ra API ngoài.
+    """
+    dich = GOC_REPO / "eval" / "anh_do_thi" / "that_khu.json"
+    ly_do = ly_do_tu_choi_dich("that_khu", dich)
+    assert ly_do and "đầy đủ" in ly_do and "--rut-gon" in ly_do
+
+
+def test_ban_rut_gon_cua_that_khu_vao_duoc_cay_repo():
+    """Chiều hai: nửa còn lại của rào.
+
+    Không có test này thì siết rào thành "that_khu không bao giờ vào repo" vẫn
+    xanh, và cột thứ tư của trang ba tỷ lệ lại quay về hằng chép tay.
+    """
+    dich = GOC_REPO / "eval" / "anh_do_thi" / "that_khu_rut_gon.json"
+    assert ly_do_tu_choi_dich("that_khu", dich, rut_gon=True) is None
+
+
+def test_ban_day_du_that_khu_ghi_vao_ten_file_rut_gon_van_bi_tu_choi():
+    """Tổ hợp xấu nhất: bản đầy đủ dưới tên file của bản rút gọn.
+
+    `.gitignore` phân biệt hai dạng bằng tên file, nên ở tổ hợp này nó mở cửa;
+    thứ duy nhất còn đứng giữa một file dump nguyên văn giá trị slot và
+    `git add` là rào này, và nó phải xét **cờ**, không phải tên file.
+    """
+    dich = GOC_REPO / "eval" / "anh_do_thi" / "that_khu_rut_gon.json"
+    ly_do = ly_do_tu_choi_dich("that_khu", dich, rut_gon=False)
+    assert ly_do and "đầy đủ" in ly_do
+
+
+def test_gitignore_chan_ban_day_du_that_khu_va_mo_ban_rut_gon():
+    """Hai dòng đúng chiều, cùng khuôn với cặp dòng của `real`."""
+    t = (GOC_REPO / ".gitignore").read_text(encoding="utf-8")
+    chan = "eval/anh_do_thi/that_khu*.json"
+    mo = "!eval/anh_do_thi/*_rut_gon.json"
+    assert chan in t and mo in t
+    assert t.index(chan) < t.index(mo)
+
+
+def test_ten_file_mac_dinh_cua_that_khu_khop_loi_tu_khai():
+    assert ten_file_mac_dinh("that_khu", rut_gon=False).name == "that_khu.json"
+    assert (
+        ten_file_mac_dinh("that_khu", rut_gon=True).name
+        == f"that_khu{HAU_TO_RUT_GON}.json"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Đường nối `--rut-gon` trong `main()` (vòng review 05/09)
 # ---------------------------------------------------------------------------
 

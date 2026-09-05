@@ -52,6 +52,7 @@ from hypergraphrag.operate import (
 from hypergraphrag.utils import compute_mdhash_id
 
 from adapters.neo4j import SLOT_FIELD
+from adapters.thu_lai import goi_co_thu_lai
 from core.facts import (
     GIA_TRI_TOI_DA,
     KHOA_FACTS,
@@ -64,6 +65,16 @@ from core.ids import normalize_id
 from core.slots import SLOT_ROLES
 
 logger = logging.getLogger(__name__)
+
+
+def _in_thu_lai(thong_diep: str, **_) -> None:
+    """Dòng "đang thử lại" của đường nạp đi vào log, không ra stdout.
+
+    Đường nạp chạy trong container (`api/man_nap.py`) cũng như trên CLI; một
+    `print` ở tầng adapter thì màn nạp web không thấy được và CLI thì trộn nó
+    vào bảng số. `WARNING` vì một lần thử lại là chuyện đáng đọc lại sau đợt.
+    """
+    logger.warning("%s", thong_diep.strip())
 
 # Tham số của *mọi* lời gọi trích xuất. Đi thẳng vào kwargs của hàm LLM đã bọc:
 # OpenAI/DeepSeek nhận nguyên, Ollama dịch qua `_kwargs_ollama`.
@@ -196,8 +207,23 @@ class ThongKeTrichXuat:
 
 
 async def _trich_mot_chunk(use_llm_func, chunk_key: str, chunk: dict):
-    """Một lời gọi LLM cho một chunk, rồi đọc phản hồi theo lược đồ."""
-    van_ban = await use_llm_func(dung_prompt(chunk["content"]), **THAM_SO_LLM)
+    """Một lời gọi LLM cho một chunk, rồi đọc phản hồi theo lược đồ.
+
+    **Đây là lớp thử lại duy nhất của đường nạp phía LLM** (story 2.13). Đơn vị
+    thử lại bằng đúng đơn vị lời gọi: một 429 trên chunk thứ 12 thử lại chunk
+    thứ 12, không thử lại cả tài liệu (trả tiền lại cho 11 chunk đã xong) và
+    không nhân lên ở `bo_llm` (4x4 = 16 lần thử, kéo dài chính cửa sổ chặn nhịp).
+
+    `TaskGroup` ở `trich_xuat_chunks` giữ nguyên nghĩa: chỉ khi cả bốn lần thử
+    đều hỏng thì lỗi mới dội ra ngoài và hủy các chunk anh em.
+    """
+    van_ban = await goi_co_thu_lai(
+        use_llm_func,
+        dung_prompt(chunk["content"]),
+        ten=f"chunk {chunk_key}",
+        in_ra=_in_thu_lai,
+        **THAM_SO_LLM,
+    )
     return chunk_key, phan_tich_phan_hoi(van_ban)
 
 

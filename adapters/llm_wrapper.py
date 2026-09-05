@@ -26,11 +26,19 @@ Thứ tự của một lời gọi, và vì sao thứ tự đó không đổi đ
    dung vẫn trả về.
 
 Chi phí là một hàng một lời gọi, không cộng dồn trong tiến trình; Postgres
-cộng bằng SUM (FR-25 đọc lũy kế từ đó). Không cache, không retry riêng ngoài
-retry sẵn có của SDK.
+cộng bằng SUM (FR-25 đọc lũy kế từ đó). Không cache.
+
+**Retry: đúng một lớp, và nó ở `bo_embedding` chứ không ở `bo_llm`** (story
+2.13). `bo_embedding.func` bọc lời gọi `nha_cung_cap.nhung` bằng
+`adapters/thu_lai.goi_co_thu_lai` - embedding là phần đông lời gọi của một đợt
+nạp và nó không đi qua lớp thử lại nào khác. `bo_llm` **không** bọc: cả hai
+đường LLM đã có lớp của mình ở trên nó (`adapters/trich_xuat._trich_mot_chunk`
+cho đường nạp, `eval/do_trich_xuat.goi_llm_co_thu_lai` cho đường đo), nên một
+lớp nữa ở đây cho 4x4 = 16 lần thử và kéo dài chính cửa sổ chặn nhịp.
 """
 
 import asyncio
+import logging
 import os
 from dataclasses import dataclass
 from functools import partial
@@ -48,6 +56,7 @@ from adapters.model_catalog import (
     MucModel,
     danh_muc_mac_dinh,
 )
+from adapters.thu_lai import goi_co_thu_lai
 from core.audit import (
     EVENT_EMBEDDING_COST,
     EVENT_LLM_COST,
@@ -59,6 +68,18 @@ from core.audit import (
 )
 from core.ids import la_space_real
 from core.permission import PermissionContext, current_context
+
+logger = logging.getLogger(__name__)
+
+
+def _in_thu_lai(thong_diep: str, **_) -> None:
+    """Dòng "đang thử lại" đi vào log, không ra stdout.
+
+    Wrapper chạy cả trong container phục vụ lẫn trên CLI; một `print` ở tầng
+    này thì màn nạp web không thấy được còn CLI thì bị trộn vào bảng số.
+    """
+    logger.warning("%s", thong_diep.strip())
+
 
 # --- Mã lỗi -----------------------------------------------------------------
 
@@ -537,7 +558,15 @@ def bo_embedding(
         ngu_canh = current_context()
         _kiem_space(ngu_canh, nha_cung_cap)
         van_ban = list(texts)
-        ket_qua = await nha_cung_cap.nhung(muc.ten, van_ban)
+        # **Lớp thử lại duy nhất của đường embedding** (story 2.13). Nó nằm ở
+        # đây chứ không ở `bo_llm` vì hai đường gọi khác nhau: đường LLM đã có
+        # lớp của nó ở `adapters/trich_xuat.py::_trich_mot_chunk` (đường nạp) và
+        # `eval/do_trich_xuat.py::goi_llm_co_thu_lai` (đường đo), còn embedding
+        # không đi qua lớp nào cả - và nó là phần **đông** lời gọi của một đợt
+        # nạp (159/209 ở đợt `khao_sat`), tức chỗ dễ chạm 429 nhất.
+        ket_qua = await goi_co_thu_lai(
+            nha_cung_cap.nhung, muc.ten, van_ban, ten=f"embedding {muc.ten}", in_ra=_in_thu_lai
+        )
         _kiem_hinh_dang(ket_qua, len(van_ban), muc)
         await ghi_quan_sat(
             audit,

@@ -452,3 +452,256 @@ def test_file_roi_hai_thu_muc_khac_nhau_khong_bi_rao(monkeypatch, tmp_path):
     (b / "b.md").write_text("---\nscope: noi_bo\ncontent_type: runbook\n---\nthan", encoding="utf-8")
     mod.main([str(a / "a.md"), str(b / "b.md"), "--space", "synth"])
     assert goi == [("nap", ("a.md", "b.md"), "synth", False)]
+
+
+# ---------------------------------------------------------------------------
+# Xem trước chi phí `--uoc-tinh` (story 2.13)
+# ---------------------------------------------------------------------------
+
+
+def _so_do(tmp_path: Path, ten: str, ngay: str, dong: list[dict], tong_usd: float) -> Path:
+    """Một file số đo dựng tay, đủ hình dạng mà `cac_so_do_nap` đọc."""
+    thu_muc = tmp_path / "so_do"
+    thu_muc.mkdir(exist_ok=True)
+    (thu_muc / ten).write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "ngay": ngay,
+                "lenh": "x",
+                "space": "s",
+                "dot_id": "d",
+                "so_tai_lieu": 1,
+                "theo_model": dong,
+                "tong": {"so_lan": 1, "token_vao": 1, "token_ra": 1, "chi_phi_usd": tong_usd},
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    return thu_muc
+
+
+def test_uoc_tinh_khong_di_cung_xuat_json():
+    """Hàng "Xem trước sai cách dùng" của I/O Matrix.
+
+    `--xuat-json` ghi mẫu số của bảng ngoại suy FR-30; một lần xem trước mà ghi
+    ra file đó là ghi một đợt **chưa chạy** đè lên một đợt đã trả tiền.
+    """
+    with pytest.raises(SystemExit):
+        mod._tham_so(["eval/data", "--uoc-tinh", "--xuat-json", "x.json"])
+
+
+def test_uoc_tinh_khong_di_cung_xoa_space():
+    with pytest.raises(SystemExit):
+        mod._tham_so(["eval/data", "--uoc-tinh", "--xoa-space"])
+
+
+def test_uoc_tinh_can_nguon_cua_dot_sap_chay():
+    with pytest.raises(SystemExit):
+        mod._tham_so(["--uoc-tinh"])
+
+
+def test_model_chi_di_cung_uoc_tinh():
+    """Đợt nạp thật đọc model từ `LLM_MODEL` như wrapper đọc, không từ dòng lệnh.
+
+    Một `--model` áp cho đường nạp là hai nguồn sự thật cho cùng một lựa chọn,
+    và bảng số của đợt sẽ khai model của biến môi trường trong khi lời gọi đi
+    tới model của dòng lệnh.
+    """
+    with pytest.raises(SystemExit):
+        mod._tham_so(["eval/data", "--model", "gpt-4o"])
+    assert mod._tham_so(["eval/data", "--uoc-tinh", "--model", "gpt-4o"]).model == "gpt-4o"
+
+
+def test_uoc_tinh_khong_cham_kho_khong_goi_llm(monkeypatch, tmp_path, capsys):
+    """Hàng "Xem trước chi phí": in số rồi thoát 0, không mở kết nối nào.
+
+    `_gia_lap` thay `AuditPostgres.mo` bằng một bản giả và đếm lời gọi; nhánh
+    xem trước phải chạy mà **không** chạm nó, vì `chay()` mở Postgres ở dòng
+    đầu và một lệnh xem trước không được đòi Postgres đang chạy mới xem được.
+    """
+    goi, audit, _ = _gia_lap(monkeypatch)
+    thu_muc = _corpus(tmp_path, "a.md", "b.md", space="that_khu")
+    with pytest.raises(SystemExit) as ma:
+        mod.main([str(thu_muc), "--space", "that_khu", "--uoc-tinh", "--model", "deepseek-v4-flash"])
+    assert ma.value.code == 0
+    assert goi == [], "không gọi lõi nạp"
+    assert not audit.da_dong, "không mở rồi đóng Postgres - tức chưa mở lần nào"
+    ra = capsys.readouterr().out
+    assert "2 tài liệu" in ra and "lời gọi LLM" in ra and "USD" in ra
+
+
+def test_uoc_tinh_van_bi_rao_space_chan(monkeypatch, tmp_path, capsys):
+    """Rào `.space` chạy **trước** nhánh xem trước.
+
+    Xem trước một đợt với cờ `--space` sai là in một con số cho một space khác,
+    và đó đúng là lúc người ta tin con số nhất.
+    """
+    _gia_lap(monkeypatch)
+    thu_muc = _corpus(tmp_path, "a.md", space="that_khu")
+    with pytest.raises(SystemExit) as ma:
+        mod.main([str(thu_muc), "--space", "real", "--uoc-tinh", "--model", "deepseek-v4-flash"])
+    assert ma.value.code == 1
+    assert "SPACE_LECH_THU_MUC" in capsys.readouterr().err
+
+
+def test_uoc_tinh_thieu_model_la_loi_khong_doan_ho(monkeypatch, tmp_path, capsys):
+    """Không có mặc định: một model đoán hộ cho một con số tiền nói về đợt khác."""
+    _gia_lap(monkeypatch)
+    monkeypatch.delenv(mod.BIEN_LLM_MODEL, raising=False)
+    thu_muc = _corpus(tmp_path, "a.md", space="that_khu")
+    with pytest.raises(SystemExit) as ma:
+        mod.main([str(thu_muc), "--space", "that_khu", "--uoc-tinh"])
+    assert ma.value.code == 1
+    assert mod.BIEN_LLM_MODEL in capsys.readouterr().err
+
+
+def test_uoc_tinh_doc_model_tu_bien_moi_truong_cua_duong_nap(monkeypatch, tmp_path, capsys):
+    _gia_lap(monkeypatch)
+    monkeypatch.setenv(mod.BIEN_LLM_MODEL, "deepseek-v4-flash")
+    thu_muc = _corpus(tmp_path, "a.md", space="that_khu")
+    with pytest.raises(SystemExit) as ma:
+        mod.main([str(thu_muc), "--space", "that_khu", "--uoc-tinh"])
+    assert ma.value.code == 0
+    assert "deepseek-v4-flash" in capsys.readouterr().out
+
+
+def test_uoc_tinh_khong_tai_lieu_nao_la_loi_khong_phai_dot_mien_phi(monkeypatch, tmp_path, capsys):
+    """"0 lời gọi, 0 USD" rồi thoát 0 đọc y như một đợt miễn phí."""
+    _gia_lap(monkeypatch)
+    thu_muc = tmp_path / "rong"
+    thu_muc.mkdir()
+    (thu_muc / TEN_FILE_SPACE).write_text("that_khu\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as ma:
+        mod.main([str(thu_muc), "--space", "that_khu", "--uoc-tinh", "--model", "deepseek-v4-flash"])
+    assert ma.value.code == 1
+    assert "0 lời gọi" in capsys.readouterr().err
+
+
+def test_so_loi_goi_llm_bang_so_chunk_chinh_xac(tmp_path):
+    """Số lời gọi là **số đếm chính xác**, không phải một ước lượng.
+
+    Nó bằng số chunk mà đường nạp sẽ cắt ra, tính bằng chính
+    `adapters/chunking.py` mà `EngineACL.ainsert` dùng - nên nó không lệch được
+    khỏi đợt thật trừ khi luật chia chunk đổi.
+    """
+    from adapters.chunking import cau_hinh_chunk, chia_chunk
+    from core.ingest_scan import quet_cac_file
+
+    thu_muc = _corpus(tmp_path, "a.md", "b.md", space="that_khu")
+    quet = quet_cac_file(sorted(p for p in thu_muc.iterdir() if p.suffix == ".md"))
+    uoc = mod.uoc_tinh_dot(quet, "deepseek-v4-flash", space="that_khu")
+    thuc = sum(len(chia_chunk(t.noi_dung, cau_hinh_chunk())) for t in quet.chap_nhan)
+    assert uoc.so_loi_goi == thuc == 2
+    assert uoc.token_vao > 0
+
+
+def test_ty_le_token_ra_lay_cua_chinh_model_do_va_cua_dot_gan_nhat(tmp_path):
+    """Tỷ lệ ra/vào là số **đo được của chính model đó**, không phải một hằng chung.
+
+    Qwen cục bộ cho 1,04 còn DeepSeek cho 0,38-0,39, lệch nhau gần ba lần; một
+    tỷ lệ chung ước sai gần ba lần trên khoản đắt nhất của hóa đơn (token ra
+    của DeepSeek đắt gấp ba token vào).
+    """
+    thu_muc = _so_do(
+        tmp_path,
+        "cu.json",
+        "2026-01-01T00:00:00+00:00",
+        [{"model": "deepseek-v4-flash", "loai": "llm", "token_vao": 100, "token_ra": 90,
+          "chi_phi_usd": 1.0, "nha_cung_cap": "deepseek", "so_lan": 1}],
+        1.0,
+    )
+    _so_do(
+        tmp_path,
+        "moi.json",
+        "2026-02-01T00:00:00+00:00",
+        [
+            {"model": "deepseek-v4-flash", "loai": "llm", "token_vao": 1000, "token_ra": 400,
+             "chi_phi_usd": 1.0, "nha_cung_cap": "deepseek", "so_lan": 1},
+            {"model": "qwen2.5:7b", "loai": "llm", "token_vao": 100, "token_ra": 104,
+             "chi_phi_usd": 0.0, "nha_cung_cap": "ollama", "so_lan": 1},
+        ],
+        1.0,
+    )
+    ds = mod.ty_le_token_ra("deepseek-v4-flash", thu_muc)
+    assert ds is not None and ds.ty_le == pytest.approx(0.4) and ds.nguon == "moi.json"
+    qw = mod.ty_le_token_ra("qwen2.5:7b", thu_muc)
+    assert qw is not None and qw.ty_le == pytest.approx(1.04)
+    assert mod.ty_le_token_ra("gpt-4o", thu_muc) is None
+
+
+def test_chua_do_model_nao_thi_khong_uoc_token_ra_thay_vi_bia_mot_hang(tmp_path, capsys):
+    """Một hằng chọn đại cho một model chưa chạy bao giờ đọc y như một số đo."""
+    from core.ingest_scan import quet_cac_file
+
+    thu_muc = _corpus(tmp_path, "a.md", space="that_khu")
+    trong = tmp_path / "khong_co_so_do"
+    trong.mkdir()
+    quet = quet_cac_file([thu_muc / "a.md"])
+    uoc = mod.uoc_tinh_dot(quet, "gpt-4o", space="that_khu", thu_muc_so_do=trong)
+    assert uoc.token_ra_uoc is None and uoc.chi_phi_usd is None
+    assert uoc.chi_phi_vao_usd > 0
+    assert "chưa ước được" in uoc.dong_in()
+
+
+def test_embedding_khong_uoc_ma_noi_phan_no_da_chiem(tmp_path):
+    """Embedding không có con số ước, chỉ có phần nó đã chiếm ở các đợt đã đo.
+
+    Số lời gọi embedding phụ thuộc số entity và hyperedge mà LLM **sắp** sinh
+    ra, tức phụ thuộc đúng thứ chưa chạy. Một con số bịa cho nó tệ hơn một dòng
+    nói thẳng là chưa ước.
+    """
+    thu_muc = _so_do(
+        tmp_path,
+        "a.json",
+        "2026-02-01T00:00:00+00:00",
+        [
+            {"model": "deepseek-v4-flash", "loai": "llm", "token_vao": 1000, "token_ra": 400,
+             "chi_phi_usd": 0.98, "nha_cung_cap": "deepseek", "so_lan": 1},
+            {"model": "text-embedding-3-small", "loai": "embedding", "token_vao": 100,
+             "token_ra": 0, "chi_phi_usd": 0.02, "nha_cung_cap": "openai", "so_lan": 1},
+        ],
+        1.0,
+    )
+    # Đợt 0 USD (đường cục bộ) bị loại: phần trăm trên một tổng bằng 0 vô nghĩa.
+    _so_do(
+        tmp_path,
+        "cuc-bo.json",
+        "2026-03-01T00:00:00+00:00",
+        [{"model": "qwen2.5:7b", "loai": "llm", "token_vao": 10, "token_ra": 10,
+          "chi_phi_usd": 0.0, "nha_cung_cap": "ollama", "so_lan": 1}],
+        0.0,
+    )
+    phan = mod.phan_embedding_da_do(thu_muc)
+    assert phan == [("a.json", pytest.approx(0.02))]
+
+
+def test_phan_embedding_cua_hai_dot_deepseek_that_la_1_9_va_2_3_phan_tram():
+    """Hai con số mà spec 2.13 nêu, tính lại từ chính hai file số đo đã commit.
+
+    Chép tay chúng vào dòng in ra là để dòng đó nói về hai đợt cũ trong khi file
+    đã đổi; tính lại từ nguồn là chỗ duy nhất giữ hai bên khớp nhau.
+    """
+    phan = dict(mod.phan_embedding_da_do())
+    assert phan["nap-that.json"] == pytest.approx(0.019, abs=5e-4)
+    assert phan["nap-khao-sat.json"] == pytest.approx(0.023, abs=5e-4)
+    assert "nap-real.json" not in phan, "đợt 0 USD không có phần trăm nào có nghĩa"
+
+
+def test_file_so_do_hong_khong_lam_hong_ca_lenh_xem_truoc(tmp_path):
+    """Đây là đường *xem trước*, không phải đường đọc mẫu số của chương 4.
+
+    Một file rách không được biến `--uoc-tinh` thành một lệnh không chạy được:
+    khi ấy người ta bỏ luôn bước xem trước, tức bỏ đúng thứ story này dựng ra.
+    """
+    thu_muc = _so_do(
+        tmp_path,
+        "tot.json",
+        "2026-02-01T00:00:00+00:00",
+        [{"model": "deepseek-v4-flash", "loai": "llm", "token_vao": 100, "token_ra": 38,
+          "chi_phi_usd": 1.0, "nha_cung_cap": "deepseek", "so_lan": 1}],
+        1.0,
+    )
+    (thu_muc / "rach.json").write_text("{khong phai json", encoding="utf-8")
+    assert [d["_ten_file"] for d in mod.cac_so_do_nap(thu_muc)] == ["tot.json"]

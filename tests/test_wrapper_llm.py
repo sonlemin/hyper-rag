@@ -48,7 +48,7 @@ from adapters.llm_wrapper import (
 )
 from adapters.model_catalog import ModelUnknown, danh_muc_mac_dinh
 from core.audit import EVENT_EMBEDDING_COST, EVENT_LLM_COST, TIER_OBSERVATION
-from core.ids import SPACE_REAL, la_space_real
+from core.ids import SPACE_REAL, la_space_real, validate_space
 from core.permission import PermissionContextMissing, use_context
 from tests.gia_lap_llm import (
     MODEL_EMBEDDING_CUC_BO_GIA,
@@ -104,6 +104,43 @@ def test_la_space_real_theo_doan_cuoi_ten(space, ky_vong):
 def test_la_space_real_van_kiem_hinh_dang_space():
     with pytest.raises(ValueError):
         la_space_real("real space")
+
+
+# --- Tên space `that_khu` (story 2.13) ----------------------------------------
+
+
+def test_space_that_khu_khong_khop_luat_real_va_van_hop_le():
+    """`that_khu` chạy provider API ngoài **có chủ đích**, nên tên nó phải lọt rào.
+
+    Story 2.13 nạp cùng 50 tài liệu đã khử của space `real` bằng DeepSeek. Bản
+    **đã khử** được phép ra API ngoài (NFR-05 cho hai đường ngang nhau, khử
+    trước hoặc chạy cục bộ); ràng buộc "chỉ provider cục bộ" của AD-12 gắn với
+    space `real` chứ không với bộ dữ liệu. Nên tên space mới:
+
+    - phải hợp lệ theo `validate_space` (chữ đầu, rồi chữ/số/gạch dưới - **không**
+      gạch ngang, nên `that-khu` không dùng được);
+    - **không** được khớp `la_space_real`, nếu không `_kiem_space` của wrapper
+      dội `ProviderNotAllowedForSpace` trước byte đầu tiên và cả đợt không chạy;
+    - phải đọc ra khác `real` bằng mắt, để không ai nhầm hai space với nhau.
+    """
+    from eval.xem_ty_le import SPACE_THAT_KHU
+
+    assert SPACE_THAT_KHU == "that_khu"
+    assert validate_space(SPACE_THAT_KHU) == SPACE_THAT_KHU
+    assert la_space_real(SPACE_THAT_KHU) is False
+    assert SPACE_THAT_KHU != SPACE_REAL
+
+
+def test_rao_fail_closed_van_nguyen_cho_space_khac_ket_thuc_bang_real():
+    """Nới cho `that_khu` không được nới cho một tên kết thúc `_real`.
+
+    Phía an toàn là phía dương: một tên kết thúc `_real` mà không định là real
+    thì chỉ mất quyền gọi API ngoài, còn chiều ngược lại là gửi dữ liệu thật ra
+    ngoài.
+    """
+    assert la_space_real("that_khu_real") is True
+    assert la_space_real("khu_real") is True
+    assert la_space_real("that_khu") is False
 
 
 # --- I/O Matrix: LLM và embedding trên synth ----------------------------------

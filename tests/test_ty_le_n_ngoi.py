@@ -771,7 +771,10 @@ def test_trang_ba_cot_in_cot_real_va_canh_bao_bo_trich_xuat_khac(tmp_path):
     assert "<th>chênh khao_sat - synth</th>" in trang
     assert "<th>chênh real - synth</th>" in trang
     assert "bộ trích xuất" in trang and "Qwen" in trang
-    assert "chưa đo lần nào" in trang
+    # Story 2.13 thay câu "chưa đo lần nào" bằng con số đo được; trang phải mang
+    # **cả hai** vế, precision của Qwen và của DeepSeek, nếu không người đọc chỉ
+    # thấy một số mà không có gì để so.
+    assert "48.2%" in trang and "70.7%" in trang and "dưới cổng" in trang
 
 
 def test_thieu_co_anh_real_thi_van_in_hai_cot_nhu_cu(tmp_path):
@@ -841,7 +844,7 @@ def test_cot_real_nhan_ca_ban_rut_gon(tmp_path):
     # Tiêu đề cột nói ra dạng nào đang được dùng.
     assert "<th>real_rut_gon</th>" in trang
     # Và cảnh báo bộ trích xuất khác vẫn in: nó gắn với space, không với dạng file.
-    assert "Qwen" in trang and "chưa đo lần nào" in trang
+    assert "Qwen" in trang and "48.2%" in trang
 
 
 def test_cot_real_hai_dang_cho_cung_ba_ty_le(tmp_path, hang):
@@ -1007,3 +1010,268 @@ def test_entity_lap_vai_khong_dem_trung_trong_cung_mot_vai(hang):
     )
     assert trong_mot_vai.so_entity_lap_vai == 0
     assert hai_vai.so_entity_lap_vai == 1
+
+
+# ---------------------------------------------------------------------------
+# Cột thứ tư: space `that_khu` (story 2.13)
+# ---------------------------------------------------------------------------
+
+
+def _anh_that_khu(tmp_path: Path, ten: str = "that_khu.json") -> Path:
+    """Ảnh chụp `that_khu` dựng tay: **cùng tài liệu** với `_anh_real`, ít vai hơn.
+
+    Ảnh chụp thật của `that_khu` nằm ngoài cây repo ở dạng đầy đủ (cùng luật với
+    `real`: nội dung tuy đã khử vẫn là văn bản công ty), nên test không có file
+    nào để đọc và cũng không được có. Cái nó chấm là *hình dạng bốn cột* và khối
+    đối chứng, không phải con số của đợt nạp.
+
+    Hai vai thay vì bốn là để khối đối chứng có gì để in: đó đúng là dấu vân tay
+    mà story 2.11 đo được giữa Qwen và DeepSeek trên hai tập khác nhau, ở đây
+    trên cùng một tập.
+    """
+    import json
+
+    anh = {
+        "version": 2,
+        "space": "that_khu",
+        "ngay_do": "2026-09-05T00:00:00+00:00",
+        "policy_version": "x" * 8,
+        "so_tai_lieu": 1,
+        "so_hyperedge": 1,
+        "so_hyperedge_da_nguon": 0,
+        "tai_lieu": [
+            {
+                "doc_key": "r1.md",
+                "sha256": "0" * 64,
+                "scope": "noi_bo",
+                "content_type": "bao_cao_su_co",
+            }
+        ],
+        "hyperedge": [
+            {
+                "id": "he-t1",
+                "doc_key": ["r1.md"],
+                "khoa": "noi_bo:bao_cao_su_co",
+                "slots": {"subject": ["A"], "cause": ["B"]},
+            }
+        ],
+    }
+    dich = tmp_path / ten
+    dich.write_text(json.dumps(anh, ensure_ascii=False), encoding="utf-8")
+    return dich
+
+
+def test_trang_bon_cot_in_cot_that_khu(tmp_path):
+    """AC: bốn cột, cột thứ tư kèm chênh so với **cột mốc** như ba cột kia."""
+    from eval.xem_ty_le import main
+
+    dich = tmp_path / "ty_le.html"
+    ma = main(
+        [
+            str(dich),
+            "--anh-real",
+            str(_anh_real(tmp_path)),
+            "--anh-that-khu",
+            str(_anh_that_khu(tmp_path)),
+        ]
+    )
+    assert ma == 0
+    trang = dich.read_text(encoding="utf-8")
+    for cot in ("<th>synth</th>", "<th>khao_sat</th>", "<th>real</th>", "<th>that_khu</th>"):
+        assert cot in trang
+    assert "<th>chênh that_khu - synth</th>" in trang
+
+
+def test_thieu_co_anh_that_khu_thi_trang_van_in_ba_cot_nhu_2_11(tmp_path):
+    """Cột thứ tư là **tùy chọn**, cùng khuôn với cột `real` của story 2.11."""
+    from eval.xem_ty_le import main
+
+    dich = tmp_path / "ty_le.html"
+    assert main([str(dich), "--anh-real", str(_anh_real(tmp_path))]) == 0
+    trang = dich.read_text(encoding="utf-8")
+    assert "<th>that_khu</th>" not in trang
+    assert "Đối chứng Qwen / DeepSeek" not in trang
+
+
+def test_anh_that_khu_tro_nham_sang_space_khac_la_loi(tmp_path, capsys):
+    """Cùng rào với ba cột kia: một ảnh `synth` cắm vào cột `that_khu` là chênh 0 giả."""
+    from eval.xem_ty_le import main
+
+    dich = tmp_path / "ty_le.html"
+    assert main([str(dich), "--anh-that-khu", str(ANH_SYNTH)]) == 1
+    err = capsys.readouterr().err
+    assert "space 'synth'" in err and "that_khu" in err
+    assert not dich.exists()
+
+
+def test_thieu_anh_that_khu_in_lenh_dung_lai_khong_co_co_cuc_bo(tmp_path, capsys):
+    """Lệnh dựng lại của `that_khu` **không** mang `HYPER_RAG_CUC_BO=1`.
+
+    Đó là cả điểm của story: bản đã khử đi ra API ngoài được (NFR-05), nên đợt
+    này chạy đúng đường nạp của `synth` và `khao_sat`. Một lệnh dựng lại mang cờ
+    cục bộ là chép nhầm lệnh của `real` và người chạy lại nạp bằng Qwen.
+    """
+    from eval.xem_ty_le import main
+
+    ma = main([str(tmp_path / "x.html"), "--anh-that-khu", str(tmp_path / "chua-co.json")])
+    assert ma == 1
+    err = capsys.readouterr().err
+    assert "--space that_khu" in err and "--rut-gon" in err
+    assert "HYPER_RAG_CUC_BO=1" not in err
+
+
+def test_cot_that_khu_nhan_ca_ban_rut_gon(tmp_path):
+    """Bản rút gọn là dạng duy nhất của `that_khu` đi vào repo được."""
+    import json
+
+    from eval.anh_rut_gon import rut_gon_anh
+    from eval.xem_ty_le import main
+
+    goc = json.loads(_anh_that_khu(tmp_path).read_text(encoding="utf-8"))
+    rut = tmp_path / "that_khu_rut_gon.json"
+    rut.write_text(
+        json.dumps(rut_gon_anh(goc, "muoi-du-dai-cho-test-0123456789"), ensure_ascii=False),
+        encoding="utf-8",
+    )
+    dich = tmp_path / "ty_le.html"
+    assert main([str(dich), "--anh-that-khu", str(rut)]) == 0
+    assert "<th>that_khu_rut_gon</th>" in dich.read_text(encoding="utf-8")
+
+
+def test_khoi_doi_chung_noi_ro_bo_trich_xuat_la_bien_duy_nhat(tmp_path):
+    """AC: trang phát biểu **bộ trích xuất là biến duy nhất đi vào ba tỷ lệ**.
+
+    Và nói rõ model embedding cũng khác (`bge-m3` với `text-embedding-3-small`)
+    nhưng không vào phép đếm nào của ADR-012 - ba định nghĩa đếm đọc số vai được
+    điền, hạng theo `content_type` và entity chung giữa các hyperedge, không đọc
+    một vector nào. Để câu "khác đúng một biến" đứng trần là nói quá.
+    """
+    from eval.xem_ty_le import main
+
+    dich = tmp_path / "ty_le.html"
+    assert (
+        main(
+            [
+                str(dich),
+                "--anh-real",
+                str(_anh_real(tmp_path)),
+                "--anh-that-khu",
+                str(_anh_that_khu(tmp_path)),
+            ]
+        )
+        == 0
+    )
+    trang = dich.read_text(encoding="utf-8")
+    assert "Đối chứng Qwen / DeepSeek trên cùng 50 tài liệu" in trang
+    assert "bộ trích xuất là biến duy nhất đi vào" in trang
+    assert "bge-m3" in trang and "text-embedding-3-small" in trang
+    assert "không vào phép đếm nào" in trang
+
+
+def test_khoi_doi_chung_phat_bieu_duoc_ve_mo_neo_composition_risk(tmp_path):
+    """AC: kết luận về mỏ neo phát biểu được, dù là có neo hay không neo.
+
+    Story 2.10 mất mỏ neo khi mẫu số chuyển sang bản ghi giả lập; story 2.11
+    không lấy lại được vì cột `real` trích bằng một bộ trích xuất khác. Cột
+    `that_khu` đóng đúng lỗ đó, và câu phải nêu cả điều **còn lại chưa khử
+    được**: trục loại nội dung vẫn khác, và precision đo trên corpus dựng.
+    """
+    from eval.xem_ty_le import main
+
+    dich = tmp_path / "ty_le.html"
+    assert (
+        main([str(dich), "--anh-that-khu", str(_anh_that_khu(tmp_path)),
+              "--anh-real", str(_anh_real(tmp_path))])
+        == 0
+    )
+    trang = dich.read_text(encoding="utf-8")
+    assert "Mỏ neo Composition-Risk" in trang
+    assert "cùng bộ trích xuất" in trang
+    assert "không cùng trục loại nội dung" in trang
+    assert "chưa đo lần nào" in trang
+
+
+def test_console_in_cung_khoi_doi_chung_khong_mang_the_html(tmp_path, capsys):
+    """Console và trang dựng từ **một** hàm, cùng luật với story 2.11."""
+    from eval.xem_ty_le import main
+
+    assert (
+        main([str(tmp_path / "x.html"), "--anh-real", str(_anh_real(tmp_path)),
+              "--anh-that-khu", str(_anh_that_khu(tmp_path))])
+        == 0
+    )
+    ra = capsys.readouterr().out
+    assert "đối chứng real / that_khu" in ra
+    assert "Mỏ neo Composition-Risk" in ra
+    assert "<b>" not in ra, "dòng console không được mang thẻ HTML"
+
+
+def test_dau_van_tay_do_giua_hai_cot_cung_tap_tai_lieu(hang):
+    """`dau_van_tay_bo_trich_xuat` nhận mốc bất kỳ, nên nó đo được `real` với `that_khu`.
+
+    Đây là chỗ story 2.13 khác story 2.11: cùng ba dấu, nhưng trên **cùng một
+    tập tài liệu**, nên chúng không trộn được với chênh về hình dạng tri thức.
+    """
+    from eval.xem_ty_le import dau_van_tay_bo_trich_xuat
+
+    nhieu_vai = ba_ty_le(
+        _anh([_he("a", "noi_bo:runbook",
+                  {"subject": ["x"], "cause": ["y"], "owner": ["o"]})]),
+        hang,
+    )
+    it_vai = ba_ty_le(
+        _anh([_he("b", "noi_bo:runbook", {"subject": ["x"], "cause": ["y"]})]), hang
+    )
+    dong = dau_van_tay_bo_trich_xuat(nhieu_vai, it_vai)
+    assert any("owner" in d for d in dong), "vai bị điền thừa phải chỉ đúng `owner`"
+    assert any("2 vai" in d for d in dong)
+
+
+def test_hai_cot_cung_ba_ty_le_thi_khoi_doi_chung_in_chenh_0(hang, tmp_path):
+    """Đối chứng phải in được cả ca "không chênh", không chỉ ca có chênh."""
+    import json
+
+    from eval.xem_ty_le import _khoi_doi_chung
+
+    goc = json.loads(_anh_real(tmp_path).read_text(encoding="utf-8"))
+    nhu_nhau = dict(goc, space="that_khu")
+    a = tmp_path / "a.json"
+    b = tmp_path / "b.json"
+    a.write_text(json.dumps(goc, ensure_ascii=False), encoding="utf-8")
+    b.write_text(json.dumps(nhu_nhau, ensure_ascii=False), encoding="utf-8")
+    cot = [
+        ba_ty_le(doc_anh_do_thi(ANH_SYNTH), hang),
+        ba_ty_le(doc_anh_do_thi(a), hang),
+        ba_ty_le(doc_anh_do_thi(b), hang),
+    ]
+    khoi = _khoi_doi_chung(cot)
+    assert "chênh +0.0%" in khoi
+
+
+def test_precision_ghep_cap_cuc_bo_khop_vong_do():
+    """`PRECISION_GHEP_CAP_CUC_BO` phải bằng precision của vòng đo cục bộ.
+
+    Cùng luật với `test_precision_ghep_cap_khop_vong_chot`: trang giữ hằng thay
+    vì chấm lại vòng đo, nên chỗ hai con số lệch nhau phải đỏ là đây. Câu mà
+    hằng này thay thế - "precision đường Qwen chưa đo lần nào" của story 2.11 -
+    là một phát biểu đi thẳng vào cách đọc cột `real`, nên nó không được phép
+    trôi khỏi số đo mà không ai biết.
+    """
+    from eval.bo_vang import doc_bo_vang
+    from eval.cham_trich_xuat import cham_bo, verdict_r2
+    from eval.do_trich_xuat import THU_MUC_KET_QUA, doc_moi_vong
+    from eval.xem_ty_le import (
+        PRECISION_GHEP_CAP,
+        PRECISION_GHEP_CAP_CUC_BO,
+        VONG_CUC_BO_2_13,
+    )
+
+    vong = [v for v in doc_moi_vong(THU_MUC_KET_QUA) if v.vong == VONG_CUC_BO_2_13]
+    assert len(vong) == 1, f"không tìm thấy vòng cục bộ {VONG_CUC_BO_2_13!r}"
+    that = cham_bo(doc_bo_vang(), vong[0].facts_theo_tai_lieu()).chi_so.precision
+    assert round(that, 3) == PRECISION_GHEP_CAP_CUC_BO, (
+        f"precision ghép cặp của {VONG_CUC_BO_2_13} là {that:.6f}, còn"
+        f" eval/xem_ty_le.py chép {PRECISION_GHEP_CAP_CUC_BO} - sửa hằng, đừng sửa test"
+    )
+    assert verdict_r2(PRECISION_GHEP_CAP_CUC_BO) != "ĐẠT", "48,2% dưới cổng 60%"
+    assert PRECISION_GHEP_CAP_CUC_BO < PRECISION_GHEP_CAP
