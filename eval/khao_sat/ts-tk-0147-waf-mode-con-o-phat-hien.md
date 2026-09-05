@@ -14,8 +14,8 @@ content_type: bao_cao_su_co
 | Dịch vụ | WAF |
 | Mức ưu tiên | Trung bình |
 | Người tiếp nhận | NV22 |
-| Mở lúc | 27/09/2026 14:20 |
-| Đóng lúc | 27/09/2026 15:05 |
+| Mở lúc | 09/08/2026 14:20 |
+| Đóng lúc | 09/08/2026 15:05 |
 
 ## Mô tả từ khách hàng
 Khách đã tạo Custom Rule chặn các IP ngoài danh sách cho phép, nhưng thử từ máy ngoài danh sách

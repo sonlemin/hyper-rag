@@ -14,8 +14,8 @@ content_type: vong_doi_ticket
 | Dịch vụ | VOD |
 | Mức ưu tiên | Thấp |
 | Người tiếp nhận | NV24 |
-| Mở lúc | 10/10/2026 09:45 |
-| Đóng lúc | 10/10/2026 10:20 |
+| Mở lúc | 22/08/2026 09:45 |
+| Đóng lúc | 22/08/2026 10:20 |
 
 ## Mô tả từ khách hàng
 Khách không dùng trình phát của dịch vụ mà tích hợp trình phát riêng vào ứng dụng, hỏi cách lấy

@@ -14,8 +14,8 @@ content_type: vong_doi_ticket
 | Dịch vụ | Cloud Database |
 | Mức ưu tiên | Trung bình |
 | Người tiếp nhận | NV22 |
-| Mở lúc | 04/10/2026 10:30 |
-| Đóng lúc | 04/10/2026 10:52 |
+| Mở lúc | 16/08/2026 10:30 |
+| Đóng lúc | 16/08/2026 10:52 |
 
 ## Mô tả từ khách hàng
 Khách báo cơ sở dữ liệu ngừng hoạt động, dẫn chứng là ping tới địa chỉ database không có phản hồi

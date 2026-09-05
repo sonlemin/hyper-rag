@@ -14,8 +14,8 @@ content_type: bao_cao_su_co
 | Dịch vụ | Container Registry |
 | Mức ưu tiên | Cao |
 | Người tiếp nhận | NV21 |
-| Mở lúc | 01/10/2026 09:50 |
-| Đóng lúc | 01/10/2026 10:35 |
+| Mở lúc | 13/08/2026 09:50 |
+| Đóng lúc | 13/08/2026 10:35 |
 
 ## Mô tả từ khách hàng
 Pipeline CI dừng ở bước đẩy image, báo 500 Internal Server Error. Kéo image xuống thì bình thường.

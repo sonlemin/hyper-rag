@@ -14,8 +14,8 @@ content_type: bao_cao_su_co
 | Dịch vụ | Call Center |
 | Mức ưu tiên | Cao |
 | Người tiếp nhận | NV21 |
-| Mở lúc | 11/10/2026 08:30 |
-| Đóng lúc | 11/10/2026 11:10 |
+| Mở lúc | 23/08/2026 08:30 |
+| Đóng lúc | 23/08/2026 11:10 |
 
 ## Mô tả từ khách hàng
 Máy lẻ tại văn phòng khách không đăng ký được lên tổng đài. Khi đăng ký được thì cuộc gọi mất âm

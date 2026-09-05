@@ -14,8 +14,8 @@ content_type: known_issue
 | Dịch vụ | Cloud Database |
 | Mức ưu tiên | Cao |
 | Người tiếp nhận | NV21 |
-| Mở lúc | 07/10/2026 11:05 |
-| Đóng lúc | 09/10/2026 16:30 |
+| Mở lúc | 19/08/2026 11:05 |
+| Đóng lúc | 21/08/2026 16:30 |
 
 ## Mô tả từ khách hàng
 Khách yêu cầu bật TLS cho public endpoint. Chuỗi kết nối mặc định đang là `ssl=false` và máy chủ

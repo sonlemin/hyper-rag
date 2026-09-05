@@ -71,7 +71,15 @@ from adapters.thu_lai import (  # noqa: F401 - re-export: hợp đồng của te
     ma_http_cua,
     nen_thu_lai,
 )
-from adapters.trich_xuat import PROMPT_TRICH_XUAT, THAM_SO_LLM, dung_prompt
+from adapters.trich_xuat import (
+    PROMPT_KHONG_TU_DIEN,
+    PROMPT_TRICH_XUAT,
+    THAM_SO_LLM,
+    CHO_TU_DIEN,
+    dung_prompt,
+    khoi_tu_dien,
+)
+from adapters.tu_dien_thuc_the import TuDienThucThe, tai_tu_dien_thuc_the
 from core.audit import SuKienAudit, kiem_thoi_diem, thoi_diem_utc
 from core.facts import KetQuaPhanTich, id_fact, phan_tich_phan_hoi
 from core.permission import use_context, user_context
@@ -550,6 +558,37 @@ def kiem_ten_vong(vong: str) -> str:
     return vong
 
 
+def _khoi_tu_dien_cua_vong(tu_dien_path, bo) -> str:
+    """Khối từ điển dùng cho **cả vòng**, hoặc chuỗi rỗng khi không khai từ điển.
+
+    Đường nạp lọc từ điển theo scope của từng tài liệu; một vòng đo thì ghi đúng
+    **một** chuỗi vào trường `prompt` của file kết quả. Nên nếu bộ vàng trải trên
+    nhiều scope mà từ điển cho ra hai khối khác nhau, vòng này **từ chối chạy**
+    thay vì ghi một `prompt` chỉ đúng với một phần tài liệu - một file kết quả tự
+    khai sai prompt của chính nó là thứ không ai phát hiện lại được sau khi tiền
+    đã tiêu.
+
+    Ca chạy được là từ điển toàn mục `SCOPE_CHUNG`, đúng hình dạng của
+    `config/tu-dien-thuc-the/synth.yaml`.
+    """
+    if tu_dien_path is None:
+        return ""
+    tu_dien: TuDienThucThe = tai_tu_dien_thuc_the(tu_dien_path)
+    theo_scope = {
+        t.scope: khoi_tu_dien(tu_dien.muc_cho_scope(t.scope)) for t in bo.tai_lieu_cham()
+    }
+    khac_nhau = set(theo_scope.values())
+    if len(khac_nhau) > 1:
+        raise KetQuaDoKhongHopLe(
+            f"từ điển {tu_dien_path} cho ra {len(khac_nhau)} khối prompt khác nhau"
+            f" trên các scope của bộ vàng ({sorted(theo_scope)}): một file kết quả"
+            " chỉ giữ được một chuỗi `prompt`, nên vòng này sẽ tự khai sai prompt"
+            " của chính nó. Dùng từ điển toàn mục scope `*` cho vòng đo, hoặc đo"
+            " riêng từng scope thành hai vòng"
+        )
+    return khac_nhau.pop() if khac_nhau else ""
+
+
 async def chay_vong(
     *,
     vong: str,
@@ -559,6 +598,7 @@ async def chay_vong(
     space: str = SPACE_MAC_DINH,
     vai: str = VAI_MAC_DINH,
     ghi_de: bool = False,
+    tu_dien_path: str | Path | None = None,
     in_ra=print,
     dung_llm=None,
     sleep=None,
@@ -573,6 +613,12 @@ async def chay_vong(
     thẳng vào `tenacity.AsyncRetrying` để test chạy được nhánh thử lại mà không
     ngủ thật. Không có cờ dòng lệnh nào đặt nó, và không nên có - đường chạy
     thật phải chờ đúng thời gian provider yêu cầu.
+
+    `tu_dien_path` là từ điển thực thể của story 2.12. Vắng nó thì prompt bằng
+    đúng từng byte bản của story 2.6 và vòng đo so được thẳng với `v1-deepseek`;
+    có nó thì mỗi lời gọi mang thêm khối từ điển, và đó là prompt mà đợt nạp
+    `synth` sẽ chạy - đúng thứ mà ràng buộc "đổi prompt là đo lại R2 trước khi
+    thay" đòi phải đo.
     """
     kiem_ten_vong(vong)
     dich = Path(thu_muc_ket_qua) / f"{vong}{DUOI_FILE}"
@@ -598,6 +644,8 @@ async def chay_vong(
         policy=policy, role=vai, space=space, real_account=TAI_KHOAN
     )
     cau_hinh = cau_hinh_chunk()
+    khoi = _khoi_tu_dien_cua_vong(tu_dien_path, bo)
+    prompt_vong = PROMPT_TRICH_XUAT.replace(CHO_TU_DIEN, khoi)
 
     def dung_du_lieu(tai_lieu: list[dict]) -> dict:
         return {
@@ -607,7 +655,7 @@ async def chay_vong(
             "nha_cung_cap": muc.nha_cung_cap,
             "thoi_diem": thoi_diem_utc(),
             "danh_muc_version": danh_muc.version,
-            "prompt": PROMPT_TRICH_XUAT,
+            "prompt": prompt_vong,
             "tham_so_llm": dict(THAM_SO_LLM),
             "chunk": cau_hinh,
             "tai_lieu": tai_lieu,
@@ -634,7 +682,11 @@ async def chay_vong(
                     van_ban = dp["content"]
                     moc = audit.moc()
                     phan_hoi = await goi_llm_co_thu_lai(
-                        llm, dung_prompt(van_ban), sleep=sleep, in_ra=in_ra, **THAM_SO_LLM
+                        llm,
+                        dung_prompt(van_ban, khoi),
+                        sleep=sleep,
+                        in_ra=in_ra,
+                        **THAM_SO_LLM,
                     )
                     chi_tiet = audit.su_kien_cua_loi_goi(moc).chi_tiet
                     chunks.append(
@@ -774,8 +826,17 @@ class UocTinhVong:
         )
 
 
-def uoc_tinh_vong(model: str, *, bo=None, danh_muc=None) -> UocTinhVong:
-    """Số lời gọi và tiền dự kiến của một vòng; **không** gọi LLM."""
+def uoc_tinh_vong(
+    model: str, *, bo=None, danh_muc=None, tu_dien_path=None
+) -> UocTinhVong:
+    """Số lời gọi và tiền dự kiến của một vòng; **không** gọi LLM.
+
+    `tu_dien_path` phải là **cùng** từ điển mà vòng thật sẽ chạy: khối từ điển
+    nằm trong prompt nên nó vào token vào, và một ước tính đọc prompt khác prompt
+    sắp gửi là một ước tính của một vòng khác. Nó cũng chạy đúng phép từ chối
+    "nhiều khối prompt khác nhau", nên cờ xem trước bắt được cấu hình hỏng
+    *trước* khi ai đó gõ lệnh thật.
+    """
     bo = doc_bo_vang() if bo is None else bo
     if not bo.tai_lieu_cham():
         # "0 lời gọi, 0,000000 USD" rồi thoát 0 đọc y như một vòng miễn phí, và
@@ -787,11 +848,12 @@ def uoc_tinh_vong(model: str, *, bo=None, danh_muc=None) -> UocTinhVong:
     danh_muc = danh_muc_mac_dinh() if danh_muc is None else danh_muc
     muc = danh_muc.muc(model, loai=LOAI_LLM)
     cau_hinh = cau_hinh_chunk()
+    khoi = _khoi_tu_dien_cua_vong(tu_dien_path, bo)
     so_loi_goi = token_vao = 0
     for t in bo.tai_lieu_cham():
         for dp in chia_chunk(t.than, cau_hinh):
             so_loi_goi += 1
-            token_vao += dem_token(dung_prompt(dp["content"]), cau_hinh)
+            token_vao += dem_token(dung_prompt(dp["content"], khoi), cau_hinh)
     token_ra = so_loi_goi * TOKEN_RA_UOC_MOI_CHUNK
     return UocTinhVong(
         model=muc.ten,
@@ -831,6 +893,16 @@ def _tham_so(argv: Sequence[str]) -> argparse.Namespace:
     p.add_argument("--policy", type=Path, default=POLICY_MAC_DINH)
     p.add_argument("--thu-muc", type=Path, default=THU_MUC_KET_QUA)
     p.add_argument(
+        "--tu-dien",
+        type=Path,
+        default=None,
+        dest="tu_dien",
+        help=(
+            "từ điển thực thể chuẩn (story 2.12); vắng thì prompt bằng đúng bản"
+            " của story 2.6 và vòng so thẳng được với v1-deepseek"
+        ),
+    )
+    p.add_argument(
         CO_GHI_DE,
         action="store_true",
         help=f"ghi đè file kết quả đã có (bản cũ giữ lại thành `<vòng>{DUOI_BAN_CU}`)",
@@ -850,7 +922,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             # Nhánh không tốn tiền: in rồi thoát 0, không chạm thư mục kết quả
             # và không kiểm `--ghi-de`. Xem trước phải chạy được cả khi file
             # kết quả đã có, vì đó đúng là lúc người ta muốn xem trước nhất.
-            print(uoc_tinh_vong(ts.model).dong_in())
+            print(uoc_tinh_vong(ts.model, tu_dien_path=ts.tu_dien).dong_in())
             return 0
         asyncio.run(
             chay_vong(
@@ -861,6 +933,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 space=ts.space,
                 vai=ts.vai,
                 ghi_de=ts.ghi_de,
+                tu_dien_path=ts.tu_dien,
             )
         )
     except (KetQuaDoDaCo, KetQuaDoKhongHopLe, ChanNhipQuaLau) as loi:

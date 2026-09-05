@@ -87,8 +87,20 @@ def _quet(*ten: str, tu_choi: tuple[TuChoi, ...] = ()) -> KetQuaQuet:
 
 
 def _gan_engine(monkeypatch) -> EngineGia:
+    """Engine giả **ghi lại `space`** nó được gọi với.
+
+    Nuốt lặng `**_` là để `chay_lan_nap` bỏ `space=space` mà không test nào đỏ -
+    tức toàn bộ đường tra từ điển thực thể theo tên space (story 2.12) ngắt được
+    trong im lặng. `engine.space_da_nhan` là chỗ các test khẳng định nó còn nối.
+    """
     engine = EngineGia()
-    monkeypatch.setattr(mod, "dung_engine_tu_moi_truong", lambda audit: engine)
+    engine.space_da_nhan = []
+
+    def gia(audit, *, space=None):
+        engine.space_da_nhan.append(space)
+        return engine
+
+    monkeypatch.setattr(mod, "dung_engine_tu_moi_truong", gia)
     return engine
 
 
@@ -119,9 +131,9 @@ def _mot_tai_lieu_da_nap(ket_qua: KetQuaNap, cac_tai_lieu: list[TaiLieuNguon]) -
         )
 
 
-def _chay(quet, audit, **kw) -> mod.LanNap:
+def _chay(quet, audit, *, space="synth", **kw) -> mod.LanNap:
     return asyncio.run(
-        mod.chay_lan_nap(quet, space="synth", policy_version="pv", audit=audit, **kw)
+        mod.chay_lan_nap(quet, space=space, policy_version="pv", audit=audit, **kw)
     )
 
 
@@ -427,3 +439,16 @@ def test_dot_bi_huy_khong_ket_o_dang_chay_va_phep_huy_van_lan(monkeypatch):
     assert lan.ma_loi == mod.MA_DOT_BI_HUY
     assert lan.dang_chay() is False
     assert engine.da_dong is True
+
+
+def test_chay_lan_nap_truyen_space_xuong_ham_dung_engine(monkeypatch):
+    """`space` phải tới hàm dựng engine, nếu không từ điển thực thể không được tra.
+
+    Quy ước của story 2.12 là `config/tu-dien-thuc-the/<space>.yaml`, và mắt
+    xích đầu tiên của nó là đúng tham số này. Bỏ nó đi thì mọi đợt nạp chạy
+    **không** từ điển và không con số nào trong bộ test đổi.
+    """
+    engine = _gan_engine(monkeypatch)
+    _gan_nap(monkeypatch, _mot_tai_lieu_da_nap)
+    _chay(_quet("a.md"), AuditGia(), space="khao_sat")
+    assert engine.space_da_nhan == ["khao_sat"]

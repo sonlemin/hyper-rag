@@ -14,8 +14,8 @@ content_type: bao_cao_su_co
 | Dịch vụ | Call Center |
 | Mức ưu tiên | Cao |
 | Người tiếp nhận | NV23 |
-| Mở lúc | 13/10/2026 10:15 |
-| Đóng lúc | 13/10/2026 15:40 |
+| Mở lúc | 25/08/2026 10:15 |
+| Đóng lúc | 25/08/2026 15:40 |
 
 ## Mô tả từ khách hàng
 Sau khi bộ phận công nghệ thông tin của khách siết tường lửa, toàn bộ thiết bị thoại mất kết nối.

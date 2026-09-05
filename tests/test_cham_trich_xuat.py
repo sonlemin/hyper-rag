@@ -878,14 +878,51 @@ def test_khoa_hinh_dang_loi_cua_vong_v1_deepseek(bo_vang):
 
 def test_vong_hien_hanh_ghim_prompt_tham_so_va_cach_chia_chunk():
     """Sửa prompt mà không đo lại là bộ test đỏ, không phải một báo cáo lặng lẽ sai."""
-    from adapters.trich_xuat import PROMPT_TRICH_XUAT, THAM_SO_LLM
+    from adapters.trich_xuat import PROMPT_KHONG_TU_DIEN, THAM_SO_LLM
     from eval.do_trich_xuat import THU_MUC_KET_QUA, cau_hinh_chunk, doc_ket_qua
 
+    # `PROMPT_KHONG_TU_DIEN`, không `PROMPT_TRICH_XUAT`: từ story 2.12 template
+    # mang một chỗ chèn khối từ điển, và thứ *gửi đi* khi không khai từ điển là
+    # template đã thay chỗ chèn bằng chuỗi rỗng - bằng đúng từng byte prompt mà
+    # ba vòng này đã chạy. Ghim template thô ở đây là bắt ba file đã trả tiền
+    # phải mang một chuỗi chưa bao giờ tới tay LLM.
     for ten in ("v1-deepseek", "v1-gpt-4o-mini", "v1-gpt-4o"):
         v = doc_ket_qua(THU_MUC_KET_QUA / f"{ten}.json")
-        assert v.prompt == PROMPT_TRICH_XUAT, f"{ten} chạy trên một prompt khác prompt đang ship"
+        assert v.prompt == PROMPT_KHONG_TU_DIEN, f"{ten} chạy trên một prompt khác prompt đang ship"
         assert dict(v.tham_so_llm) == dict(THAM_SO_LLM), ten
         assert dict(v.chunk) == cau_hinh_chunk(), ten
+
+
+def test_vong_tu_dien_ghim_dung_tu_dien_dang_chay():
+    """Sửa `config/tu-dien-thuc-the/synth.yaml` là **đổi prompt thật**; phải đo lại.
+
+    Đây là chỗ ràng buộc của epic ("đổi prompt thì đo lại R2 trước khi thay")
+    còn hiệu lực sau story 2.12. Vòng review 05/09 chứng minh nó đã hở: thêm hai
+    bí danh vào mục `phòng IT` - đúng scope của cả 8 tài liệu chấm - đổi prompt
+    mà mọi tài liệu nạp `synth` sẽ nhận, và **cả bộ test vẫn xanh**.
+
+    Vế phải dựng bằng **chính loader cộng `khoi_tu_dien`** chứ không chép chuỗi:
+    một bản chép là một bản thứ hai của cùng một luật, và nó sẽ trôi khỏi bản
+    kia đúng lúc ai đó đổi cách dựng khối.
+    """
+    from adapters.trich_xuat import CHO_TU_DIEN, PROMPT_TRICH_XUAT, khoi_tu_dien
+    from adapters.tu_dien_thuc_the import tai_tu_dien_thuc_the
+    from eval.bo_vang import doc_bo_vang
+    from eval.do_trich_xuat import THU_MUC_KET_QUA, doc_ket_qua
+
+    scope = {t.scope for t in doc_bo_vang().tai_lieu_cham()}
+    assert len(scope) == 1, f"8 tài liệu chấm phải cùng một scope, thấy {scope}"
+    td = tai_tu_dien_thuc_the(REPO_ROOT / "config" / "tu-dien-thuc-the" / "synth.yaml")
+    khoi = khoi_tu_dien(td.muc_cho_scope(scope.pop()))
+    assert khoi, "từ điển của `synth` phải có mục áp cho scope của bộ vàng"
+
+    v = doc_ket_qua(THU_MUC_KET_QUA / "v3-deepseek-tu-dien.json")
+    assert v.prompt == PROMPT_TRICH_XUAT.replace(CHO_TU_DIEN, khoi), (
+        "vòng `v3-deepseek-tu-dien` chạy trên một khối từ điển khác khối đang"
+        " chạy. Sửa `config/tu-dien-thuc-the/synth.yaml` là đổi prompt của mọi"
+        " đợt nạp `synth`, nên phải đo lại R2 trước khi thay - đó là ràng buộc"
+        " của epic, và test này là chỗ nó còn hiệu lực"
+    )
 
 
 def test_bo_vang_khong_doi_ke_tu_lan_do():
@@ -966,6 +1003,84 @@ def test_chay_vong_chay_het_duong_di_voi_llm_gia(tmp_path, bo_vang):
                 in_ra=lambda *a, **k: None,
             )
         )
+
+
+def test_chay_vong_voi_tu_dien_ghi_dung_prompt_da_gui(tmp_path):
+    """Vòng đo chạy được đúng prompt mà đợt nạp có từ điển sẽ chạy (story 2.12).
+
+    Ràng buộc của epic là "đổi prompt thì đo lại R2 **trước khi** thay". Nó chỉ
+    có nghĩa nếu vòng đo gửi đi đúng prompt sắp dùng, và nếu file kết quả ghi lại
+    đúng chuỗi đã gửi - một file tự khai sai prompt của chính nó là thứ không
+    phát hiện lại được sau khi tiền đã tiêu.
+    """
+    import asyncio
+
+    from eval.do_trich_xuat import chay_vong, doc_ket_qua
+
+    td = tmp_path / "tu-dien.yaml"
+    td.write_text(
+        "version: 1\n"
+        "muc:\n"
+        '  - chuan: "Phòng IT"\n'
+        '    scope: "*"\n'
+        "    bi_danh: [phòng IT]\n"
+        '    xac_nhan: "sonlm 2026-09-05"\n',
+        encoding="utf-8",
+    )
+    ncc = _NhaCungCapGia()
+    dich = asyncio.run(
+        chay_vong(
+            vong="v-tu-dien",
+            model="deepseek-v4-flash",
+            thu_muc_ket_qua=tmp_path,
+            dung_llm=_llm_gia(ncc),
+            tu_dien_path=td,
+            in_ra=lambda *a, **k: None,
+        )
+    )
+    kq = doc_ket_qua(dich)
+    assert "Phòng IT <= phòng IT" in kq.prompt
+    assert kq.prompt.count("<<VAN_BAN>>") == 1
+    assert "<<TU_DIEN>>" not in kq.prompt
+
+
+def test_khoi_tu_dien_cua_vong_tu_choi_khi_bo_vang_trai_nhieu_scope(tmp_path):
+    """Bộ vàng trải nhiều scope mà từ điển ràng theo scope: một `prompt` không đủ.
+
+    Từ chối chứ không ghi một chuỗi chỉ đúng với một phần tài liệu. Kiểm ở mức
+    hàm chứ không qua `chay_vong`: 8 tài liệu chấm của bộ vàng 2.5 **đều** mang
+    scope `noi_bo`, nên hôm nay không dựng được ca này bằng bộ vàng thật - và đó
+    chính là lý do rào phải có test riêng thay vì dựa vào việc nó chưa bao giờ
+    nổ.
+    """
+    from types import SimpleNamespace
+
+    from eval.do_trich_xuat import KetQuaDoKhongHopLe, _khoi_tu_dien_cua_vong
+
+    td = tmp_path / "tu-dien.yaml"
+    td.write_text(
+        "version: 1\n"
+        "muc:\n"
+        '  - chuan: "Phòng IT"\n'
+        "    scope: noi_bo\n"
+        "    bi_danh: [phòng IT]\n"
+        '    xac_nhan: "sonlm 2026-09-05"\n',
+        encoding="utf-8",
+    )
+    hai_scope = SimpleNamespace(
+        tai_lieu_cham=lambda: [
+            SimpleNamespace(scope="noi_bo"),
+            SimpleNamespace(scope="khach_hang_a"),
+        ]
+    )
+    with pytest.raises(KetQuaDoKhongHopLe, match="khối prompt khác nhau"):
+        _khoi_tu_dien_cua_vong(td, hai_scope)
+
+    # Cùng từ điển đó trên một bộ vàng một scope thì chạy được.
+    mot_scope = SimpleNamespace(tai_lieu_cham=lambda: [SimpleNamespace(scope="noi_bo")])
+    assert "Phòng IT <= phòng IT" in _khoi_tu_dien_cua_vong(td, mot_scope)
+    # Không khai từ điển là chuỗi rỗng, tức prompt của hôm nay.
+    assert _khoi_tu_dien_cua_vong(None, mot_scope) == ""
 
 
 def test_chay_vong_hong_giua_chung_van_giu_phan_hoi_da_tra_tien(tmp_path):
@@ -1209,7 +1324,7 @@ def test_file_so_do_nap_that_trong_repo_doc_duoc():
     assert do.token_embedding > 0 and do.chi_phi_embedding_usd > 0
 
 
-def test_so_do_nap_that_khop_lan_nap_03_09():
+def test_so_do_nap_that_khop_lan_nap_05_09():
     """Khóa sáu con số của lần nạp thật: đổi file mà quên cập nhật bảng là đỏ.
 
     Cùng vai trò với `SO_DO_NAP_THAT` cũ, chỉ khác là nguồn nay là file chứ
@@ -1217,26 +1332,34 @@ def test_so_do_nap_that_khop_lan_nap_03_09():
     đang đứng trên số nào. Từ story 2.8 nguồn là lần nạp **corpus 40 tài liệu**
     (03/09), không còn là lần nạp 10 tài liệu bộ vàng của 2.7: khoản
     `nap_corpus` vì thế là số đo trực tiếp chứ không phải phép nhân 4 lần.
+
+    **Số của đợt 05/09/2026** (`9c4a1ba7`, story 2.12): corpus 42 tài liệu, nạp
+    lại toàn bộ sau khi `--xoa-space` để từ điển thực thể áp cho **mọi** tài
+    liệu. Số cũ của đợt 03/09 là 40 tài liệu / 41.074 + 15.608 token /
+    0,03867512 USD; giữ lại ở đây để so chứ không xóa.
     """
     from eval.ngoai_suy import doc_so_do_nap
 
     do = doc_so_do_nap()
-    assert (do.so_tai_lieu, do.token_vao_llm, do.token_ra_llm) == (40, 41074, 15608)
-    assert do.chi_phi_llm_usd == pytest.approx(0.03867512)
-    assert do.token_embedding == 37282
-    assert do.chi_phi_embedding_usd == pytest.approx(0.00074564)
+    assert (do.so_tai_lieu, do.token_vao_llm, do.token_ra_llm) == (42, 46795, 16970)
+    assert do.chi_phi_llm_usd == pytest.approx(0.04299020)
+    assert do.token_embedding == 38987
+    assert do.chi_phi_embedding_usd == pytest.approx(0.00077974)
 
 
-def test_so_do_nap_khao_sat_khop_lan_nap_04_09():
-    """Khóa số của đợt nạp `khao_sat` (04/09). File có commit mà không test nào
-    ghim là một file ai cũng sửa được mà không ai thấy."""
+def test_so_do_nap_khao_sat_khop_lan_nap_05_09():
+    """Khóa số của đợt nạp lại `khao_sat` (05/09, đợt `3b0f428f`). File có commit
+    mà không test nào ghim là một file ai cũng sửa được mà không ai thấy."""
     from pathlib import Path as _P
 
     from eval.ngoai_suy import doc_so_do_nap
 
+    # Đợt 05/09/2026 (`3b0f428f`, story 2.12): 50 bản ghi nạp lại sau khi sửa ba
+    # khiếm khuyết đã khai. Số của đợt 04/09 là 67.917 + 26.710 token /
+    # 0,06514068 USD; giữ lại ở đây để so chứ không xóa.
     do = doc_so_do_nap(_P("eval/so_do_nap/nap-khao-sat.json"))
-    assert (do.so_tai_lieu, do.token_vao_llm, do.token_ra_llm) == (50, 67917, 26710)
-    assert do.chi_phi_llm_usd == pytest.approx(0.06514068)
+    assert (do.so_tai_lieu, do.token_vao_llm, do.token_ra_llm) == (50, 67912, 26214)
+    assert do.chi_phi_llm_usd == pytest.approx(0.06448376)
     # Đợt DeepSeek không mất tài liệu nào; file ghi trước lược đồ hao hụt nên ba
     # trường vắng, và `so_tai_lieu_gui` rơi về `so_tai_lieu`.
     assert do.phan_hao_hut() == 0.0
@@ -1295,8 +1418,11 @@ def test_so_do_nap_that_khu_khop_dot_nap_05_09():
       khoảng "bọc hội thoại của provider 25-30%" mà `UocTinhDot.dong_in()` tự
       khai, và đúng chiều nó cảnh báo. Ba con số này chỉ sống trong văn xuôi cho
       tới vòng review 05/09.
-    - Token ra mỗi lời gọi LLM: 696 mỗi chunk, so với 1.403 của Qwen ở đợt
-      `real` trên **cùng 50 tài liệu đó** - dấu vân tay thứ tư của bộ trích xuất.
+    - Token ra mỗi lời gọi LLM: 719 mỗi chunk (đợt sáng 05/09: 696), so với
+      1.403 của Qwen ở đợt `real` trên **cùng 50 tài liệu đó** - dấu vân tay thứ
+      tư của bộ trích xuất. Chênh 696 -> 719 giữa hai đợt DeepSeek trên cùng đầu
+      vào là biên độ của một lần chạy, và nó nhỏ hơn nhiều lần khoảng cách tới
+      Qwen; đó là điều làm cho dấu vân tay này còn đọc được.
     """
     from pathlib import Path as _P
 
@@ -1309,10 +1435,15 @@ def test_so_do_nap_that_khu_khop_dot_nap_05_09():
     assert (do.so_tai_lieu, do.so_tai_lieu_gui) == (50, 50)
     assert (do.so_tai_lieu_khong_fact, do.so_tai_lieu_tu_choi) == (0, 0)
     assert do.phan_hao_hut() == 0.0
-    assert (do.token_vao_llm, do.token_ra_llm) == (120848, 50794)
-    assert do.token_embedding == 144491
-    assert do.chi_phi_llm_usd == pytest.approx(0.1202212)
-    assert do.chi_phi_embedding_usd == pytest.approx(0.00288982)
+    # Đợt **thứ hai**, 05/09 chiều (`13d3ed8d`, story 2.12): cùng 50 tài liệu,
+    # cùng model, cùng 73 chunk. Đợt sáng (`6278dd87`) cho 120.848 + 50.794
+    # token và 0,1202212 USD - **token vào bằng nhau tới từng token** (nó là số
+    # đếm trên chính chuỗi prompt), còn token ra lệch 3,3%. Đó là hình dạng
+    # đúng: đầu vào tất định, đầu ra là thứ model quyết định.
+    assert (do.token_vao_llm, do.token_ra_llm) == (120848, 52486)
+    assert do.token_embedding == 146222
+    assert do.chi_phi_llm_usd == pytest.approx(0.12245464)
+    assert do.chi_phi_embedding_usd == pytest.approx(0.00292444)
 
     # `so_lan` đọc thẳng từ file: `SoDoNap` gộp token và tiền chứ không giữ số
     # lời gọi, mà đúng con số đó mới là chỗ ước tính và thực tế phải bằng nhau
@@ -1321,8 +1452,8 @@ def test_so_do_nap_that_khu_khop_dot_nap_05_09():
     dong_llm = next(d for d in raw["theo_model"] if d["loai"] == "llm")
     assert dong_llm["so_lan"] == SO_LOI_GOI_UOC_TINH_THAT_KHU
     assert do.token_vao_llm / TOKEN_VAO_UOC_TINH_THAT_KHU == pytest.approx(1.29, abs=5e-3)
-    # Token ra mỗi chunk, dấu vân tay thứ tư của bộ trích xuất.
-    assert do.token_ra_llm / dong_llm["so_lan"] == pytest.approx(696, abs=1)
+    # Token ra mỗi chunk, dấu vân tay thứ tư của bộ trích xuất (đợt sáng: 696).
+    assert do.token_ra_llm / dong_llm["so_lan"] == pytest.approx(719, abs=1)
 
 
 def test_uoc_tinh_that_su_doc_duoc_ty_le_tu_eval_so_do_nap():
@@ -1852,9 +1983,21 @@ def test_pred_da_bi_quy_loi_khong_dem_tiep_vao_thua():
     assert ma_tran["time"]["remediation"] == 1
 
 
-# Bốn vòng chạy qua API ngoài (story 2.6). Chúng là mẫu số của cổng R2 và của
-# bảng ngoại suy FR-30, nên số của chúng khóa ở đây.
-VONG_API: tuple[str, ...] = ("v0-deepseek-goc", "v1-deepseek", "v1-gpt-4o-mini", "v1-gpt-4o")
+# Năm vòng chạy qua API ngoài (bốn của story 2.6, một của story 2.12). Chúng là
+# mẫu số của cổng R2 và của bảng ngoại suy FR-30, nên số của chúng khóa ở đây.
+#
+# `v3-deepseek-tu-dien` là vòng của story 2.12: **cùng model, cùng 8 tài liệu
+# chấm, khác đúng một thứ** - prompt mang thêm khối từ điển thực thể của
+# `config/tu-dien-thuc-the/synth.yaml` (ba mục scope `noi_bo`, vì cả 8 tài liệu
+# chấm đều mang scope đó). Nó là cổng mà ràng buộc "đổi prompt thì đo lại R2
+# trước khi thay" đòi phải đi qua.
+VONG_API: tuple[str, ...] = (
+    "v0-deepseek-goc",
+    "v1-deepseek",
+    "v1-gpt-4o-mini",
+    "v1-gpt-4o",
+    "v3-deepseek-tu-dien",
+)
 
 # Vòng thứ năm chạy **model cục bộ** (`qwen2.5:7b`, 0 USD). Nó không phải một
 # ứng viên của R2: nó là phép đo trả lời câu "precision của đường cục bộ là bao
@@ -1873,12 +2016,18 @@ def test_khoa_so_bon_vong_va_verdict_bon_cot(bo_vang):
         "v1-deepseek": {CHI_SO_GHEP_CAP: (0.707, 0.576), CHI_SO_MUC_TAI_LIEU: (0.772, 0.629)},
         "v1-gpt-4o-mini": {CHI_SO_GHEP_CAP: (0.664, 0.497), CHI_SO_MUC_TAI_LIEU: (0.761, 0.570)},
         "v1-gpt-4o": {CHI_SO_GHEP_CAP: (0.650, 0.530), CHI_SO_MUC_TAI_LIEU: (0.732, 0.596)},
+        # Story 2.12: prompt có khối từ điển. Nhích nhẹ so với `v1-deepseek` ở cả
+        # bốn cột - đủ để nhận prompt mới, **không** đủ để gọi là một cải thiện:
+        # chênh 0,3 điểm trên 8 tài liệu là trong khoảng dao động của một lần
+        # chạy, và đó là điều báo cáo phải nói.
+        "v3-deepseek-tu-dien": {CHI_SO_GHEP_CAP: (0.710, 0.616), CHI_SO_MUC_TAI_LIEU: (0.779, 0.675)},
     }
     phu_ghep_cap = {
         "v0-deepseek-goc": 0.538,
         "v1-deepseek": 0.614,
         "v1-gpt-4o-mini": 0.577,
         "v1-gpt-4o": 0.571,
+        "v3-deepseek-tu-dien": 0.617,
     }
     assert set(cho_doi) == set(VONG_API)
     vong = {v.vong: v for v in doc_moi_vong(THU_MUC_KET_QUA) if v.vong in VONG_API}
@@ -1959,7 +2108,7 @@ def test_gpt_4o_khong_tot_hon_deepseek_o_bat_ky_cot_nao(bo_vang):
 def test_bon_vong_khong_co_ban_ghi_bi_loai():
     """Khoản ledger PHAN_HOI_BI_CAT đóng dựa vào đúng hai con số này.
 
-    Chỉ bốn vòng **API ngoài**: khoản ledger đó là một phát biểu về đường
+    Chỉ các vòng **API ngoài**: khoản ledger đó là một phát biểu về đường
     DeepSeek/GPT, và vòng cục bộ có bản ghi bị loại thật (test ngay dưới đếm
     chúng). Gộp cả năm vào đây thì hoặc test đỏ vì một vòng khác loại, hoặc
     phải nới assert và mất chính thứ nó canh.
@@ -1992,13 +2141,17 @@ def test_vong_cuc_bo_co_ban_ghi_bi_loai_va_no_la_du_lieu():
     assert max(c.token_ra for t in v.tai_lieu for c in t.chunks) < 8192
 
 
+# Sáu khoản của bảng ngoại suy FR-30. Ba khoản đổi ở story 2.12 vì corpus lớn
+# lên 40 -> 42 tài liệu và `synth` được nạp lại (đợt `9c4a1ba7`, 05/09/2026):
+# `nap_corpus` là số đo của chính đợt đó, còn `gpt4o_dung_cuoi` và `ensemble_a13`
+# nhân theo cỡ corpus. Ba khoản còn lại không đọc corpus nên không đổi.
 SO_KHOA_NGOAI_SUY = {
-    "nap_corpus": 0.0394,
+    "nap_corpus": 0.0438,
     "sinh_t7": 0.6178,
     "judge_do2": 5.5350,
     "vong_so_chunk": 0.2446,
-    "gpt4o_dung_cuoi": 0.2595,
-    "ensemble_a13": 0.0932,
+    "gpt4o_dung_cuoi": 0.2875,
+    "ensemble_a13": 0.1032,
 }
 
 
@@ -2009,9 +2162,9 @@ def test_khoa_so_bang_ngoai_suy():
     bang = ngoai_suy(doc_so_do_nap())
     for ten, usd in SO_KHOA_NGOAI_SUY.items():
         assert bang.khoan_theo_ten(ten).chi_phi_usd == pytest.approx(usd, abs=5e-5), ten
-    assert bang.tong_usd == pytest.approx(6.7894, abs=5e-5)
+    assert bang.tong_usd == pytest.approx(6.8318, abs=5e-5)
     assert bang.vuot_bao_dong is False
-    assert bang.phan_tram_bao_dong == pytest.approx(100 * 6.7894 / MUC_BAO_DONG_USD, abs=0.01)
+    assert bang.phan_tram_bao_dong == pytest.approx(100 * 6.8318 / MUC_BAO_DONG_USD, abs=0.01)
 
 
 def test_chia_chunk_khop_chunk_ma_ainsert_that_ghi_ra(tmp_path):
@@ -2513,6 +2666,33 @@ def test_co_uoc_tinh_thoat_0_va_khong_ghi_file(tmp_path, capsys):
     assert list(tmp_path.iterdir()) == []
 
 
+def test_uoc_tinh_doc_tu_dien_va_dem_ca_khoi_trong_prompt(tmp_path):
+    """Xem trước phải đọc **đúng** prompt sắp gửi, gồm cả khối từ điển.
+
+    Khối từ điển nằm trong prompt nên nó vào token vào. Một ước tính bỏ qua nó
+    là ước tính của một vòng khác - nhỏ ở đây (vài chục token mỗi chunk), nhưng
+    con số này tồn tại để trả lời "sắp gọi bao nhiêu và tốn khoảng bao nhiêu",
+    và một mẫu số đọc sai prompt thì không trả lời được gì cả.
+    """
+    from eval.do_trich_xuat import uoc_tinh_vong
+
+    td = tmp_path / "tu-dien.yaml"
+    td.write_text(
+        "version: 1\n"
+        "muc:\n"
+        '  - chuan: "Phòng IT"\n'
+        '    scope: "*"\n'
+        "    bi_danh: [phòng IT, Phong IT, phong it]\n"
+        '    xac_nhan: "sonlm 2026-09-05"\n',
+        encoding="utf-8",
+    )
+    khong = uoc_tinh_vong("deepseek-v4-flash")
+    co = uoc_tinh_vong("deepseek-v4-flash", tu_dien_path=td)
+    assert co.so_loi_goi == khong.so_loi_goi, "từ điển không đổi số lời gọi"
+    assert co.token_vao > khong.token_vao
+    assert co.chi_phi_usd > khong.chi_phi_usd
+
+
 def test_so_tai_lieu_corpus_khop_bang_thiet_ke():
     """Khoản `nap_corpus` nhân theo số tài liệu corpus; số đó phải là số thật.
 
@@ -2527,7 +2707,8 @@ def test_so_tai_lieu_corpus_khop_bang_thiet_ke():
     bang = yaml.safe_load(
         (REPO_ROOT / "eval" / "corpus_thiet_ke.yaml").read_text(encoding="utf-8")
     )
-    assert GiaDinh().so_tai_lieu_corpus == len(bang["tai_lieu"]) == 40
+    # 40 của story 2.8 cộng hai tài liệu bí danh của story 2.12 (FR-32).
+    assert GiaDinh().so_tai_lieu_corpus == len(bang["tai_lieu"]) == 42
 
 
 # --- Vòng review 2.8: ba lỗ của phép thử lại, hai lỗ của cơ chế chống mất ---

@@ -14,8 +14,8 @@ content_type: vong_doi_ticket
 | Dịch vụ | Cloud Database |
 | Mức ưu tiên | Trung bình |
 | Người tiếp nhận | NV22 |
-| Mở lúc | 08/10/2026 14:40 |
-| Đóng lúc | 12/10/2026 10:15 |
+| Mở lúc | 20/08/2026 14:40 |
+| Đóng lúc | 24/08/2026 10:15 |
 
 ## Mô tả từ khách hàng
 Khách yêu cầu bật TLS 1.2 và 1.3 cho instance MongoDB, hỏi có bắt buộc dùng TLS 1.3 được không và

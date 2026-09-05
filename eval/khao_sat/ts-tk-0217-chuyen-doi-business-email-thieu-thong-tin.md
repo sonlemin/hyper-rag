@@ -14,8 +14,8 @@ content_type: vong_doi_ticket
 | Dịch vụ | Business Email |
 | Mức ưu tiên | Trung bình |
 | Người tiếp nhận | NV24 |
-| Mở lúc | 14/10/2026 09:00 |
-| Đóng lúc | 16/10/2026 11:30 |
+| Mở lúc | 26/08/2026 09:00 |
+| Đóng lúc | 28/08/2026 11:30 |
 
 ## Mô tả từ khách hàng
 Khách yêu cầu chuyển 42 hộp thư sang Business Email. Sau khi bắt đầu, quá trình dừng vì thiếu

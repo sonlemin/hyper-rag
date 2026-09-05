@@ -141,6 +141,18 @@ KHOA_NHAN: frozenset[str] = frozenset({"cau_id", "hyperedge"})
 KHOA_HYPEREDGE_NHAN: frozenset[str] = frozenset(
     {"id", "doc_key", "neo_subject", "slot_dap_an"}
 )
+# **Lớp neo thứ ba, tùy chọn** (story 2.12). Neo mô tả của story 2.9 chỉ có hai
+# lớp - `doc_key` và `neo_subject` - và nó đứng được chừng nào mỗi tài liệu chỉ
+# có một fact mang một `subject` cho trước. Đợt nạp lại 05/09/2026 phá điều đó:
+# `k1-02` có **hai** hyperedge cùng `subject` "App01" (một cho ngưỡng lỗi 502,
+# một cho ngưỡng lưu lượng), nên không `neo_subject` nào tách được chúng và mọi
+# nhãn trỏ vào một trong hai đều mơ hồ vĩnh viễn.
+#
+# `neo_phu` là một chuỗi khớp **chứa** với giá trị của *bất kỳ* vai nào. Nó chỉ
+# lọc bớt trong tập ứng viên mà `tim_theo_neo` đã trả về, không mở rộng tập đó -
+# nên nó không nới hai lớp neo cũ, chỉ tách nốt phần chúng để lại. Vắng khóa này
+# là hành vi của story 2.9, không đổi một byte.
+KHOA_HYPEREDGE_NHAN_TUY_CHON: frozenset[str] = frozenset({"neo_phu"})
 
 
 class _GomLoi(ValueError):
@@ -295,12 +307,21 @@ class AnhDoThi:
         """Hyperedge có `source_id` gộp từ hai tài liệu trở lên (ca FR-11 mức fact)."""
         return tuple(h for h in self.hyperedge if h.da_nguon)
 
-    def tim_theo_neo(self, doc_key: str, neo_subject: str) -> tuple[HyperedgeAnh, ...]:
+    def tim_theo_neo(
+        self, doc_key: str, neo_subject: str, neo_phu: str | None = None
+    ) -> tuple[HyperedgeAnh, ...]:
         """Hyperedge khớp neo mô tả: đúng tài liệu, và `subject` khớp `neo_subject`.
 
         So sau khi NFC, gộp khoảng trắng và `casefold()` - cùng luật với phép so
         nhãn của bộ vàng trích xuất, nên một neo viết hoa chữ đầu vẫn khớp còn
         một neo viết lại chữ thì không.
+
+        **Lớp neo thứ ba, tùy chọn** (story 2.12): `neo_phu` là một chuỗi phải
+        xuất hiện trong giá trị của *bất kỳ* vai nào. Nó chỉ **lọc bớt** trong
+        tập ứng viên mà hai lớp đầu đã trả về, không mở rộng tập đó. Luật lọc
+        sống ở đây, một bản: loader nhãn gọi hàm này chứ không chép lại điều
+        kiện, và test cũng vậy - một bản thứ hai của cùng một luật là chỗ hai bên
+        trôi khỏi nhau.
 
         **Khớp bằng trước, khớp chứa sau.** Một tài liệu thường có nhiều fact
         cùng chủ thể ngắn ("App01") cạnh một fact chủ thể dài hơn chứa nó
@@ -318,10 +339,18 @@ class AnhDoThi:
         bang = tuple(
             h for h in cua_tai_lieu if any(can == chuan_so_sanh(c) for c in h.chu_the())
         )
-        if bang:
-            return bang
-        return tuple(
+        ung_vien = bang or tuple(
             h for h in cua_tai_lieu if any(can in chuan_so_sanh(c) for c in h.chu_the())
+        )
+        if neo_phu is None:
+            return ung_vien
+        can_phu = chuan_so_sanh(neo_phu)
+        if not can_phu:
+            return ()
+        return tuple(
+            h
+            for h in ung_vien
+            if any(can_phu in chuan_so_sanh(gt) for ds in h.slots.values() for gt in ds)
         )
 
 
@@ -753,12 +782,19 @@ def _kiem_toan_bo_cau(cau: Sequence[CauHoi], loi: list[str]) -> None:
 
 @dataclass(frozen=True)
 class HyperedgeKyVong:
-    """Một hyperedge mà câu hỏi kỳ vọng thấy trong ngữ cảnh, cùng slot mang đáp án."""
+    """Một hyperedge mà câu hỏi kỳ vọng thấy trong ngữ cảnh, cùng slot mang đáp án.
+
+    `neo_phu` là lớp neo thứ ba, **tùy chọn** (story 2.12): một chuỗi phải xuất
+    hiện trong giá trị của một vai nào đó của hyperedge. Nó chỉ có mặt ở những
+    nhãn mà hai lớp neo đầu không tách nổi hai fact cùng `subject` trong cùng
+    một tài liệu.
+    """
 
     id: str
     doc_key: str
     neo_subject: str
     slot_dap_an: tuple[str, ...]
+    neo_phu: str | None = None
 
 
 @dataclass(frozen=True)
@@ -883,7 +919,16 @@ def _dung_hyperedge_ky_vong(
         if not isinstance(muc, dict):
             loi.append(f"{cho} phải là một object, nhận được {type(muc).__name__}")
             continue
-        if not _khoa_dung(muc, KHOA_HYPEREDGE_NHAN, cho, loi):
+        if not _khoa_dung(
+            muc, KHOA_HYPEREDGE_NHAN, cho, loi, tuy_chon=KHOA_HYPEREDGE_NHAN_TUY_CHON
+        ):
+            continue
+        neo_phu = muc.get("neo_phu")
+        if neo_phu is not None and (not isinstance(neo_phu, str) or not neo_phu.strip()):
+            loi.append(
+                f"{cho}: `neo_phu` phải là chuỗi không rỗng khi có mặt - một neo"
+                " phụ rỗng không tách được gì và chỉ làm người soát tưởng đã tách"
+            )
             continue
         sai_kieu = [
             k for k in ("id", "doc_key", "neo_subject")
@@ -912,9 +957,11 @@ def _dung_hyperedge_ky_vong(
             )
             continue
 
-        ung_vien = anh.tim_theo_neo(muc["doc_key"], muc["neo_subject"])
+        ung_vien = anh.tim_theo_neo(muc["doc_key"], muc["neo_subject"], neo_phu)
         trong_anh = theo_id_he.get(id_he)
-        neo = f"{muc['doc_key']} / {muc['neo_subject']!r}"
+        neo = f"{muc['doc_key']} / {muc['neo_subject']!r}" + (
+            f" + neo phụ {neo_phu!r}" if neo_phu is not None else ""
+        )
         if len(ung_vien) > 1:
             troi.append(
                 f"{cho}: neo mô tả ({neo}) khớp {len(ung_vien)} hyperedge"
@@ -955,6 +1002,7 @@ def _dung_hyperedge_ky_vong(
                 doc_key=muc["doc_key"],
                 neo_subject=muc["neo_subject"],
                 slot_dap_an=tuple(slot),
+                neo_phu=neo_phu,
             )
         )
     return ra

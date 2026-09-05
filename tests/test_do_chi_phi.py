@@ -104,7 +104,16 @@ def _gia_lap(monkeypatch, *, lan: LanNap | None = None):
 
     monkeypatch.setattr(mod.AuditPostgres, "mo", mo)
     monkeypatch.setattr(mod, "load_policy", lambda p: _Policy())
-    monkeypatch.setattr(mod, "dung_engine_tu_moi_truong", lambda a: engine)
+    # **Ghi lại `space`** thay vì nuốt lặng `**_`: nhánh xóa cũng phải tra đúng
+    # space (story 2.12), và một bản giả nuốt tham số là chỗ mắt xích đó đứt mà
+    # không test nào đỏ.
+    engine.space_da_nhan = []
+
+    def _gia(a, *, space=None):
+        engine.space_da_nhan.append(space)
+        return engine
+
+    monkeypatch.setattr(mod, "dung_engine_tu_moi_truong", _gia)
 
     mac_dinh = LanNap(space="synth")
     mac_dinh.trang_thai = TRANG_THAI_DOT_XONG
@@ -181,6 +190,8 @@ def test_xoa_space_goi_dung_ham_va_dong_engine(monkeypatch, tmp_path, capsys):
     # nằm trong `finally` nên nhánh xóa cũng in nó.
     assert "Cả đợt (thoi_diem >= " in ra
     assert engine.da_dong and audit.da_dong
+    # Nhánh xóa cũng phải dựng engine **theo đúng space** (story 2.12).
+    assert engine.space_da_nhan == ["test_x"]
 
 
 def test_in_bang_theo_tai_lieu_va_bang_ca_dot(monkeypatch, tmp_path, capsys):
@@ -677,14 +688,15 @@ def test_embedding_khong_uoc_ma_noi_phan_no_da_chiem(tmp_path):
     assert phan == [("a.json", pytest.approx(0.02))]
 
 
-def test_phan_embedding_cua_hai_dot_deepseek_that_la_1_9_va_2_3_phan_tram():
+def test_phan_embedding_cua_hai_dot_deepseek_that_la_1_8_va_2_3_phan_tram():
     """Hai con số mà spec 2.13 nêu, tính lại từ chính hai file số đo đã commit.
 
     Chép tay chúng vào dòng in ra là để dòng đó nói về hai đợt cũ trong khi file
     đã đổi; tính lại từ nguồn là chỗ duy nhất giữ hai bên khớp nhau.
     """
+    # Số của ba đợt nạp lại 05/09 (story 2.12). Trước đó là 1,9% và 2,3%.
     phan = dict(mod.phan_embedding_da_do())
-    assert phan["nap-that.json"] == pytest.approx(0.019, abs=5e-4)
+    assert phan["nap-that.json"] == pytest.approx(0.018, abs=5e-4)
     assert phan["nap-khao-sat.json"] == pytest.approx(0.023, abs=5e-4)
     assert "nap-real.json" not in phan, "đợt 0 USD không có phần trăm nào có nghĩa"
 

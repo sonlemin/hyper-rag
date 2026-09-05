@@ -61,6 +61,7 @@ from adapters.ingest_labels import ingest_label
 from adapters.kv import DUOI_TAM
 from adapters.llm_wrapper import ProviderNotAllowedForSpace, nha_cung_cap_cua
 from adapters.sensitivity_loader import bang_hang_cho
+from adapters.tu_dien_thuc_the import tu_dien_cho
 from adapters.trich_xuat import ThongKeTrichXuat
 from core.audit import (
     EVENT_DELETE_DOC,
@@ -369,6 +370,16 @@ def _bang_hang(engine):
     return bang_hang_cho(asdict(engine))
 
 
+def _version_tu_dien(engine) -> str | None:
+    """Phiên bản (sha256) của từ điển thực thể đang hiệu lực, hoặc `None`.
+
+    `None` là "đợt này chạy **không** từ điển", một trạng thái có thật; audit
+    phải phân biệt được nó với "có từ điển mà quên ghi".
+    """
+    td = tu_dien_cho(asdict(engine))
+    return None if td is None else td.version
+
+
 def _doc_id(noi_dung: str) -> str:
     """Đúng công thức doc id của `ainsert` (`hypergraphrag.py:281`)."""
     return compute_mdhash_id(noi_dung.strip(), prefix="doc-")
@@ -669,7 +680,27 @@ def _ly_do_khong_co_fact(thong_ke: ThongKeTrichXuat) -> str:
     )
 
 
-def _chi_tiet_muc(doc_key: str, muc: MucTaiLieu, *, re_ingest: bool, bang_version: str) -> dict:
+def _chi_tiet_muc(
+    doc_key: str,
+    muc: MucTaiLieu,
+    *,
+    re_ingest: bool,
+    bang_version: str,
+    tu_dien_version: str | None = None,
+) -> dict:
+    """Phần số liệu của một sự kiện tài liệu, gồm cả **phiên bản hai bảng cấu hình**.
+
+    `sensitivity_ranks_version` và `entity_dictionary_version` là sha256 nội dung
+    của hai file cấu hình đang hiệu lực. Cả hai có mặt vì cùng một lý do: đổi
+    một trong hai là đổi thứ đã ghi vào kho (khóa quyền với bảng hạng, id entity
+    và id hyperedge với từ điển), tức re-ingest - và biết một tài liệu được nạp
+    bằng bảng nào là điều kiện để biết tài liệu nào phải nạp lại.
+
+    `None` cho từ điển nghĩa là **đợt đó chạy không từ điển**, khác hẳn một
+    chuỗi rỗng: nó là một trạng thái có thật (space không có
+    `config/tu-dien-thuc-the/<space>.yaml`) và audit phải phân biệt được nó với
+    "có từ điển mà quên ghi".
+    """
     return dict(
         doc_key=doc_key,
         doc_id=muc.doc_id,
@@ -680,6 +711,7 @@ def _chi_tiet_muc(doc_key: str, muc: MucTaiLieu, *, re_ingest: bool, bang_versio
         so_entity=len(muc.entity),
         re_ingest=re_ingest,
         sensitivity_ranks_version=bang_version,
+        entity_dictionary_version=tu_dien_version,
     )
 
 
@@ -750,7 +782,13 @@ async def nap_tai_lieu(
                         space=space,
                         policy_version=policy_version,
                         hyperedge_ids=sorted(muc_cu.hyperedge.values()),
-                        **_chi_tiet_muc(tai_lieu.doc_key, muc_cu, re_ingest=True, bang_version=bang.version),
+                        **_chi_tiet_muc(
+                            tai_lieu.doc_key,
+                            muc_cu,
+                            re_ingest=True,
+                            bang_version=bang.version,
+                            tu_dien_version=_version_tu_dien(engine),
+                        ),
                     ),
                 )
             with ingest_label(scope=tai_lieu.scope, content_type=tai_lieu.content_type):
@@ -795,7 +833,13 @@ async def nap_tai_lieu(
                     space=space,
                     policy_version=policy_version,
                     hyperedge_ids=sorted(muc.hyperedge.values()),
-                    **_chi_tiet_muc(tai_lieu.doc_key, muc, re_ingest=tt.re_ingest, bang_version=bang.version),
+                    **_chi_tiet_muc(
+                        tai_lieu.doc_key,
+                        muc,
+                        re_ingest=tt.re_ingest,
+                        bang_version=bang.version,
+                        tu_dien_version=_version_tu_dien(engine),
+                    ),
                 ),
             )
         except Exception as loi:
@@ -952,7 +996,13 @@ async def xoa_tai_lieu(
                         space=space,
                         policy_version=policy_version,
                         hyperedge_ids=sorted(muc.hyperedge.values()),
-                        **_chi_tiet_muc(doc_key, muc, re_ingest=False, bang_version=bang.version),
+                        **_chi_tiet_muc(
+                            doc_key,
+                            muc,
+                            re_ingest=False,
+                            bang_version=bang.version,
+                            tu_dien_version=_version_tu_dien(engine),
+                        ),
                     ),
                 )
             except Exception as loi:

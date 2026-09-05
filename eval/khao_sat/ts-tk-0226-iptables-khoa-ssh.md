@@ -14,8 +14,8 @@ content_type: bao_cao_su_co
 | Dịch vụ | Cloud Server |
 | Mức ưu tiên | Nghiêm trọng |
 | Người tiếp nhận | NV22 |
-| Mở lúc | 16/10/2026 16:45 |
-| Đóng lúc | 16/10/2026 17:30 |
+| Mở lúc | 28/08/2026 16:45 |
+| Đóng lúc | 28/08/2026 17:30 |
 
 ## Mô tả từ khách hàng
 Khách chạy một loạt lệnh iptables theo bài hướng dẫn trên mạng, sau đó mất kết nối SSH vào máy chủ

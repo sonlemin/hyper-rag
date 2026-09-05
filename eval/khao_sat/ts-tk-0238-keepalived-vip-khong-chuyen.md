@@ -14,8 +14,8 @@ content_type: bao_cao_su_co
 | Dịch vụ | Cloud Server, VPC |
 | Mức ưu tiên | Cao |
 | Người tiếp nhận | NV21 |
-| Mở lúc | 19/10/2026 11:00 |
-| Đóng lúc | 19/10/2026 14:15 |
+| Mở lúc | 31/08/2026 11:00 |
+| Đóng lúc | 31/08/2026 14:15 |
 
 ## Mô tả từ khách hàng
 Khách dựng cặp máy chủ dùng keepalived. Khi dừng dịch vụ trên node chính, node dự phòng không nhận

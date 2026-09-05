@@ -145,6 +145,59 @@ tai_lieu:
       24 giờ **trùng nguyên văn** với `n-05-sop-ban-giao-ca-truc.md` - ca "một
       fact ở hai tài liệu" của I/O Matrix.
 
+  - ten: k1-08-troubleshooting-app01-loi-502.md
+    scope: khach_hang_a
+    content_type: troubleshooting
+    kich_ban: web_sap
+    vai_tro: loi
+    ghi_chu: >-
+      **Tài liệu bí danh, thêm ở story 2.12 (FR-32).** Gọi máy chủ bằng tên miền
+      đầy đủ `app01.company.vn`, trong khi `k1-01`, `k1-03` và `k1-05` gọi nó là
+      `App01` còn `k1-09` gọi là `APP-01`. Ba cách viết đó băm ra ba id entity
+      khác nhau, và chỉ `config/tu-dien-thuc-the/synth.yaml` nối chúng lại - đó
+      là chỗ FR-32 đọc được **ngay trong repo**, không cần máy chủ. Loại
+      `troubleshooting` (hạng 8) chọn có chủ đích: nó là vế **không nhạy cảm**
+      của cặp bắc qua ranh giới hạng 20, xem `k1-09`.
+  - ten: k1-09-bao-cao-su-co-inc-1611.md
+    scope: khach_hang_a
+    content_type: bao_cao_su_co
+    kich_ban: web_sap
+    vai_tro: loi
+    ghi_chu: >-
+      **Vế nhạy cảm của cặp bí danh** (hạng 20, story 2.12). Gọi máy chủ là
+      `APP-01`, cách viết **chỉ** xuất hiện ở tài liệu nhạy cảm này; `k1-08` gọi
+      nó là `app01.company.vn` và chỉ xuất hiện ở tài liệu không nhạy cảm. Chưa
+      chuẩn hóa thì `APP-01` là một entity không bao giờ lộ ở vùng không nhạy
+      cảm, tức nó một mình chặn ca này khỏi tử số Composition-Risk; chuẩn hóa
+      xong thì cả hai về `App01` và mảnh đó lộ. Đây là chỗ duy nhất trong corpus
+      mà chuẩn hóa bí danh có cơ hội nhích tỷ lệ 3, và nó phải nằm **cùng scope**
+      vì phép lộ đã siết theo scope (mục bổ sung 05/09/2026 của ADR-012).
+      INC-1611 là một sự cố **khác** INC-1208, cố ý: tài liệu nhắc INC-1208 phải
+      mang đủ ba mỏ neo của bộ vàng (`tests/test_corpus.py`), và một mã mới giữ
+      ca bí danh tách khỏi ràng buộc đó.
+
+
+      **Một câu của tài liệu này được sửa trước khi nạp, và đây là lý do.** Bản
+      đầu ghi "Người xử lý: Trần Thị Hạnh, đội Vận hành ứng dụng."; bản nạp ghi
+      "Người xử lý: Trần Thị Hạnh." sonlm chốt sửa ngày 05/09/2026 để ca này có
+      một cơ hội thật ở **con số chính thức**, không chỉ ở dòng chẩn đoán vai
+      thực thể. Lý do kỹ thuật: `E(h)` của ADR-012 đòi **mọi** entity của ca nhạy
+      cảm phải lộ ở vùng không nhạy cảm, và `k1-08` gọi người phụ trách đúng là
+      "Trần Thị Hạnh" - thêm cụm "đội Vận hành ứng dụng" vào vai `owner` của
+      `k1-09` là một giá trị slot khác hẳn, một entity riêng không lộ ở đâu, và
+      riêng nó chặn ca này khỏi tử số dù `subject` đã nối được qua từ điển. Sau
+      khi sửa, cặp bí danh có đường nối ở **cả `subject` lẫn `owner`**.
+
+
+      Nói thẳng ra ở đây chứ không để người đọc chương 4 tự đoán vì sao câu đó
+      cụt: đây là một **tài liệu dựng được sửa trước khi nạp** cho hợp với điều
+      đang đo. Nó hợp lệ vì corpus 2.8 là corpus dựng và lần sửa xảy ra **trước**
+      phép đếm - đúng chiều mà luật Never của story 2.10 bảo vệ - nhưng nó vẫn là
+      một thiên lệch có chủ đích và phải đếm vào phần hạn chế: tử số
+      Composition-Risk của `synth` sau story 2.12 không phải một con số quan sát
+      được trên tri thức tự nhiên, nó là con số trên một corpus có một ca được
+      dựng cho vừa định nghĩa.
+
   # --- Kịch bản 2: đầy ổ cứng (21 lõi, phần 2/3) -----------------------------
   - ten: k2-01-canh-bao-day-o-dia-log01.md
     scope: noi_bo

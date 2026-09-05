@@ -45,14 +45,21 @@ from tests.ngu_canh import vai
 GOC_REPO = Path(__file__).resolve().parent.parent
 ANH_SYNTH = GOC_REPO / "eval" / "anh_do_thi" / "synth.json"
 
-# Số khóa đếm trên `eval/anh_do_thi/synth.json` ngày 04/09/2026. Viết tay: 0
+# Số khóa đếm trên `eval/anh_do_thi/synth.json` ngày 05/09/2026, sau đợt nạp
+# lại `9c4a1ba7` của story 2.12 (số cũ của story 2.10 là **46**). Viết tay: 0
 # entity đa nguồn nghĩa là CT-03 không có vật liệu và cả thí nghiệm mất bằng
 # chứng, nên số này phải có chỗ đỏ khi một lần nạp lại làm nó tụt.
-SYNTH_ENTITY_DA_NGUON = 46
+#
+# Nó **tăng** 46 -> 56, và một phần của mức tăng đọc được thẳng: chuẩn hóa bí
+# danh gộp ba cách viết của App01 về một id, nên `App01` nay là một entity đa
+# nguồn (`k1-01`, `k1-02`, `k1-08`, `k1-09`) thay vì ba entity mỗi cái một tài
+# liệu. Phần còn lại là hai tài liệu corpus mới cộng dao động của một lần chạy.
+SYNTH_ENTITY_DA_NGUON = 56
 
-# 16 entity mà khóa quyền hợp nhất thành **không khóa** (khác scope, AD-5) và 4
-# entity mang vai `time`, đọc từ kho ngày 04/09/2026. Chép vào đây để test thứ tự
-# chạy được mà không cần container; bản trên kho thật do test marker `neo4j` canh.
+# 19 entity mà khóa quyền hợp nhất thành **không khóa** (khác scope, AD-5) và 6
+# entity mang vai `time`, đọc từ kho ngày 05/09/2026 bằng `eval.ct03` trên máy
+# chủ. Chép vào đây để test thứ tự chạy được mà không cần container; bản trên
+# kho thật do test marker `neo4j` canh.
 KHAC_SCOPE_SYNTH: frozenset[str] = frozenset(
     {
         "12/08/2026 lúc 09:20",
@@ -60,33 +67,56 @@ KHAC_SCOPE_SYNTH: frozenset[str] = frozenset(
         "SOP-12",
         "Trần Thị Hạnh",
         "cảnh báo",
-        "cảnh báo CPU",
         "cảnh báo mức nghiêm trọng",
-        "cấp theo yêu cầu có thời hạn 8 giờ",
         "dịch vụ",
         "gửi ra ngoài phải có phê duyệt của Giám đốc Kỹ thuật",
         "hệ giám sát",
-        "mỗi quý",
+        "lưu trong kho khóa Vault",
+        "mỗi 90 ngày",
+        "mỗi tháng",
         "người trực",
+        "người vận hành",
         "nhóm Hạ tầng",
         "trang thanh toán của App01",
         "trả giới hạn bộ nhớ PHP-FPM về mức cũ rồi nạp lại cấu hình theo SOP-12",
+        "tài liệu hạn chế",
+        "được xoay vòng bằng tác vụ tự động của Vault",
     }
 )
 TIME_SYNTH: frozenset[str] = frozenset(
-    {"12 tháng", "12/08/2026 lúc 09:20", "2 ngày làm việc", "thời hạn xử lý là 2 ngày làm việc"}
+    {
+        "12 tháng",
+        "12/08/2026 lúc 09:20",
+        "2 ngày làm việc",
+        "mỗi 90 ngày",
+        "mỗi tháng",
+        "từ ngày 27/07",
+    }
 )
 
-# Tám ca **bằng chứng yếu** trên `synth`: bốn mốc thời gian ở trên, cộng bốn
-# chuỗi là *câu* chứ không phải tên thực thể. Khóa cả tập để luật yếu không âm
-# thầm rộng ra (hạ nhầm thực thể thật khỏi đầu trang) hay hẹp lại (để câu mệnh
-# lệnh mở trang).
-YEU_SYNTH: frozenset[str] = TIME_SYNTH | frozenset(
+# Mười ca **bằng chứng yếu** trên `synth`: năm mốc thời gian, cộng năm chuỗi là
+# *câu* chứ không phải tên thực thể. Khóa cả tập để luật yếu không âm thầm rộng
+# ra (hạ nhầm thực thể thật khỏi đầu trang) hay hẹp lại (để câu mệnh lệnh mở
+# trang).
+#
+# **Không phải `TIME_SYNTH | {...}`**, và chỗ khác nhau đáng đọc: `mỗi tháng`
+# mang `entity_type` là `time` trên node, nhưng `la_gia_tri_yeu` đọc **vai
+# trong ảnh chụp** trước - và ở đó `mỗi tháng` còn điền một vai khác, nên nó
+# không yếu. `entity_type` của node là giá trị của lần ghi cuối, không phải một
+# tổng kết; viết `TIME_SYNTH | ...` là để một luật đã có tên bị thay bằng một
+# xấp xỉ của nó.
+YEU_SYNTH: frozenset[str] = frozenset(
     {
-        "cấp theo yêu cầu có thời hạn 8 giờ",
+        "12 tháng",
+        "12/08/2026 lúc 09:20",
+        "2 ngày làm việc",
+        "mỗi 90 ngày",
+        "từ ngày 27/07",
         "gửi ra ngoài phải có phê duyệt của Giám đốc Kỹ thuật",
         "gửi tới hộp thư của nhóm Tích hợp cũ",
+        "phải bổ sung phiếu thay đổi trong 24 giờ kể từ khi dịch vụ phục hồi",
         "trả giới hạn bộ nhớ PHP-FPM về mức cũ rồi nạp lại cấu hình theo SOP-12",
+        "được xoay vòng bằng tác vụ tự động của Vault",
     }
 )
 
@@ -591,8 +621,12 @@ def test_thu_tu_tren_anh_chup_synth_that():
         for e in ds
     ]
     ten = [m.entity.ten for m in sorted(gia, key=thu_tu_bang_chung)]
-    assert ten[:3] == ["nhóm Hạ tầng", "cảnh báo mức nghiêm trọng", "người trực"]
-    # Tám ca yếu chiếm trọn phần đuôi, không ca nào lọt lên nhóm mạnh.
+    # Ba tên này đổi ở đợt nạp lại 05/09: `Trần Thị Hạnh` lên hạng vì `k1-08`
+    # và `k1-09` (hai tài liệu bí danh) cùng nêu tên bà, nên bà thành entity đa
+    # nguồn 5 tài liệu. Số của story 2.10 là ["nhóm Hạ tầng", "cảnh báo mức
+    # nghiêm trọng", "người trực"].
+    assert ten[:3] == ["cảnh báo mức nghiêm trọng", "Trần Thị Hạnh", "nhóm Hạ tầng"]
+    # Mười ca yếu chiếm trọn phần đuôi, không ca nào lọt lên nhóm mạnh.
     assert set(ten[-len(YEU_SYNTH):]) == YEU_SYNTH, ten[-len(YEU_SYNTH):]
     assert {m.entity.ten for m in gia if m.la_gia_tri_yeu} == YEU_SYNTH
 

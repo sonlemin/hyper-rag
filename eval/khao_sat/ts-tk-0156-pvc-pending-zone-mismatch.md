@@ -14,8 +14,8 @@ content_type: bao_cao_su_co
 | Dịch vụ | Kubernetes Engine |
 | Mức ưu tiên | Cao |
 | Người tiếp nhận | NV23 |
-| Mở lúc | 29/09/2026 08:40 |
-| Đóng lúc | 29/09/2026 10:22 |
+| Mở lúc | 11/08/2026 08:40 |
+| Đóng lúc | 11/08/2026 10:22 |
 
 ## Mô tả từ khách hàng
 Cụm chạy trên hai vùng khả dụng. Một pod kẹt Pending vĩnh viễn, log báo

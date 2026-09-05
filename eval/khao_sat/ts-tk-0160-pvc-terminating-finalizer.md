@@ -14,8 +14,8 @@ content_type: bao_cao_su_co
 | Dịch vụ | Kubernetes Engine |
 | Mức ưu tiên | Thấp |
 | Người tiếp nhận | NV24 |
-| Mở lúc | 30/09/2026 15:30 |
-| Đóng lúc | 30/09/2026 16:12 |
+| Mở lúc | 12/08/2026 15:30 |
+| Đóng lúc | 12/08/2026 16:12 |
 
 ## Mô tả từ khách hàng
 Xóa PVC nhưng nó kẹt ở trạng thái Terminating mãi không biến mất.

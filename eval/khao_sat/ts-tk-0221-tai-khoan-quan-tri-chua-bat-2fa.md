@@ -14,8 +14,8 @@ content_type: bao_cao_su_co
 | Dịch vụ | Google Workspace |
 | Mức ưu tiên | Cao |
 | Người tiếp nhận | NV21 |
-| Mở lúc | 15/10/2026 13:20 |
-| Đóng lúc | 17/10/2026 09:50 |
+| Mở lúc | 27/08/2026 13:20 |
+| Đóng lúc | 29/08/2026 09:50 |
 
 ## Mô tả từ khách hàng
 Sau một vụ lừa đảo mạo danh nhắm vào nhân viên, khách yêu cầu rà soát tài khoản nào chưa bật xác

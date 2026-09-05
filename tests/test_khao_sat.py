@@ -562,13 +562,14 @@ def test_hai_loai_vang_la_loai_nhay_cam_va_dieu_do_duoc_noi_ra(bang):
 # ---------------------------------------------------------------------------
 
 
-def test_so_do_nap_khao_sat_khop_dot_04_09():
+def test_so_do_nap_khao_sat_khop_dot_05_09():
     """Khóa số của `eval/so_do_nap/nap-khao-sat.json`, cùng khuôn với `nap-that.json`.
 
     File có commit mà không mã nào đọc và không test nào khóa là một file trôi
-    được: 0,066651 USD đã tiêu được chép tay vào spec, sprint-status và ledger,
-    nên nó cần đúng một chỗ để đối chiếu. Đây cũng là chỗ nói ra rằng đợt chạy
-    **trọn** (50 tài liệu, không đợt dở nào ghi được file này).
+    được: **0,065978 USD** của đợt nạp lại 05/09 (`3b0f428f`) được chép tay vào
+    spec, sprint-status và ledger, nên nó cần đúng một chỗ để đối chiếu. Đây
+    cũng là chỗ nói ra rằng đợt chạy **trọn** (50 tài liệu, không đợt dở nào ghi
+    được file này). Đợt 04/09 (`32293e26`) tiêu 0,066651 USD.
     """
     import json
 
@@ -577,15 +578,18 @@ def test_so_do_nap_khao_sat_khop_dot_04_09():
     assert do["version"] == 1
     assert do["space"] == SPACE_KHAO_SAT
     assert do["so_tai_lieu"] == SO_BAN_GHI
-    assert do["dot_id"] == "32293e26e25f450bb7004ed3d4c63826"
+    # Đợt 05/09/2026 của story 2.12 (nạp lại sau khi sửa ba khiếm khuyết đã
+    # khai). Đợt 04/09 là `32293e26e25f450bb7004ed3d4c63826`, 67.917 + 26.710
+    # token, 0,06514068 USD; giữ số cũ trong bình luận để so chứ không xóa.
+    assert do["dot_id"] == "3b0f428fe2db407b9d16dd200763ccbd"
     llm = [d for d in do["theo_model"] if d["loai"] == "llm"]
     emb = [d for d in do["theo_model"] if d["loai"] == "embedding"]
     assert len(llm) == 1 and len(emb) == 1
-    assert (llm[0]["so_lan"], llm[0]["token_vao"], llm[0]["token_ra"]) == (50, 67917, 26710)
-    assert llm[0]["chi_phi_usd"] == pytest.approx(0.06514068)
-    assert emb[0]["token_vao"] == 75493
-    assert emb[0]["chi_phi_usd"] == pytest.approx(0.00150986)
-    assert do["tong"]["chi_phi_usd"] == pytest.approx(0.06665054)
+    assert (llm[0]["so_lan"], llm[0]["token_vao"], llm[0]["token_ra"]) == (50, 67912, 26214)
+    assert llm[0]["chi_phi_usd"] == pytest.approx(0.06448376)
+    assert emb[0]["token_vao"] == 74703
+    assert emb[0]["chi_phi_usd"] == pytest.approx(0.00149406)
+    assert do["tong"]["chi_phi_usd"] == pytest.approx(0.06597782)
     # Một lời gọi LLM mỗi tài liệu: 50 bản ghi, mỗi bản ghi đúng một chunk.
     assert llm[0]["so_lan"] == do["so_tai_lieu"]
 
@@ -603,39 +607,51 @@ def test_lenh_trong_so_do_nap_dung_space_khao_sat():
 
 
 # ---------------------------------------------------------------------------
-# Hai khiếm khuyết đã khai của mẫu số - **khóa hiện trạng, không khóa hành vi đúng**
+# Ba khiếm khuyết đã khai của mẫu số - **đã sửa 05/09/2026, story 2.12**
 # ---------------------------------------------------------------------------
 #
-# Hai test dưới đây ghim một thứ **sai** cho tới khi story 2.12 sửa nó. Chúng
-# không nói "như thế này là đúng"; chúng nói "hôm nay lệch đúng chừng này, và
-# một lần sửa lén sẽ bị bắt". Luật Never của spec 2.10 cấm sửa nội dung 50 bản
-# ghi sau khi ba tỷ lệ đã đếm, nên đường sửa hợp lệ duy nhất đi qua lần nạp lại
-# của 2.12 - và **2.12 phải xóa hai test này** cùng lúc, không phải cập nhật số
-# trong chúng.
+# Chỗ này từng có **bốn test khóa hiện trạng**: bốn tên file mang nhãn loại mâu
+# thuẫn `content_type`, mọi mốc thời gian nằm ở tương lai so với ngày dựng, và
+# hai tập gần như không giao nhau trên trục thời gian. Chúng không nói "như thế
+# này là đúng"; chúng nói "hôm nay lệch đúng chừng này, và một lần sửa lén sẽ bị
+# bắt". Docstring của chúng dặn story 2.12 **xóa hẳn** chứ không cập nhật số
+# trong chúng, và đây là lần đó.
+#
+# Ba phép sửa, tất cả trong lần nạp lại của story 2.12 (05/09/2026):
+#
+# - Bốn tên file đổi để mang đúng `content_type` khai (`dv-10`, `dc-03` thành
+#   `canh-bao-`; `dv-13`, `dv-14` thành `bi-mat-ha-tang-`). Đổi tên là đổi
+#   `doc_key`.
+# - Mọi mốc nghiệp vụ lùi đúng **49 ngày** (bảy tuần chẵn, giữ nguyên thứ trong
+#   tuần), nên mốc muộn nhất 20/10/2026 thành 01/09/2026 - trước ngày dựng
+#   03/09/2026. Dấu "Sinh ngày 03/09/2026" ở đầu mỗi file không dịch: nó là ngày
+#   dựng tài liệu, không phải một mốc nghiệp vụ.
+# - Năm dòng lệnh mang tên CLI thật của doanh nghiệp đổi sang `cloudctl`.
+#
+# Lời khai đầy đủ cùng lý do giữ lại nó nằm ở đầu `eval/khao_sat_thiet_ke.yaml`.
+# Thứ **còn** canh ba phép sửa này là ba test ở khối "Ảnh chụp" phía trên: chúng
+# buộc ảnh chụp khớp một-một với thư mục và khớp sha256 thân từng file, nên
+# `khao_sat` phải nạp lại và chụp lại thì bộ test mới xanh trở lại.
 
-# Nhãn loại dẫn đầu tên file mâu thuẫn `content_type` khai trong bảng. Nhãn khai
-# mới là nhãn thật (`core.ingest_scan` đọc frontmatter, không đọc tên file), nên
-# không con số nào sai; cái sai là người soát đọc `doc_key` ở cột đầu của ảnh
-# chụp rồi suy sai hạng độ nhạy.
-TEN_FILE_LECH_NHAN: dict[str, str] = {
-    "dv-10-runbook-xu-ly-canh-bao-ram-cpu.md": "canh_bao",
-    "dv-13-sop-xoay-vong-khoa-truy-cap-object-storage.md": "bi_mat_ha_tang",
-    "dv-14-sop-cap-quyen-truy-cap-ha-tang.md": "bi_mat_ha_tang",
-    "dc-03-runbook-kiem-tra-nhiet-do-phong-may.md": "canh_bao",
-}
+
+# --- Hằng và trợ giúp của bốn luật hướng tới ở cuối file --------------------
+
+# Ngày dựng 50 bản ghi, in ở khối chú thích đầu mỗi file. Mọi mốc **nghiệp vụ**
+# phải nằm trước hoặc bằng nó.
+NGAY_DUNG_BAN_GHI = "2026-09-03"
+MAU_NGAY = re.compile(r"\b(\d{2})/(\d{2})/(\d{4})\b")
 
 # Nhãn loại đứng ngay sau mã trong tên file của hai bộ phận nội bộ.
 NHAN_DAN_DAU = re.compile(r"^(?:dv|dc)-\d{2}-([a-z]+)-")
-NHAN_LA_LOAI: frozenset[str] = frozenset({"runbook", "sop", "postmortem"})
 
-# Khoảng mốc ngày có trong thân 50 bản ghi, tính cả dấu tài liệu dựng ở đầu file.
-# Bản ghi sinh 03/09/2026 mà sự việc chạy tới 20/10/2026: mọi mốc nghiệp vụ nằm ở
-# **tương lai** so với ngày dựng. Corpus 2.8 thì dừng ở 18/09/2026.
-MOC_SOM_NHAT = "2026-08-12"
-MOC_MUON_NHAT = "2026-10-20"
-NGAY_DUNG_BAN_GHI = "2026-09-03"
-MOC_MUON_NHAT_CUA_SYNTH = "2026-09-18"
-MAU_NGAY = re.compile(r"\b(\d{2})/(\d{2})/(\d{4})\b")
+# Ba mốc mà hai tập cùng có, đếm lại sau phép lùi 49 ngày của story 2.12 (số cũ
+# cũng là ba mốc, nhưng là {12/08, 03/09, 18/09}). Cả ba là trùng hợp chứ không
+# phải một sự việc chung: 12/08 là "lần diễn tập gần nhất" nhắc thoáng trong
+# `dv-07`, 15/08 là ngày của INC-1611 bên corpus đụng một mốc ticket, 03/09 là
+# ngày dựng in ở dấu tài liệu.
+MOC_CHUNG_VOI_SYNTH: frozenset[str] = frozenset(
+    {"2026-08-12", "2026-08-15", "2026-09-03"}
+)
 
 
 def _moc_ngay(thu_muc: Path) -> set[str]:
@@ -647,78 +663,105 @@ def _moc_ngay(thu_muc: Path) -> set[str]:
     return ra
 
 
-def test_bon_ten_file_lech_nhan_loai_dung_bang_danh_sach_da_khai(bang):
-    """Khóa **khiếm khuyết đã khai**, không khóa một hành vi đúng.
 
-    Bốn tên file này mang nhãn loại mâu thuẫn `content_type`. Sửa tên mà quên gỡ
-    khỏi `TEN_FILE_LECH_NHAN` là đỏ, và thêm một bản ghi lệch mới cũng đỏ - hai
-    chiều, vì cả hai đều là một thay đổi mà không ai duyệt.
+# ---------------------------------------------------------------------------
+# Ba luật **hướng tới**, thay ba test khóa hiện trạng đã xóa
+# ---------------------------------------------------------------------------
+#
+# Xóa ba test khóa hiện trạng mà không thay gì là để ba khiếm khuyết quay lại
+# lặng lẽ ở lần sửa sau. Ba test dưới đây khóa **trạng thái đúng** chứ không
+# khóa độ lệch: chúng nói "phải như thế này", không nói "hôm nay lệch chừng này".
 
-    **Story 2.12 xóa hẳn test này** trong cùng lần nạp lại sửa tên file, không
-    phải cập nhật danh sách trong nó.
+
+def test_moi_moc_nghiep_vu_khong_o_tuong_lai_so_voi_ngay_dung():
+    """Mốc nghiệp vụ muộn nhất phải `<=` ngày dựng tài liệu.
+
+    Bản ghi sinh 03/09/2026 mà sự việc bên trong chạy tới 20/10 là một trục thời
+    gian không thể đúng, và `time` là một trong 8 vai được trích. Story 2.12 lùi
+    mọi mốc 49 ngày; test này là chỗ luật đó ở lại.
+
+    Dấu "Sinh ngày 03/09/2026" trong khối chú thích đầu mỗi file **không** phải
+    một mốc nghiệp vụ, nên nó bị loại khỏi phép đếm - loại bằng chính chuỗi nhận
+    dạng khối đó, không bằng một danh sách ngoại lệ chép tay.
     """
-    thuc_te = {}
+    ra: set[str] = set()
+    for f in cac_file_nap(THU_MUC_KHAO_SAT):
+        for dong in f.read_text(encoding="utf-8").splitlines():
+            if "Sinh ngày" in dong:
+                continue
+            for d, m, y in MAU_NGAY.findall(dong):
+                ra.add(f"{y}-{m}-{d}")
+    assert ra, "50 bản ghi phải có mốc thời gian để đo"
+    assert max(ra) <= NGAY_DUNG_BAN_GHI, sorted(ra)[-3:]
+
+
+def test_nhan_dan_dau_ten_file_khop_content_type_khai(bang):
+    """Tên file không được nói một đằng còn `content_type` khai một nẻo.
+
+    `core.ingest_scan` đọc frontmatter chứ không đọc tên file, nên một tên lệch
+    không làm con số nào sai - nó làm **người soát** sai: `doc_key` là tên file
+    và nó đứng ở cột đầu của ảnh chụp, bảng phân bố và trang CT-03.
+
+    Chỉ chấm nhãn nào **là một loại nội dung có thật**: một tên bắt đầu bằng
+    `dv-07-runbook-...` phải khai `runbook`, còn `dv-01-postmortem-...` phải khai
+    `postmortem`; một tên bắt đầu bằng một chữ không phải tên loại (`dv-10-canh-`)
+    thì không có gì để đối chiếu và test không bịa ra một luật cho nó.
+    """
+    from adapters.sensitivity_loader import tai_hang_do_nhay, DUONG_DAN_MAC_DINH
+
+    loai_co_that = set(tai_hang_do_nhay(DUONG_DAN_MAC_DINH).hang)
+    lech = {}
     for m in bang["ban_ghi"]:
         mm = NHAN_DAN_DAU.match(m["ten"])
-        if mm and mm.group(1) in NHAN_LA_LOAI and mm.group(1) != m["content_type"]:
-            thuc_te[m["ten"]] = m["content_type"]
-    assert thuc_te == TEN_FILE_LECH_NHAN, (
-        f"thừa {sorted(set(thuc_te) - set(TEN_FILE_LECH_NHAN))},"
-        f" thiếu {sorted(set(TEN_FILE_LECH_NHAN) - set(thuc_te))}."
-        " Đây là danh sách khiếm khuyết đã khai (bảng thiết kế, ADR-012, ledger);"
-        " sửa tên file là việc của story 2.12 và phải xóa test này, không phải"
-        " sửa danh sách"
+        if mm and mm.group(1) in loai_co_that and mm.group(1) != m["content_type"]:
+            lech[m["ten"]] = m["content_type"]
+    assert not lech, (
+        f"tên file nói một đằng, `content_type` khai một nẻo: {lech}."
+        " Đổi tên file (và nhớ nạp lại: `doc_key` đổi theo)"
     )
 
 
-def test_moi_ten_file_lech_van_khai_dung_content_type_trong_frontmatter(nguon):
-    """Khiếm khuyết chỉ ở tên file: nhãn khai vẫn là nhãn thật, nên số không sai.
+def test_khong_ten_chuong_trinh_dong_lenh_that_trong_ban_ghi():
+    """Tên CLI của doanh nghiệp chủ quản không được có trong `eval/khao_sat/`.
 
-    Đây là nửa còn lại của lời khai. Nếu một trong bốn file cũng lệch cả
-    frontmatter thì nó không còn là "tên gọi khó đọc" mà là một hạng độ nhạy sai
-    trong kho, tức ba tỷ lệ sai - hạng khác hẳn nhau.
+    50 bản ghi là **bản dựng tay** nên không nội dung nghiệp vụ nào rò; thứ rò
+    là **danh tính người thuê khóa luận**. Bảng bí danh của story 2.11 gán tên
+    đó thành một bí danh cho 50 tài liệu thật, nên để nó nguyên ở đây là hai bộ
+    dữ liệu trong repo khai hai luật khác nhau cho cùng một chuỗi.
+
+    Tên đọc từ **bảng bí danh ngoài repo**, không viết vào test: viết nó vào một
+    file có commit là đúng lỗi mà test này dựng ra để chặn. Thiếu bảng thì bỏ
+    qua - trên máy chủ CI `extra/` không được đồng bộ.
     """
-    for ten, loai in TEN_FILE_LECH_NHAN.items():
-        assert nguon[ten].content_type == loai, ten
-        assert _hang()[loai] == _hang()[nguon[ten].content_type]
+    import json
+
+    bang = GOC_REPO / "extra" / "khao-sat-50" / "bang-bi-danh.json"
+    if not bang.is_file():
+        pytest.skip("không có bảng bí danh (extra/ không đồng bộ) - bỏ qua")
+    to_chuc = json.loads(bang.read_text(encoding="utf-8")).get("to_chuc", {})
+    ten = sorted({t.lower() for t in to_chuc if len(t) >= 4})
+    assert ten, "bảng bí danh phải có mục `to_chuc` để đối chiếu"
+    dinh = {}
+    for f in cac_file_nap(THU_MUC_KHAO_SAT):
+        than = f.read_text(encoding="utf-8").lower()
+        co = [t for t in ten if t in than]
+        if co:
+            dinh[f.name] = co
+    assert not dinh, f"tên tổ chức thật còn trong bản ghi dựng: {dinh}"
 
 
-def test_moc_thoi_gian_cua_ban_ghi_nam_o_tuong_lai_so_voi_ngay_dung():
-    """Khóa **khiếm khuyết đã khai**: trục thời gian của mẫu số không thể đúng.
+def test_hai_tap_giao_nhau_bao_nhieu_tren_truc_thoi_gian():
+    """Lời khai về giới hạn trục thời gian, **viết lại** theo mốc sau khi lùi 49 ngày.
 
-    Bản ghi sinh 03/09/2026 mà sự việc chạy tới 20/10/2026. `time` là một trong 8
-    vai được trích, nên mẫu số mang một trục thời gian ở tương lai và gần như
-    không giao với `synth` (dừng ở 18/09/2026). Không đổi con số nào - không phép
-    đếm nào của ADR-012 đọc ngày tháng - nhưng nó là một khiếm khuyết thật của
-    tập dữ liệu và phải có chỗ đỏ khi ai đó sửa lén.
-
-    **Story 2.12 xóa hẳn test này** trong cùng lần nạp lại sửa mốc thời gian.
-    """
-    moc = _moc_ngay(THU_MUC_KHAO_SAT)
-    assert min(moc) == MOC_SOM_NHAT, sorted(moc)[:3]
-    assert max(moc) == MOC_MUON_NHAT, sorted(moc)[-3:]
-    sau_ngay_dung = {d for d in moc if d > NGAY_DUNG_BAN_GHI}
-    assert sau_ngay_dung, "khiếm khuyết đã biến mất: 2.12 sửa rồi thì xóa test này"
-    assert max(moc) > MOC_MUON_NHAT_CUA_SYNTH
-
-
-# Ba mốc mà hai tập cùng có, trên 30 mốc của `khao_sat`. Cả ba là trùng hợp, không
-# phải một sự việc chung: 12/08 là "lần diễn tập gần nhất" nhắc thoáng trong
-# `dv-07`, 03/09 là ngày dựng in ở dấu tài liệu (và tình cờ là ngày của INC-1305
-# bên bộ vàng), 18/09 là INC-0918 của `dv-02` đụng ngày INC-1417 của bộ vàng.
-MOC_CHUNG_VOI_SYNTH: frozenset[str] = frozenset({"2026-08-12", "2026-09-03", "2026-09-18"})
-
-
-def test_hai_tap_gan_nhu_khong_giao_nhau_tren_truc_thoi_gian():
-    """3 mốc chung trên 30, và cả ba là trùng hợp chứ không phải sự việc chung.
-
-    Phép đối chiếu hai cột của story này không đọc trục thời gian, nên đây không
-    phải một lỗi của ba tỷ lệ. Nó là một giới hạn phải nhớ nếu ai đó sau này
-    muốn dùng `khao_sat` cho một phép đo có chiều thời gian: hai tập kể hai
-    khoảng thời gian rời nhau, và ba điểm chạm là ngẫu nhiên.
+    Test cũ khóa lời khai "hai tập gần như không giao nhau, 3/30 mốc chung".
+    Docstring của nó **không** dặn xóa, và phép lùi 49 ngày đổi chính lời khai đó
+    - nên nó được viết lại chứ không bỏ trắng. Phép đối chiếu hai cột của story
+    2.10 không đọc trục thời gian, nên đây không phải một lỗi của ba tỷ lệ; nó là
+    một giới hạn phải nhớ nếu ai đó sau này muốn một phép đo có chiều thời gian.
     """
     cua_khao_sat = _moc_ngay(THU_MUC_KHAO_SAT)
-    chung = cua_khao_sat & (_moc_ngay(THU_MUC_CORPUS) | _moc_ngay(THU_MUC_BO_VANG))
+    cua_synth = _moc_ngay(THU_MUC_CORPUS) | _moc_ngay(THU_MUC_BO_VANG)
+    chung = cua_khao_sat & cua_synth
     assert chung == MOC_CHUNG_VOI_SYNTH, sorted(chung)
     assert len(chung) * 5 < len(cua_khao_sat), (
         f"{len(chung)}/{len(cua_khao_sat)} mốc chung - hai trục thời gian không"

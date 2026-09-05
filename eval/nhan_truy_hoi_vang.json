@@ -8,13 +8,19 @@
           "id": "he-88e11246a5a2896a063216d1",
           "doc_key": "k1-01-runbook-app01-khoi-dong-lai.md",
           "neo_subject": "trang thanh toán của App01",
-          "slot_dap_an": ["symptom", "remediation"]
+          "slot_dap_an": [
+            "symptom",
+            "remediation"
+          ]
         },
         {
-          "id": "he-c0605da39a4b2de7c0d73913",
+          "id": "he-494aad99371ffc2404013e09",
           "doc_key": "k1-01-runbook-app01-khoi-dong-lai.md",
           "neo_subject": "tham số giới hạn bộ nhớ PHP-FPM",
-          "slot_dap_an": ["condition", "remediation"]
+          "slot_dap_an": [
+            "condition",
+            "remediation"
+          ]
         }
       ]
     },
@@ -22,10 +28,13 @@
       "cau_id": "n3-02",
       "hyperedge": [
         {
-          "id": "he-91de2cd2275e66c6007b37c5",
+          "id": "he-dc9ea1f5d232148586ae153a",
           "doc_key": "k1-02-canh-bao-app01-502.md",
-          "neo_subject": "cảnh báo 'App01 tỷ lệ lỗi 502'",
-          "slot_dap_an": ["condition"]
+          "neo_subject": "App01",
+          "slot_dap_an": [
+            "condition"
+          ],
+          "neo_phu": "tỷ lệ phản hồi 502 vượt 2% trong cửa sổ 5 phút"
         }
       ]
     },
@@ -33,16 +42,22 @@
       "cau_id": "n3-03",
       "hyperedge": [
         {
-          "id": "he-c99e422855e5516bb6011185",
+          "id": "he-e04b174aca2a50ace8588d00",
           "doc_key": "k2-01-canh-bao-day-o-dia-log01.md",
           "neo_subject": "máy chủ log01",
-          "slot_dap_an": ["condition", "cause"]
+          "slot_dap_an": [
+            "condition",
+            "cause"
+          ]
         },
         {
-          "id": "he-2214674ed9f9beed6a41bc57",
+          "id": "he-3045258117fdffba880a20fe",
           "doc_key": "k2-01-canh-bao-day-o-dia-log01.md",
-          "neo_subject": "cảnh báo phân vùng đầy mức nghiêm trọng",
-          "slot_dap_an": ["condition"]
+          "neo_subject": "máy chủ nội bộ",
+          "slot_dap_an": [
+            "condition"
+          ],
+          "neo_phu": "cảnh báo mức nghiêm trọng"
         }
       ]
     },
@@ -50,10 +65,13 @@
       "cau_id": "n3-04",
       "hyperedge": [
         {
-          "id": "he-d1686e5e2e43179e743f693e",
+          "id": "he-2bda1d0460829064232a2051",
           "doc_key": "k2-02-runbook-xu-ly-day-o-dia.md",
-          "neo_subject": "nhật ký cũ hơn 30 ngày trên phân vùng log",
-          "slot_dap_an": ["condition", "remediation"]
+          "neo_subject": "nhật ký trên phân vùng log",
+          "slot_dap_an": [
+            "condition",
+            "remediation"
+          ]
         }
       ]
     },
@@ -61,10 +79,13 @@
       "cau_id": "n3-05",
       "hyperedge": [
         {
-          "id": "he-e1912ab49bee09934d2e7524",
+          "id": "he-76dba0a98497333fa0b8df2d",
           "doc_key": "k2-02-runbook-xu-ly-day-o-dia.md",
-          "neo_subject": "nhật ký cũ hơn 90 ngày",
-          "slot_dap_an": ["remediation", "owner"]
+          "neo_subject": "nhật ký",
+          "slot_dap_an": [
+            "remediation",
+            "owner"
+          ]
         }
       ]
     },
@@ -75,13 +96,19 @@
           "id": "he-de10202d12585a33d95ce9be",
           "doc_key": "k1-01-runbook-app01-khoi-dong-lai.md",
           "neo_subject": "App01",
-          "slot_dap_an": ["condition", "remediation"]
+          "slot_dap_an": [
+            "condition",
+            "remediation"
+          ]
         },
         {
-          "id": "he-7a43c114c5008e14785955a3",
+          "id": "he-b2bb3027ad9f6e73a59a7612",
           "doc_key": "k1-02-canh-bao-app01-502.md",
-          "neo_subject": "cảnh báo 'App01 lưu lượng cao'",
-          "slot_dap_an": ["condition"]
+          "neo_subject": "App01",
+          "slot_dap_an": [
+            "condition"
+          ],
+          "neo_phu": "lưu lượng vượt 5000 req/phút trong 10 phút liên tục"
         }
       ]
     },
@@ -92,7 +119,10 @@
           "id": "he-991d13f5f925571b97fbf926",
           "doc_key": "k3-02-runbook-gia-han-chung-thu-so.md",
           "neo_subject": "chứng thư số của khách hàng B",
-          "slot_dap_an": ["condition", "remediation"]
+          "slot_dap_an": [
+            "condition",
+            "remediation"
+          ]
         }
       ]
     },
@@ -103,13 +133,19 @@
           "id": "he-61a078dd0bfc37041eb30731",
           "doc_key": "k3-03-canh-bao-chung-thu-sap-het-han.md",
           "neo_subject": "cảnh báo hết hạn chứng thư số của khách hàng B",
-          "slot_dap_an": ["condition", "time"]
+          "slot_dap_an": [
+            "condition",
+            "time"
+          ]
         },
         {
           "id": "he-8889137cf69e8416933d028c",
           "doc_key": "k3-03-canh-bao-chung-thu-sap-het-han.md",
           "neo_subject": "cảnh báo mức nghiêm trọng",
-          "slot_dap_an": ["condition", "remediation"]
+          "slot_dap_an": [
+            "condition",
+            "remediation"
+          ]
         }
       ]
     },
@@ -117,10 +153,13 @@
       "cau_id": "n3-09",
       "hyperedge": [
         {
-          "id": "he-36d173be7ddb6694c06af3e4",
+          "id": "he-d34b20f72d6b3f7b73cc86a8",
           "doc_key": "k2-01-canh-bao-day-o-dia-log01.md",
           "neo_subject": "cảnh báo dung lượng",
-          "slot_dap_an": ["condition", "remediation", "owner"]
+          "slot_dap_an": [
+            "condition",
+            "remediation"
+          ]
         }
       ]
     },
@@ -131,7 +170,11 @@
           "id": "he-1bce446f0948bad62c9be755",
           "doc_key": "n-14-canh-bao-tai-cpu-may-chu-web.md",
           "neo_subject": "ngưỡng CPU",
-          "slot_dap_an": ["condition", "remediation", "cause"]
+          "slot_dap_an": [
+            "condition",
+            "remediation",
+            "cause"
+          ]
         }
       ]
     },
@@ -139,10 +182,14 @@
       "cau_id": "n3-11",
       "hyperedge": [
         {
-          "id": "he-5ea9e310c03ab620da75685b",
+          "id": "he-9b52b665a06488bd9f0285aa",
           "doc_key": "k1-07-sop-12-quan-ly-thay-doi.md",
-          "neo_subject": "phiếu thay đổi chạm tham số bộ nhớ, tham số tiến trình hoặc cấu hình mạng",
-          "slot_dap_an": ["condition", "remediation"]
+          "neo_subject": "phiếu thay đổi",
+          "slot_dap_an": [
+            "condition",
+            "remediation"
+          ],
+          "neo_phu": "chạm tham số bộ nhớ, tham số tiến trình hoặc cấu hình mạng"
         }
       ]
     },
@@ -150,22 +197,31 @@
       "cau_id": "n3-12",
       "hyperedge": [
         {
-          "id": "he-e69bf4f6acbf7ffe7fa94983",
+          "id": "he-3a98e64055db3e388b244338",
           "doc_key": "k1-07-sop-12-quan-ly-thay-doi.md",
-          "neo_subject": "thao tác khẩn cấp không có phiếu trước",
-          "slot_dap_an": ["condition", "remediation"]
+          "neo_subject": "thao tác khẩn cấp",
+          "slot_dap_an": [
+            "condition",
+            "remediation"
+          ]
         },
         {
-          "id": "he-5493bf86464e96c18beb262c",
+          "id": "he-db3a42ba20927aa5a1f33b36",
           "doc_key": "n-05-sop-ban-giao-ca-truc.md",
-          "neo_subject": "thao tác khẩn cấp không có phiếu trước",
-          "slot_dap_an": ["condition", "remediation"]
+          "neo_subject": "thao tác khẩn cấp",
+          "slot_dap_an": [
+            "condition",
+            "remediation"
+          ]
         },
         {
           "id": "he-e90ed43661dcf4c670ff50e1",
           "doc_key": "06-quan-ly-thay-doi.txt",
           "neo_subject": "thay đổi khẩn cấp",
-          "slot_dap_an": ["condition", "remediation"]
+          "slot_dap_an": [
+            "condition",
+            "remediation"
+          ]
         }
       ]
     },
@@ -173,22 +229,29 @@
       "cau_id": "n5-01",
       "hyperedge": [
         {
-          "id": "he-1052ab379974d65544056533",
+          "id": "he-022ed16bbb63216cc486e687",
           "doc_key": "k1-03-bao-cao-su-co-inc-1208.md",
-          "neo_subject": "trang thanh toán App01",
-          "slot_dap_an": ["cause"]
+          "neo_subject": "App01",
+          "slot_dap_an": [
+            "cause"
+          ]
         },
         {
           "id": "he-a2ccd36021446e740d8cdc3e",
           "doc_key": "05-bao-cao-su-co-inc-1208.txt",
           "neo_subject": "trang thanh toán của App01",
-          "slot_dap_an": ["cause"]
+          "slot_dap_an": [
+            "cause"
+          ]
         },
         {
-          "id": "he-3a07e8e44b065a6938f93fdb",
+          "id": "he-1aaefc697e361238b15f8943",
           "doc_key": "k1-04-postmortem-inc-1208.md",
           "neo_subject": "App01",
-          "slot_dap_an": ["cause"]
+          "slot_dap_an": [
+            "cause"
+          ],
+          "neo_phu": "phiếu thay đổi giới hạn bộ nhớ PHP-FPM được duyệt mà không qua bước thử trên môi trường thử nghiệm"
         }
       ]
     },
@@ -196,22 +259,29 @@
       "cau_id": "n5-02",
       "hyperedge": [
         {
-          "id": "he-1052ab379974d65544056533",
+          "id": "he-022ed16bbb63216cc486e687",
           "doc_key": "k1-03-bao-cao-su-co-inc-1208.md",
-          "neo_subject": "trang thanh toán App01",
-          "slot_dap_an": ["owner"]
+          "neo_subject": "App01",
+          "slot_dap_an": [
+            "owner"
+          ]
         },
         {
           "id": "he-a2ccd36021446e740d8cdc3e",
           "doc_key": "05-bao-cao-su-co-inc-1208.txt",
           "neo_subject": "trang thanh toán của App01",
-          "slot_dap_an": ["owner"]
+          "slot_dap_an": [
+            "owner"
+          ]
         },
         {
-          "id": "he-f14dde02e0b067e5248c8a02",
+          "id": "he-1aaefc697e361238b15f8943",
           "doc_key": "k1-04-postmortem-inc-1208.md",
-          "neo_subject": "sự cố INC-1208",
-          "slot_dap_an": ["owner"]
+          "neo_subject": "App01",
+          "slot_dap_an": [
+            "owner"
+          ],
+          "neo_phu": "phiếu thay đổi giới hạn bộ nhớ PHP-FPM được duyệt mà không qua bước thử trên môi trường thử nghiệm"
         }
       ]
     },
@@ -219,22 +289,29 @@
       "cau_id": "n5-03",
       "hyperedge": [
         {
-          "id": "he-1052ab379974d65544056533",
+          "id": "he-022ed16bbb63216cc486e687",
           "doc_key": "k1-03-bao-cao-su-co-inc-1208.md",
-          "neo_subject": "trang thanh toán App01",
-          "slot_dap_an": ["remediation"]
+          "neo_subject": "App01",
+          "slot_dap_an": [
+            "remediation"
+          ]
         },
         {
           "id": "he-a2ccd36021446e740d8cdc3e",
           "doc_key": "05-bao-cao-su-co-inc-1208.txt",
           "neo_subject": "trang thanh toán của App01",
-          "slot_dap_an": ["remediation"]
+          "slot_dap_an": [
+            "remediation"
+          ]
         },
         {
-          "id": "he-fa250d5623c01ab91ac97556",
+          "id": "he-d5b6499536b8a2b6f9e40f12",
           "doc_key": "05-bao-cao-su-co-inc-1208.txt",
           "neo_subject": "dịch vụ",
-          "slot_dap_an": ["remediation", "time"]
+          "slot_dap_an": [
+            "symptom",
+            "time"
+          ]
         }
       ]
     },
@@ -242,10 +319,14 @@
       "cau_id": "n5-04",
       "hyperedge": [
         {
-          "id": "he-d1b6cc33c9a0fbaabc9e2035",
+          "id": "he-3bca45167461932e4c6c1b8b",
           "doc_key": "n-18-bi-mat-ha-tang-duong-vao-khach-hang-a.md",
-          "neo_subject": "khóa SSH quản trị của cụm khách hàng A",
-          "slot_dap_an": ["condition", "owner"]
+          "neo_subject": "Khóa SSH quản trị của cụm khách hàng A",
+          "slot_dap_an": [
+            "condition",
+            "owner"
+          ],
+          "neo_phu": "cấp theo yêu cầu"
         }
       ]
     },
@@ -253,16 +334,21 @@
       "cau_id": "n5-05",
       "hyperedge": [
         {
-          "id": "he-a61bcc396cb074bc112d0d60",
+          "id": "he-827391fec18fe5d974f8ab5f",
           "doc_key": "10-so-tay-ha-tang-noi-bo.txt",
           "neo_subject": "truy cập quản trị vào máy chủ sản xuất",
-          "slot_dap_an": ["condition", "remediation"]
+          "slot_dap_an": [
+            "condition",
+            "remediation"
+          ]
         },
         {
-          "id": "he-7c3e54c7c2367203c6cb5d37",
+          "id": "he-317cdefeba8bf426e0a7bd31",
           "doc_key": "10-so-tay-ha-tang-noi-bo.txt",
           "neo_subject": "dải mạng quản trị",
-          "slot_dap_an": ["condition"]
+          "slot_dap_an": [
+            "condition"
+          ]
         }
       ]
     },
@@ -270,16 +356,22 @@
       "cau_id": "n5-06",
       "hyperedge": [
         {
-          "id": "he-d7cf0996bdea9da2a7787101",
+          "id": "he-3f51fad31d2c07d6e66e4f78",
           "doc_key": "n-19-bi-mat-ha-tang-kho-khoa-khach-hang-b.md",
           "neo_subject": "khóa riêng của mọi chứng thư số thuộc khách hàng B",
-          "slot_dap_an": ["condition", "remediation"]
+          "slot_dap_an": [
+            "condition",
+            "remediation"
+          ]
         },
         {
-          "id": "he-1e613bfe269f9166a467653a",
+          "id": "he-08c4c7d64ed5e99ca3757f73",
           "doc_key": "n-19-bi-mat-ha-tang-kho-khoa-khach-hang-b.md",
           "neo_subject": "đường dẫn khóa riêng của khách hàng B",
-          "slot_dap_an": ["condition", "time"]
+          "slot_dap_an": [
+            "condition",
+            "time"
+          ]
         }
       ]
     },
@@ -287,16 +379,20 @@
       "cau_id": "n5-07",
       "hyperedge": [
         {
-          "id": "he-cd86513c9502d688fcd22a7e",
+          "id": "he-33919ecf147d781f564aa8c3",
           "doc_key": "k2-03-bao-cao-su-co-inc-1520.md",
           "neo_subject": "phân vùng nhật ký của máy chủ log01",
-          "slot_dap_an": ["cause"]
+          "slot_dap_an": [
+            "cause"
+          ]
         },
         {
           "id": "he-4b5d7f93aa7ad0c2ac5574fe",
           "doc_key": "k2-03-bao-cao-su-co-inc-1520.md",
           "neo_subject": "bốn dịch vụ nội bộ",
-          "slot_dap_an": ["cause"]
+          "slot_dap_an": [
+            "cause"
+          ]
         }
       ]
     },
@@ -304,16 +400,22 @@
       "cau_id": "n5-08",
       "hyperedge": [
         {
-          "id": "he-cd86513c9502d688fcd22a7e",
+          "id": "he-33919ecf147d781f564aa8c3",
           "doc_key": "k2-03-bao-cao-su-co-inc-1520.md",
           "neo_subject": "phân vùng nhật ký của máy chủ log01",
-          "slot_dap_an": ["remediation", "owner"]
+          "slot_dap_an": [
+            "remediation",
+            "owner"
+          ]
         },
         {
-          "id": "he-894800d89bf21ffd78338074",
+          "id": "he-e6867a8192492e4e8d4660ce",
           "doc_key": "k2-04-vong-doi-ticket-inc-1520.md",
           "neo_subject": "ticket INC-1520",
-          "slot_dap_an": ["owner"]
+          "neo_phu": "09:55",
+          "slot_dap_an": [
+            "owner"
+          ]
         }
       ]
     },
@@ -324,13 +426,18 @@
           "id": "he-f5b17022758ce758669d897f",
           "doc_key": "k3-04-bao-cao-su-co-inc-1533.md",
           "neo_subject": "cổng thanh toán của khách hàng B",
-          "slot_dap_an": ["cause", "symptom"]
+          "slot_dap_an": [
+            "cause",
+            "symptom"
+          ]
         },
         {
-          "id": "he-b0554ce64ecca5e4f6efcaef",
+          "id": "he-a0dfeee24f6222aa4081f5a9",
           "doc_key": "k3-05-postmortem-inc-1533.md",
           "neo_subject": "chứng thư số của khách hàng B",
-          "slot_dap_an": ["cause"]
+          "slot_dap_an": [
+            "cause"
+          ]
         }
       ]
     },
@@ -338,22 +445,32 @@
       "cau_id": "n5-10",
       "hyperedge": [
         {
-          "id": "he-9a1cae33f2082d36f2a7bac1",
+          "id": "he-52852beec872be913a4ff6d4",
           "doc_key": "k1-04-postmortem-inc-1208.md",
-          "neo_subject": "phiếu thay đổi chạm tham số bộ nhớ",
-          "slot_dap_an": ["remediation", "time", "owner"]
+          "neo_subject": "quy trình thay đổi",
+          "slot_dap_an": [
+            "remediation",
+            "time",
+            "owner"
+          ]
         },
         {
-          "id": "he-b5a133f79934e65b1b19864a",
+          "id": "he-0e67fe5d43e70854fdf54d3f",
           "doc_key": "k1-04-postmortem-inc-1208.md",
-          "neo_subject": "kênh cảnh báo nghiêm trọng",
-          "slot_dap_an": ["remediation", "time"]
+          "neo_subject": "cảnh báo mức nghiêm trọng",
+          "slot_dap_an": [
+            "remediation",
+            "time"
+          ]
         },
         {
           "id": "he-df580cd9e0efeaf0fecdb545",
           "doc_key": "05-bao-cao-su-co-inc-1208.txt",
           "neo_subject": "mọi thay đổi cấu hình PHP-FPM trên App01",
-          "slot_dap_an": ["condition", "remediation"]
+          "slot_dap_an": [
+            "condition",
+            "remediation"
+          ]
         }
       ]
     }

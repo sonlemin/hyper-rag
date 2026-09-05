@@ -26,6 +26,7 @@ from core.facts import (
     MA_VAI_LA,
     TEN_VAI_TIENG_VIET,
     TIEN_TO_ID_FACT,
+    ap_bi_danh,
     cau_fact,
     chuan_hoa_gia_tri,
     id_fact,
@@ -245,3 +246,70 @@ def test_chuan_hoa_gia_tri_nfc_gop_khoang_trang_bo_nhay_bao():
     assert chuan_hoa_gia_tri(unicodedata.normalize("NFD", "Hạnh")) == "Hạnh"
     assert chuan_hoa_gia_tri('"App01"') == "App01"
     assert chuan_hoa_gia_tri('""') == ""
+
+
+# --- ap_bi_danh (story 2.12, FR-32) --------------------------------------------------
+
+
+def test_ap_bi_danh_bang_rong_la_ham_dong_nhat():
+    """Ca "không khai từ điển" của I/O Matrix: không đổi một byte."""
+    slots = {"subject": "App01", "cause": "sai giới hạn bộ nhớ"}
+    assert ap_bi_danh(slots, {}) == slots
+    assert ap_bi_danh(slots, {}) is not slots
+
+
+def test_ap_bi_danh_thay_bi_danh_bang_ten_chuan():
+    bang = {"app01.company.vn": "App01", "APP-01": "App01"}
+    assert ap_bi_danh({"subject": "app01.company.vn"}, bang)["subject"] == "App01"
+    assert ap_bi_danh({"subject": "APP-01"}, bang)["subject"] == "App01"
+    # Giá trị không có trong bảng giữ nguyên: bảng là danh sách trắng, không
+    # phải một phép chuẩn hóa chung cho mọi chuỗi.
+    assert ap_bi_danh({"subject": "App02"}, bang)["subject"] == "App02"
+
+
+def test_hai_cach_viet_cho_dung_mot_id_fact():
+    """Điều kiện nghiệm thu của FR-32, phát biểu ở mức `core/`."""
+    bang = {"app01.company.vn": "App01"}
+    a = ap_bi_danh({"subject": "App01", "symptom": "lỗi 502"}, bang)
+    b = ap_bi_danh({"subject": "app01.company.vn", "symptom": "lỗi 502"}, bang)
+    assert id_fact(a) == id_fact(b)
+
+
+def test_ap_bi_danh_tra_qua_chuan_hoa_gia_tri():
+    """Khóa tra đi qua đúng hàm mà `kiem_fact` và `_json_chuan_hoa` dùng.
+
+    Bảng tra bằng một hàm khác là một bí danh trượt vì một dấu cách - và
+    `chuan_hoa_gia_tri` đồng nhất với `core.ids.normalize_id`, hàm sinh id
+    entity, nên id fact và id entity không thể thấy hai tên khác nhau.
+    """
+    bang = {"phòng IT": "Phòng IT"}
+    assert ap_bi_danh({"owner": "  phòng    IT "}, bang)["owner"] == "Phòng IT"
+    assert ap_bi_danh({"owner": '"phòng IT"'}, bang)["owner"] == "Phòng IT"
+
+
+def test_ap_bi_danh_chi_khop_tron_gia_tri_khong_khop_chuoi_con():
+    """Vai mệnh đề không bị viết lại.
+
+    `cause` và `remediation` là mệnh đề trong chính nhãn tay của bộ vàng 2.5;
+    thay chuỗi con bên trong chúng là viết lại câu của người gán nhãn, và bản
+    viết lại đó không còn khớp nhãn nào.
+    """
+    bang = {"app01": "App01"}
+    slots = {"subject": "X", "cause": "app01 hết bộ nhớ"}
+    assert ap_bi_danh(slots, bang)["cause"] == "app01 hết bộ nhớ"
+
+
+def test_ap_bi_danh_chi_ap_dung_mot_buoc():
+    """Bảng đã kiểm không có chuỗi hai bước, nhưng hàm vẫn phải chỉ đi một bước.
+
+    Nếu ai đó gọi thẳng hàm này với một bảng dựng tay có chuỗi, kết quả phải là
+    một bước - tất định, không phụ thuộc thứ tự duyệt và không lặp vô hạn.
+    """
+    bang = {"a": "b", "b": "c"}
+    assert ap_bi_danh({"subject": "a"}, bang)["subject"] == "b"
+
+
+def test_ap_bi_danh_khong_sua_slots_goc():
+    slots = {"subject": "app01"}
+    ap_bi_danh(slots, {"app01": "App01"})
+    assert slots == {"subject": "app01"}

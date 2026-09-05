@@ -65,7 +65,11 @@ LOAI_A8: frozenset[str] = frozenset(
     }
 )
 
-SO_LOI = 21
+# 21 lõi của story 2.8 cộng **2 tài liệu bí danh** thêm ở story 2.12 (FR-32).
+# Hai tài liệu đó vào kịch bản `web_sap` chứ không vào phần nhiễu, vì chúng mang
+# fact thật về App01: gắn nhãn `nhieu` cho một tài liệu có đáp án là nói dối
+# đúng cái nhãn mà phần nhiễu dựng ra để nói.
+SO_LOI = 23
 SO_NHIEU = 19
 SO_TAI_LIEU = SO_LOI + SO_NHIEU
 
@@ -82,10 +86,14 @@ VAI_TRO_HOP_LE: frozenset[str] = frozenset({"loi", "nhieu"})
 KICH_BAN_NHIEU = "nhieu"
 KHOA_KICH_BAN: frozenset[str] = frozenset({"id", "ten", "mo_ta", "scope_chinh"})
 
-# Ba kịch bản của A8, mỗi kịch bản 7 tài liệu lõi (21 = 3 x 7). Kỳ vọng viết tay:
-# một kịch bản co lại còn 3 tài liệu trong khi kịch bản khác phình ra vẫn giữ
-# tổng 21, và khi đó "phủ 3 kịch bản" thành một câu đúng về hình thức.
-SO_LOI_MOI_KICH_BAN = 7
+# Ba kịch bản của A8. Story 2.8 chia đều 7 tài liệu lõi cho mỗi kịch bản
+# (21 = 3 x 7); story 2.12 thêm **2 tài liệu bí danh** vào `web_sap`, nên bảng
+# kỳ vọng nay khai từng kịch bản một thay vì một con số chung. Luật giữ nguyên
+# và nó là luật thật: một kịch bản co lại còn 3 tài liệu trong khi kịch bản khác
+# phình ra vẫn giữ tổng, và khi đó "phủ 3 kịch bản" thành một câu đúng về hình
+# thức mà sai về chất liệu. Cặp bí danh bắc qua ranh giới nhạy cảm chỉ dựng được
+# ở một kịch bản, và `web_sap` là kịch bản có sẵn cả vế nhạy cảm lẫn vế không.
+SO_LOI_MOI_KICH_BAN: dict[str, int] = {"web_sap": 9, "day_o_cung": 7, "ssl_het_han": 7}
 
 # Số đỉnh của hyperedge demo App01, chốt 03/09/2026 bằng phép đếm trên đồ thị đã
 # nạp thật (PRD mục lục giả định 6.3 khoản 4). Viết tay ở đây: hai ứng viên của
@@ -476,19 +484,21 @@ def test_prd_muc_luc_gia_dinh_mang_dung_con_so_do():
     assert "ĐÃ CHỐT" in khoan[0], "khoản 4 phải ghi rõ giả định đã đóng"
 
 
-def test_moi_kich_ban_dung_bay_tai_lieu_loi(bang):
-    """21 lõi chia đều ba kịch bản.
+def test_moi_kich_ban_dung_so_tai_lieu_loi_da_khai(bang):
+    """23 lõi chia theo bảng kỳ vọng: `web_sap` 9, hai kịch bản kia 7.
 
     Không có luật này thì một kịch bản co lại còn 3 tài liệu trong khi kịch bản
-    khác phình ra vẫn giữ tổng 21, và "phủ 3 kịch bản" thành một câu đúng về
-    hình thức mà sai về chất liệu.
+    khác phình ra vẫn giữ tổng, và "phủ 3 kịch bản" thành một câu đúng về hình
+    thức mà sai về chất liệu. Story 2.8 chia đều 7/7/7; hai tài liệu bí danh của
+    story 2.12 vào `web_sap` vì cặp bí danh bắc qua ranh giới nhạy cảm chỉ dựng
+    được ở kịch bản đã có sẵn cả hai vế.
     """
     dem = {
         k["id"]: len([m for m in bang["tai_lieu"] if m["kich_ban"] == k["id"]])
         for k in bang["kich_ban"]
         if k["id"] != KICH_BAN_NHIEU
     }
-    assert set(dem.values()) == {SO_LOI_MOI_KICH_BAN}, dem
+    assert dem == SO_LOI_MOI_KICH_BAN, dem
     assert sum(dem.values()) == SO_LOI
 
 

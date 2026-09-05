@@ -86,6 +86,7 @@ from adapters.qdrant import (
     QdrantVectorDBStorage,
 )
 from adapters.sensitivity_loader import SENSITIVITY_RANKS_KEY
+from adapters.tu_dien_thuc_the import ENTITY_DICTIONARY_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -107,8 +108,12 @@ TEN_GRAPH: str = Neo4jACLGraphStorage.__name__
 # khóa thứ tám tìm ra ở vòng review: nó không phải field của `HyperGraphRAG`
 # nên trước story này không bao giờ xuống tới adapter, và ngưỡng đóng cứng ở
 # mặc định 0.2 của chính adapter.
-# Hai khóa cuối vào ở story 2.1: `neo4j_database` (khoản nợ vòng đời kết nối
+# Hai khóa vào ở story 2.1: `neo4j_database` (khoản nợ vòng đời kết nối
 # Neo4j) và `sensitivity_ranks_path` (bảng hạng độ nhạy của luật hợp nhất khóa).
+# Khóa cuối vào ở story 2.12: `entity_dictionary_path` (từ điển thực thể chuẩn
+# theo scope, FR-32). Nó đi cùng đường với bảng hạng - không phải khóa kết nối,
+# nhưng `asdict(self)` là thứ duy nhất xuống tới `trich_xuat_chunks`, nên nó
+# phải là một field của engine chứ không một tham số truyền tay.
 KHOA_CAU_HINH_KHO: tuple[str, ...] = (
     QDRANT_URL_KEY,
     QDRANT_API_KEY_KEY,
@@ -120,6 +125,7 @@ KHOA_CAU_HINH_KHO: tuple[str, ...] = (
     HEALTH_RETRIES_KEY,
     HEALTH_DELAY_KEY,
     SENSITIVITY_RANKS_KEY,
+    ENTITY_DICTIONARY_KEY,
 )
 
 # Biến môi trường -> khóa cấu hình. Đây là chỗ khép vòng cho khoản nợ "khóa cấu
@@ -156,12 +162,16 @@ BIEN_MOI_TRUONG: dict[str, str] = {
 # nên hai môi trường hai bảng hạng là hai kho không so được với nhau và không
 # re-ingest chung được (đổi hạng = re-ingest). Đường dẫn vẫn là một field để bộ
 # test và `eval/` trỏ sang bảng khác được, chỉ là nó không đến từ `.env`.
+# Từ điển thực thể nằm cùng chỗ và vì cùng lý do: đổi từ điển là đổi id entity
+# và id hyperedge, tức re-ingest. Hai môi trường hai từ điển là hai kho không so
+# được với nhau, đúng như hai bảng hạng khác nhau.
 KHOA_KHONG_LAY_TU_MOI_TRUONG: frozenset[str] = frozenset(
     {
         HEALTH_RETRIES_KEY,
         HEALTH_DELAY_KEY,
         COSINE_THRESHOLD_KEY,
         SENSITIVITY_RANKS_KEY,
+        ENTITY_DICTIONARY_KEY,
     }
 )
 
@@ -260,6 +270,12 @@ class EngineACL(HyperGraphRAG):
     # (`config/hang-do-nhay.yaml`); ba adapter nạp nó qua cùng một cửa nên
     # chúng không thể chạy trên hai bảng khác nhau.
     sensitivity_ranks_path: str | None = None
+    # Đường dẫn file từ điển thực thể chuẩn theo scope (story 2.12, FR-32).
+    # `None` nghĩa là **không có từ điển**, không phải "dùng file chốt của repo":
+    # đường trích xuất khi đó chạy y hệt trước story này - prompt không có khối
+    # từ điển và `ap_bi_danh` nhận bảng rỗng. Một từ điển mặc định ngầm là một
+    # phép gộp thực thể mà không ai khai, và nó đổi id hyperedge của mọi space.
+    entity_dictionary_path: str | None = None
 
     # --- Khe tiêm kết nối ----------------------------------------------------
     # Hàm, không phải client: xem docstring đầu file. `None` nghĩa là "tự mở từ

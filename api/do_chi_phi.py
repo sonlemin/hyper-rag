@@ -56,9 +56,11 @@ from adapters.model_catalog import (
     danh_muc_mac_dinh,
 )
 from adapters.policy_loader import load_policy
-from adapters.trich_xuat import dung_prompt
+from adapters.trich_xuat import dung_prompt, khoi_tu_dien
+from adapters.tu_dien_thuc_the import TuDienThucTheInvalid, tai_tu_dien_thuc_the
 from api.audit_postgres import AuditPostgres, TongChiPhi
 from api.dot_nap import (
+    duong_dan_tu_dien,
     TRANG_THAI_DOT_XONG,
     LanNap,
     chay_lan_nap,
@@ -397,15 +399,29 @@ def uoc_tinh_dot(
     danh_muc: DanhMucModel | None = None,
     thu_muc_so_do: Path | None = None,
 ) -> UocTinhDot:
-    """Ước tính một đợt từ kết quả quét. Hàm thuần: không gọi LLM, không chạm kho."""
+    """Ước tính một đợt từ kết quả quét. Hàm thuần: không gọi LLM, không chạm kho.
+
+    **Đọc cả khối từ điển thực thể** (story 2.12): nó nằm trong prompt nên nó
+    vào token vào, và nó được lọc theo `scope` của **từng tài liệu** đúng như
+    đường nạp lọc. Bỏ nó đi thì xem trước của một space có từ điển thấp hơn thực
+    tế một cách có hệ thống - nhỏ ở đây (vài chục token mỗi lời gọi) nhưng lệch
+    đúng chiều mà cờ này tồn tại để cảnh báo, và nó lệch *thầm*.
+    """
     danh_muc = danh_muc_mac_dinh() if danh_muc is None else danh_muc
     muc = danh_muc.muc(model, loai=LOAI_LLM)
     cau_hinh = cau_hinh_chunk()
+    tu_dien = _tu_dien_cua_space(space)
+    khoi_theo_scope: dict[str, str] = {}
     so_loi_goi = token_vao = 0
     for t in quet.chap_nhan:
+        if t.scope not in khoi_theo_scope:
+            khoi_theo_scope[t.scope] = (
+                "" if tu_dien is None else khoi_tu_dien(tu_dien.muc_cho_scope(t.scope))
+            )
+        khoi = khoi_theo_scope[t.scope]
         for chunk in chia_chunk(t.noi_dung, cau_hinh):
             so_loi_goi += 1
-            token_vao += dem_token(dung_prompt(chunk["content"]), cau_hinh)
+            token_vao += dem_token(dung_prompt(chunk["content"], khoi), cau_hinh)
     ty_le = ty_le_token_ra(muc.ten, thu_muc_so_do)
     token_ra = round(token_vao * ty_le.ty_le) if ty_le is not None else None
     return UocTinhDot(
@@ -422,6 +438,30 @@ def uoc_tinh_dot(
         phan_embedding=tuple(phan_embedding_da_do(thu_muc_so_do)),
         khoang_ty_le=khoang_ty_le_da_do(thu_muc_so_do),
     )
+
+
+def _tu_dien_cua_space(space: str):
+    """Từ điển của một space theo quy ước, hoặc `None`; hỏng thì cũng `None`.
+
+    Đường **xem trước** không được chết vì một file cấu hình hỏng: đợt nạp thật
+    sẽ dội đúng lỗi đó ở `trich_xuat_chunks` trước lời gọi LLM đầu tiên, và ở
+    đây một traceback chỉ làm người chạy bỏ luôn bước xem trước - tức bỏ đúng
+    thứ cờ này dựng ra.
+    """
+    try:
+        duong_dan = duong_dan_tu_dien(space)
+    except (TypeError, ValueError):
+        # `space` mặc định của hàm ước tính là `"?"` (nơi gọi không truyền), và
+        # nó không phải một space hợp lệ. Không có space thì không có quy ước
+        # nào để tra, và đó là "không từ điển" chứ không phải một lỗi.
+        return None
+    if duong_dan is None:
+        return None
+    try:
+        return tai_tu_dien_thuc_the(duong_dan)
+    except TuDienThucTheInvalid as loi:
+        print(f"cảnh báo: không đọc được từ điển {duong_dan}: {loi}", file=sys.stderr)
+        return None
 
 
 def model_cua_moi_truong(moi_truong=None) -> str | None:
@@ -584,7 +624,7 @@ async def chay(ts: argparse.Namespace, argv: list[str] | None = None) -> TongChi
             # thao tác có thể tốn tiền embedding lúc `khoi_tao()` lại collection,
             # và một nhánh im lặng là một nhánh không ai đọc được đã tiêu gì.
             bat_dau = thoi_diem_utc()
-            engine = dung_engine_tu_moi_truong(audit)
+            engine = dung_engine_tu_moi_truong(audit, space=ts.space)
             try:
                 # In số tài liệu sắp mất **trước** khi mất. Một lệnh xóa không
                 # nói nó sắp xóa bao nhiêu là một lệnh mà người chạy chỉ biết

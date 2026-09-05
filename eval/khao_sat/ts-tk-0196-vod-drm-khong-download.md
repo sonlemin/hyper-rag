@@ -14,8 +14,8 @@ content_type: vong_doi_ticket
 | Dịch vụ | VOD |
 | Mức ưu tiên | Thấp |
 | Người tiếp nhận | NV23 |
-| Mở lúc | 09/10/2026 15:10 |
-| Đóng lúc | 09/10/2026 15:35 |
+| Mở lúc | 21/08/2026 15:10 |
+| Đóng lúc | 21/08/2026 15:35 |
 
 ## Mô tả từ khách hàng
 Khách muốn tải bản gốc của một số video đã mã hóa về máy, nhưng nút tải trên bảng điều khiển không

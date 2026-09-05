@@ -27,6 +27,13 @@ Ba thứ sống ở đây, và vì sao chúng ở `core/`:
   (adapter Qdrant chặn `content` từ 1.3), node hyperedge không giữ nó, audit
   không giữ nó.
 
+Từ story 2.12 có thêm `ap_bi_danh(slots, bang)`, phần *kiểm được* của chuẩn hóa
+thực thể (FR-32): nó chạy giữa `kiem_fact` và `id_fact` để hai cách viết của
+cùng một thực thể cho cùng một id. Nó ở đây chứ không ở `adapters/` vì nó đứng
+đúng giữa hai hàm trên và dùng chung `chuan_hoa_gia_tri` với chúng; phần *đọc*
+bảng từ điển (YAML, ràng scope, dấu người xác nhận) thì ở
+`adapters/tu_dien_thuc_the.py`.
+
 Chỉ stdlib và chính `core/` (import-lint canh).
 """
 
@@ -141,6 +148,46 @@ def kiem_fact(obj) -> tuple[dict[str, str] | None, str | None]:
     if len(slots) < SO_VAI_TOI_THIEU:
         return None, MA_IT_HON_HAI_VAI
     return slots, None
+
+
+def ap_bi_danh(
+    slots: Mapping[str, str], bang: Mapping[str, str]
+) -> dict[str, str]:
+    """Thay giá trị slot là **bí danh** bằng tên chuẩn của nó, đúng một bước.
+
+    Đây là phần *kiểm được* của chuẩn hóa thực thể (story 2.12, FR-32). Từ điển
+    cũng đi vào prompt, nhưng lời dặn trong prompt là gợi ý: LLM được phép bỏ
+    qua nó, và khi đó `App01` với `app01.company.vn` lại thành hai id entity.
+    Phép áp ở đây chạy **sau** `kiem_fact` và **trước** `id_fact`, nên hai cách
+    viết cho đúng một `id_fact` bất kể LLM trả về cách nào.
+
+    Ba luật, mỗi luật là một quyết định:
+
+    - **Khớp trọn giá trị, không khớp chuỗi con.** Vai mang thực thể (`subject`,
+      `owner`, `source`) là một cụm ngắn nên khớp trọn là đủ; vai mệnh đề
+      (`cause`, `remediation`) là một mệnh đề trong chính nhãn tay của bộ vàng
+      2.5, và thay chuỗi con bên trong nó là viết lại câu của người gán nhãn.
+    - **Đúng một bước.** `bang` là bảng đã kiểm của
+      `adapters/tu_dien_thuc_the.py`, nơi từ chối một bí danh cũng là tên chuẩn
+      của mục khác. Không lặp cho tới điểm bất động ở đây: một bảng do người sửa
+      dần sẽ có ngày tạo vòng lặp, và một phép áp nhiều bước làm kết quả phụ
+      thuộc thứ tự duyệt.
+    - **Khóa tra đi qua `chuan_hoa_gia_tri`.** Cùng hàm mà `kiem_fact` và
+      `_json_chuan_hoa` dùng, và nó đồng nhất với `core.ids.normalize_id`. Bảng
+      tra bằng một hàm khác là một bí danh trượt vì một dấu cách.
+
+    Hàm thuần: trả dict mới, không sửa `slots`. `bang` rỗng là hàm đồng nhất -
+    đó là ca "không khai từ điển" của I/O Matrix, và nó phải không đổi một byte.
+    """
+    if not bang:
+        return dict(slots)
+    ra: dict[str, str] = {}
+    for vai, gia_tri in slots.items():
+        if isinstance(gia_tri, str):
+            ra[vai] = bang.get(chuan_hoa_gia_tri(gia_tri), gia_tri)
+        else:
+            ra[vai] = gia_tri
+    return ra
 
 
 @dataclass(frozen=True)

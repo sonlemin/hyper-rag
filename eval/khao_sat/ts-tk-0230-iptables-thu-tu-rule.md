@@ -14,8 +14,8 @@ content_type: bao_cao_su_co
 | Dịch vụ | Cloud Server |
 | Mức ưu tiên | Trung bình |
 | Người tiếp nhận | NV23 |
-| Mở lúc | 17/10/2026 10:10 |
-| Đóng lúc | 17/10/2026 10:55 |
+| Mở lúc | 29/08/2026 10:10 |
+| Đóng lúc | 29/08/2026 10:55 |
 
 ## Mô tả từ khách hàng
 Khách đã thêm quy tắc cho phép một dải IP truy cập cổng ứng dụng, nhưng dải đó vẫn bị chặn.

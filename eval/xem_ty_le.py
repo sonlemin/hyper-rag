@@ -55,6 +55,9 @@ from eval.anh_rut_gon import space_goc
 from eval.cau_hoi import AnhDoThiKhongHopLe, doc_anh_do_thi
 from eval.ty_le_n_ngoi import (
     NGUONG_NHAY_CAM,
+    ThieuMauDoDai,
+    dai_ba_ty_le,
+    VAI_THUC_THE,
     NHAN_KHONG_KHOA,
     TOI_THIEU_VAI_N_NGOI,
     BaTyLe,
@@ -106,8 +109,35 @@ ANH_KHAO_SAT: Path = _GOC / "anh_do_thi" / "khao_sat.json"
 # mỗi lần bộ vàng hỏng. Luật số chép tay của story 2.7/2.8 vẫn giữ nguyên: số ở
 # đây không được lệch nguồn, và chỗ canh là
 # `tests/test_ty_le_n_ngoi.py::test_precision_ghep_cap_khop_vong_chot`.
+# **Hai vòng chốt, không một**: story 2.12 làm prompt phụ thuộc space. Space có
+# từ điển thực thể (`config/tu-dien-thuc-the/<space>.yaml`) gửi thêm khối từ
+# điển, space không có thì gửi đúng prompt của story 2.6 - và hai prompt khác
+# nhau có hai con số precision khác nhau. Gán một hằng cho cả bốn cột là để một
+# cột nạp *không* từ điển mang precision của một vòng đo *có* từ điển.
+#
+# Hai con số cách nhau 0,3 điểm (71,0% so với 70,7%) - đủ để nhận prompt mới,
+# không đủ để gọi là một cải thiện; nhưng chúng vẫn phải đứng đúng cột của mình.
 VONG_CHOT_2_6: str = "v1-deepseek"
 PRECISION_GHEP_CAP: float = 0.707
+VONG_CHOT_TU_DIEN: str = "v3-deepseek-tu-dien"
+PRECISION_GHEP_CAP_TU_DIEN: float = 0.710
+
+# Quy ước một-space-một-từ-điển, đọc **cùng chỗ** mà `api/dot_nap.py` đọc. Đọc
+# lại đường dẫn thay vì import `api/`: chiều import cấm `eval/` -> `api/`, và
+# một hằng chép tay "space nào có từ điển" là đúng thứ sẽ trôi sau lần nạp kế.
+THU_MUC_TU_DIEN: Path = _GOC.parent / "config" / "tu-dien-thuc-the"
+
+
+def co_tu_dien(space: str) -> bool:
+    """Space đó có nạp kèm từ điển thực thể không, suy từ chính quy ước tên file."""
+    return (THU_MUC_TU_DIEN / f"{space_goc(space)}.yaml").is_file()
+
+
+def vong_va_precision(space: str) -> tuple[str, float]:
+    """`(tên vòng đo, precision ghép cặp)` nói về prompt mà space đó thật sự chạy."""
+    if co_tu_dien(space):
+        return VONG_CHOT_TU_DIEN, PRECISION_GHEP_CAP_TU_DIEN
+    return VONG_CHOT_2_6, PRECISION_GHEP_CAP
 
 # Vòng đo đường **cục bộ** (story 2.13). Story 2.11 phải để trống chỗ này và
 # trang in ra câu "chưa đo lần nào"; vòng `v2-qwen-cuc-bo` đo nó trên đúng mẫu
@@ -241,6 +271,50 @@ def _bang_phan_bo_loai(bo: Sequence[BaTyLe]) -> str:
     return f"<table><tr><th>Loại nội dung</th>{dau}</tr>{''.join(hang)}</table>"
 
 
+def _cau_precision(bo: Sequence[BaTyLe]) -> str:
+    """Precision ghép cặp của **từng cột**, theo prompt mà cột đó thật sự chạy.
+
+    Một hằng chung cho cả bốn cột là để một cột nạp *không* từ điển mang con số
+    của một vòng đo *có* từ điển. Từ story 2.12 prompt phụ thuộc space, nên con
+    số này cũng vậy.
+    """
+    theo_vong: dict[tuple[str, float], list[str]] = {}
+    for b in bo:
+        theo_vong.setdefault(vong_va_precision(b.space), []).append(b.space)
+    phan = [
+        ", ".join(f"<code>{html.escape(x)}</code>" for x in cot)
+        + f" {p:.1%} (vòng <code>{html.escape(v)}</code>)"
+        for (v, p), cot in theo_vong.items()
+    ]
+    return "; ".join(phan) + "."
+
+
+def _cau_siet_theo_scope(bo: Sequence[BaTyLe]) -> str:
+    """Câu mô tả phép lộ, **suy từ chính cờ** `BaTyLe.siet_theo_scope`.
+
+    Viết cứng "đã siết theo scope" là để trang khẳng định một luật mà nó không
+    đọc: `ba_ty_le` nhận cờ đó làm tham số, nên một lần gọi với `False` cho ra
+    một trang nói sai về chính con số nó đang in.
+    """
+    co = {b.siet_theo_scope for b in bo}
+    if co == {True}:
+        return (
+            "phép lộ đã <b>siết theo scope</b> (mục bổ sung 05/09/2026 của"
+            " ADR-012): một mảnh lộ ở scope khác không còn tính là lộ, vì không"
+            " vai nào ghép được hai khoang thuê bao."
+        )
+    if co == {False}:
+        return (
+            "phép lộ <b>chưa siết theo scope</b>: một mảnh lộ ở bất kỳ scope nào"
+            " cũng tính là lộ, tức con số này là cận trên của rủi ro chứ không"
+            " phải rủi ro thực hiện được (ADR-012, ca 3 của phần Điều kiện đổi)."
+        )
+    return (
+        "<b>các cột không cùng luật lộ</b>: một số cột siết theo scope, một số"
+        " không - hai con số như thế không so được với nhau."
+    )
+
+
 def _khoi_chan_doan(b: BaTyLe) -> str:
     nhay = b.composition_risk.mau_so
     if b.trung_binh_phan_entity_lo is None:
@@ -251,12 +325,20 @@ def _khoi_chan_doan(b: BaTyLe) -> str:
             f" số entity của nó là lộ (trung bình trên {b.so_nhay_cam_co_entity_lo} ca"
             " có ít nhất một entity lộ, không phải trên mọi ca nhạy cảm)"
         )
+    vtt = b.composition_risk_vai_thuc_the
     return (
         f"<p><b>{html.escape(b.space)}</b>: {b.so_nhay_cam_lo_mot_phan}/{nhay} ca nhạy"
         f" cảm lộ <i>một phần</i> (có entity lộ mà không lộ hết),"
         f" {b.so_nhay_cam_co_entity_lo}/{nhay} có ít nhất một entity lộ, và"
         f" {b.composition_risk.tu_so}/{nhay} lộ hết - chính là tử số của tỷ lệ 3."
-        f" {tb}.</p>"
+        f" {tb}."
+        f"<br>Chỉ tính <b>ba vai mang thực thể</b> ({', '.join(VAI_THUC_THE)}):"
+        f" <b>{vtt.mo_ta()}</b>. Đây là dòng nói ra số 0 của tỷ lệ 3 đến từ đâu:"
+        " <code>E(h)</code> của ADR-012 đếm mọi giá trị slot là một entity, kể cả"
+        " <code>cause</code> và <code>remediation</code> vốn là mệnh đề trong chính"
+        " nhãn tay của bộ vàng 2.5 - một mệnh đề gần như không bao giờ lặp nguyên văn"
+        " ở tài liệu khác, nên riêng nó đã chặn được ca đó khỏi tử số dù mọi thực thể"
+        " đều lộ. Con số này là <b>chẩn đoán</b>, không thay tỷ lệ 3.</p>"
     )
 
 
@@ -410,8 +492,9 @@ def _khoi_bo_trich_xuat_khac(bo: Sequence[BaTyLe]) -> str:
         " khác, và ba tỷ lệ của nó là hiện tượng của bộ trích xuất chứ không phải"
         " của tri thức.</b> Space <code>real</code> chỉ chạy provider cục bộ"
         " (AD-12), nên tài liệu thật được trích bằng <b>Qwen 2.5 7B cục bộ</b>,"
-        f" còn <code>synth</code> và <code>khao_sat</code> trích bằng DeepSeek với"
-        f" precision ghép cặp <b>{PRECISION_GHEP_CAP:.1%}</b> đã đo ở story 2.6."
+        f" còn <code>{html.escape(moc.space)}</code> trích bằng DeepSeek với"
+        f" precision ghép cặp <b>{vong_va_precision(moc.space)[1]:.1%}</b>"
+        f" (vòng <code>{html.escape(vong_va_precision(moc.space)[0])}</code>)."
         " Precision của đường Qwen <b>nay đã đo</b> (story 2.13, vòng"
         f" <code>{html.escape(VONG_CUC_BO_2_13)}</code> trên cùng 8 tài liệu chấm"
         f" của bộ vàng): <b>{PRECISION_GHEP_CAP_CUC_BO:.1%}</b>, tức <b>dưới cổng"
@@ -560,6 +643,10 @@ def cau_ve_mo_neo(cot_that_khu: BaTyLe, moc: BaTyLe) -> str:
     """
     cr, cr_moc = cot_that_khu.composition_risk, moc.composition_risk
     lo, lo_moc = cot_that_khu.so_nhay_cam_co_entity_lo, moc.so_nhay_cam_co_entity_lo
+    vtt, vtt_moc = (
+        cot_that_khu.composition_risk_vai_thuc_the,
+        moc.composition_risk_vai_thuc_the,
+    )
     if cr.mau_so == 0:
         do = "mẫu số nhạy cảm rỗng nên tỷ lệ 3 không tính được"
     else:
@@ -569,23 +656,43 @@ def cau_ve_mo_neo(cot_that_khu: BaTyLe, moc: BaTyLe) -> str:
         )
         if cr.tu_so == 0:
             do += (
-                ", và <b>số 0 đó bị chặn trên bởi lỗ của story 2.12</b>: chỉ"
+                ", và <b>số 0 đó vẫn bị chặn trên</b>: chỉ"
                 f" <b>{lo}/{cr.mau_so}</b> ca nhạy cảm có nổi <i>một</i> entity còn"
                 f" lộ ở vùng không nhạy cảm ({lo_moc}/{cr_moc.mau_so} ở"
                 f" <code>{html.escape(moc.space)}</code>). Hai tài liệu thật gần"
-                " như không bao giờ sinh chung một id entity vì chuẩn hóa thực thể"
-                " chưa làm, nên số 0 này nói <b>chưa chuẩn hóa</b>, không nói tri"
-                " thức doanh nghiệp kín"
+                " như không bao giờ sinh chung một id entity, và cột này <b>chưa"
+                " được chuẩn hóa bí danh</b>: từ điển của nó là bí danh của tài"
+                " liệu công ty nên nó không nằm trong <code>config/</code> được"
+                " (cùng luật với bảng bí danh của story 2.11), và không có từ điển"
+                " thì cơ chế FR-32 không có gì để áp. Cột mốc thì <b>đã</b> chuẩn"
+                " hóa từ story 2.12, nên chênh giữa hai cột ở dòng này đọc được"
+                " như khoảng cách giữa một tập đã gộp bí danh và một tập chưa"
             )
+    # **Ngoài if/else**: AC của story 2.12 đòi kết luận in số chẩn đoán vai thực
+    # thể *luôn*, kể cả khi mẫu số nhạy cảm rỗng - đúng lúc đó nó là thứ duy nhất
+    # còn nói được điều gì, và một câu kết luận im lặng ở ca biên là một câu
+    # người đọc không biết mình đang thiếu gì.
+    do += (
+        f". Tính trên <b>chỉ ba vai mang thực thể</b> ({', '.join(VAI_THUC_THE)})"
+        f" thì cùng phép đếm đó cho <b>{vtt.mo_ta()}</b>"
+        f" ({vtt_moc.mo_ta()} ở <code>{html.escape(moc.space)}</code>) - khoảng"
+        " cách giữa hai con số là phần <code>E(h)</code> của ADR-012 đóng lại"
+        " bằng <code>cause</code> và <code>remediation</code>, hai vai mà bộ vàng"
+        " nhãn tay ghi thành mệnh đề. Con số vai thực thể là <b>chẩn đoán</b>,"
+        " không phải một định nghĩa thứ hai của tỷ lệ 3"
+    )
     return (
         f"<b>Mỏ neo Composition-Risk:</b> cột <code>{html.escape(cot_that_khu.space)}</code>"
         " đo trên <b>tài liệu thật</b> bằng <b>cùng bộ trích xuất</b> với cột mốc"
         f" <code>{html.escape(moc.space)}</code>, nên chênh của nó đọc được như một"
         f" phát biểu về hình dạng tri thức. Kết quả: {do}."
-        " Hai điều còn lại chưa khử được: hai cột vẫn không cùng trục loại nội dung"
-        " (khối cảnh báo ở dưới), và precision ghép cặp"
-        f" {PRECISION_GHEP_CAP:.1%} đo trên corpus dựng của story 2.5, chưa đo lần nào"
-        " trên tài liệu công ty."
+        " Ba điều còn lại chưa khử được: hai cột vẫn không cùng trục loại nội dung"
+        " (khối cảnh báo ở dưới); precision ghép cặp"
+        f" {vong_va_precision(cot_that_khu.space)[1]:.1%} (vòng"
+        f" <code>{html.escape(vong_va_precision(cot_that_khu.space)[0])}</code>) đo trên"
+        " corpus dựng của story 2.5, chưa đo lần nào trên tài liệu công ty;"
+        " và <b>chỉ cột mốc có từ điển thực thể</b>, nên chuẩn hóa bí danh là một"
+        " biến thứ hai giữa hai cột chứ không còn là một hằng chung."
     )
 
 
@@ -620,7 +727,124 @@ def _khoi_doi_chung(dc: DoiChung | None, moc: BaTyLe) -> str:
     )
 
 
-def dung_html(*bo: BaTyLe, ten_hang: Mapping[int, str], doi_chung: DoiChung | None = None) -> str:
+def _khoi_dai(dai: Mapping[str, tuple], bo: Sequence[BaTyLe]) -> str:
+    """Dải sai số của ba tỷ lệ, in **ngay cạnh** ba tỷ lệ chứ không ở cuối trang.
+
+    Một con số của một lần chạy trình như một hằng của tập dữ liệu là cách đọc
+    sai mà cả bảng này dựng ra để chặn. Khối còn tự hạ những kết luận nào dựa
+    trên chênh lệch **nhỏ hơn** biên độ của chính phép đo xuống định tính - làm
+    việc đó ở đây, cạnh con số, chứ không để người đọc tự nhớ.
+    """
+    if not dai:
+        return ""
+    phan = []
+    for ten_cau_hinh, ba in dai.items():
+        dong = "".join(
+            f"<li><b>{html.escape(d.ten)}</b>: {html.escape(d.mo_ta())}</li>" for d in ba
+        )
+        phan.append(
+            f"<p>Cấu hình <code>{html.escape(ten_cau_hinh)}</code> - cùng thư mục"
+            " nguồn, cùng model, cùng prompt, cùng từ điển; khác đúng <b>lần"
+            f" chạy</b>:<ul>{dong}</ul></p>"
+        )
+    ha = _cau_ha_xuong_dinh_tinh(dai, bo)
+    return (
+        '<div class="canh-bao"><b>Ba tỷ lệ là số của MỘT lần chạy. Đây là dải đo'
+        " được của cùng một cấu hình.</b> Token vào của hai lần chạy bằng nhau"
+        " tới từng token (nó là số đếm trên chuỗi prompt); thứ đổi là đầu ra của"
+        " LLM, tức chính tập fact mà ba tỷ lệ đếm trên."
+        + "".join(phan)
+        + ha
+        + "</div>"
+    )
+
+
+def _cau_ha_xuong_dinh_tinh(dai: Mapping[str, tuple], bo: Sequence[BaTyLe]) -> str:
+    """Liệt kê những chênh lệch của trang **nhỏ hơn biên độ**, và hạ chúng.
+
+    Không phải một ghi chú chung: nó chỉ đúng tên từng hàng, vì một câu "hãy cẩn
+    thận với chênh lệch nhỏ" thì người đọc gật đầu rồi vẫn trích con số.
+    """
+    if not dai:
+        return ""
+    # Biên độ **theo cấu hình**, không phải một con số chung. Đây không phải một
+    # chi tiết: đo được cho thấy biên độ phụ thuộc corpus rất mạnh - corpus dựng
+    # ổn định trong khoảng một điểm, tài liệu công ty thật thì bảy tới mười. Lấy
+    # max chung là gán biên độ của tập ồn nhất cho một phép so giữa hai tập
+    # sạch, và như thế trang sẽ tự hạ những chênh lệch thật sự đọc được.
+    #
+    # Một phép so mốc-với-cột-i dùng biên độ **lớn nhất trong hai cấu hình** đó,
+    # vì chênh của nó mang nhiễu của cả hai vế. Cột không có mẫu lặp thì chỉ có
+    # biên độ của mốc để dựa vào, và trang nói ra chỗ đó.
+    bien_do: dict[tuple[str, str], float] = {}
+    for ten_cau_hinh, ba in dai.items():
+        for d in ba:
+            bien_do[(ten_cau_hinh, d.ten)] = d.bien_do
+    goc_moc = space_goc(bo[0].space)
+    nho: list[str] = []
+    thieu_mau: set[str] = set()
+    for hang in doi_chieu(*bo):
+        bd_moc = bien_do.get((goc_moc, hang.ten))
+        for i, b in enumerate(bo[1:], start=1):
+            goc_cot = space_goc(b.space)
+            bd_cot = bien_do.get((goc_cot, hang.ten))
+            if bd_cot is None:
+                thieu_mau.add(b.space)
+            cac = [x for x in (bd_moc, bd_cot) if x is not None]
+            if not cac:
+                continue
+            bd = max(cac)
+            chenh = hang.chenh_voi_moc(i)
+            if chenh is not None and abs(chenh) < bd:
+                nguon = goc_cot if bd_cot == bd else goc_moc
+                nho.append(
+                    f"<li><b>{html.escape(hang.ten)}</b>,"
+                    f" <code>{html.escape(bo[0].space)}</code> so với"
+                    f" <code>{html.escape(b.space)}</code>: chênh"
+                    f" {chenh * 100:+.1f} điểm, <b>nhỏ hơn biên độ"
+                    f" {bd * 100:.1f} điểm</b> của cấu hình"
+                    f" <code>{html.escape(nguon)}</code>"
+                )
+    canh_bao_thieu = (
+        ""
+        if not thieu_mau
+        else (
+            "<p><b>Chưa có mẫu lặp cho "
+            + ", ".join(f"<code>{html.escape(x)}</code>" for x in sorted(thieu_mau))
+            + ".</b> Mọi phép so với cột đó chỉ dựa được vào biên độ của cột mốc,"
+            " tức một suy luận chứ không một phép đo: nếu corpus của nó ồn hơn"
+            " corpus mốc thì biên độ thật lớn hơn con số đang dùng.</p>"
+        )
+    )
+    chung = (
+        "<p>Một kết luận mà biên độ này chạm tới: câu về prompt mới của cổng R2"
+        " (71,0% so với 70,7% - <b>0,3 điểm</b> trên 8 tài liệu chấm) nhỏ hơn"
+        " <b>mọi</b> biên độ đo được ở đây, kể cả biên độ nhỏ nhất. Nó không đọc"
+        " được như một cải thiện; nó chỉ đủ để nói prompt mới <i>không tệ đi</i>,"
+        " và đó là tất cả những gì cổng R2 cần nói.</p>"
+    )
+    if not nho:
+        return (
+            "<p>Mọi chênh lệch trên bảng này lớn hơn biên độ đo được của cấu hình"
+            " tương ứng, nên chúng đọc được như phát biểu định lượng.</p>"
+            + canh_bao_thieu
+            + chung
+        )
+    return (
+        "<p><b>Những chênh lệch dưới đây nhỏ hơn biên độ của chính phép đo, nên"
+        " chúng chỉ đọc được ở mức định tính</b> - hai lần chạy trên cùng đầu vào"
+        f" đã lệch nhau chừng ấy:<ul>{''.join(nho)}</ul></p>"
+        + canh_bao_thieu
+        + chung
+    )
+
+
+def dung_html(
+    *bo: BaTyLe,
+    ten_hang: Mapping[int, str],
+    doi_chung: DoiChung | None = None,
+    dai: Mapping[str, tuple] | None = None,
+) -> str:
     """Dựng toàn bộ trang từ N kết quả đã tính. Hàm thuần, không I/O.
 
     Cột đầu là mốc của mọi phép chênh. Chữ ký cũ hai vị trí vẫn gọi được, chỉ
@@ -643,8 +867,8 @@ def dung_html(*bo: BaTyLe, ten_hang: Mapping[int, str], doi_chung: DoiChung | No
         "<h1>Ba tỷ lệ n-ngôi</h1>"
         f'<div class="canh-bao"><b>Hai điều phải đọc trước ba con số.</b><br>'
         f"1. Ba tỷ lệ tính trên tập fact mà <b>hệ trích được</b>, không phải tập fact"
-        f" có trong bản ghi. Precision ghép cặp của vòng đo chốt (story 2.6) là"
-        f" {PRECISION_GHEP_CAP:.1%}, nên tập đếm đã lệch khỏi tập thật chừng đó.<br>"
+        f" có trong bản ghi, nên tập đếm đã lệch khỏi tập thật đúng chừng precision"
+        f" ghép cặp. Precision **không cùng một số cho mọi cột**: {_cau_precision(bo)}<br>"
         f"2. Mẫu số của cột <code>khao_sat</code> là 50 bản ghi <b>giả lập</b>"
         f" (quyết định 03/09/2026: doanh nghiệp không lưu báo cáo sự cố ở dạng dùng"
         f" được). Ba tỷ lệ vì vậy <b>mất vai trò mỏ neo độc lập</b> cho corpus 2.8:"
@@ -663,6 +887,7 @@ def dung_html(*bo: BaTyLe, ten_hang: Mapping[int, str], doi_chung: DoiChung | No
         f'<p class="chu">Mọi chênh lệch tính so với cột mốc'
         f" <code>{html.escape(bo[0].space)}</code>.</p>"
         f"{_bang_ba_ty_le(*bo)}"
+        f"{_khoi_dai(dai or {}, bo)}"
         "<h2>Phân bố mức nhạy cảm theo hạng</h2>"
         f'<p class="chu">Đếm trên hyperedge, không trên tài liệu: hai tài liệu cùng'
         " loại có thể cho số fact rất khác nhau. Hàng tô vàng là vùng nhạy cảm.</p>"
@@ -670,10 +895,11 @@ def dung_html(*bo: BaTyLe, ten_hang: Mapping[int, str], doi_chung: DoiChung | No
         "<h2>Phân bố theo loại nội dung</h2>"
         f"{_khoi_lech_truc_loai(bo, hang_theo_ten)}"
         f"{_bang_phan_bo_loai(bo)}"
-        "<h2>Ba số chẩn đoán của Composition-Risk</h2>"
+        "<h2>Số chẩn đoán của Composition-Risk</h2>"
         f'<p class="chu">Không phải tỷ lệ thứ tư và không vào báo cáo như một kết quả.'
         " Chúng chỉ để đọc được một Composition-Risk bằng 0: 0 vì không mảnh nào lộ,"
-        " hay 0 vì luôn còn đúng một mảnh không lộ.</p>"
+        " hay 0 vì luôn còn đúng một mảnh không lộ. Từ story 2.12 có thêm dòng"
+        f" <b>vai thực thể</b>, và {_cau_siet_theo_scope(bo)}</p>"
         + "".join(_khoi_chan_doan(b) for b in bo)
         + "</div></body></html>\n"
     )
@@ -724,6 +950,25 @@ def _tham_so(argv: list[str]) -> argparse.Namespace:
         help="ảnh chụp đồ thị space that_khu - cùng 50 tài liệu đã khử của real,"
         " trích bằng DeepSeek (story 2.13). Cũng **không có mặc định**: bản đầy"
         " đủ nằm ngoài cây repo, bản rút gọn ở eval/anh_do_thi/that_khu_rut_gon.json",
+    )
+    p.add_argument(
+        "--mau-moc",
+        type=Path,
+        action="append",
+        default=[],
+        dest="mau_moc",
+        metavar="FILE",
+        help="ảnh chụp của **một lần chạy khác cùng cấu hình với cột mốc**, để đo"
+        " dải sai số (story 2.12). Lặp được. Ảnh phải cùng space với cột mốc",
+    )
+    p.add_argument(
+        "--mau-that-khu",
+        type=Path,
+        action="append",
+        default=[],
+        dest="mau_that_khu",
+        metavar="FILE",
+        help="như trên, cho cấu hình của cột that_khu; cần --anh-that-khu",
     )
     p.add_argument(
         "--hang",
@@ -802,6 +1047,62 @@ def _doc(duong_dan: Path, space: str):
     return anh
 
 
+def _dung_dai(ts, anh, bo, hang) -> dict[str, tuple]:
+    """`{tên cấu hình: ba dải}` từ các cờ `--mau-*`; không cờ nào thì dict rỗng.
+
+    Mỗi mẫu phải **cùng space** với cột nó đo dải cho: một ảnh chụp của space
+    khác trộn vào là một dải đo trên hai tập dữ liệu, và nó sẽ rộng ra vì đúng
+    cái lý do mà phép đo này dựng ra để loại trừ.
+    """
+    ra: dict[str, tuple] = {}
+    for cac_mau, cot, space in (
+        (ts.mau_moc, bo[0], anh[0].space),
+        (ts.mau_that_khu, bo[-1] if ts.anh_that_khu is not None else None, SPACE_THAT_KHU),
+    ):
+        if not cac_mau or cot is None:
+            continue
+        goc = space_goc(space)
+        them = []
+        for f in cac_mau:
+            a = doc_anh_do_thi(f)
+            ly_do = ly_do_tu_choi_mau(f, goc, a)
+            if ly_do:
+                raise AnhDoThiKhongHopLe([ly_do])
+            them.append(ba_ty_le(a, hang))
+        ra[goc] = dai_ba_ty_le(goc, cot, *them)
+    return ra
+
+
+# Hậu tố của **space dùng một lần**: một lần chạy khác của cùng một cấu hình,
+# nạp vào một space riêng để không đụng vào space đang được báo cáo. `synth` có
+# `synth_lan2`, `that_khu` có `that_khu_lan1` và `that_khu_lan3`.
+HAU_TO_LAN: str = "_lan"
+
+
+def ly_do_tu_choi_mau(duong_dan, space_cot: str, anh) -> str | None:
+    """Lý do từ chối một ảnh chụp làm **mẫu** cho cấu hình `space_cot`.
+
+    Khác rào của một *cột*: một cột đòi hai ảnh phải là **hai space khác nhau**
+    (nếu không trang in một space hai lần và chênh 0 đọc thành khớp cỡ tuyệt
+    đối), còn một mẫu đòi ngược lại - nó phải là **cùng một cấu hình**, chỉ khác
+    lần chạy. Quy ước tên là `<space>` hoặc `<space>_lanN`, và nó không phải một
+    quy ước tùy tiện: hai space dùng một lần của story 2.12 được đặt tên đúng
+    như thế, và tên là thứ duy nhất trong ảnh chụp nói lên cấu hình.
+
+    Trộn một space khác vào là đo dải trên hai tập dữ liệu - và dải đó sẽ rộng
+    ra vì đúng cái lý do mà phép đo này dựng ra để loại trừ.
+    """
+    goc = space_goc(anh.space)
+    if goc == space_cot or goc.startswith(f"{space_cot}{HAU_TO_LAN}"):
+        return None
+    return (
+        f"{duong_dan} là ảnh chụp của space {anh.space!r}, không phải một lần"
+        f" chạy khác của cấu hình {space_cot!r}: mẫu phải mang tên {space_cot!r}"
+        f" hoặc {space_cot}{HAU_TO_LAN}<N>. Một space khác trộn vào là đo dải"
+        " trên hai tập dữ liệu, tức đo đúng thứ phép đo này dựng ra để loại trừ"
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     """In ba tỷ lệ hai hoặc ba space; ảnh chụp thiếu hay lạ thì in lý do ra stderr và trả 1.
 
@@ -824,11 +1125,13 @@ def main(argv: list[str] | None = None) -> int:
                 raise AnhDoThiKhongHopLe([ly_do])
         bo = tuple(ba_ty_le(a, hang) for a in anh)
         doi_chung = dung_doi_chung(anh, bo, hang)
+        dai = _dung_dai(ts, anh, bo, hang)
     except (
         AnhDoThiKhongHopLe,
         HangKhongXacDinh,
         KhongCoTaiLieuChung,
         SensitivityRanksInvalid,
+        ThieuMauDoDai,
     ) as loi:
         print(str(loi), file=sys.stderr)
         return 1
@@ -839,7 +1142,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         dich.parent.mkdir(parents=True, exist_ok=True)
         dich.write_text(
-            dung_html(*bo, ten_hang=ten_hang, doi_chung=doi_chung), encoding="utf-8"
+            dung_html(*bo, ten_hang=ten_hang, doi_chung=doi_chung, dai=dai),
+            encoding="utf-8",
         )
     except OSError as loi:
         print(f"không ghi được {dich}: {loi}", file=sys.stderr)
@@ -862,6 +1166,15 @@ def main(argv: list[str] | None = None) -> int:
             f" {b.so_nhay_cam_co_entity_lo} ca có ít nhất một entity lộ,"
             f" trung bình phần entity lộ trên nhóm đó {tb}"
         )
+        print(
+            f"  chẩn đoán (chỉ {'/'.join(VAI_THUC_THE)}):"
+            f" {b.composition_risk_vai_thuc_the.mo_ta()}"
+            + ("" if b.siet_theo_scope else " [chưa siết theo scope]")
+        )
+    for ten_cau_hinh, ba in dai.items():
+        print(f"dải sai số của cấu hình {ten_cau_hinh} (cùng đầu vào, khác lần chạy):")
+        for d in ba:
+            print(f"  {d.ten}: {d.mo_ta()}")
     for d in doi_chieu(*bo):
         for i, b in enumerate(bo[1:], start=1):
             gia_tri = d.chenh_voi_moc(i)
@@ -874,9 +1187,8 @@ def main(argv: list[str] | None = None) -> int:
             + "; ".join(f"chỉ {ten} có {ds}" for ten, ds in rieng if ds)
         )
     print(
-        "ba tỷ lệ tính trên tập fact hệ trích được (precision ghép cặp"
-        f" {PRECISION_GHEP_CAP:.1%} của vòng {VONG_CHOT_2_6}), mẫu số khao_sat là"
-        " bản ghi giả lập"
+        "ba tỷ lệ tính trên tập fact hệ trích được, precision ghép cặp theo từng"
+        f" cột: {_bo_the(_cau_precision(bo))} mẫu số khao_sat là bản ghi giả lập"
     )
     for b in bo:
         if space_goc(b.space) != SPACE_REAL:

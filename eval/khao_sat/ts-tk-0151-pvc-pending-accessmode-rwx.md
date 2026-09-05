@@ -14,8 +14,8 @@ content_type: bao_cao_su_co
 | Dịch vụ | Kubernetes Engine |
 | Mức ưu tiên | Trung bình |
 | Người tiếp nhận | NV23 |
-| Mở lúc | 28/09/2026 10:02 |
-| Đóng lúc | 28/09/2026 11:15 |
+| Mở lúc | 10/08/2026 10:02 |
+| Đóng lúc | 10/08/2026 11:15 |
 
 ## Mô tả từ khách hàng
 Tạo ổ cứng cho ứng dụng, PVC kẹt mãi ở Pending. Sự kiện báo

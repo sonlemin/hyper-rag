@@ -1,0 +1,24 @@
+# ĐỀ XUẤT bí danh thực thể - **không phải** từ điển đang chạy (story 2.12).
+# Sinh bằng `python -m eval.de_xuat_bi_danh`. Lược đồ ở đây khác lược đồ
+# của `config/tu-dien-thuc-the/`: khóa gốc là `de_xuat`, và mục không có
+# `xac_nhan`. Người xác nhận chép sang từng mục một, thêm dấu
+# `xac_nhan: "<tên> <ngày>"`, và bỏ `ly_do`/`so_lan`/`llm`.
+version: 1
+space: khao_sat
+ngay_anh_chup: '2026-09-05T07:15:59.590965+00:00'
+anh_chup: eval/anh_do_thi/khao_sat.json
+model: null
+so_nhom: 1
+nhom_lien_scope: []
+de_xuat:
+- chuan: Đĩa
+  scope: noi_bo
+  bi_danh:
+  - đĩa
+  ly_do:
+  - hoa/thường
+  so_lan:
+    Đĩa: 2
+    đĩa: 2
+  cung_nhom_o_scope: []
+  llm: null

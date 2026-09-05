@@ -1,0 +1,5573 @@
+{
+  "version": 2,
+  "space": "synth_lan2_rut_gon",
+  "muoi_id": "dffc42de62eed6e1",
+  "ngay_do": "2026-09-05T08:48:28.237620+00:00",
+  "policy_version": "fd8a92df457321e625bf16a08fb3dc244dc4bbcbfe87b45cd11465807446fd87",
+  "so_tai_lieu": 52,
+  "so_hyperedge": 268,
+  "so_hyperedge_da_nguon": 0,
+  "tai_lieu": [
+    {
+      "doc_key": "rg-d-03f3c0960dc05c52",
+      "sha256": "rg-s-999b25d8e1e8db46",
+      "scope": "noi_bo",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "rg-d-0ab8f0c40c268cff",
+      "sha256": "rg-s-1958d7037364a2c4",
+      "scope": "noi_bo",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "rg-d-16d8f7c60fc94839",
+      "sha256": "rg-s-2119cb586907f36f",
+      "scope": "noi_bo",
+      "content_type": "log"
+    },
+    {
+      "doc_key": "rg-d-179c42296ad558f6",
+      "sha256": "rg-s-d69c26a1d5c92a95",
+      "scope": "noi_bo",
+      "content_type": "bi_mat_ha_tang"
+    },
+    {
+      "doc_key": "rg-d-23deaac4975f5c07",
+      "sha256": "rg-s-465a852baa7a25d3",
+      "scope": "khach_hang_b",
+      "content_type": "cmdb"
+    },
+    {
+      "doc_key": "rg-d-29bb9d56de8edc7c",
+      "sha256": "rg-s-7c85da72442f2654",
+      "scope": "khach_hang_a",
+      "content_type": "troubleshooting"
+    },
+    {
+      "doc_key": "rg-d-2faf64f3725eda6c",
+      "sha256": "rg-s-d59424f4b72bf7c0",
+      "scope": "noi_bo",
+      "content_type": "sop"
+    },
+    {
+      "doc_key": "rg-d-344dd6f3419f5cec",
+      "sha256": "rg-s-e0dcae0d4e5ef98f",
+      "scope": "khach_hang_b",
+      "content_type": "tai_lieu_san_pham"
+    },
+    {
+      "doc_key": "rg-d-38e3e41adad6a612",
+      "sha256": "rg-s-343eef5d852f60fc",
+      "scope": "khach_hang_a",
+      "content_type": "known_issue"
+    },
+    {
+      "doc_key": "rg-d-3d40cbf823e46b66",
+      "sha256": "rg-s-999a073241e23ea1",
+      "scope": "noi_bo",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "rg-d-3dbfa80d59e7c220",
+      "sha256": "rg-s-fedfb99a7e261823",
+      "scope": "noi_bo",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "rg-d-3f2fdcb8208df7c4",
+      "sha256": "rg-s-46eb258470a124a3",
+      "scope": "noi_bo",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "rg-d-3fa3802bdd6f6997",
+      "sha256": "rg-s-6ab73bbc2fad28c4",
+      "scope": "noi_bo",
+      "content_type": "faq"
+    },
+    {
+      "doc_key": "rg-d-40265e9d47579e17",
+      "sha256": "rg-s-18262f9345dc021c",
+      "scope": "khach_hang_a",
+      "content_type": "cmdb"
+    },
+    {
+      "doc_key": "rg-d-53b0670d7385dd3f",
+      "sha256": "rg-s-ab1bb8188a245ba2",
+      "scope": "noi_bo",
+      "content_type": "known_issue"
+    },
+    {
+      "doc_key": "rg-d-5500d937598b0c31",
+      "sha256": "rg-s-92017a629fa04f23",
+      "scope": "noi_bo",
+      "content_type": "vong_doi_ticket"
+    },
+    {
+      "doc_key": "rg-d-5da00f6a25f16f2f",
+      "sha256": "rg-s-af21336a39ddef22",
+      "scope": "khach_hang_a",
+      "content_type": "bi_mat_ha_tang"
+    },
+    {
+      "doc_key": "rg-d-61f668c01883a760",
+      "sha256": "rg-s-65c5c46f498ccfb8",
+      "scope": "khach_hang_a",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "rg-d-6bb97eae18911d80",
+      "sha256": "rg-s-c37de0b60f5cca9f",
+      "scope": "khach_hang_a",
+      "content_type": "tai_lieu_san_pham"
+    },
+    {
+      "doc_key": "rg-d-7874276fab71f7e8",
+      "sha256": "rg-s-b83eca86097e7981",
+      "scope": "khach_hang_a",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "rg-d-7ac246b54f825475",
+      "sha256": "rg-s-27b83a20e4793821",
+      "scope": "khach_hang_a",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "rg-d-89718346ff3c9d62",
+      "sha256": "rg-s-9d363c8f2f19e36c",
+      "scope": "noi_bo",
+      "content_type": "tai_lieu_san_pham"
+    },
+    {
+      "doc_key": "rg-d-8cf5034279422348",
+      "sha256": "rg-s-6413733d0279f7c7",
+      "scope": "khach_hang_b",
+      "content_type": "vong_doi_ticket"
+    },
+    {
+      "doc_key": "rg-d-8ffdffbb0c807a35",
+      "sha256": "rg-s-29590b9865bdfa24",
+      "scope": "noi_bo",
+      "content_type": "vong_doi_ticket"
+    },
+    {
+      "doc_key": "rg-d-91e38545310a5389",
+      "sha256": "rg-s-fb9bd5097ab09b4c",
+      "scope": "khach_hang_a",
+      "content_type": "canh_bao"
+    },
+    {
+      "doc_key": "rg-d-9318626799329892",
+      "sha256": "rg-s-8fc72988d41664a7",
+      "scope": "khach_hang_a",
+      "content_type": "log"
+    },
+    {
+      "doc_key": "rg-d-9a43ace88db479e6",
+      "sha256": "rg-s-9865b3beb445f2a0",
+      "scope": "noi_bo",
+      "content_type": "faq"
+    },
+    {
+      "doc_key": "rg-d-9e85918ba1236504",
+      "sha256": "rg-s-1d43b53a5f307816",
+      "scope": "noi_bo",
+      "content_type": "cmdb"
+    },
+    {
+      "doc_key": "rg-d-9ebbda870624bd52",
+      "sha256": "rg-s-832b412ea47a2f35",
+      "scope": "noi_bo",
+      "content_type": "sop"
+    },
+    {
+      "doc_key": "rg-d-9ecbcb8484347f9b",
+      "sha256": "rg-s-2100733854daf362",
+      "scope": "khach_hang_b",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "rg-d-acda9e0c651710e5",
+      "sha256": "rg-s-3263424881423059",
+      "scope": "khach_hang_b",
+      "content_type": "bi_mat_ha_tang"
+    },
+    {
+      "doc_key": "rg-d-b83dc3272723266a",
+      "sha256": "rg-s-8e5fa15f80ce8460",
+      "scope": "khach_hang_a",
+      "content_type": "postmortem"
+    },
+    {
+      "doc_key": "rg-d-b975eb778494a796",
+      "sha256": "rg-s-370200cc54b51a9b",
+      "scope": "khach_hang_b",
+      "content_type": "postmortem"
+    },
+    {
+      "doc_key": "rg-d-baa3ab53fac44f38",
+      "sha256": "rg-s-fe1af8840a9d24b5",
+      "scope": "noi_bo",
+      "content_type": "canh_bao"
+    },
+    {
+      "doc_key": "rg-d-c344875b966298ff",
+      "sha256": "rg-s-02d85f9c21b4a283",
+      "scope": "noi_bo",
+      "content_type": "cmdb"
+    },
+    {
+      "doc_key": "rg-d-c6020d319867328d",
+      "sha256": "rg-s-e85f56f1b538bd1e",
+      "scope": "noi_bo",
+      "content_type": "sop"
+    },
+    {
+      "doc_key": "rg-d-c84aa1575210ced3",
+      "sha256": "rg-s-d7c1c29e215995d5",
+      "scope": "noi_bo",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "rg-d-c9e3095f8044838f",
+      "sha256": "rg-s-ae7175837d46631a",
+      "scope": "noi_bo",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "rg-d-cd166695479fe5f0",
+      "sha256": "rg-s-39224857364b99a0",
+      "scope": "noi_bo",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "rg-d-cf901a87f51f7d1c",
+      "sha256": "rg-s-9e1004ea471ab49d",
+      "scope": "noi_bo",
+      "content_type": "troubleshooting"
+    },
+    {
+      "doc_key": "rg-d-d18b565ba8d4fa48",
+      "sha256": "rg-s-3490c2126fc44c3d",
+      "scope": "khach_hang_a",
+      "content_type": "faq"
+    },
+    {
+      "doc_key": "rg-d-d88f75eb96f3bf11",
+      "sha256": "rg-s-ef9495fbac7b862c",
+      "scope": "khach_hang_b",
+      "content_type": "canh_bao"
+    },
+    {
+      "doc_key": "rg-d-dbb27714793ff6cf",
+      "sha256": "rg-s-18cab6e8c1576773",
+      "scope": "noi_bo",
+      "content_type": "troubleshooting"
+    },
+    {
+      "doc_key": "rg-d-dda2d55d6e9da0e4",
+      "sha256": "rg-s-7067263721dff40f",
+      "scope": "noi_bo",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "rg-d-e0b8c9cb60d13b3e",
+      "sha256": "rg-s-a781ab99f81ff1bf",
+      "scope": "noi_bo",
+      "content_type": "troubleshooting"
+    },
+    {
+      "doc_key": "rg-d-e100212ccffa43d7",
+      "sha256": "rg-s-1f52246f7fb7fd36",
+      "scope": "khach_hang_b",
+      "content_type": "bao_cao_su_co"
+    },
+    {
+      "doc_key": "rg-d-e16cfabdf8392f71",
+      "sha256": "rg-s-c0bc93c2f95e441a",
+      "scope": "khach_hang_b",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "rg-d-e4526ab1daba6c87",
+      "sha256": "rg-s-b107ba7bf4078f72",
+      "scope": "noi_bo",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "rg-d-ec093e0c91e7b9e4",
+      "sha256": "rg-s-53d9ff1117f29233",
+      "scope": "noi_bo",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "rg-d-f6f9e54102fac74d",
+      "sha256": "rg-s-3b440c15816ec2b3",
+      "scope": "noi_bo",
+      "content_type": "runbook"
+    },
+    {
+      "doc_key": "rg-d-fa66c10ffbe45526",
+      "sha256": "rg-s-23a28bb462af0435",
+      "scope": "khach_hang_a",
+      "content_type": "canh_bao"
+    },
+    {
+      "doc_key": "rg-d-ffca47c25267fcb5",
+      "sha256": "rg-s-d9fa60bd020749db",
+      "scope": "noi_bo",
+      "content_type": "known_issue"
+    }
+  ],
+  "hyperedge": [
+    {
+      "id": "rg-h-0069318107e2ecf3",
+      "doc_key": [
+        "rg-d-3fa3802bdd6f6997"
+      ],
+      "khoa": "noi_bo:faq",
+      "slots": {
+        "subject": [
+          "rg-e-027ff8912f66f5b5"
+        ],
+        "condition": [
+          "rg-e-603051da6e2d863a"
+        ],
+        "remediation": [
+          "rg-e-119c9843ee156ae9"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-0078216f1111cae0",
+      "doc_key": [
+        "rg-d-61f668c01883a760"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "rg-e-bea2a518de8c11ac"
+        ],
+        "condition": [
+          "rg-e-c7482e7ab2cab54d"
+        ],
+        "remediation": [
+          "rg-e-3844d8b1cb8a7f95"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-00c241d58aa55508",
+      "doc_key": [
+        "rg-d-344dd6f3419f5cec"
+      ],
+      "khoa": "khach_hang_b:tai_lieu_san_pham",
+      "slots": {
+        "subject": [
+          "rg-e-f30e70567c289739"
+        ],
+        "condition": [
+          "rg-e-440dc3fb63f5cf0e"
+        ],
+        "remediation": [
+          "rg-e-da044ec4ac93e8cb"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-01d4e4bb8368c4e9",
+      "doc_key": [
+        "rg-d-40265e9d47579e17"
+      ],
+      "khoa": "khach_hang_a:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-8ae59b693ab73032"
+        ],
+        "symptom": [
+          "rg-e-c235f6605393f1ec"
+        ],
+        "cause": [
+          "rg-e-df61339dc363aaed"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-0388b759e75d2c1b",
+      "doc_key": [
+        "rg-d-b975eb778494a796"
+      ],
+      "khoa": "khach_hang_b:postmortem",
+      "slots": {
+        "subject": [
+          "rg-e-f444d539a75df4df"
+        ],
+        "remediation": [
+          "rg-e-7b1dc41527764f2a"
+        ],
+        "time": [
+          "rg-e-ca10757d00198c56"
+        ],
+        "owner": [
+          "rg-e-736ffa182b6eb92e"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-04baa1c60dfe7ce7",
+      "doc_key": [
+        "rg-d-9ecbcb8484347f9b"
+      ],
+      "khoa": "khach_hang_b:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-4c26d38055e4d133"
+        ],
+        "condition": [
+          "rg-e-64067f905e71c97a"
+        ],
+        "remediation": [
+          "rg-e-d5870177f674711d"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-05a1a086f64b770a",
+      "doc_key": [
+        "rg-d-16d8f7c60fc94839"
+      ],
+      "khoa": "noi_bo:log",
+      "slots": {
+        "subject": [
+          "rg-e-5f0e956d86008bba"
+        ],
+        "symptom": [
+          "rg-e-ce197b652091b32b"
+        ],
+        "cause": [
+          "rg-e-996578bae4922580"
+        ],
+        "time": [
+          "rg-e-dc25af44bb86d174"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-06390da54b1b6ca5",
+      "doc_key": [
+        "rg-d-40265e9d47579e17"
+      ],
+      "khoa": "khach_hang_a:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-8ae59b693ab73032"
+        ],
+        "owner": [
+          "rg-e-b8c2c0c18e620c46"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-06970bf7f8d99f61",
+      "doc_key": [
+        "rg-d-8ffdffbb0c807a35"
+      ],
+      "khoa": "noi_bo:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "rg-e-ec14539550c3258c"
+        ],
+        "condition": [
+          "rg-e-de594318ebf086b3"
+        ],
+        "remediation": [
+          "rg-e-d50d0e49b6189fd5"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-07a0ca63d8676310",
+      "doc_key": [
+        "rg-d-acda9e0c651710e5"
+      ],
+      "khoa": "khach_hang_b:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "rg-e-8e30435e2067c9a5"
+        ],
+        "condition": [
+          "rg-e-cd7f32ca126ad3a2"
+        ],
+        "remediation": [
+          "rg-e-d4966898acf782be"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-08dcd573bb7c5244",
+      "doc_key": [
+        "rg-d-6bb97eae18911d80"
+      ],
+      "khoa": "khach_hang_a:tai_lieu_san_pham",
+      "slots": {
+        "subject": [
+          "rg-e-8951e659fb46c83c"
+        ],
+        "symptom": [
+          "rg-e-24dcbade9a677fa3"
+        ],
+        "condition": [
+          "rg-e-0574cba400185abe"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-0b41c2b6b3417b44",
+      "doc_key": [
+        "rg-d-ec093e0c91e7b9e4"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-740893517e01abca"
+        ],
+        "condition": [
+          "rg-e-ae83686188eb2a54"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-0b97f834c256e349",
+      "doc_key": [
+        "rg-d-3f2fdcb8208df7c4"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-c6cf72fcb39b40a9"
+        ],
+        "symptom": [
+          "rg-e-2c854eabc1de9f2d"
+        ],
+        "condition": [
+          "rg-e-cceb3020db669d36"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-0c0c17342d86600a",
+      "doc_key": [
+        "rg-d-e100212ccffa43d7"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "rg-e-c05a71f29534ff26"
+        ],
+        "cause": [
+          "rg-e-5c861674595f5e2d"
+        ],
+        "condition": [
+          "rg-e-9c46924bfca3e8c0"
+        ],
+        "time": [
+          "rg-e-ca18c185a6935469"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-0cf86b4b340a3b2e",
+      "doc_key": [
+        "rg-d-e100212ccffa43d7"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "rg-e-9929b6918668d9b6"
+        ],
+        "symptom": [
+          "rg-e-24c8b3b7a841d031"
+        ],
+        "remediation": [
+          "rg-e-1a7dfa6ae51fc41f"
+        ],
+        "time": [
+          "rg-e-6f6801136ca43800"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-0d53e94883b79621",
+      "doc_key": [
+        "rg-d-d88f75eb96f3bf11"
+      ],
+      "khoa": "khach_hang_b:canh_bao",
+      "slots": {
+        "subject": [
+          "rg-e-d36af20ae7a6d120"
+        ],
+        "symptom": [
+          "rg-e-c3599cd63a877efa"
+        ],
+        "cause": [
+          "rg-e-9c46924bfca3e8c0"
+        ],
+        "time": [
+          "rg-e-ca18c185a6935469"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-0fa14a8262e61860",
+      "doc_key": [
+        "rg-d-acda9e0c651710e5"
+      ],
+      "khoa": "khach_hang_b:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "rg-e-36df218cd79f0da3"
+        ],
+        "condition": [
+          "rg-e-93ca180a07d59a8c"
+        ],
+        "time": [
+          "rg-e-14a52a17407e7a99"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-102b3bcc6361ec40",
+      "doc_key": [
+        "rg-d-3d40cbf823e46b66"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-317bf01ffa535798"
+        ],
+        "condition": [
+          "rg-e-840336ac409f9e20"
+        ],
+        "remediation": [
+          "rg-e-df89f20fb4b5b629"
+        ],
+        "owner": [
+          "rg-e-d84368a064518cc8"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-1115ed9bf077842c",
+      "doc_key": [
+        "rg-d-d18b565ba8d4fa48"
+      ],
+      "khoa": "khach_hang_a:faq",
+      "slots": {
+        "subject": [
+          "rg-e-d33516373595f7f6"
+        ],
+        "condition": [
+          "rg-e-bbd994fd523d331c"
+        ],
+        "remediation": [
+          "rg-e-7c0710f4adedf110"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-114f2204a2192193",
+      "doc_key": [
+        "rg-d-179c42296ad558f6"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "rg-e-d84368a064518cc8"
+        ],
+        "remediation": [
+          "rg-e-b421d9861a88ce27"
+        ],
+        "source": [
+          "rg-e-a3b8bb5087de1b24"
+        ],
+        "time": [
+          "rg-e-09d4b4eed82149ed"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-114fe25a7075ca1f",
+      "doc_key": [
+        "rg-d-16d8f7c60fc94839"
+      ],
+      "khoa": "noi_bo:log",
+      "slots": {
+        "subject": [
+          "rg-e-43516e446437fd9e"
+        ],
+        "condition": [
+          "rg-e-e73ca7f276986673"
+        ],
+        "remediation": [
+          "rg-e-fdb43bf6d9fef4ad"
+        ],
+        "time": [
+          "rg-e-2868d08e94797004"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-11a079765153797c",
+      "doc_key": [
+        "rg-d-3dbfa80d59e7c220"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-5a7907965fb04a32"
+        ],
+        "condition": [
+          "rg-e-6854a73b0fc838e3"
+        ],
+        "remediation": [
+          "rg-e-6d607e004d22539c"
+        ],
+        "owner": [
+          "rg-e-4c59d978252f1a76"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-11ed266ff6441ee3",
+      "doc_key": [
+        "rg-d-e4526ab1daba6c87"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-613db5a29c5c0717"
+        ],
+        "condition": [
+          "rg-e-c0572af78e1c6ec6"
+        ],
+        "remediation": [
+          "rg-e-355c41c188172020"
+        ],
+        "time": [
+          "rg-e-b84723a99a76fdea"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-1256959c06ea336e",
+      "doc_key": [
+        "rg-d-c6020d319867328d"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "rg-e-1824410c243062c9"
+        ],
+        "condition": [
+          "rg-e-93ef5531406622f3"
+        ],
+        "remediation": [
+          "rg-e-7bb763c41d7ca00e"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-12d41162337c5b82",
+      "doc_key": [
+        "rg-d-d88f75eb96f3bf11"
+      ],
+      "khoa": "khach_hang_b:canh_bao",
+      "slots": {
+        "subject": [
+          "rg-e-ec4d7e08d5722c34"
+        ],
+        "condition": [
+          "rg-e-53acebe95a3021a9"
+        ],
+        "remediation": [
+          "rg-e-a44d0b77fd779262"
+        ],
+        "source": [
+          "rg-e-d12acabfa0f2ed20"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-13beac4f656128b8",
+      "doc_key": [
+        "rg-d-3dbfa80d59e7c220"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-5a7907965fb04a32"
+        ],
+        "condition": [
+          "rg-e-21129388bf12437a"
+        ],
+        "remediation": [
+          "rg-e-e73a1995b648c41e"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-16da8c4ded318ea5",
+      "doc_key": [
+        "rg-d-9ebbda870624bd52"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "rg-e-1997526bf77c639c"
+        ],
+        "condition": [
+          "rg-e-6a98c60f92077cf8"
+        ],
+        "remediation": [
+          "rg-e-f97149d4ec48e439"
+        ],
+        "source": [
+          "rg-e-284e5b78f80369b9"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-18d887244ccd1420",
+      "doc_key": [
+        "rg-d-29bb9d56de8edc7c"
+      ],
+      "khoa": "khach_hang_a:troubleshooting",
+      "slots": {
+        "subject": [
+          "rg-e-8ae59b693ab73032"
+        ],
+        "symptom": [
+          "rg-e-463cb8f08e864fa5"
+        ],
+        "condition": [
+          "rg-e-c89d927fffbba27f"
+        ],
+        "remediation": [
+          "rg-e-8c86547dd98b4fc0"
+        ],
+        "source": [
+          "rg-e-dcb4f71638216aa5"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-1961da6d438f6425",
+      "doc_key": [
+        "rg-d-5da00f6a25f16f2f"
+      ],
+      "khoa": "khach_hang_a:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "rg-e-9de29365405e9ef7"
+        ],
+        "condition": [
+          "rg-e-0728671c439ce1d1"
+        ],
+        "remediation": [
+          "rg-e-ea1839ccc2541074"
+        ],
+        "source": [
+          "rg-e-8cf4556c65dfa61f"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-1986791678bf29d2",
+      "doc_key": [
+        "rg-d-89718346ff3c9d62"
+      ],
+      "khoa": "noi_bo:tai_lieu_san_pham",
+      "slots": {
+        "subject": [
+          "rg-e-641ad274d23eb52f"
+        ],
+        "condition": [
+          "rg-e-fdf2ccdb7fbfa166"
+        ],
+        "remediation": [
+          "rg-e-b0283fef061724b8"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-19ce517ae14295d6",
+      "doc_key": [
+        "rg-d-e100212ccffa43d7"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "rg-e-93d443dafadefdb9"
+        ],
+        "symptom": [
+          "rg-e-056d3b0ed7b0f36d"
+        ],
+        "condition": [
+          "rg-e-8eb1ae7e5010adbe"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-1a01fb1fbe4b7174",
+      "doc_key": [
+        "rg-d-b975eb778494a796"
+      ],
+      "khoa": "khach_hang_b:postmortem",
+      "slots": {
+        "subject": [
+          "rg-e-0d9a7b9719792d7d"
+        ],
+        "symptom": [
+          "rg-e-12e7f810f05f5e85"
+        ],
+        "cause": [
+          "rg-e-64f3c37e52aee4b5"
+        ],
+        "condition": [
+          "rg-e-1fc1999c5e4b73a8"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-1ba7853e6b725354",
+      "doc_key": [
+        "rg-d-40265e9d47579e17"
+      ],
+      "khoa": "khach_hang_a:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-c30f7b7f578eda02"
+        ],
+        "remediation": [
+          "rg-e-2ed86909f9530a84"
+        ],
+        "time": [
+          "rg-e-5083240a07298ba9"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-1bd6ffe4858a801e",
+      "doc_key": [
+        "rg-d-16d8f7c60fc94839"
+      ],
+      "khoa": "noi_bo:log",
+      "slots": {
+        "subject": [
+          "rg-e-7ea8b756c906004d"
+        ],
+        "symptom": [
+          "rg-e-0de62de3e0ec2c67"
+        ],
+        "condition": [
+          "rg-e-002d259d758a15dc"
+        ],
+        "time": [
+          "rg-e-64b8b3135659c555"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-1d9f943a6e2afbe3",
+      "doc_key": [
+        "rg-d-6bb97eae18911d80"
+      ],
+      "khoa": "khach_hang_a:tai_lieu_san_pham",
+      "slots": {
+        "subject": [
+          "rg-e-8951e659fb46c83c"
+        ],
+        "cause": [
+          "rg-e-045769c41b79aa1d"
+        ],
+        "condition": [
+          "rg-e-4ff3b5a5b9ffeb49"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-1deba8f5730ac180",
+      "doc_key": [
+        "rg-d-e0b8c9cb60d13b3e"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "rg-e-5434cd3486924fd0"
+        ],
+        "condition": [
+          "rg-e-0bc73555769d5bbf"
+        ],
+        "remediation": [
+          "rg-e-09173781180219fc"
+        ],
+        "time": [
+          "rg-e-bcd3a6509da9db44"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-1e3c2339d31d3177",
+      "doc_key": [
+        "rg-d-c344875b966298ff"
+      ],
+      "khoa": "noi_bo:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-24129cc7d8267f45"
+        ],
+        "condition": [
+          "rg-e-1569ded2bba32e77"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-1e56cc91d982ea29",
+      "doc_key": [
+        "rg-d-91e38545310a5389"
+      ],
+      "khoa": "khach_hang_a:canh_bao",
+      "slots": {
+        "subject": [
+          "rg-e-c203f16031237d97"
+        ],
+        "symptom": [
+          "rg-e-0d61c3d54d182753"
+        ],
+        "condition": [
+          "rg-e-dfabd2971564798c"
+        ],
+        "remediation": [
+          "rg-e-d21d65afd2b41de8"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-1e71a3bdc8232dba",
+      "doc_key": [
+        "rg-d-e0b8c9cb60d13b3e"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "rg-e-a1ede3f89600675a"
+        ],
+        "symptom": [
+          "rg-e-b65bea67fb230f3e"
+        ],
+        "remediation": [
+          "rg-e-b9a1a9e9a9d02ab7"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-1f0dc3821af41be2",
+      "doc_key": [
+        "rg-d-9ecbcb8484347f9b"
+      ],
+      "khoa": "khach_hang_b:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-7d4aec9d4b550f3b"
+        ],
+        "condition": [
+          "rg-e-5f9d7f304fa3876d"
+        ],
+        "remediation": [
+          "rg-e-9ebb688c66c51de6"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-22796248b34f3a23",
+      "doc_key": [
+        "rg-d-5500d937598b0c31"
+      ],
+      "khoa": "noi_bo:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "rg-e-d6eb546cf9e7e33d"
+        ],
+        "symptom": [
+          "rg-e-cce29db5a96be6e5"
+        ],
+        "source": [
+          "rg-e-42cd9e6a8341971f"
+        ],
+        "time": [
+          "rg-e-c1af4b17c1f44858"
+        ],
+        "owner": [
+          "rg-e-42cd9e6a8341971f"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-23449e77da6ce65f",
+      "doc_key": [
+        "rg-d-c6020d319867328d"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "rg-e-c94003cb96666bee"
+        ],
+        "condition": [
+          "rg-e-6ebe4bc8736982ce"
+        ],
+        "remediation": [
+          "rg-e-7f06ab2bd3d57885"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-2359ffeed059e159",
+      "doc_key": [
+        "rg-d-2faf64f3725eda6c"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "rg-e-e266b1e6b7c82edf"
+        ],
+        "remediation": [
+          "rg-e-08b38519ea36baf0"
+        ],
+        "source": [
+          "rg-e-eab14522ed579cc9"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-251331c6d3dc8d2b",
+      "doc_key": [
+        "rg-d-ffca47c25267fcb5"
+      ],
+      "khoa": "noi_bo:known_issue",
+      "slots": {
+        "subject": [
+          "rg-e-641ad274d23eb52f"
+        ],
+        "symptom": [
+          "rg-e-4dd43afc48f008e7"
+        ],
+        "condition": [
+          "rg-e-e76e712c3ca3d71f"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-26c9143c989059fb",
+      "doc_key": [
+        "rg-d-e0b8c9cb60d13b3e"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "rg-e-444c3b75a3565616"
+        ],
+        "cause": [
+          "rg-e-4722737e322bd768"
+        ],
+        "condition": [
+          "rg-e-9e703c5bd7288a1f"
+        ],
+        "remediation": [
+          "rg-e-2453e1a58759d4d4"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-2816494a44966671",
+      "doc_key": [
+        "rg-d-0ab8f0c40c268cff"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-00b5db3b4ad575b1"
+        ],
+        "condition": [
+          "rg-e-b7d2a8619943ae79"
+        ],
+        "remediation": [
+          "rg-e-3c77ff9cccd036c0"
+        ],
+        "source": [
+          "rg-e-641ad274d23eb52f"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-285655f9c004c451",
+      "doc_key": [
+        "rg-d-c9e3095f8044838f"
+      ],
+      "khoa": "noi_bo:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "rg-e-027ff8912f66f5b5"
+        ],
+        "symptom": [
+          "rg-e-45b6c7aed0a57d2c"
+        ],
+        "cause": [
+          "rg-e-839e8ce412905f8e"
+        ],
+        "remediation": [
+          "rg-e-a82eeda712e99e16"
+        ],
+        "source": [
+          "rg-e-a44569c506f1f43b"
+        ],
+        "time": [
+          "rg-e-c453af70a5210cfd"
+        ],
+        "owner": [
+          "rg-e-a9f237c0fb4258f1"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-2860c87387e8034d",
+      "doc_key": [
+        "rg-d-38e3e41adad6a612"
+      ],
+      "khoa": "khach_hang_a:known_issue",
+      "slots": {
+        "subject": [
+          "rg-e-2ac3cce96793ec7c"
+        ],
+        "remediation": [
+          "rg-e-596a99fe7886b26f"
+        ],
+        "time": [
+          "rg-e-05cfc9ad1165e420"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-2adcb8bbd541a085",
+      "doc_key": [
+        "rg-d-344dd6f3419f5cec"
+      ],
+      "khoa": "khach_hang_b:tai_lieu_san_pham",
+      "slots": {
+        "subject": [
+          "rg-e-93d443dafadefdb9"
+        ],
+        "symptom": [
+          "rg-e-477abb4f7113dab7"
+        ],
+        "condition": [
+          "rg-e-cfade414e3b29d9c"
+        ],
+        "remediation": [
+          "rg-e-5685c5356c523b50"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-2baeeac1a50dedb5",
+      "doc_key": [
+        "rg-d-b83dc3272723266a"
+      ],
+      "khoa": "khach_hang_a:postmortem",
+      "slots": {
+        "subject": [
+          "rg-e-0d61c3d54d182753"
+        ],
+        "cause": [
+          "rg-e-856528fa605780bc"
+        ],
+        "remediation": [
+          "rg-e-db6f2d38de66e004"
+        ],
+        "time": [
+          "rg-e-b31d4f33cf098966"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-2bc21ee882b9fec2",
+      "doc_key": [
+        "rg-d-dbb27714793ff6cf"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "rg-e-968835017fd7613f"
+        ],
+        "symptom": [
+          "rg-e-1eadacece9d37544"
+        ],
+        "condition": [
+          "rg-e-b641b61267ff574c"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-2c06c5517f5d51cb",
+      "doc_key": [
+        "rg-d-9ebbda870624bd52"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "rg-e-613db5a29c5c0717"
+        ],
+        "condition": [
+          "rg-e-1e7f301f4793f84d"
+        ],
+        "source": [
+          "rg-e-284e5b78f80369b9"
+        ],
+        "owner": [
+          "rg-e-d21ba7830e24f528"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-2c6d86d6b74b9521",
+      "doc_key": [
+        "rg-d-3f2fdcb8208df7c4"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-d84368a064518cc8"
+        ],
+        "remediation": [
+          "rg-e-0db0ffaf3d3699fe"
+        ],
+        "time": [
+          "rg-e-eb18e42b9edda065"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-2decc2267f7165de",
+      "doc_key": [
+        "rg-d-8cf5034279422348"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "rg-e-d8658b75c1ffefe1"
+        ],
+        "remediation": [
+          "rg-e-2916063ed9f1305b"
+        ],
+        "time": [
+          "rg-e-b8190f5c9633b88f"
+        ],
+        "owner": [
+          "rg-e-a2c70079024ad967"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-2dee50968d00a09a",
+      "doc_key": [
+        "rg-d-dbb27714793ff6cf"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "rg-e-641ad274d23eb52f"
+        ],
+        "symptom": [
+          "rg-e-1eadacece9d37544"
+        ],
+        "condition": [
+          "rg-e-b641b61267ff574c"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-2e63273e2a3cd276",
+      "doc_key": [
+        "rg-d-5da00f6a25f16f2f"
+      ],
+      "khoa": "khach_hang_a:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "rg-e-65304a57a54ed6ec"
+        ],
+        "remediation": [
+          "rg-e-ca2268ce8dd77355"
+        ],
+        "source": [
+          "rg-e-8cf4556c65dfa61f"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-2f6956ebb2692ede",
+      "doc_key": [
+        "rg-d-9ebbda870624bd52"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "rg-e-284e5b78f80369b9"
+        ],
+        "condition": [
+          "rg-e-81f23220764ed049"
+        ],
+        "source": [
+          "rg-e-284e5b78f80369b9"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-303b2258cb3fad8a",
+      "doc_key": [
+        "rg-d-e16cfabdf8392f71"
+      ],
+      "khoa": "khach_hang_b:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-144777d0acdf7bb1"
+        ],
+        "condition": [
+          "rg-e-583582975df0bd03"
+        ],
+        "remediation": [
+          "rg-e-9aa1021e4fa44d28"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-318f1ef2bb932a95",
+      "doc_key": [
+        "rg-d-d88f75eb96f3bf11"
+      ],
+      "khoa": "khach_hang_b:canh_bao",
+      "slots": {
+        "subject": [
+          "rg-e-0d61c3d54d182753"
+        ],
+        "condition": [
+          "rg-e-e4a0c1556d3b2c77"
+        ],
+        "remediation": [
+          "rg-e-2983b771055b758c"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-31909b7546db47c3",
+      "doc_key": [
+        "rg-d-c6020d319867328d"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "rg-e-8f98d6ca6895e50a"
+        ],
+        "condition": [
+          "rg-e-cbec37c5505ba0ab"
+        ],
+        "remediation": [
+          "rg-e-07472f5d0bf67609"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-3211700de69758c7",
+      "doc_key": [
+        "rg-d-baa3ab53fac44f38"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "rg-e-42dc974b97872801"
+        ],
+        "symptom": [
+          "rg-e-0d61c3d54d182753"
+        ],
+        "cause": [
+          "rg-e-5bcbdd25f7e79b2f"
+        ],
+        "condition": [
+          "rg-e-8e9fb9cd9482b61c"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-328cf1580b428ce5",
+      "doc_key": [
+        "rg-d-89718346ff3c9d62"
+      ],
+      "khoa": "noi_bo:tai_lieu_san_pham",
+      "slots": {
+        "subject": [
+          "rg-e-641ad274d23eb52f"
+        ],
+        "condition": [
+          "rg-e-e716ef3e6f271391"
+        ],
+        "owner": [
+          "rg-e-a1c4ce43aa4ed4ba"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-34d345fe07edcb1a",
+      "doc_key": [
+        "rg-d-9a43ace88db479e6"
+      ],
+      "khoa": "noi_bo:faq",
+      "slots": {
+        "subject": [
+          "rg-e-452587c884f2aaf4"
+        ],
+        "symptom": [
+          "rg-e-7461ea731e9b54e2"
+        ],
+        "condition": [
+          "rg-e-9b4bd16a43b110b4"
+        ],
+        "remediation": [
+          "rg-e-0d223256f94ed628"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-34da7130040bf65d",
+      "doc_key": [
+        "rg-d-91e38545310a5389"
+      ],
+      "khoa": "khach_hang_a:canh_bao",
+      "slots": {
+        "subject": [
+          "rg-e-1aa7e39347462d93"
+        ],
+        "cause": [
+          "rg-e-8b6930ce617de26e"
+        ],
+        "condition": [
+          "rg-e-f4d46a1a81243a80"
+        ],
+        "remediation": [
+          "rg-e-934590af38e7e6b8"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-365311066e8df311",
+      "doc_key": [
+        "rg-d-baa3ab53fac44f38"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "rg-e-c0272bf633220f1e"
+        ],
+        "symptom": [
+          "rg-e-377bc3a2a62f8b89"
+        ],
+        "condition": [
+          "rg-e-ab110849ddf1b288"
+        ],
+        "remediation": [
+          "rg-e-182332eb41d0c7ac"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-38d428345eb4496f",
+      "doc_key": [
+        "rg-d-179c42296ad558f6"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "rg-e-8849921273125a56"
+        ],
+        "condition": [
+          "rg-e-b9953d659a5d677b"
+        ],
+        "remediation": [
+          "rg-e-ea1839ccc2541074"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-3994f1b4a7d12cee",
+      "doc_key": [
+        "rg-d-cf901a87f51f7d1c"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "rg-e-543a4d6baa0085e6"
+        ],
+        "symptom": [
+          "rg-e-cecbec36ebe143fc"
+        ],
+        "condition": [
+          "rg-e-612eb5e0ff5d6e32"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-39b75f33569ed61f",
+      "doc_key": [
+        "rg-d-9e85918ba1236504"
+      ],
+      "khoa": "noi_bo:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-cb76ea9f33d62898"
+        ],
+        "condition": [
+          "rg-e-972187033784a056"
+        ],
+        "time": [
+          "rg-e-6592cd4fad04c99b"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-3a8091783262a8ca",
+      "doc_key": [
+        "rg-d-3d40cbf823e46b66"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-0c45f3f770df3bb8"
+        ],
+        "condition": [
+          "rg-e-d8faa931cf742abe"
+        ],
+        "remediation": [
+          "rg-e-3081726d15544a9f"
+        ],
+        "time": [
+          "rg-e-0dc3a0392be263f7"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-3bd75387d5e6fcac",
+      "doc_key": [
+        "rg-d-cd166695479fe5f0"
+      ],
+      "khoa": "noi_bo:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "rg-e-144777d0acdf7bb1"
+        ],
+        "symptom": [
+          "rg-e-0dba5c65080ab381"
+        ],
+        "time": [
+          "rg-e-920a6fdc7ee7339c"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-3c2301ba6c62aa5c",
+      "doc_key": [
+        "rg-d-0ab8f0c40c268cff"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-d96e1d0c9ed44787"
+        ],
+        "symptom": [
+          "rg-e-c99613d365b08e6d"
+        ],
+        "condition": [
+          "rg-e-9b4bd16a43b110b4"
+        ],
+        "remediation": [
+          "rg-e-949de04995ae401f"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-3da6e8adeb4754fa",
+      "doc_key": [
+        "rg-d-40265e9d47579e17"
+      ],
+      "khoa": "khach_hang_a:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-8ae59b693ab73032"
+        ],
+        "condition": [
+          "rg-e-be34582d44e8889c"
+        ],
+        "time": [
+          "rg-e-115e6b8c6d9f84c5"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-3dc85ec723c2e1ed",
+      "doc_key": [
+        "rg-d-29bb9d56de8edc7c"
+      ],
+      "khoa": "khach_hang_a:troubleshooting",
+      "slots": {
+        "subject": [
+          "rg-e-8ae59b693ab73032"
+        ],
+        "symptom": [
+          "rg-e-1f089c9f6f1f3f00"
+        ],
+        "condition": [
+          "rg-e-de978628c11a34e0"
+        ],
+        "source": [
+          "rg-e-06958159d0fcbad7"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-3dddf1632b805d6b",
+      "doc_key": [
+        "rg-d-e4526ab1daba6c87"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-865985a94f5061a0"
+        ],
+        "condition": [
+          "rg-e-024dc9c92637efc6"
+        ],
+        "remediation": [
+          "rg-e-d089b590be7233f5"
+        ],
+        "time": [
+          "rg-e-f92676d89985ea79"
+        ],
+        "owner": [
+          "rg-e-83fa7958255fc72e"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-3f13db1f90411b62",
+      "doc_key": [
+        "rg-d-dda2d55d6e9da0e4"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-ba0b2177ea270a69"
+        ],
+        "condition": [
+          "rg-e-e7dd478f6021e79b"
+        ],
+        "remediation": [
+          "rg-e-0d1aa3621e05cede"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-3f8d40be1779f015",
+      "doc_key": [
+        "rg-d-c344875b966298ff"
+      ],
+      "khoa": "noi_bo:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-17b29a2ea96b1648"
+        ],
+        "condition": [
+          "rg-e-9927abc73d0818b6"
+        ],
+        "source": [
+          "rg-e-7b199dbc8321bf6d"
+        ],
+        "owner": [
+          "rg-e-10b9181141f51dc6"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-3f9370b4f3f65d5f",
+      "doc_key": [
+        "rg-d-8cf5034279422348"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "rg-e-d8658b75c1ffefe1"
+        ],
+        "cause": [
+          "rg-e-ab6796d3af2ad7b1"
+        ],
+        "remediation": [
+          "rg-e-409d3baa839e1540"
+        ],
+        "time": [
+          "rg-e-0c51c48906055314"
+        ],
+        "owner": [
+          "rg-e-668784c91d775df4"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-3fb31d9dc6876e68",
+      "doc_key": [
+        "rg-d-cf901a87f51f7d1c"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "rg-e-1bcdccee4b2bcf4b"
+        ],
+        "symptom": [
+          "rg-e-b19771bc19227b71"
+        ],
+        "remediation": [
+          "rg-e-15d8bff36156a91d"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-3fe132b82eaf9c04",
+      "doc_key": [
+        "rg-d-89718346ff3c9d62"
+      ],
+      "khoa": "noi_bo:tai_lieu_san_pham",
+      "slots": {
+        "subject": [
+          "rg-e-641ad274d23eb52f"
+        ],
+        "symptom": [
+          "rg-e-7d1af0ef4e99b066"
+        ],
+        "cause": [
+          "rg-e-9e602325ddd3727f"
+        ],
+        "source": [
+          "rg-e-5c348c9af8a02fd4"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-424c3ca89c4fbe8b",
+      "doc_key": [
+        "rg-d-c84aa1575210ced3"
+      ],
+      "khoa": "noi_bo:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "rg-e-e1024dc7da15919d"
+        ],
+        "symptom": [
+          "rg-e-957b99d88a8fbdf4"
+        ],
+        "cause": [
+          "rg-e-03a01ad1ed15e55c"
+        ],
+        "remediation": [
+          "rg-e-92e04e80144a8581"
+        ],
+        "time": [
+          "rg-e-f6695ab6b53dc433"
+        ],
+        "owner": [
+          "rg-e-8618c05a8115a895"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-42b88e711fdb0008",
+      "doc_key": [
+        "rg-d-7ac246b54f825475"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "rg-e-d6a7569b8bc32be9"
+        ],
+        "cause": [
+          "rg-e-f5a0effb7e313236"
+        ],
+        "condition": [
+          "rg-e-ace35a3177ba9ad6"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-43d6b4bca4871add",
+      "doc_key": [
+        "rg-d-baa3ab53fac44f38"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "rg-e-c0272bf633220f1e"
+        ],
+        "symptom": [
+          "rg-e-0d61c3d54d182753"
+        ],
+        "condition": [
+          "rg-e-a15d6b82cb7b823d"
+        ],
+        "remediation": [
+          "rg-e-dc2822a2f597f1d6"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-444b13213d853a6d",
+      "doc_key": [
+        "rg-d-fa66c10ffbe45526"
+      ],
+      "khoa": "khach_hang_a:canh_bao",
+      "slots": {
+        "subject": [
+          "rg-e-42cd9e6a8341971f"
+        ],
+        "condition": [
+          "rg-e-14f9d68a7347405d"
+        ],
+        "source": [
+          "rg-e-b34b339157db8618"
+        ],
+        "time": [
+          "rg-e-fc4fe449d0944e98"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-444ccc7c0904941a",
+      "doc_key": [
+        "rg-d-fa66c10ffbe45526"
+      ],
+      "khoa": "khach_hang_a:canh_bao",
+      "slots": {
+        "subject": [
+          "rg-e-8ae59b693ab73032"
+        ],
+        "symptom": [
+          "rg-e-26d4b97b56b72818"
+        ],
+        "condition": [
+          "rg-e-a45e790f017ecab3"
+        ],
+        "remediation": [
+          "rg-e-8c4d791337f2e28b"
+        ],
+        "owner": [
+          "rg-e-75661b3d49b4485f"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-445305efa0fa76b5",
+      "doc_key": [
+        "rg-d-7874276fab71f7e8"
+      ],
+      "khoa": "khach_hang_a:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-8ae59b693ab73032"
+        ],
+        "condition": [
+          "rg-e-956ea9a18992dd66"
+        ],
+        "remediation": [
+          "rg-e-c35120d373ff468b"
+        ],
+        "owner": [
+          "rg-e-0058a94a223ef12e"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-4475e245809b77ee",
+      "doc_key": [
+        "rg-d-cf901a87f51f7d1c"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "rg-e-a9f1375b05a33c00"
+        ],
+        "symptom": [
+          "rg-e-9b6d5c0a3d038e9c"
+        ],
+        "condition": [
+          "rg-e-c94bce52eeaae8ff"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-44e5177dd24eba70",
+      "doc_key": [
+        "rg-d-c344875b966298ff"
+      ],
+      "khoa": "noi_bo:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-6157985e4677c740"
+        ],
+        "condition": [
+          "rg-e-cabd1513e9920da2"
+        ],
+        "time": [
+          "rg-e-937687a695d4a29b"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-4561bb90071e3d5f",
+      "doc_key": [
+        "rg-d-6bb97eae18911d80"
+      ],
+      "khoa": "khach_hang_a:tai_lieu_san_pham",
+      "slots": {
+        "subject": [
+          "rg-e-8951e659fb46c83c"
+        ],
+        "condition": [
+          "rg-e-7ba40825b9c9fe0d"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-4583ef65c193ae39",
+      "doc_key": [
+        "rg-d-c84aa1575210ced3"
+      ],
+      "khoa": "noi_bo:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "rg-e-968835017fd7613f"
+        ],
+        "symptom": [
+          "rg-e-95fe6d3a891fb55e"
+        ],
+        "cause": [
+          "rg-e-92d20f3ea2c91b0e"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-479efc0de10096cc",
+      "doc_key": [
+        "rg-d-23deaac4975f5c07"
+      ],
+      "khoa": "khach_hang_b:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-5efca1cc55690d7f"
+        ],
+        "condition": [
+          "rg-e-d5c68b99bbebd974"
+        ],
+        "time": [
+          "rg-e-8e757246f8f623dc"
+        ],
+        "owner": [
+          "rg-e-93ca105d5390d917"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-49c0c6df838696e8",
+      "doc_key": [
+        "rg-d-5500d937598b0c31"
+      ],
+      "khoa": "noi_bo:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "rg-e-d6eb546cf9e7e33d"
+        ],
+        "condition": [
+          "rg-e-0ff27cd2e2cefdae"
+        ],
+        "time": [
+          "rg-e-60856e04ad08dea7"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-4b943b535f9e9a66",
+      "doc_key": [
+        "rg-d-8cf5034279422348"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "rg-e-68c85f2f183bcd8a"
+        ],
+        "cause": [
+          "rg-e-5dda34dd49b72c81"
+        ],
+        "time": [
+          "rg-e-797637f22d6dd6e9"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-4c68a12870b9ce41",
+      "doc_key": [
+        "rg-d-3dbfa80d59e7c220"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-21734cb8ea7f3fef"
+        ],
+        "condition": [
+          "rg-e-9ec99652aa62c093"
+        ],
+        "remediation": [
+          "rg-e-77238dbe2c23668c"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-4fcd6a0910fc45fa",
+      "doc_key": [
+        "rg-d-dda2d55d6e9da0e4"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-a74ad4bfda984f89"
+        ],
+        "condition": [
+          "rg-e-2beab3ba4ce9deb5"
+        ],
+        "source": [
+          "rg-e-ade5b80b75e9f8d7"
+        ],
+        "time": [
+          "rg-e-cf7262b7ca743a0a"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-50a6929d4062741b",
+      "doc_key": [
+        "rg-d-2faf64f3725eda6c"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "rg-e-88ab7686eade82d4"
+        ],
+        "remediation": [
+          "rg-e-5444cda8391fd4cf"
+        ],
+        "source": [
+          "rg-e-eab14522ed579cc9"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-5159d5f540b661e1",
+      "doc_key": [
+        "rg-d-c84aa1575210ced3"
+      ],
+      "khoa": "noi_bo:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "rg-e-9f1b9da25375f695"
+        ],
+        "symptom": [
+          "rg-e-cec59b3f13282a2c"
+        ],
+        "cause": [
+          "rg-e-92d20f3ea2c91b0e"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-5242912aad35bd9f",
+      "doc_key": [
+        "rg-d-91e38545310a5389"
+      ],
+      "khoa": "khach_hang_a:canh_bao",
+      "slots": {
+        "subject": [
+          "rg-e-04d5a8d1fda0fedd"
+        ],
+        "condition": [
+          "rg-e-c93f7bebb11f09cb"
+        ],
+        "remediation": [
+          "rg-e-d830b1a2d26c01b4"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-524e1af7caa7abae",
+      "doc_key": [
+        "rg-d-40265e9d47579e17"
+      ],
+      "khoa": "khach_hang_a:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-8ae59b693ab73032"
+        ],
+        "source": [
+          "rg-e-c30f7b7f578eda02"
+        ],
+        "owner": [
+          "rg-e-75661b3d49b4485f"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-52fa0cc1e54edcf5",
+      "doc_key": [
+        "rg-d-23deaac4975f5c07"
+      ],
+      "khoa": "khach_hang_b:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-2f00611000dab2fe"
+        ],
+        "condition": [
+          "rg-e-39b5557185b75728"
+        ],
+        "time": [
+          "rg-e-eb13703e545e9077"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-54d60dc7f8b7d7a5",
+      "doc_key": [
+        "rg-d-91e38545310a5389"
+      ],
+      "khoa": "khach_hang_a:canh_bao",
+      "slots": {
+        "subject": [
+          "rg-e-8334d1bc37b3bb8a"
+        ],
+        "condition": [
+          "rg-e-2721a4f912191fc8"
+        ],
+        "time": [
+          "rg-e-5f8099e533637480"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-5642eff305a8143d",
+      "doc_key": [
+        "rg-d-40265e9d47579e17"
+      ],
+      "khoa": "khach_hang_a:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-c30f7b7f578eda02"
+        ],
+        "condition": [
+          "rg-e-17ac2d5273017e90"
+        ],
+        "remediation": [
+          "rg-e-c6a60fa46340abad"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-56c2f0c1d465a514",
+      "doc_key": [
+        "rg-d-8ffdffbb0c807a35"
+      ],
+      "khoa": "noi_bo:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "rg-e-ec14539550c3258c"
+        ],
+        "condition": [
+          "rg-e-3115a1f44dbb5417"
+        ],
+        "remediation": [
+          "rg-e-31ec2924441d2f8e"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-5802048f6cf85f4c",
+      "doc_key": [
+        "rg-d-f6f9e54102fac74d"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-27e4dc0471a863f5"
+        ],
+        "remediation": [
+          "rg-e-4ee38d2596e3f907"
+        ],
+        "time": [
+          "rg-e-6a393c4d5595c6db"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-59e523b966345e7b",
+      "doc_key": [
+        "rg-d-cd166695479fe5f0"
+      ],
+      "khoa": "noi_bo:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "rg-e-ca442fc3fcdee2a1"
+        ],
+        "condition": [
+          "rg-e-d5cf8a01e13efb2c"
+        ],
+        "remediation": [
+          "rg-e-d5cf8a01e13efb2c"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-5c2c46da5d7dd716",
+      "doc_key": [
+        "rg-d-8ffdffbb0c807a35"
+      ],
+      "khoa": "noi_bo:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "rg-e-ec14539550c3258c"
+        ],
+        "condition": [
+          "rg-e-49fbe17189e2230d"
+        ],
+        "remediation": [
+          "rg-e-ee863616d570ee1f"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-5c75be7547e368bb",
+      "doc_key": [
+        "rg-d-91e38545310a5389"
+      ],
+      "khoa": "khach_hang_a:canh_bao",
+      "slots": {
+        "subject": [
+          "rg-e-c203f16031237d97"
+        ],
+        "symptom": [
+          "rg-e-f9b6543fe4247255"
+        ],
+        "condition": [
+          "rg-e-b62cce7f56d6a831"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-6023641e0602bb55",
+      "doc_key": [
+        "rg-d-3d40cbf823e46b66"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-c7d2eda042d63429"
+        ],
+        "condition": [
+          "rg-e-3ce972c9f33643ea"
+        ],
+        "remediation": [
+          "rg-e-3d2ffd03447cba39"
+        ],
+        "time": [
+          "rg-e-3ce972c9f33643ea"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-6036162d116e3afd",
+      "doc_key": [
+        "rg-d-9a43ace88db479e6"
+      ],
+      "khoa": "noi_bo:faq",
+      "slots": {
+        "subject": [
+          "rg-e-029df962973df989"
+        ],
+        "condition": [
+          "rg-e-4fb01c5b68f657c5"
+        ],
+        "remediation": [
+          "rg-e-c8f1bcee841e7c98"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-61c471d24ee59251",
+      "doc_key": [
+        "rg-d-ffca47c25267fcb5"
+      ],
+      "khoa": "noi_bo:known_issue",
+      "slots": {
+        "subject": [
+          "rg-e-6c454aca887cab64"
+        ],
+        "cause": [
+          "rg-e-7d8f6be8c2e79413"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-629adc4723825226",
+      "doc_key": [
+        "rg-d-e4526ab1daba6c87"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-ef3c64919c7f1316"
+        ],
+        "condition": [
+          "rg-e-b4ad9e0dd42cea53"
+        ],
+        "remediation": [
+          "rg-e-7774e88ad33061a0"
+        ],
+        "time": [
+          "rg-e-537af8bd11432683"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-642b6e07dd2ffa27",
+      "doc_key": [
+        "rg-d-baa3ab53fac44f38"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "rg-e-42cd9e6a8341971f"
+        ],
+        "remediation": [
+          "rg-e-2c3052dd6f38c6de"
+        ],
+        "time": [
+          "rg-e-5bdd51016b0a3780"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-645cd01b701234ba",
+      "doc_key": [
+        "rg-d-2faf64f3725eda6c"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "rg-e-b69b21059082f573"
+        ],
+        "condition": [
+          "rg-e-1c33a59fbe6328fd"
+        ],
+        "remediation": [
+          "rg-e-6cd8bc448b8b5353"
+        ],
+        "source": [
+          "rg-e-eab14522ed579cc9"
+        ],
+        "time": [
+          "rg-e-76b50b574d1468a2"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-64bd1b959a30fd15",
+      "doc_key": [
+        "rg-d-c84aa1575210ced3"
+      ],
+      "khoa": "noi_bo:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "rg-e-641ad274d23eb52f"
+        ],
+        "symptom": [
+          "rg-e-7727da8e8593ef85"
+        ],
+        "cause": [
+          "rg-e-f4ca9f62bbcf89ca"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-65c216aee52d984c",
+      "doc_key": [
+        "rg-d-61f668c01883a760"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "rg-e-8ae59b693ab73032"
+        ],
+        "symptom": [
+          "rg-e-5fa4f9d3b961517d"
+        ],
+        "cause": [
+          "rg-e-6d971ed583607985"
+        ],
+        "condition": [
+          "rg-e-956ea9a18992dd66"
+        ],
+        "remediation": [
+          "rg-e-c01c4bd6a5c2eef4"
+        ],
+        "source": [
+          "rg-e-3cda1756ae8291ab"
+        ],
+        "time": [
+          "rg-e-48c1c7fd99dcee77"
+        ],
+        "owner": [
+          "rg-e-7f71f40bfb414069"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-67ff284af488fae0",
+      "doc_key": [
+        "rg-d-dda2d55d6e9da0e4"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-c3877ca8e2f5d3df"
+        ],
+        "condition": [
+          "rg-e-e4cf3160203dbced"
+        ],
+        "remediation": [
+          "rg-e-460d60bf42525e44"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-69f6d9045c316979",
+      "doc_key": [
+        "rg-d-c84aa1575210ced3"
+      ],
+      "khoa": "noi_bo:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "rg-e-de6ed5101e150b93"
+        ],
+        "symptom": [
+          "rg-e-14cd2a1cc6ad4920"
+        ],
+        "cause": [
+          "rg-e-92d20f3ea2c91b0e"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-6a022bfcf09fdbda",
+      "doc_key": [
+        "rg-d-2faf64f3725eda6c"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "rg-e-8305a259fc6d2b16"
+        ],
+        "condition": [
+          "rg-e-16ec8108a638335e"
+        ],
+        "remediation": [
+          "rg-e-a894f8fe524e7be5"
+        ],
+        "source": [
+          "rg-e-eab14522ed579cc9"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-6a2faf6a6639bcb1",
+      "doc_key": [
+        "rg-d-3d40cbf823e46b66"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-0c45f3f770df3bb8"
+        ],
+        "condition": [
+          "rg-e-92b246a35947bef5"
+        ],
+        "owner": [
+          "rg-e-06efbd790fcdadc8"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-6a50a3eb20953bdb",
+      "doc_key": [
+        "rg-d-03f3c0960dc05c52"
+      ],
+      "khoa": "noi_bo:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "rg-e-64fc7fc1a7e4d04d"
+        ],
+        "condition": [
+          "rg-e-8355ce47f25683c3"
+        ],
+        "remediation": [
+          "rg-e-d97460292ed5560b"
+        ],
+        "source": [
+          "rg-e-3c4cf8337e5a822d"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-6ab58791e6ce0fde",
+      "doc_key": [
+        "rg-d-5da00f6a25f16f2f"
+      ],
+      "khoa": "khach_hang_a:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "rg-e-49e90ee38f372698"
+        ],
+        "condition": [
+          "rg-e-38dd208e489fcae8"
+        ],
+        "remediation": [
+          "rg-e-d74afa25f5c414a2"
+        ],
+        "source": [
+          "rg-e-8cf4556c65dfa61f"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-6b5e7088077c2736",
+      "doc_key": [
+        "rg-d-0ab8f0c40c268cff"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-d96e1d0c9ed44787"
+        ],
+        "condition": [
+          "rg-e-27137edec5152888"
+        ],
+        "remediation": [
+          "rg-e-5004c4cf41239b11"
+        ],
+        "source": [
+          "rg-e-29b16071cfccd1b7"
+        ],
+        "owner": [
+          "rg-e-d84368a064518cc8"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-6f865caee5e2156e",
+      "doc_key": [
+        "rg-d-dbb27714793ff6cf"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "rg-e-1cd96049dea45936"
+        ],
+        "condition": [
+          "rg-e-7090cbb0f35079a1"
+        ],
+        "remediation": [
+          "rg-e-dd2ff09fc1276215"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-7072c8138682cb2b",
+      "doc_key": [
+        "rg-d-8cf5034279422348"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "rg-e-e081efe653ce270b"
+        ],
+        "symptom": [
+          "rg-e-809820dd608f5b6d"
+        ],
+        "source": [
+          "rg-e-5b94c61d2f06e035"
+        ],
+        "time": [
+          "rg-e-2eb0341b377e16f8"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-71e0855c4874ca3a",
+      "doc_key": [
+        "rg-d-3dbfa80d59e7c220"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-39b929fb8fa7d946"
+        ],
+        "condition": [
+          "rg-e-dbe01cd65dadb85c"
+        ],
+        "remediation": [
+          "rg-e-5d54bd691064d530"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-748afbb27f3cf5dd",
+      "doc_key": [
+        "rg-d-c84aa1575210ced3"
+      ],
+      "khoa": "noi_bo:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "rg-e-68b9231e37813575"
+        ],
+        "symptom": [
+          "rg-e-34aa4a412b493922"
+        ],
+        "cause": [
+          "rg-e-440e86eba23cec5c"
+        ],
+        "time": [
+          "rg-e-f6695ab6b53dc433"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-74f3f8fb99909a9e",
+      "doc_key": [
+        "rg-d-c84aa1575210ced3"
+      ],
+      "khoa": "noi_bo:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "rg-e-4fe58cd62bd92cb1"
+        ],
+        "symptom": [
+          "rg-e-32a78d0fa48ec7af"
+        ],
+        "remediation": [
+          "rg-e-55b4e4d564d3de15"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-7570efd51f35eb17",
+      "doc_key": [
+        "rg-d-3d40cbf823e46b66"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-c85a17963c1258a0"
+        ],
+        "condition": [
+          "rg-e-20adae785da12907"
+        ],
+        "remediation": [
+          "rg-e-bde7443a5bc4b5af"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-7a1994d8c8b8a102",
+      "doc_key": [
+        "rg-d-f6f9e54102fac74d"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-e091fe6dd2429d23"
+        ],
+        "condition": [
+          "rg-e-4df3d1e6080aebc0"
+        ],
+        "remediation": [
+          "rg-e-eedff61ea1406cc5"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-7a4f6a5275e6156e",
+      "doc_key": [
+        "rg-d-fa66c10ffbe45526"
+      ],
+      "khoa": "khach_hang_a:canh_bao",
+      "slots": {
+        "subject": [
+          "rg-e-8ae59b693ab73032"
+        ],
+        "symptom": [
+          "rg-e-26d4b97b56b72818"
+        ],
+        "condition": [
+          "rg-e-bd411128e5efc567"
+        ],
+        "remediation": [
+          "rg-e-c24526d03b4d1ad0"
+        ],
+        "owner": [
+          "rg-e-0058a94a223ef12e"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-7aad861594a2caac",
+      "doc_key": [
+        "rg-d-3f2fdcb8208df7c4"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-469b560eff0dcef0"
+        ],
+        "condition": [
+          "rg-e-464986268bb9b8a1"
+        ],
+        "remediation": [
+          "rg-e-b29754bd58e21aa9"
+        ],
+        "time": [
+          "rg-e-f3e82e6ed4836ff8"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-7b50fafdcafe7185",
+      "doc_key": [
+        "rg-d-38e3e41adad6a612"
+      ],
+      "khoa": "khach_hang_a:known_issue",
+      "slots": {
+        "subject": [
+          "rg-e-a318499a949ac35d"
+        ],
+        "symptom": [
+          "rg-e-c38600bc96dc1290"
+        ],
+        "cause": [
+          "rg-e-cc4a51b3a9830e39"
+        ],
+        "condition": [
+          "rg-e-c8ca1db44a47c594"
+        ],
+        "remediation": [
+          "rg-e-b94a44d1227194e5"
+        ],
+        "source": [
+          "rg-e-8a98f707e98cdff5"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-7ba1056a613ba22c",
+      "doc_key": [
+        "rg-d-7ac246b54f825475"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "rg-e-8ae59b693ab73032"
+        ],
+        "symptom": [
+          "rg-e-b6c107c1630551be"
+        ],
+        "cause": [
+          "rg-e-9a2a775b8de007cf"
+        ],
+        "remediation": [
+          "rg-e-cc8d00cb6bf166c8"
+        ],
+        "source": [
+          "rg-e-b87b2464dbeb0d74"
+        ],
+        "time": [
+          "rg-e-19eda0141974adb6"
+        ],
+        "owner": [
+          "rg-e-7f71f40bfb414069"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-7c595d8fb38aaedf",
+      "doc_key": [
+        "rg-d-acda9e0c651710e5"
+      ],
+      "khoa": "khach_hang_b:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "rg-e-5ddd8ee598d53810"
+        ],
+        "remediation": [
+          "rg-e-8a18539cf180e4dd"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-8067fdae09bf5e17",
+      "doc_key": [
+        "rg-d-9e85918ba1236504"
+      ],
+      "khoa": "noi_bo:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-d7c1d53e778812b2"
+        ],
+        "symptom": [
+          "rg-e-a36ea376b9cf2789"
+        ],
+        "condition": [
+          "rg-e-a7dcd63bdb52e66e"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-817d6a6e69d66d33",
+      "doc_key": [
+        "rg-d-ec093e0c91e7b9e4"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-10c5da25d05a9838"
+        ],
+        "condition": [
+          "rg-e-4bc55e8179503af4"
+        ],
+        "time": [
+          "rg-e-daeff91e894f3cdc"
+        ],
+        "owner": [
+          "rg-e-3e37567a31dbb273"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-84b4f34f5f3290ac",
+      "doc_key": [
+        "rg-d-2faf64f3725eda6c"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "rg-e-cd335200f0139e4a"
+        ],
+        "condition": [
+          "rg-e-9f66437ab459d438"
+        ],
+        "source": [
+          "rg-e-eab14522ed579cc9"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-86228c6368c05645",
+      "doc_key": [
+        "rg-d-16d8f7c60fc94839"
+      ],
+      "khoa": "noi_bo:log",
+      "slots": {
+        "subject": [
+          "rg-e-5f0e956d86008bba"
+        ],
+        "symptom": [
+          "rg-e-f62ed8968ce4d315"
+        ],
+        "remediation": [
+          "rg-e-433120cdb7dbf2b0"
+        ],
+        "time": [
+          "rg-e-2597a8cfebbd6fa3"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-8680be1482de7d48",
+      "doc_key": [
+        "rg-d-179c42296ad558f6"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "rg-e-bd2e2c870769c063"
+        ],
+        "condition": [
+          "rg-e-bb099e060b128d34"
+        ],
+        "remediation": [
+          "rg-e-3459950d0a36aff6"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-86be450dd27daa0e",
+      "doc_key": [
+        "rg-d-6bb97eae18911d80"
+      ],
+      "khoa": "khach_hang_a:tai_lieu_san_pham",
+      "slots": {
+        "subject": [
+          "rg-e-8951e659fb46c83c"
+        ],
+        "condition": [
+          "rg-e-66fb4766e2dc36b0"
+        ],
+        "source": [
+          "rg-e-ee221d50d0f61a10"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-871c19e5746a8a0a",
+      "doc_key": [
+        "rg-d-9a43ace88db479e6"
+      ],
+      "khoa": "noi_bo:faq",
+      "slots": {
+        "subject": [
+          "rg-e-452587c884f2aaf4"
+        ],
+        "condition": [
+          "rg-e-45dc934ac534eb99"
+        ],
+        "remediation": [
+          "rg-e-678e0eecfab68b45"
+        ],
+        "time": [
+          "rg-e-adc4336ca7ef7636"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-8770fc6d8e3f469f",
+      "doc_key": [
+        "rg-d-e4526ab1daba6c87"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-bcb1bfd2038e8daf"
+        ],
+        "condition": [
+          "rg-e-e0c0e509b53037ea"
+        ],
+        "remediation": [
+          "rg-e-baf36306b100b684"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-87ba175a46937806",
+      "doc_key": [
+        "rg-d-5da00f6a25f16f2f"
+      ],
+      "khoa": "khach_hang_a:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "rg-e-c4113acb6571d64f"
+        ],
+        "condition": [
+          "rg-e-f9eda5fc2da09edf"
+        ],
+        "remediation": [
+          "rg-e-c33309e393fffb7f"
+        ],
+        "source": [
+          "rg-e-8cf4556c65dfa61f"
+        ],
+        "owner": [
+          "rg-e-96c1ab99f589be3b"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-87f49b6b4d4c5222",
+      "doc_key": [
+        "rg-d-61f668c01883a760"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "rg-e-bea2a518de8c11ac"
+        ],
+        "symptom": [
+          "rg-e-4d84abc868e6d214"
+        ],
+        "cause": [
+          "rg-e-d0057183c4e692b9"
+        ],
+        "remediation": [
+          "rg-e-012ff7cdcd073196"
+        ],
+        "source": [
+          "rg-e-3cda1756ae8291ab"
+        ],
+        "time": [
+          "rg-e-48c1c7fd99dcee77"
+        ],
+        "owner": [
+          "rg-e-7f71f40bfb414069"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-89d163ef962ec452",
+      "doc_key": [
+        "rg-d-9318626799329892"
+      ],
+      "khoa": "khach_hang_a:log",
+      "slots": {
+        "subject": [
+          "rg-e-9111cacdfcfbd697"
+        ],
+        "symptom": [
+          "rg-e-fbfa8334c909b533"
+        ],
+        "condition": [
+          "rg-e-0a711d89c2a661b3"
+        ],
+        "source": [
+          "rg-e-bbeb477c4d5d8ed0"
+        ],
+        "time": [
+          "rg-e-e598678125d3943e"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-8a3f9a0aff6796bb",
+      "doc_key": [
+        "rg-d-c6020d319867328d"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "rg-e-fb6152cee2afd611"
+        ],
+        "condition": [
+          "rg-e-2b9994b8c1e45299"
+        ],
+        "remediation": [
+          "rg-e-e0b25b9375d9b1f4"
+        ],
+        "time": [
+          "rg-e-32e4934eb62abaea"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-8a77b06f6716f1f4",
+      "doc_key": [
+        "rg-d-9318626799329892"
+      ],
+      "khoa": "khach_hang_a:log",
+      "slots": {
+        "subject": [
+          "rg-e-e91ada50dc6b8cbb"
+        ],
+        "condition": [
+          "rg-e-f271dc7ea9b455da"
+        ],
+        "remediation": [
+          "rg-e-cca0277ee6e33c3d"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-8c772f1c86332d98",
+      "doc_key": [
+        "rg-d-8cf5034279422348"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "rg-e-d8658b75c1ffefe1"
+        ],
+        "remediation": [
+          "rg-e-30924372f93bad08"
+        ],
+        "time": [
+          "rg-e-602b10e2465d6572"
+        ],
+        "owner": [
+          "rg-e-a2c70079024ad967"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-8dee0bf826c53e26",
+      "doc_key": [
+        "rg-d-23deaac4975f5c07"
+      ],
+      "khoa": "khach_hang_b:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-91d5a4b04ce00297"
+        ],
+        "condition": [
+          "rg-e-1bd0480480e84456"
+        ],
+        "remediation": [
+          "rg-e-7b199d4c1907d7ae"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-8e0bc53fb5237996",
+      "doc_key": [
+        "rg-d-8cf5034279422348"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "rg-e-d8658b75c1ffefe1"
+        ],
+        "remediation": [
+          "rg-e-ccd2a93e491b46ec"
+        ],
+        "time": [
+          "rg-e-2d549987cdef2fee"
+        ],
+        "owner": [
+          "rg-e-37dfee4353e233d6"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-8efdea185e770060",
+      "doc_key": [
+        "rg-d-3f2fdcb8208df7c4"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-3b6423de15ad1205"
+        ],
+        "symptom": [
+          "rg-e-2c854eabc1de9f2d"
+        ],
+        "condition": [
+          "rg-e-2dc7e52b02513407"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-8f2cb0374f48d216",
+      "doc_key": [
+        "rg-d-3fa3802bdd6f6997"
+      ],
+      "khoa": "noi_bo:faq",
+      "slots": {
+        "subject": [
+          "rg-e-d96e1d0c9ed44787"
+        ],
+        "symptom": [
+          "rg-e-84cf29fba5d47af4"
+        ],
+        "condition": [
+          "rg-e-fcfba29cdeac099a"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-8f63350c245993b9",
+      "doc_key": [
+        "rg-d-53b0670d7385dd3f"
+      ],
+      "khoa": "noi_bo:known_issue",
+      "slots": {
+        "subject": [
+          "rg-e-0583e7fa05d31501"
+        ],
+        "cause": [
+          "rg-e-a6823b80e87cbb3a"
+        ],
+        "source": [
+          "rg-e-e7287911677ff2f0"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-91328a44a82fd2cc",
+      "doc_key": [
+        "rg-d-9318626799329892"
+      ],
+      "khoa": "khach_hang_a:log",
+      "slots": {
+        "subject": [
+          "rg-e-2efc5ae7021a0a8e"
+        ],
+        "symptom": [
+          "rg-e-b13cf1492aecc623"
+        ],
+        "source": [
+          "rg-e-bbeb477c4d5d8ed0"
+        ],
+        "time": [
+          "rg-e-a3ba96795e66ef3d"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-9146fa0d61ab6f44",
+      "doc_key": [
+        "rg-d-89718346ff3c9d62"
+      ],
+      "khoa": "noi_bo:tai_lieu_san_pham",
+      "slots": {
+        "subject": [
+          "rg-e-641ad274d23eb52f"
+        ],
+        "condition": [
+          "rg-e-44a089991b3bd964"
+        ],
+        "remediation": [
+          "rg-e-1e281d8e4aa00848"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-914f4e2264faa470",
+      "doc_key": [
+        "rg-d-6bb97eae18911d80"
+      ],
+      "khoa": "khach_hang_a:tai_lieu_san_pham",
+      "slots": {
+        "subject": [
+          "rg-e-8951e659fb46c83c"
+        ],
+        "condition": [
+          "rg-e-be34582d44e8889c"
+        ],
+        "remediation": [
+          "rg-e-41e8816f0f567847"
+        ],
+        "time": [
+          "rg-e-58a4ab02d0101ae4"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-91f792559ecb18d2",
+      "doc_key": [
+        "rg-d-2faf64f3725eda6c"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "rg-e-8305a259fc6d2b16"
+        ],
+        "condition": [
+          "rg-e-ed201ce95fcc3c72"
+        ],
+        "remediation": [
+          "rg-e-62cbcf04afae80f3"
+        ],
+        "source": [
+          "rg-e-eab14522ed579cc9"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-933b008699a1f803",
+      "doc_key": [
+        "rg-d-c344875b966298ff"
+      ],
+      "khoa": "noi_bo:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-85aadc906cd6a358"
+        ],
+        "condition": [
+          "rg-e-918bdc8bfd213329"
+        ],
+        "time": [
+          "rg-e-102bb781beace6a9"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-934d7ffe1ff11ee8",
+      "doc_key": [
+        "rg-d-9ebbda870624bd52"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "rg-e-613db5a29c5c0717"
+        ],
+        "condition": [
+          "rg-e-f860bbb4bf324167"
+        ],
+        "remediation": [
+          "rg-e-4d5df8798a5d6be5"
+        ],
+        "source": [
+          "rg-e-284e5b78f80369b9"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-937c7c14b4bf8975",
+      "doc_key": [
+        "rg-d-e4526ab1daba6c87"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-52270ba6637e4d7d"
+        ],
+        "condition": [
+          "rg-e-35683b27d78d477f"
+        ],
+        "remediation": [
+          "rg-e-b8e59f5c4b4b5bba"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-93d5a9642c1ac5f4",
+      "doc_key": [
+        "rg-d-7874276fab71f7e8"
+      ],
+      "khoa": "khach_hang_a:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-ce39c0415dfb4697"
+        ],
+        "condition": [
+          "rg-e-e82b6e6a227b2aae"
+        ],
+        "remediation": [
+          "rg-e-d5978ec735a8f41f"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-93fbca694d7f1e7c",
+      "doc_key": [
+        "rg-d-e4526ab1daba6c87"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-e2e251f527c21daf"
+        ],
+        "symptom": [
+          "rg-e-b9b9e07b672e15c6"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-95058f4e5d9999bc",
+      "doc_key": [
+        "rg-d-03f3c0960dc05c52"
+      ],
+      "khoa": "noi_bo:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "rg-e-83a92e565d87e1ab"
+        ],
+        "condition": [
+          "rg-e-87f773b06be706a1"
+        ],
+        "remediation": [
+          "rg-e-048d6908b24fa218"
+        ],
+        "source": [
+          "rg-e-3c4cf8337e5a822d"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-951c599662a539e3",
+      "doc_key": [
+        "rg-d-d88f75eb96f3bf11"
+      ],
+      "khoa": "khach_hang_b:canh_bao",
+      "slots": {
+        "subject": [
+          "rg-e-d4d59a93d4329c2b"
+        ],
+        "symptom": [
+          "rg-e-0d944590043db560"
+        ],
+        "condition": [
+          "rg-e-11aac2a2fc96c205"
+        ],
+        "time": [
+          "rg-e-1f2a591f5abaeb3b"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-95b1d6301a4dc6d4",
+      "doc_key": [
+        "rg-d-e100212ccffa43d7"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "rg-e-f30e70567c289739"
+        ],
+        "symptom": [
+          "rg-e-4a688c9ab122f60c"
+        ],
+        "cause": [
+          "rg-e-45e08c8271ffb84c"
+        ],
+        "source": [
+          "rg-e-7164b8c876763678"
+        ],
+        "time": [
+          "rg-e-686f1dcdd2a8280f"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-96f42f2180b4f715",
+      "doc_key": [
+        "rg-d-53b0670d7385dd3f"
+      ],
+      "khoa": "noi_bo:known_issue",
+      "slots": {
+        "subject": [
+          "rg-e-cb76ea9f33d62898"
+        ],
+        "symptom": [
+          "rg-e-1d233559c1ee60dd"
+        ],
+        "cause": [
+          "rg-e-83a1e33ec68b054d"
+        ],
+        "condition": [
+          "rg-e-373dc7592a951b83"
+        ],
+        "remediation": [
+          "rg-e-0c953fd7b75f9b8b"
+        ],
+        "source": [
+          "rg-e-e7287911677ff2f0"
+        ],
+        "time": [
+          "rg-e-4e5f9c33716edf11"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-97991e1420e924cd",
+      "doc_key": [
+        "rg-d-344dd6f3419f5cec"
+      ],
+      "khoa": "khach_hang_b:tai_lieu_san_pham",
+      "slots": {
+        "subject": [
+          "rg-e-89e01a6b290c77d1"
+        ],
+        "condition": [
+          "rg-e-dfd4f7d91684d3e4"
+        ],
+        "remediation": [
+          "rg-e-66d9a6a3341a576d"
+        ],
+        "time": [
+          "rg-e-989887d7fb5a0407"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-98c49f572dd545b9",
+      "doc_key": [
+        "rg-d-6bb97eae18911d80"
+      ],
+      "khoa": "khach_hang_a:tai_lieu_san_pham",
+      "slots": {
+        "subject": [
+          "rg-e-8951e659fb46c83c"
+        ],
+        "condition": [
+          "rg-e-e75686c97307ff7b"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-98ca51dc0c5502d8",
+      "doc_key": [
+        "rg-d-f6f9e54102fac74d"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-c3db3c7f04244396"
+        ],
+        "condition": [
+          "rg-e-dde4176c07b083b3"
+        ],
+        "remediation": [
+          "rg-e-02980b0e8cabf1dd"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-99defcbc0083ec82",
+      "doc_key": [
+        "rg-d-f6f9e54102fac74d"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-c85a17963c1258a0"
+        ],
+        "condition": [
+          "rg-e-bdf298b7ae22de21"
+        ],
+        "remediation": [
+          "rg-e-1da228beffddb6d9"
+        ],
+        "time": [
+          "rg-e-2868d08e94797004"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-9a5a2e3c117d3891",
+      "doc_key": [
+        "rg-d-40265e9d47579e17"
+      ],
+      "khoa": "khach_hang_a:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-8ae59b693ab73032"
+        ],
+        "source": [
+          "rg-e-7dac94ac4b872cae"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-9ab8994244cb9293",
+      "doc_key": [
+        "rg-d-344dd6f3419f5cec"
+      ],
+      "khoa": "khach_hang_b:tai_lieu_san_pham",
+      "slots": {
+        "subject": [
+          "rg-e-144777d0acdf7bb1"
+        ],
+        "condition": [
+          "rg-e-cfb14f3dec20a9d1"
+        ],
+        "time": [
+          "rg-e-56652dbc32c4a892"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-9c416c6c66c6f690",
+      "doc_key": [
+        "rg-d-0ab8f0c40c268cff"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-d96e1d0c9ed44787"
+        ],
+        "condition": [
+          "rg-e-22af7a36e0d947ee"
+        ],
+        "remediation": [
+          "rg-e-48f0b4aac0cbe4e7"
+        ],
+        "source": [
+          "rg-e-ade5b80b75e9f8d7"
+        ],
+        "owner": [
+          "rg-e-d84368a064518cc8"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-9ca7dc960d63c505",
+      "doc_key": [
+        "rg-d-179c42296ad558f6"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "rg-e-ce38b183febea463"
+        ],
+        "condition": [
+          "rg-e-414e8ae48b29a354"
+        ],
+        "remediation": [
+          "rg-e-72751c524d56eae7"
+        ],
+        "owner": [
+          "rg-e-b0a25a39ec98f6c8"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-9d85185e09509473",
+      "doc_key": [
+        "rg-d-9e85918ba1236504"
+      ],
+      "khoa": "noi_bo:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-968835017fd7613f"
+        ],
+        "condition": [
+          "rg-e-b5af0df7bf98d08f"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-9db763cddbb0f9a5",
+      "doc_key": [
+        "rg-d-e16cfabdf8392f71"
+      ],
+      "khoa": "khach_hang_b:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-48d4e317f15e3413"
+        ],
+        "remediation": [
+          "rg-e-b750c3f2ed4bc4b0"
+        ],
+        "time": [
+          "rg-e-2e0a8873d6a2da36"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-9e2789f04776f038",
+      "doc_key": [
+        "rg-d-baa3ab53fac44f38"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "rg-e-c54c3044b5fccc76"
+        ],
+        "condition": [
+          "rg-e-3761c997bdc6b241"
+        ],
+        "remediation": [
+          "rg-e-0a444b9e091021b3"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-9e5b9f58bc5b7592",
+      "doc_key": [
+        "rg-d-38e3e41adad6a612"
+      ],
+      "khoa": "khach_hang_a:known_issue",
+      "slots": {
+        "subject": [
+          "rg-e-2ac3cce96793ec7c"
+        ],
+        "condition": [
+          "rg-e-b57dc82fb3ad745c"
+        ],
+        "remediation": [
+          "rg-e-b94a44d1227194e5"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-9fbfcf70f0addb5a",
+      "doc_key": [
+        "rg-d-c344875b966298ff"
+      ],
+      "khoa": "noi_bo:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-4b78f21979ec10de"
+        ],
+        "condition": [
+          "rg-e-5a01c9790ceb561c"
+        ],
+        "remediation": [
+          "rg-e-da8c9450e2edb573"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-a0b32f7ead6e7682",
+      "doc_key": [
+        "rg-d-16d8f7c60fc94839"
+      ],
+      "khoa": "noi_bo:log",
+      "slots": {
+        "subject": [
+          "rg-e-5f0e956d86008bba"
+        ],
+        "symptom": [
+          "rg-e-961073563eba8852"
+        ],
+        "cause": [
+          "rg-e-47cea607390f8dda"
+        ],
+        "time": [
+          "rg-e-be5eb74cd7083117"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-a24be4fad542e533",
+      "doc_key": [
+        "rg-d-baa3ab53fac44f38"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "rg-e-42cd9e6a8341971f"
+        ],
+        "condition": [
+          "rg-e-719a3e4418d01f53"
+        ],
+        "remediation": [
+          "rg-e-39bdacadd741b29f"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-a2577e162689787d",
+      "doc_key": [
+        "rg-d-5500d937598b0c31"
+      ],
+      "khoa": "noi_bo:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "rg-e-d6eb546cf9e7e33d"
+        ],
+        "symptom": [
+          "rg-e-2d528a4ec38146ca"
+        ],
+        "time": [
+          "rg-e-9c65268d9d28bb43"
+        ],
+        "owner": [
+          "rg-e-b69b21059082f573"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-a2de1bccd2c4dd78",
+      "doc_key": [
+        "rg-d-d18b565ba8d4fa48"
+      ],
+      "khoa": "khach_hang_a:faq",
+      "slots": {
+        "subject": [
+          "rg-e-d33516373595f7f6"
+        ],
+        "symptom": [
+          "rg-e-968cc82a8a2fc0ef"
+        ],
+        "cause": [
+          "rg-e-bee9e62128cdaa80"
+        ],
+        "remediation": [
+          "rg-e-3edf78f21c3d15f2"
+        ],
+        "owner": [
+          "rg-e-4b58a8a93a8a8f57"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-a549874813bea35d",
+      "doc_key": [
+        "rg-d-ec093e0c91e7b9e4"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-1a5b8fce95819b28"
+        ],
+        "condition": [
+          "rg-e-7396a3f6a335f43d"
+        ],
+        "remediation": [
+          "rg-e-3fc91d58bcd09ed2"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-a8dd740503d74521",
+      "doc_key": [
+        "rg-d-ffca47c25267fcb5"
+      ],
+      "khoa": "noi_bo:known_issue",
+      "slots": {
+        "subject": [
+          "rg-e-641ad274d23eb52f"
+        ],
+        "symptom": [
+          "rg-e-6a7b5a8da9bec8df"
+        ],
+        "cause": [
+          "rg-e-1d8e221bf8cedecf"
+        ],
+        "condition": [
+          "rg-e-e76e712c3ca3d71f"
+        ],
+        "remediation": [
+          "rg-e-3391007e151a3c72"
+        ],
+        "source": [
+          "rg-e-cb37ded5115dabb1"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-a9348071ef636d60",
+      "doc_key": [
+        "rg-d-3fa3802bdd6f6997"
+      ],
+      "khoa": "noi_bo:faq",
+      "slots": {
+        "subject": [
+          "rg-e-027ff8912f66f5b5"
+        ],
+        "remediation": [
+          "rg-e-9e93991f6c61fc1d"
+        ],
+        "owner": [
+          "rg-e-21d58c83f2adbc76"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-a96aa92f323183e3",
+      "doc_key": [
+        "rg-d-d18b565ba8d4fa48"
+      ],
+      "khoa": "khach_hang_a:faq",
+      "slots": {
+        "subject": [
+          "rg-e-d33516373595f7f6"
+        ],
+        "symptom": [
+          "rg-e-87dc381eaf958604"
+        ],
+        "remediation": [
+          "rg-e-c68ccb1c9408b29e"
+        ],
+        "owner": [
+          "rg-e-4b58a8a93a8a8f57"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-aa624008fdb47b47",
+      "doc_key": [
+        "rg-d-9318626799329892"
+      ],
+      "khoa": "khach_hang_a:log",
+      "slots": {
+        "subject": [
+          "rg-e-011d61ac727224d4"
+        ],
+        "remediation": [
+          "rg-e-a97bb6d7e8bdd961"
+        ],
+        "source": [
+          "rg-e-f7b5325008c50b97"
+        ],
+        "time": [
+          "rg-e-d808695bfea41fd8"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-aa78f8b58497bd9c",
+      "doc_key": [
+        "rg-d-3dbfa80d59e7c220"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-c0272bf633220f1e"
+        ],
+        "condition": [
+          "rg-e-dcbe19c1c5eb5805"
+        ],
+        "remediation": [
+          "rg-e-f6517c297dc1d1bc"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-ab0f79be28022bcf",
+      "doc_key": [
+        "rg-d-8cf5034279422348"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "rg-e-73c51af43e67a253"
+        ],
+        "cause": [
+          "rg-e-185ba8f395189b1d"
+        ],
+        "remediation": [
+          "rg-e-cce8591ecdbba195"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-ab62fa32d8c67278",
+      "doc_key": [
+        "rg-d-2faf64f3725eda6c"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "rg-e-940c695d10461a0b"
+        ],
+        "condition": [
+          "rg-e-4dc79ffe7a85f57b"
+        ],
+        "source": [
+          "rg-e-eab14522ed579cc9"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-aea169eac0a28803",
+      "doc_key": [
+        "rg-d-9e85918ba1236504"
+      ],
+      "khoa": "noi_bo:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-d7c1d53e778812b2"
+        ],
+        "owner": [
+          "rg-e-8618c05a8115a895"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-af4861c7f0bd5834",
+      "doc_key": [
+        "rg-d-dbb27714793ff6cf"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "rg-e-999b53b383045291"
+        ],
+        "remediation": [
+          "rg-e-04f3a0fba8314491"
+        ],
+        "source": [
+          "rg-e-3f29d6fe05946804"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-b248b1d64bf6fcee",
+      "doc_key": [
+        "rg-d-3f2fdcb8208df7c4"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-d55ed6911454f018"
+        ],
+        "condition": [
+          "rg-e-74ddb9e87516e4d8"
+        ],
+        "remediation": [
+          "rg-e-350dc4673752c81b"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-b301b7978b59a8fd",
+      "doc_key": [
+        "rg-d-ffca47c25267fcb5"
+      ],
+      "khoa": "noi_bo:known_issue",
+      "slots": {
+        "subject": [
+          "rg-e-4698189ce8c7029b"
+        ],
+        "symptom": [
+          "rg-e-0f3b5daa828b547a"
+        ],
+        "remediation": [
+          "rg-e-8989d376258c7ff0"
+        ],
+        "time": [
+          "rg-e-8a13e3d6e81d1287"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-b3c3538e14030067",
+      "doc_key": [
+        "rg-d-89718346ff3c9d62"
+      ],
+      "khoa": "noi_bo:tai_lieu_san_pham",
+      "slots": {
+        "subject": [
+          "rg-e-641ad274d23eb52f"
+        ],
+        "condition": [
+          "rg-e-db10b40e9e64ca83"
+        ],
+        "owner": [
+          "rg-e-10b9181141f51dc6"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-b411c2bb44cceadd",
+      "doc_key": [
+        "rg-d-23deaac4975f5c07"
+      ],
+      "khoa": "khach_hang_b:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-91d5a4b04ce00297"
+        ],
+        "remediation": [
+          "rg-e-08aeb2246bd49918"
+        ],
+        "time": [
+          "rg-e-dfd4f7d91684d3e4"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-b573ec74ea3ab6f6",
+      "doc_key": [
+        "rg-d-9e85918ba1236504"
+      ],
+      "khoa": "noi_bo:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-de6ed5101e150b93"
+        ],
+        "condition": [
+          "rg-e-b5af0df7bf98d08f"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-b6033c069fa29e7b",
+      "doc_key": [
+        "rg-d-e16cfabdf8392f71"
+      ],
+      "khoa": "khach_hang_b:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-4c26d38055e4d133"
+        ],
+        "condition": [
+          "rg-e-b26639341eb25395"
+        ],
+        "remediation": [
+          "rg-e-ecd02cd16bc77873"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-b871a112fef9edb7",
+      "doc_key": [
+        "rg-d-e0b8c9cb60d13b3e"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "rg-e-5434cd3486924fd0"
+        ],
+        "condition": [
+          "rg-e-6840c3c33e5dd46b"
+        ],
+        "remediation": [
+          "rg-e-1302731ec6998bff"
+        ],
+        "time": [
+          "rg-e-36aa3d7a649d0c10"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-b89001f23026f052",
+      "doc_key": [
+        "rg-d-e0b8c9cb60d13b3e"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "rg-e-b6363d832c16f9f4"
+        ],
+        "condition": [
+          "rg-e-775030d59e31b158"
+        ],
+        "remediation": [
+          "rg-e-9bf49c5f967cc46f"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-b9c10c053856623b",
+      "doc_key": [
+        "rg-d-40265e9d47579e17"
+      ],
+      "khoa": "khach_hang_a:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-8ae59b693ab73032"
+        ],
+        "condition": [
+          "rg-e-0af7a55f53affd31"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-ba9cd410df83966b",
+      "doc_key": [
+        "rg-d-179c42296ad558f6"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "rg-e-6e3c4cf31c332f2a"
+        ],
+        "condition": [
+          "rg-e-0fb744afa01632cf"
+        ],
+        "remediation": [
+          "rg-e-fcd03145658d72d7"
+        ],
+        "source": [
+          "rg-e-a3b8bb5087de1b24"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-bba751401485fc18",
+      "doc_key": [
+        "rg-d-5500d937598b0c31"
+      ],
+      "khoa": "noi_bo:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "rg-e-d6eb546cf9e7e33d"
+        ],
+        "condition": [
+          "rg-e-bd9ca71b78f1128e"
+        ],
+        "time": [
+          "rg-e-99e9967aa41285c0"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-be331a45d9d3f296",
+      "doc_key": [
+        "rg-d-2faf64f3725eda6c"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "rg-e-442ae8f14c158dbb"
+        ],
+        "condition": [
+          "rg-e-f995b77cb4d26c66"
+        ],
+        "source": [
+          "rg-e-eab14522ed579cc9"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-bed3922d9c683382",
+      "doc_key": [
+        "rg-d-3f2fdcb8208df7c4"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-dcc2f2870122f307"
+        ],
+        "remediation": [
+          "rg-e-c213a4a3b9f27233"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-bf5bdd75d78309c3",
+      "doc_key": [
+        "rg-d-3fa3802bdd6f6997"
+      ],
+      "khoa": "noi_bo:faq",
+      "slots": {
+        "subject": [
+          "rg-e-641ad274d23eb52f"
+        ],
+        "symptom": [
+          "rg-e-1eadacece9d37544"
+        ],
+        "condition": [
+          "rg-e-795cc55169a26dcb"
+        ],
+        "remediation": [
+          "rg-e-34b36d88a03e896b"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-bf87c9e48a88c900",
+      "doc_key": [
+        "rg-d-d18b565ba8d4fa48"
+      ],
+      "khoa": "khach_hang_a:faq",
+      "slots": {
+        "subject": [
+          "rg-e-5dbfc622a7ff3358"
+        ],
+        "condition": [
+          "rg-e-7fba07203845a8bf"
+        ],
+        "remediation": [
+          "rg-e-f70079359205fb32"
+        ],
+        "owner": [
+          "rg-e-4b58a8a93a8a8f57"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-c26e96636fba9a32",
+      "doc_key": [
+        "rg-d-29bb9d56de8edc7c"
+      ],
+      "khoa": "khach_hang_a:troubleshooting",
+      "slots": {
+        "subject": [
+          "rg-e-8ae59b693ab73032"
+        ],
+        "remediation": [
+          "rg-e-8244b1d0c4953bae"
+        ],
+        "source": [
+          "rg-e-dcb4f71638216aa5"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-c2f95ccf16045856",
+      "doc_key": [
+        "rg-d-acda9e0c651710e5"
+      ],
+      "khoa": "khach_hang_b:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "rg-e-f68f3ae16c637158"
+        ],
+        "condition": [
+          "rg-e-6fabe146e73f706e"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-c3105d9198c7c6a3",
+      "doc_key": [
+        "rg-d-dda2d55d6e9da0e4"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-dd9be79276ec2a59"
+        ],
+        "condition": [
+          "rg-e-d3c0f3aeccb09189"
+        ],
+        "remediation": [
+          "rg-e-d089b590be7233f5"
+        ],
+        "owner": [
+          "rg-e-ce3d428177077d93"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-c4bedd211d5a812b",
+      "doc_key": [
+        "rg-d-f6f9e54102fac74d"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-c85a17963c1258a0"
+        ],
+        "condition": [
+          "rg-e-4401245b6bf1b8b7"
+        ],
+        "remediation": [
+          "rg-e-1da228beffddb6d9"
+        ],
+        "time": [
+          "rg-e-a54a56b99fdf3d84"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-c9cab05358978b08",
+      "doc_key": [
+        "rg-d-23deaac4975f5c07"
+      ],
+      "khoa": "khach_hang_b:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-0afaae61213a0e2b"
+        ],
+        "condition": [
+          "rg-e-2b4b134534ebe8d1"
+        ],
+        "remediation": [
+          "rg-e-a90aa44aa6ecf3de"
+        ],
+        "time": [
+          "rg-e-a050ef3009accfdb"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-ca1d5ee4ce76ca34",
+      "doc_key": [
+        "rg-d-5500d937598b0c31"
+      ],
+      "khoa": "noi_bo:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "rg-e-b09ca916ad13eb71"
+        ],
+        "condition": [
+          "rg-e-c6566dffa4247ffb"
+        ],
+        "remediation": [
+          "rg-e-99cb08603fe741d3"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-ca36869b1637462f",
+      "doc_key": [
+        "rg-d-9318626799329892"
+      ],
+      "khoa": "khach_hang_a:log",
+      "slots": {
+        "subject": [
+          "rg-e-9111cacdfcfbd697"
+        ],
+        "symptom": [
+          "rg-e-034ef2c384e47cf0"
+        ],
+        "condition": [
+          "rg-e-7fa674aa9d356250"
+        ],
+        "source": [
+          "rg-e-bbeb477c4d5d8ed0"
+        ],
+        "time": [
+          "rg-e-3815a601eb399036"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-ca6fe9a041ea6bfc",
+      "doc_key": [
+        "rg-d-16d8f7c60fc94839"
+      ],
+      "khoa": "noi_bo:log",
+      "slots": {
+        "subject": [
+          "rg-e-27cc787590c332b9"
+        ],
+        "symptom": [
+          "rg-e-47af8897b340c6b0"
+        ],
+        "time": [
+          "rg-e-98e8aaa9ba65dcb7"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-cb9d88b8a7d9b726",
+      "doc_key": [
+        "rg-d-b975eb778494a796"
+      ],
+      "khoa": "khach_hang_b:postmortem",
+      "slots": {
+        "subject": [
+          "rg-e-227e320ef20f974f"
+        ],
+        "remediation": [
+          "rg-e-7843f78616f6d283"
+        ],
+        "time": [
+          "rg-e-ebf2e39ca144b822"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-cc4690cc3feecb20",
+      "doc_key": [
+        "rg-d-b83dc3272723266a"
+      ],
+      "khoa": "khach_hang_a:postmortem",
+      "slots": {
+        "subject": [
+          "rg-e-8ae59b693ab73032"
+        ],
+        "symptom": [
+          "rg-e-0a27bc8c8c894ceb"
+        ],
+        "cause": [
+          "rg-e-d95403176d2dcf75"
+        ],
+        "remediation": [
+          "rg-e-a866d87bfd47bc6f"
+        ],
+        "time": [
+          "rg-e-48c1c7fd99dcee77"
+        ],
+        "owner": [
+          "rg-e-7f71f40bfb414069"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-cd4960d4917f6db1",
+      "doc_key": [
+        "rg-d-d18b565ba8d4fa48"
+      ],
+      "khoa": "khach_hang_a:faq",
+      "slots": {
+        "subject": [
+          "rg-e-4b58a8a93a8a8f57"
+        ],
+        "condition": [
+          "rg-e-5d2bb74774d2bd78"
+        ],
+        "remediation": [
+          "rg-e-fd8b5ebae4456f15"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-ce5928b1f098f530",
+      "doc_key": [
+        "rg-d-29bb9d56de8edc7c"
+      ],
+      "khoa": "khach_hang_a:troubleshooting",
+      "slots": {
+        "subject": [
+          "rg-e-284e5b78f80369b9"
+        ],
+        "condition": [
+          "rg-e-2054c825bc034dbf"
+        ],
+        "remediation": [
+          "rg-e-252607d2801f6b87"
+        ],
+        "source": [
+          "rg-e-f68f3ae16c637158"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-d1129ff915cd95e9",
+      "doc_key": [
+        "rg-d-e16cfabdf8392f71"
+      ],
+      "khoa": "khach_hang_b:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-058ba3cba73e101e"
+        ],
+        "remediation": [
+          "rg-e-01211bbfc2166c6e"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-d351f6ae7ebe1168",
+      "doc_key": [
+        "rg-d-9e85918ba1236504"
+      ],
+      "khoa": "noi_bo:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-641ad274d23eb52f"
+        ],
+        "condition": [
+          "rg-e-b5af0df7bf98d08f"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-d3dcfdddfa2bbb7b",
+      "doc_key": [
+        "rg-d-dbb27714793ff6cf"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "rg-e-a056ed454256c8c0"
+        ],
+        "condition": [
+          "rg-e-230543771b6b2c7e"
+        ],
+        "remediation": [
+          "rg-e-9f71b97ac0c3a43b"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-d4dc9e8632e667a6",
+      "doc_key": [
+        "rg-d-7874276fab71f7e8"
+      ],
+      "khoa": "khach_hang_a:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-6c9f014beff449ef"
+        ],
+        "symptom": [
+          "rg-e-7f2bded81cba8b26"
+        ],
+        "remediation": [
+          "rg-e-672b7b0a1062cb00"
+        ],
+        "owner": [
+          "rg-e-39b929fb8fa7d946"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-d51435b00281b867",
+      "doc_key": [
+        "rg-d-5da00f6a25f16f2f"
+      ],
+      "khoa": "khach_hang_a:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "rg-e-517fba813ccf9126"
+        ],
+        "remediation": [
+          "rg-e-4dbd7c68f544733c"
+        ],
+        "source": [
+          "rg-e-8cf4556c65dfa61f"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-d5292ea10756df8b",
+      "doc_key": [
+        "rg-d-9e85918ba1236504"
+      ],
+      "khoa": "noi_bo:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-d7c1d53e778812b2"
+        ],
+        "owner": [
+          "rg-e-10b9181141f51dc6"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-d69ac4700ccdab92",
+      "doc_key": [
+        "rg-d-ec093e0c91e7b9e4"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-39b929fb8fa7d946"
+        ],
+        "condition": [
+          "rg-e-866143f9d7207ae1"
+        ],
+        "remediation": [
+          "rg-e-79f655c263d5571f"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-d7db453653a0d15e",
+      "doc_key": [
+        "rg-d-9e85918ba1236504"
+      ],
+      "khoa": "noi_bo:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-9f1b9da25375f695"
+        ],
+        "condition": [
+          "rg-e-b5af0df7bf98d08f"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-d7e30791b7dd87f4",
+      "doc_key": [
+        "rg-d-9ecbcb8484347f9b"
+      ],
+      "khoa": "khach_hang_b:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-b0c78ae1820ff501"
+        ],
+        "condition": [
+          "rg-e-df651748727eba5d"
+        ],
+        "owner": [
+          "rg-e-827cf20c7050493c"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-d8c174e1a7d3e46c",
+      "doc_key": [
+        "rg-d-9ecbcb8484347f9b"
+      ],
+      "khoa": "khach_hang_b:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-62eb3742b9584f51"
+        ],
+        "condition": [
+          "rg-e-ed9b6b23131afed3"
+        ],
+        "remediation": [
+          "rg-e-95a0c7fe52a646c0"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-d8eb846e511c7ae1",
+      "doc_key": [
+        "rg-d-23deaac4975f5c07"
+      ],
+      "khoa": "khach_hang_b:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-62eb3742b9584f51"
+        ],
+        "source": [
+          "rg-e-bf3f84b4a59bba32"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-db1e1e90c550bc03",
+      "doc_key": [
+        "rg-d-5500d937598b0c31"
+      ],
+      "khoa": "noi_bo:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "rg-e-d6eb546cf9e7e33d"
+        ],
+        "condition": [
+          "rg-e-b09ca916ad13eb71"
+        ],
+        "remediation": [
+          "rg-e-5fded464ab75d013"
+        ],
+        "time": [
+          "rg-e-83b5634605c32160"
+        ],
+        "owner": [
+          "rg-e-8618c05a8115a895"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-dd9701bd44b0bf19",
+      "doc_key": [
+        "rg-d-53b0670d7385dd3f"
+      ],
+      "khoa": "noi_bo:known_issue",
+      "slots": {
+        "subject": [
+          "rg-e-d82c2caec40e7a3b"
+        ],
+        "symptom": [
+          "rg-e-061cd63748145844"
+        ],
+        "cause": [
+          "rg-e-44b200c6e242cae3"
+        ],
+        "condition": [
+          "rg-e-02b45ea9eb977b07"
+        ],
+        "source": [
+          "rg-e-e7287911677ff2f0"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-de2fbe4836cd0403",
+      "doc_key": [
+        "rg-d-8ffdffbb0c807a35"
+      ],
+      "khoa": "noi_bo:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "rg-e-2707a629c2496f45"
+        ],
+        "remediation": [
+          "rg-e-6e6e45bdbbdd2286"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-e08df74a637e077f",
+      "doc_key": [
+        "rg-d-29bb9d56de8edc7c"
+      ],
+      "khoa": "khach_hang_a:troubleshooting",
+      "slots": {
+        "subject": [
+          "rg-e-8ae59b693ab73032"
+        ],
+        "owner": [
+          "rg-e-7f71f40bfb414069"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-e2b575d9563ad043",
+      "doc_key": [
+        "rg-d-e16cfabdf8392f71"
+      ],
+      "khoa": "khach_hang_b:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-44023c546c1b36d4"
+        ],
+        "condition": [
+          "rg-e-aea6d6305faa88e7"
+        ],
+        "time": [
+          "rg-e-5b62940ea84584b0"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-e2cee5f08d438fd3",
+      "doc_key": [
+        "rg-d-cf901a87f51f7d1c"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "rg-e-d12ae68860b5313e"
+        ],
+        "symptom": [
+          "rg-e-b19771bc19227b71"
+        ],
+        "remediation": [
+          "rg-e-adac20be93b92675"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-e2d6bf438a88f868",
+      "doc_key": [
+        "rg-d-7874276fab71f7e8"
+      ],
+      "khoa": "khach_hang_a:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-39b929fb8fa7d946"
+        ],
+        "condition": [
+          "rg-e-406e7a9b88276dde"
+        ],
+        "remediation": [
+          "rg-e-be42c2b83a8e6b07"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-e31389b87f55b61b",
+      "doc_key": [
+        "rg-d-cf901a87f51f7d1c"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "rg-e-9578851de12b08dd"
+        ],
+        "condition": [
+          "rg-e-f5bcc83671860676"
+        ],
+        "remediation": [
+          "rg-e-14079924146fb156"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-e4d7000f749e76c3",
+      "doc_key": [
+        "rg-d-9ebbda870624bd52"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "rg-e-1db0f0ea971a1fed"
+        ],
+        "condition": [
+          "rg-e-4e020031c5b7578f"
+        ],
+        "remediation": [
+          "rg-e-9986014f8acbc4b0"
+        ],
+        "source": [
+          "rg-e-284e5b78f80369b9"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-e59724cb5bd05982",
+      "doc_key": [
+        "rg-d-9a43ace88db479e6"
+      ],
+      "khoa": "noi_bo:faq",
+      "slots": {
+        "subject": [
+          "rg-e-027ff8912f66f5b5"
+        ],
+        "cause": [
+          "rg-e-d091f7c7e79eb7ac"
+        ],
+        "condition": [
+          "rg-e-41c145e1855505c1"
+        ],
+        "remediation": [
+          "rg-e-3ef3ab71dce79bde"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-e64984c33d69003c",
+      "doc_key": [
+        "rg-d-03f3c0960dc05c52"
+      ],
+      "khoa": "noi_bo:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "rg-e-4ba1e0e7d885faf2"
+        ],
+        "symptom": [
+          "rg-e-e6902c1c5981227b"
+        ],
+        "cause": [
+          "rg-e-7ee4d4a8f5582127"
+        ],
+        "remediation": [
+          "rg-e-66d4a07beacb88b9"
+        ],
+        "source": [
+          "rg-e-764717a7cb1e3669"
+        ],
+        "time": [
+          "rg-e-82e95fcb5455c804"
+        ],
+        "owner": [
+          "rg-e-ce60f421b03b1e40"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-e66ff925b46a6241",
+      "doc_key": [
+        "rg-d-8ffdffbb0c807a35"
+      ],
+      "khoa": "noi_bo:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "rg-e-ec14539550c3258c"
+        ],
+        "condition": [
+          "rg-e-910f5c651abe1092"
+        ],
+        "remediation": [
+          "rg-e-5ecfdf4700694e4f"
+        ],
+        "time": [
+          "rg-e-84f93cfa08da62c7"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-e6c4ffe5fbf47375",
+      "doc_key": [
+        "rg-d-9318626799329892"
+      ],
+      "khoa": "khach_hang_a:log",
+      "slots": {
+        "subject": [
+          "rg-e-2efc5ae7021a0a8e"
+        ],
+        "symptom": [
+          "rg-e-4e8c1fd72cff942e"
+        ],
+        "source": [
+          "rg-e-bbeb477c4d5d8ed0"
+        ],
+        "time": [
+          "rg-e-48c1c7fd99dcee77"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-e766f779d1289376",
+      "doc_key": [
+        "rg-d-b83dc3272723266a"
+      ],
+      "khoa": "khach_hang_a:postmortem",
+      "slots": {
+        "subject": [
+          "rg-e-8ae59b693ab73032"
+        ],
+        "symptom": [
+          "rg-e-fc486747ac2050a2"
+        ],
+        "cause": [
+          "rg-e-db26a86cd323369f"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-e818ac3be3231218",
+      "doc_key": [
+        "rg-d-3d40cbf823e46b66"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-d84368a064518cc8"
+        ],
+        "condition": [
+          "rg-e-09d4b4eed82149ed"
+        ],
+        "remediation": [
+          "rg-e-45c51e709863d29d"
+        ],
+        "time": [
+          "rg-e-09d4b4eed82149ed"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-e8c43bed58961b89",
+      "doc_key": [
+        "rg-d-c6020d319867328d"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "rg-e-1db0f0ea971a1fed"
+        ],
+        "condition": [
+          "rg-e-4e020031c5b7578f"
+        ],
+        "remediation": [
+          "rg-e-9986014f8acbc4b0"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-e99fa65cbd56370b",
+      "doc_key": [
+        "rg-d-9e85918ba1236504"
+      ],
+      "khoa": "noi_bo:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-d7c1d53e778812b2"
+        ],
+        "condition": [
+          "rg-e-040fb9fcb85e0813"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-e9a854ec2dc9bcf1",
+      "doc_key": [
+        "rg-d-c9e3095f8044838f"
+      ],
+      "khoa": "noi_bo:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "rg-e-d495ccf5f8f47943"
+        ],
+        "condition": [
+          "rg-e-0b7b992ac5b8ddf8"
+        ],
+        "remediation": [
+          "rg-e-26c2090141a2c073"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-ea1ae4ef4aa11729",
+      "doc_key": [
+        "rg-d-acda9e0c651710e5"
+      ],
+      "khoa": "khach_hang_b:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "rg-e-09d928515dabba58"
+        ],
+        "condition": [
+          "rg-e-6a38f66216078f1b"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-ea2e08942ea8e6cb",
+      "doc_key": [
+        "rg-d-2faf64f3725eda6c"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "rg-e-c8e83271b84457d1"
+        ],
+        "condition": [
+          "rg-e-bcfc0a52464bf073"
+        ],
+        "source": [
+          "rg-e-eab14522ed579cc9"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-ea3d181a4f469290",
+      "doc_key": [
+        "rg-d-b975eb778494a796"
+      ],
+      "khoa": "khach_hang_b:postmortem",
+      "slots": {
+        "subject": [
+          "rg-e-62eb3742b9584f51"
+        ],
+        "symptom": [
+          "rg-e-aebec4394129683b"
+        ],
+        "cause": [
+          "rg-e-1e1954071285eae2"
+        ],
+        "source": [
+          "rg-e-f253fd39aed1afdc"
+        ],
+        "time": [
+          "rg-e-121652195af8da7e"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-eb3e4b37dfa15d02",
+      "doc_key": [
+        "rg-d-fa66c10ffbe45526"
+      ],
+      "khoa": "khach_hang_a:canh_bao",
+      "slots": {
+        "subject": [
+          "rg-e-8ae59b693ab73032"
+        ],
+        "symptom": [
+          "rg-e-cfeb7d5061fb20b7"
+        ],
+        "condition": [
+          "rg-e-cfeb7d5061fb20b7"
+        ],
+        "remediation": [
+          "rg-e-9005dcc112ce986e"
+        ],
+        "owner": [
+          "rg-e-e083bf25b6bf2efb"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-ec3404f79cab9651",
+      "doc_key": [
+        "rg-d-344dd6f3419f5cec"
+      ],
+      "khoa": "khach_hang_b:tai_lieu_san_pham",
+      "slots": {
+        "subject": [
+          "rg-e-93ab4e37c584d727"
+        ],
+        "condition": [
+          "rg-e-95ba7cdaa6ba27b3"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-ed028a6e122c6074",
+      "doc_key": [
+        "rg-d-38e3e41adad6a612"
+      ],
+      "khoa": "khach_hang_a:known_issue",
+      "slots": {
+        "subject": [
+          "rg-e-2ac3cce96793ec7c"
+        ],
+        "symptom": [
+          "rg-e-5b2ade824ea9641e"
+        ],
+        "cause": [
+          "rg-e-cc4a51b3a9830e39"
+        ],
+        "condition": [
+          "rg-e-c8ca1db44a47c594"
+        ],
+        "source": [
+          "rg-e-8a98f707e98cdff5"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-ee6720d59ef62bc1",
+      "doc_key": [
+        "rg-d-cd166695479fe5f0"
+      ],
+      "khoa": "noi_bo:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "rg-e-6c9f014beff449ef"
+        ],
+        "symptom": [
+          "rg-e-bda8d12242890a79"
+        ],
+        "cause": [
+          "rg-e-0d88cbbb3d0f43c4"
+        ],
+        "remediation": [
+          "rg-e-c01c4bd6a5c2eef4"
+        ],
+        "source": [
+          "rg-e-3cda1756ae8291ab"
+        ],
+        "time": [
+          "rg-e-48c1c7fd99dcee77"
+        ],
+        "owner": [
+          "rg-e-7f71f40bfb414069"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-ef3138fc87b553bb",
+      "doc_key": [
+        "rg-d-9a43ace88db479e6"
+      ],
+      "khoa": "noi_bo:faq",
+      "slots": {
+        "subject": [
+          "rg-e-1feeb2d71c21a641"
+        ],
+        "symptom": [
+          "rg-e-46b963aa593f2877"
+        ],
+        "remediation": [
+          "rg-e-3550fb3250bb9881"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-f0647d1de36b0389",
+      "doc_key": [
+        "rg-d-3f2fdcb8208df7c4"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-c5f2c183c6f04216"
+        ],
+        "condition": [
+          "rg-e-21a2815dd9050fe7"
+        ],
+        "remediation": [
+          "rg-e-842581b43f37b584"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-f081a54a7600740b",
+      "doc_key": [
+        "rg-d-ffca47c25267fcb5"
+      ],
+      "khoa": "noi_bo:known_issue",
+      "slots": {
+        "subject": [
+          "rg-e-641ad274d23eb52f"
+        ],
+        "remediation": [
+          "rg-e-5ee3584afbcebf36"
+        ],
+        "source": [
+          "rg-e-cb37ded5115dabb1"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-f12ad2de86ec9c4f",
+      "doc_key": [
+        "rg-d-d88f75eb96f3bf11"
+      ],
+      "khoa": "khach_hang_b:canh_bao",
+      "slots": {
+        "subject": [
+          "rg-e-2c854eabc1de9f2d"
+        ],
+        "symptom": [
+          "rg-e-620bcc0a89c42a67"
+        ],
+        "condition": [
+          "rg-e-0a260bc50e2c29a8"
+        ],
+        "remediation": [
+          "rg-e-98858693796855b3"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-f15a734126d86e2d",
+      "doc_key": [
+        "rg-d-9ecbcb8484347f9b"
+      ],
+      "khoa": "khach_hang_b:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-e176fbc2bc7c30e0"
+        ],
+        "remediation": [
+          "rg-e-dfa97c727510f1e7"
+        ],
+        "time": [
+          "rg-e-7764ba629d6611ec"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-f1734c902273109e",
+      "doc_key": [
+        "rg-d-b83dc3272723266a"
+      ],
+      "khoa": "khach_hang_a:postmortem",
+      "slots": {
+        "subject": [
+          "rg-e-09e148b47e2104df"
+        ],
+        "cause": [
+          "rg-e-d95403176d2dcf75"
+        ],
+        "remediation": [
+          "rg-e-08cbbf6545b6f6a0"
+        ],
+        "time": [
+          "rg-e-5cdf65bc47401bdd"
+        ],
+        "owner": [
+          "rg-e-96c1ab99f589be3b"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-f21999a2614bd33c",
+      "doc_key": [
+        "rg-d-179c42296ad558f6"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "rg-e-3ffdfc1cadd29a3f"
+        ],
+        "remediation": [
+          "rg-e-35cbdd0ca6c19020"
+        ],
+        "time": [
+          "rg-e-0bc19a8e1ee15041"
+        ],
+        "owner": [
+          "rg-e-d84368a064518cc8"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-f59817b7ccb17156",
+      "doc_key": [
+        "rg-d-23deaac4975f5c07"
+      ],
+      "khoa": "khach_hang_b:cmdb",
+      "slots": {
+        "subject": [
+          "rg-e-1047fc025043fe69"
+        ],
+        "condition": [
+          "rg-e-3b0e5c3929c1197a"
+        ],
+        "time": [
+          "rg-e-cb9cef170220beed"
+        ],
+        "owner": [
+          "rg-e-10b9181141f51dc6"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-f792b41bafd5d160",
+      "doc_key": [
+        "rg-d-3fa3802bdd6f6997"
+      ],
+      "khoa": "noi_bo:faq",
+      "slots": {
+        "subject": [
+          "rg-e-21afcfd53529ce35"
+        ],
+        "remediation": [
+          "rg-e-2cd03b060b0ca5b9"
+        ],
+        "time": [
+          "rg-e-15de438284eeb8ed"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-f95f33273b849cb7",
+      "doc_key": [
+        "rg-d-e0b8c9cb60d13b3e"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "rg-e-444c3b75a3565616"
+        ],
+        "cause": [
+          "rg-e-3d8d2a7db097e418"
+        ],
+        "condition": [
+          "rg-e-1d3b2b1df08aa88d"
+        ],
+        "remediation": [
+          "rg-e-944ee30353916752"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-fa5503e5fb18c6f3",
+      "doc_key": [
+        "rg-d-dbb27714793ff6cf"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "rg-e-977b78012d4e6cc4"
+        ],
+        "symptom": [
+          "rg-e-8cf7ce8a74b504be"
+        ],
+        "condition": [
+          "rg-e-7291f303ff2737a0"
+        ],
+        "remediation": [
+          "rg-e-c80b0d0164752522"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-fb95f8fa4db81031",
+      "doc_key": [
+        "rg-d-f6f9e54102fac74d"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "rg-e-27e4dc0471a863f5"
+        ],
+        "remediation": [
+          "rg-e-70a3509c6de6ea47"
+        ],
+        "time": [
+          "rg-e-bec93f320fe2da9c"
+        ]
+      }
+    },
+    {
+      "id": "rg-h-fbc293a566f5d638",
+      "doc_key": [
+        "rg-d-9ebbda870624bd52"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "rg-e-613db5a29c5c0717"
+        ],
+        "condition": [
+          "rg-e-d78b7ba7be5b5e18"
+        ],
+        "source": [
+          "rg-e-284e5b78f80369b9"
+        ],
+        "owner": [
+          "rg-e-edcf92bd0940a9e9"
+        ]
+      }
+    }
+  ]
+}

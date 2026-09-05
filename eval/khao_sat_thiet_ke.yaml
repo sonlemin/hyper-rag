@@ -39,11 +39,16 @@
 # cảm của khảo sát là hạng 20 (`bao_cao_su_co`) trở lên, xem ADR-012.
 #
 # ============================================================================
-# BA ĐIỀU ĐÃ KHAI VỀ MẪU SỐ NÀY - đọc trước khi thêm hay sửa một bản ghi
+# BỐN ĐIỀU ĐÃ KHAI VỀ MẪU SỐ NÀY - đọc trước khi thêm hay sửa một bản ghi
 # ============================================================================
 #
-# Một là **quyết định**, hai là **khiếm khuyết đã biết**. Cả ba đều bị test khóa
-# lại, nên sửa mà quên khai lại là `uv run pytest` đỏ.
+# Điều (1) là một **quyết định** và nó còn nguyên. Ba điều còn lại là **khiếm
+# khuyết đã khai của story 2.10**, và cả ba **đã sửa ngày 05/09/2026** trong lần
+# nạp lại của story 2.12 - đường sửa hợp lệ duy nhất, vì mỗi phép sửa đều đổi
+# `doc_key` hoặc sha256 thân. Giữ nguyên lời khai cũ ở đây thay vì xóa: một
+# khiếm khuyết đã sửa mà không còn dấu vết là một khiếm khuyết không ai học
+# được gì từ nó, và ba con số của story 2.10 vẫn được báo cáo trên bản **trước**
+# khi sửa.
 #
 # --- (1) QUYẾT ĐỊNH: phủ 9 trong 13 loại nội dung ---------------------------
 #
@@ -61,44 +66,63 @@
 # tỷ lệ trộn hai nguyên nhân: hình dạng tri thức khác nhau, và tập loại nội dung
 # khác nhau. Trang in cảnh báo đó và ADR-012 ghi nó.
 #
-# --- (2) KHIẾM KHUYẾT: bốn tên file mâu thuẫn `content_type` -----------------
+# --- (2) ĐÃ SỬA 05/09/2026 (story 2.12): bốn tên file mâu thuẫn `content_type` --
 #
-#   dv-10-runbook-xu-ly-canh-bao-ram-cpu.md          khai canh_bao
-#   dv-13-sop-xoay-vong-khoa-truy-cap-object-storage.md  khai bi_mat_ha_tang
-#   dv-14-sop-cap-quyen-truy-cap-ha-tang.md          khai bi_mat_ha_tang
-#   dc-03-runbook-kiem-tra-nhiet-do-phong-may.md     khai canh_bao
+#   dv-10-runbook-xu-ly-canh-bao-ram-cpu.md              -> dv-10-canh-bao-ram-cpu-vuot-nguong.md
+#   dc-03-runbook-kiem-tra-nhiet-do-phong-may.md         -> dc-03-canh-bao-nhiet-do-phong-may.md
+#   dv-13-sop-xoay-vong-khoa-truy-cap-object-storage.md  -> dv-13-bi-mat-ha-tang-xoay-vong-khoa-truy-cap-object-storage.md
+#   dv-14-sop-cap-quyen-truy-cap-ha-tang.md              -> dv-14-bi-mat-ha-tang-cap-quyen-truy-cap-ha-tang.md
 #
-# Nhãn loại dẫn đầu tên file nói một đằng, `content_type` khai một nẻo. Nhãn khai
-# mới là nhãn thật - `core.ingest_scan` đọc frontmatter, không đọc tên file - nên
-# **không con số nào sai**. Cái sai là người soát: `doc_key` là tên file và nó
-# hiện ở cột đầu của ảnh chụp, của bảng phân bố và của trang CT-03, nên người
-# đọc suy ra hạng độ nhạy từ một chữ không mang nghĩa gì với hệ.
+# Nhãn loại dẫn đầu tên file từng nói một đằng, `content_type` khai một nẻo. Nhãn
+# khai luôn là nhãn thật - `core.ingest_scan` đọc frontmatter, không đọc tên file
+# - nên **không con số nào của story 2.10 sai**. Cái sai là người soát: `doc_key`
+# là tên file và nó hiện ở cột đầu của ảnh chụp, của bảng phân bố và của trang
+# CT-03, nên người đọc suy ra hạng độ nhạy từ một chữ không mang nghĩa gì với hệ.
+# Bốn tên mới mang đúng `content_type` khai. **Đổi tên là đổi `doc_key`**, nên
+# mọi con số của `khao_sat` phải đếm lại sau đợt nạp lại của story 2.12.
 #
-# --- (3) KHIẾM KHUYẾT: mốc thời gian nằm ở tương lai ------------------------
+# --- (3) ĐÃ SỬA 05/09/2026 (story 2.12): mốc thời gian ở tương lai -----------
 #
 # Bản ghi sinh ngày 03/09/2026 (dấu ở đầu mỗi file), nhưng sự việc bên trong
-# chạy từ 12/09/2026 tới 20/10/2026 - phiếu ticket 26/09 tới 20/10, postmortem
-# trong tháng 9. Corpus 2.8 thì neo quanh 12/08/2026 và dừng ở 18/09/2026. `time`
-# là một trong 8 vai được trích, nên mẫu số mang một trục thời gian không thể
-# đúng và gần như không giao với `synth` (đúng một mốc chung, 12/08/2026, xuất
-# hiện tình cờ ở dv-07).
+# từng chạy từ 12/09/2026 tới 20/10/2026 - tức mọi mốc nghiệp vụ nằm ở **tương
+# lai** so với ngày dựng, và trục thời gian gần như không giao với `synth` (neo
+# quanh 12/08/2026, dừng ở 18/09/2026).
 #
-# --- VÌ SAO KHÔNG SỬA NGAY -------------------------------------------------
+# Phép sửa là **lùi mọi mốc nghiệp vụ đúng 49 ngày** (bảy tuần chẵn, nên thứ
+# trong tuần giữ nguyên - `dv-07` có lịch "hằng tuần chủ nhật"). Mốc sớm nhất
+# 12/08/2026 -> 24/06/2026, muộn nhất 20/10/2026 -> 01/09/2026, tức mọi mốc nay
+# nằm **trước** ngày dựng. Dịch đều nên mọi khoảng cách giữa hai mốc giữ nguyên,
+# và mọi dòng thời gian trong postmortem còn đọc được như cũ. Dấu "Sinh ngày
+# 03/09/2026" trong khối chú thích đầu mỗi file **không** dịch: nó là ngày dựng
+# tài liệu, không phải một mốc nghiệp vụ. Một chỗ phải sửa tay theo: `dv-03` ghi
+# "chuyển bộ phận tháng 07" -> "tháng 06", để khoảng cách tới ngày sự cố giữ
+# nguyên. **Đổi thân là đổi sha256**, nên `khao_sat` phải nạp lại và chụp lại.
 #
-# Sửa tên file đổi `doc_key`; sửa mốc thời gian đổi sha256 thân. Cả hai buộc nạp
-# lại, và cả hai đụng đúng luật Never của spec 2.10: "không sửa nội dung 50 bản
-# ghi sau khi đã thấy con số của bất kỳ tỷ lệ nào". Luật đó có mặt để không ai
-# phải phân biệt một lần sửa lành với một lần chỉnh cho ra số đẹp bằng cách tin
-# lời người sửa - và nó đáng giá nhất đúng lúc lần sửa *thật sự* lành, như lần
-# này. Hai lỗi không đổi con số nào: ba tỷ lệ đếm số vai được điền và hạng độ
-# nhạy, không đếm ngày tháng, và `content_type` lấy từ frontmatter.
+# --- (4) ĐÃ SỬA 05/09/2026 (story 2.12): năm dòng lệnh mang tên CLI thật ------
 #
-# **Cấm sửa hai khiếm khuyết trên cho tới khi story 2.12 nạp lại.** 2.12 vốn
-# phải nạp lại toàn bộ để chuẩn hóa thực thể, nên sửa kèm lúc đó là miễn phí, và
-# ba tỷ lệ được đếm lại trong cùng commit theo đúng điều kiện đổi của ADR-012.
-# Hai khoản trong `_bmad-output/implementation-artifacts/deferred-work.md` giữ
-# địa chỉ; `tests/test_khao_sat.py` ghim đúng bốn tên file và khoảng mốc thời
-# gian hiện có, nên một lần sửa lén là test đỏ.
+# `dv-07` (2 dòng) và `dv-09` (3 dòng) chứa tên chương trình dòng lệnh của doanh
+# nghiệp chủ quản. Đây là bản ghi **dựng tay** nên không có nội dung nghiệp vụ
+# nào rò; thứ rò là **danh tính người thuê khóa luận**, một chiều mà Policy của
+# AGENTS.md không nói tới tường minh. Bảng bí danh của story 2.11 gán tên đó
+# thành một bí danh cho 50 tài liệu thật, nên hai bộ dữ liệu trong repo từng khai
+# hai luật khác nhau cho cùng một chuỗi. Nay cả năm dòng dùng `cloudctl`.
+#
+# --- VÌ SAO SỬA ĐÚNG LÚC NÀY ------------------------------------------------
+#
+# Cả ba khiếm khuyết đều buộc nạp lại: sửa tên file đổi `doc_key`, sửa mốc thời
+# gian và sửa dòng lệnh đổi sha256 thân. Luật Never của spec 2.10 ("không sửa
+# nội dung 50 bản ghi sau khi đã thấy con số của bất kỳ tỷ lệ nào") có mặt để
+# không ai phải phân biệt một lần sửa lành với một lần chỉnh cho ra số đẹp bằng
+# cách tin lời người sửa - và nó đáng giá nhất đúng lúc lần sửa *thật sự* lành,
+# như lần này. Đường sửa hợp lệ duy nhất đi qua **lần nạp lại của story 2.12**,
+# và đây là lần đó. Ba khiếm khuyết không đổi con số nào của 2.10: ba tỷ lệ đếm
+# số vai được điền và hạng độ nhạy, không đếm ngày tháng, và `content_type` lấy
+# từ frontmatter chứ không từ tên file. Số **sau** đợt nạp lại thì đổi, vì
+# `doc_key` và sha256 thân đều đổi.
+#
+# Bốn test khóa hiện trạng của `tests/test_khao_sat.py` đã **xóa hẳn** trong
+# cùng lần sửa này, đúng như docstring của chúng dặn - không phải cập nhật số
+# trong chúng. Ba khoản ledger tương ứng đóng cùng lúc.
 #
 version: 1
 
@@ -394,7 +418,7 @@ ban_ghi:
     ghi_chu: >-
       Dọn dẹp registry khi hết quota.
   - ma: dv-10
-    ten: dv-10-runbook-xu-ly-canh-bao-ram-cpu.md
+    ten: dv-10-canh-bao-ram-cpu-vuot-nguong.md
     scope: noi_bo
     content_type: canh_bao
     bo_phan: devops
@@ -416,7 +440,7 @@ ban_ghi:
     ghi_chu: >-
       Quy trình thay đổi cấu hình hạ tầng.
   - ma: dv-13
-    ten: dv-13-sop-xoay-vong-khoa-truy-cap-object-storage.md
+    ten: dv-13-bi-mat-ha-tang-xoay-vong-khoa-truy-cap-object-storage.md
     scope: noi_bo
     content_type: bi_mat_ha_tang
     bo_phan: devops
@@ -424,7 +448,7 @@ ban_ghi:
       Xoay vòng khóa truy cập Object Storage: mô tả đường vào và nơi giữ
       khóa, hạng 30.
   - ma: dv-14
-    ten: dv-14-sop-cap-quyen-truy-cap-ha-tang.md
+    ten: dv-14-bi-mat-ha-tang-cap-quyen-truy-cap-ha-tang.md
     scope: noi_bo
     content_type: bi_mat_ha_tang
     bo_phan: devops
@@ -454,7 +478,7 @@ ban_ghi:
     ghi_chu: >-
       Xử lý mất điện một pha trên tủ rack.
   - ma: dc-03
-    ten: dc-03-runbook-kiem-tra-nhiet-do-phong-may.md
+    ten: dc-03-canh-bao-nhiet-do-phong-may.md
     scope: noi_bo
     content_type: canh_bao
     bo_phan: data_center

@@ -66,9 +66,13 @@ SO_KHOA_TRAN = {
     "so_cau_co_nhan": 22,
     "theo_vai": {
         "devops": {"ton_tai": 20, "tra_loi_duoc": 19, "cau_tran_khong": 9},
-        "tech_support": {"ton_tai": 11, "tra_loi_duoc": 4, "cau_tran_khong": 13},
+        # `tra_loi_duoc` 4 -> 5 sau đợt nạp lại 05/09 (story 2.12): fact "dịch vụ
+        # phục hồi lúc 10:00" của `05-bao-cao-su-co-inc-1208.txt` nay nằm ở
+        # `symptom`/`time` thay vì `remediation`, và `tech_support` đọc được hai
+        # vai đó ở mức L1 trong khi `remediation` bị che.
+        "tech_support": {"ton_tai": 11, "tra_loi_duoc": 5, "cau_tran_khong": 13},
     },
-    "theo_vai_hoi": {"ton_tai": 16, "tra_loi_duoc": 11, "cau_tran_khong": 10},
+    "theo_vai_hoi": {"ton_tai": 16, "tra_loi_duoc": 12, "cau_tran_khong": 10},
 }
 
 
@@ -307,11 +311,40 @@ def test_moi_id_trong_nhan_ton_tai_trong_anh_chup(nhan, anh):
 
 
 def test_moi_neo_mo_ta_khop_dung_mot_hyperedge(nhan, anh):
-    """Neo hai lớp: `doc_key` + `neo_subject` phải xác định đúng một hyperedge."""
+    """Neo mô tả phải xác định đúng một hyperedge.
+
+    Hai lớp `doc_key` + `neo_subject` là neo của story 2.9. Story 2.12 thêm lớp
+    thứ ba **tùy chọn** `neo_phu`, và test này phải áp đúng cùng phép lọc mà
+    loader áp - nếu không nó chấm một luật khác luật đang chạy. Lý do lớp thứ ba
+    tồn tại: sau đợt nạp lại 05/09, `k1-02` có **hai** hyperedge cùng `subject`
+    "App01", nên không `neo_subject` nào tách được chúng.
+    """
     for n in nhan.nhan:
         for he in n.hyperedge:
-            ung_vien = anh.tim_theo_neo(he.doc_key, he.neo_subject)
+            # Gọi thẳng `tim_theo_neo` với cả ba lớp neo: luật lọc `neo_phu` sống
+            # ở đó, một bản. Chép lại điều kiện vào test là đúng thứ docstring
+            # của chính test này cấm.
+            ung_vien = anh.tim_theo_neo(he.doc_key, he.neo_subject, he.neo_phu)
             assert [h.id for h in ung_vien] == [he.id], f"{n.cau_id}: {he.id}"
+
+
+def test_neo_phu_chi_dung_o_cho_hai_lop_neo_dau_khong_tach_noi(nhan, anh):
+    """Lớp neo thứ ba là ngoại lệ có lý do, không phải một trường tiện tay.
+
+    Mỗi nhãn mang `neo_phu` phải là nhãn mà `doc_key` + `neo_subject` thật sự
+    trả về nhiều hơn một ứng viên. Không có luật này thì `neo_phu` dần thành một
+    trường ai cũng điền cho chắc, và hai lớp neo đầu mục ruỗng dần mà không ai
+    thấy.
+    """
+    for n in nhan.nhan:
+        for he in n.hyperedge:
+            if he.neo_phu is None:
+                continue
+            uv = anh.tim_theo_neo(he.doc_key, he.neo_subject)
+            assert len(uv) > 1, (
+                f"{n.cau_id}: {he.id} mang `neo_phu` mà hai lớp neo đầu đã tách"
+                f" được rồi ({len(uv)} ứng viên) - bỏ `neo_phu` đi"
+            )
 
 
 def test_moi_slot_dap_an_nam_trong_danh_muc_tam_vai(nhan):
@@ -978,13 +1011,21 @@ def test_tran_theo_vai_hoi_khop_so_khoa(bo, nhan, anh):
 def test_canh_bao_neu_ca_mat_mot_phan_chu_khong_chi_ca_tran_khong(nhan, anh):
     """Ca L1 của Đo 3 phải lên khối cảnh báo, dù `ton_tai > 0`.
 
-    n5-01, n5-03 và n5-07 với `tech_support` là đúng ba câu mang luận điểm
-    "biết tồn tại nhưng không đọc được nội dung"; bỏ chúng khỏi cảnh báo là để
-    người soát đọc bảng tổng rồi tưởng chúng lành.
+    n5-01 và n5-07 với `tech_support` mang luận điểm "biết tồn tại nhưng không
+    đọc được nội dung"; bỏ chúng khỏi cảnh báo là để người soát đọc bảng tổng
+    rồi tưởng chúng lành.
+
+    **n5-03 rời khỏi nhóm này ở đợt nạp lại 05/09** và đó là một thay đổi thật,
+    không phải một nhãn bị nới: bộ trích xuất chuyển "dịch vụ phục hồi lúc
+    10:00" từ `remediation` sang `symptom`/`time`, hai vai mà `tech_support`
+    đọc được ở mức L1. Câu vẫn mất phần `remediation` của hai cặp kia, nhưng nó
+    không còn là ca "tồn tại mà không đọc được **gì**".
     """
     ts = tran_theo_vai(nhan, anh, policy=load_policy(POLICY))["tech_support"]
     mat_mot_phan = {c.cau_id for c in ts.cau if c.ton_tai > 0 and c.tra_loi_duoc == 0}
-    assert {"n5-01", "n5-03", "n5-07"} <= mat_mot_phan
+    assert {"n5-01", "n5-07"} <= mat_mot_phan
+    n5_03 = next(c for c in ts.cau if c.cau_id == "n5-03")
+    assert (n5_03.ton_tai, n5_03.tra_loi_duoc) == (2, 1)
     van_ban = " ".join(ts.canh_bao())
     for cau_id in mat_mot_phan:
         assert cau_id in van_ban
@@ -1033,7 +1074,9 @@ def test_sha256_va_nhan_quyen_cua_anh_chup_khop_file_tren_dia(anh):
 
 
 def test_anh_chup_mang_du_dau_vet_xuat_xu(anh):
-    assert anh.so_tai_lieu == len(anh.tai_lieu) == 50
+    # 52 = 42 tài liệu corpus (40 của story 2.8 cộng 2 tài liệu bí danh của
+    # story 2.12) cộng 10 tài liệu bộ vàng, cùng nạp vào space `synth`.
+    assert anh.so_tai_lieu == len(anh.tai_lieu) == 52
     assert len(anh.policy_version) == 64
     assert anh.doc_key >= {t.doc_key for t in anh.tai_lieu}
 

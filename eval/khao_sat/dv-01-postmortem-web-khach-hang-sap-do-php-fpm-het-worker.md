@@ -9,7 +9,7 @@ content_type: postmortem
 # Báo cáo sự cố INC-0912: web khachhang01.example sập 47 phút do PHP-FPM hết worker
 
 ## Tóm tắt
-Ngày 12/09/2026, trang chính của khachhang01.example trả 502 Bad Gateway trong 47 phút,
+Ngày 25/07/2026, trang chính của khachhang01.example trả 502 Bad Gateway trong 47 phút,
 từ 09:14 tới 10:01. Nguyên nhân là pool PHP-FPM hết worker sau khi một đợt crawler quét
 trang tìm kiếm nội bộ. Khắc phục bằng cách nâng `pm.max_children` và chặn user-agent
 crawler tại WAF.
@@ -31,10 +31,10 @@ worker giữ kết nối lâu hơn 4 giây, 40 worker bão hòa trong chưa đ�
 ## Biện pháp khắc phục
 | Việc | Người | Hạn | Trạng thái |
 |---|---|---|---|
-| Nâng `pm.max_children` lên 80 và ghim vào playbook Ansible | NV03 | 12/09 | xong |
-| Thêm rule WAF chặn crawler ngoài allowlist | NV05 | 12/09 | xong |
-| Thêm cache 60 giây cho trang tìm kiếm | NV07 | 20/09 | đang làm |
-| Thêm cảnh báo khi worker đang bận vượt 80% trần | NV03 | 20/09 | đang làm |
+| Nâng `pm.max_children` lên 80 và ghim vào playbook Ansible | NV03 | 25/07 | xong |
+| Thêm rule WAF chặn crawler ngoài allowlist | NV05 | 25/07 | xong |
+| Thêm cache 60 giây cho trang tìm kiếm | NV07 | 02/08 | đang làm |
+| Thêm cảnh báo khi worker đang bận vượt 80% trần | NV03 | 02/08 | đang làm |
 
 ## Bài học
 Cảnh báo hiện chỉ theo dõi tỷ lệ lỗi ở tầng ngoài, nên đội trực biết có sự cố sau khi

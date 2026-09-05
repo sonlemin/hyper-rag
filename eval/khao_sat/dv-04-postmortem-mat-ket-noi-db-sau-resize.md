@@ -9,7 +9,7 @@ content_type: postmortem
 # Báo cáo sự cố INC-0903: mất kết nối Cloud Database sau khi resize máy chủ
 
 ## Tóm tắt
-Ngày 03/09/2026, sau khi resize máy chủ ứng dụng app-03 để tăng RAM, ứng dụng không kết nối
+Ngày 16/07/2026, sau khi resize máy chủ ứng dụng app-03 để tăng RAM, ứng dụng không kết nối
 được tới Cloud Database trong 38 phút. Nguyên nhân là định tuyến bất đối xứng do máy chủ có
 hai default route sau khi khởi động lại.
 
@@ -29,9 +29,9 @@ danh sách IP được phép của Cloud Database chỉ có một trong hai đ�
 ## Biện pháp khắc phục
 | Việc | Người | Hạn | Trạng thái |
 |---|---|---|---|
-| Ghim `route-metric` trong `50-cloud-init.yaml` cho mọi máy chủ hai interface | NV06 | 10/09 | xong |
-| Thêm bước kiểm tra `ip route` vào quy trình sau resize | NV06 | 10/09 | xong |
-| Rà soát 14 máy chủ khác có hai interface | NV08 | 20/09 | xong, 3 máy có cùng lỗi |
+| Ghim `route-metric` trong `50-cloud-init.yaml` cho mọi máy chủ hai interface | NV06 | 23/07 | xong |
+| Thêm bước kiểm tra `ip route` vào quy trình sau resize | NV06 | 23/07 | xong |
+| Rà soát 14 máy chủ khác có hai interface | NV08 | 02/08 | xong, 3 máy có cùng lỗi |
 
 ## Bài học
 Lỗi này đã có tài liệu xử lý bên Tech Support từ trước, nhưng đội vận hành không biết tài

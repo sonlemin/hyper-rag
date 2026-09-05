@@ -43,7 +43,7 @@ import json
 import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Mapping
+from typing import Mapping, Sequence
 
 from hypergraphrag.operate import (
     _merge_hyperedges_then_upsert,
@@ -51,17 +51,21 @@ from hypergraphrag.operate import (
 )
 from hypergraphrag.utils import compute_mdhash_id
 
+from adapters.ingest_labels import current_ingest_key
 from adapters.neo4j import SLOT_FIELD
 from adapters.thu_lai import goi_co_thu_lai
+from adapters.tu_dien_thuc_the import MucTuDien, tu_dien_cho
 from core.facts import (
     GIA_TRI_TOI_DA,
     KHOA_FACTS,
     TEN_VAI_TIENG_VIET,
+    ap_bi_danh,
     cau_fact,
     id_fact,
     phan_tich_phan_hoi,
 )
 from core.ids import normalize_id
+from core.keys import split_key
 from core.slots import SLOT_ROLES
 
 logger = logging.getLogger(__name__)
@@ -100,6 +104,13 @@ GOI_Y_VAI: Mapping[str, str] = {
 # Chỗ chèn chunk. Dùng `replace` thay `str.format` vì cả prompt lẫn văn bản
 # nguồn đều có dấu ngoặc nhọn (JSON, mã cấu hình).
 _CHO_VAN_BAN: str = "<<VAN_BAN>>"
+
+# Chỗ chèn khối từ điển thực thể (story 2.12). Không khai từ điển thì nó được
+# thay bằng chuỗi rỗng và prompt trở lại **đúng từng byte** bản của story 2.6 -
+# đó là điều làm cho R2 đã đo của vòng `v1-deepseek` còn nói về prompt đang chạy
+# khi không có từ điển. Khối tự mang dấu xuống dòng hai đầu để chỗ chèn đứng
+# trên một dòng riêng.
+CHO_TU_DIEN: str = "<<TU_DIEN>>"
 
 # Ví dụ đầu ra. Mọi giá trị slot ở đây phải là **đoạn có thật, nguyên văn**
 # trong thân `eval/data/01-cap-quyen-gitlab.txt` hoặc
@@ -149,15 +160,54 @@ Luật:
 
 Ví dụ đầu ra:
 {VI_DU_DAU_RA}
-
+{CHO_TU_DIEN}
 Văn bản:
 {_CHO_VAN_BAN}
 """
 
 
-def dung_prompt(van_ban: str) -> str:
-    """Prompt cho một chunk: nhét nguyên văn chunk vào chỗ chèn."""
-    return PROMPT_TRICH_XUAT.replace(_CHO_VAN_BAN, van_ban)
+# Prompt **thật sự gửi đi khi không khai từ điển**: template với chỗ chèn từ
+# điển đã thay bằng chuỗi rỗng. Nó bằng đúng từng byte prompt của story 2.6, nên
+# ba vòng đo đã trả tiền (`eval/ket_qua_do/v1-*.json`) vẫn nói về prompt đang
+# chạy, và `tests/test_cham_trich_xuat.py` ghim chính hằng này chứ không ghim
+# template còn mang chỗ chèn.
+PROMPT_KHONG_TU_DIEN: str = PROMPT_TRICH_XUAT.replace(CHO_TU_DIEN, "")
+
+
+def khoi_tu_dien(muc: "Sequence[MucTuDien]") -> str:
+    """Khối từ điển thực thể của prompt, hoặc chuỗi rỗng khi không có mục nào.
+
+    **Gợi ý, không phải cơ chế.** LLM được phép bỏ qua khối này; thứ bảo đảm hai
+    cách viết cho một `id_fact` là `core.facts.ap_bi_danh` chạy sau `kiem_fact`.
+    Khối vẫn có mặt vì nó giúp LLM chọn đúng cụm ngay từ đầu, và vì một giá trị
+    đã đúng tên chuẩn thì `subject` của fact khớp nhãn vàng sát hơn.
+
+    Danh sách đã **lọc theo scope của tài liệu đang nạp** trước khi tới đây: gửi
+    cả bảng của mọi khách hàng vào prompt vừa tốn token vừa dạy LLM những cái
+    tên nó không được phép thấy.
+    """
+    if not muc:
+        return ""
+    dong = "\n".join(
+        f"- {m.chuan} <= " + ", ".join(m.bi_danh) for m in muc
+    )
+    return (
+        "\nTừ điển thực thể chuẩn của phạm vi tài liệu này. Khi văn bản dùng một"
+        " cách viết ở vế phải, ghi giá trị slot bằng đúng tên chuẩn ở vế trái:\n"
+        f"{dong}\n"
+    )
+
+
+def dung_prompt(van_ban: str, tu_dien: str = "") -> str:
+    """Prompt cho một chunk: khối từ điển rồi nguyên văn chunk vào hai chỗ chèn.
+
+    `tu_dien` rỗng (mặc định) cho lại **đúng từng byte** prompt trước story
+    2.12. Thay chỗ chèn từ điển *trước*: nhờ vậy một tài liệu chứa nguyên văn
+    chuỗi `<<TU_DIEN>>` không tự chèn được một khối từ điển của riêng nó.
+    """
+    return PROMPT_TRICH_XUAT.replace(CHO_TU_DIEN, tu_dien).replace(
+        _CHO_VAN_BAN, van_ban
+    )
 
 
 @dataclass
@@ -206,7 +256,28 @@ class ThongKeTrichXuat:
         self.so_loai = self.so_fact_tho - self.so_hop_le
 
 
-async def _trich_mot_chunk(use_llm_func, chunk_key: str, chunk: dict):
+def _tu_dien_dang_ap(global_config: dict) -> tuple[Mapping[str, str], str]:
+    """`(bảng bí danh, khối prompt)` cho tài liệu đang nạp, lọc theo scope của nó.
+
+    Không khai `entity_dictionary_path` là `({}, "")`, và khi đó cả hai đường -
+    prompt và `ap_bi_danh` - trở lại đúng hành vi trước story 2.12.
+
+    Scope lấy từ **nhãn ingest đang mở** (`current_ingest_key`), không thêm một
+    tham số vào chữ ký `trich_xuat_chunks`: nhãn đó đã là nguồn duy nhất của
+    `scope` cho cả ba kho ở đường ghi, và một tham số thứ hai là chỗ để hai
+    nguồn lệch nhau. Hệ quả có chủ đích: gọi hàm này ngoài phạm vi nhãn mà có
+    khai từ điển là `IngestLabelMissing` dội lên, cùng cửa fail-closed với mọi
+    đường ghi khác.
+    """
+    tu_dien = tu_dien_cho(global_config)
+    if tu_dien is None:
+        return {}, ""
+    scope = split_key(current_ingest_key())[0]
+    muc = tu_dien.muc_cho_scope(scope)
+    return tu_dien.bang_cho_scope(scope), khoi_tu_dien(muc)
+
+
+async def _trich_mot_chunk(use_llm_func, chunk_key: str, chunk: dict, tu_dien: str = ""):
     """Một lời gọi LLM cho một chunk, rồi đọc phản hồi theo lược đồ.
 
     **Đây là lớp thử lại duy nhất của đường nạp phía LLM** (story 2.13). Đơn vị
@@ -219,7 +290,7 @@ async def _trich_mot_chunk(use_llm_func, chunk_key: str, chunk: dict):
     """
     van_ban = await goi_co_thu_lai(
         use_llm_func,
-        dung_prompt(chunk["content"]),
+        dung_prompt(chunk["content"], tu_dien),
         _ten=f"chunk {chunk_key}",
         _in_ra=_in_thu_lai,
         **THAM_SO_LLM,
@@ -257,13 +328,17 @@ async def trich_xuat_chunks(
     ghi sai lược đồ không làm lời gọi nổ - chúng được đếm.
     """
     use_llm_func = global_config["llm_model_func"]
+    bang_bi_danh, khoi = _tu_dien_dang_ap(global_config)
     thong_ke = ThongKeTrichXuat()
     # `TaskGroup` chứ không `gather`: một lời gọi hỏng (429, key sai) hủy các
     # lời gọi anh em thay vì để chúng chạy hết rồi mới báo - mỗi lời gọi là
     # tiền thật. Lỗi đầu tiên dội lên nguyên dạng để pipeline đọc `code`.
     try:
         async with asyncio.TaskGroup() as tg:
-            tasks = [tg.create_task(_trich_mot_chunk(use_llm_func, k, c)) for k, c in sorted(chunks.items())]
+            tasks = [
+                tg.create_task(_trich_mot_chunk(use_llm_func, k, c, khoi))
+                for k, c in sorted(chunks.items())
+            ]
     except ExceptionGroup as nhom:
         raise nhom.exceptions[0] from nhom
     ket_qua = [t.result() for t in tasks]
@@ -278,6 +353,10 @@ async def trich_xuat_chunks(
         thong_ke._cong(kq)
         da_thay_trong_chunk: set[str] = set()
         for slots in kq.facts:
+            # Chuẩn hóa bí danh **sau** `kiem_fact`, **trước** `id_fact` (story
+            # 2.12, FR-32): id hyperedge và id entity phải cùng thấy tên chuẩn,
+            # còn phần đếm loại của FR-02 thì chấm bản LLM thật sự trả về.
+            slots = ap_bi_danh(slots, bang_bi_danh)
             he_id = id_fact(slots)
             slot_cua_he.setdefault(he_id, slots)
             # Cùng fact lặp trong một chunk góp weight đúng một lần (một lần

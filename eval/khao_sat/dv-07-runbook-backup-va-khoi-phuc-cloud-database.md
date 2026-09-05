@@ -21,14 +21,14 @@ Bảo đảm mỗi cơ sở dữ liệu sản xuất có bản sao lưu không q
 
 ## Kiểm tra bản sao lưu
 ```
-bizfly database backup list --instance db-prod-01
+cloudctl database backup list --instance db-prod-01
 ```
 Bản sao lưu mới nhất phải trong vòng 24 giờ. Nếu quá hạn, kiểm tra job và báo vào kênh vận hành.
 
 ## Khôi phục
 1. Tạo instance mới từ bản sao lưu, không ghi đè lên instance đang chạy.
 ```
-bizfly database restore --backup-id <id> --name db-restore-tam
+cloudctl database restore --backup-id <id> --name db-restore-tam
 ```
 2. Kiểm tra dữ liệu trên instance tạm trước khi chuyển ứng dụng sang.
 3. Cập nhật danh sách IP được phép cho instance mới, ứng dụng sẽ không kết nối được nếu bỏ bước này.
@@ -37,7 +37,7 @@ bizfly database restore --backup-id <id> --name db-restore-tam
 
 ## Diễn tập
 Diễn tập khôi phục mỗi quý một lần trên staging. Ghi lại thời gian khôi phục thực tế vào biên
-bản diễn tập. Lần gần nhất 12/08/2026, mất 1 giờ 40 phút.
+bản diễn tập. Lần gần nhất 24/06/2026, mất 1 giờ 40 phút.
 
 ## Lưu ý
 Khóa truy cập bucket sao lưu là khóa riêng, không dùng chung với khóa của ứng dụng. Xoay vòng

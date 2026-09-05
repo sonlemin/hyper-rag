@@ -24,11 +24,13 @@ from adapters.ingest import (
 from adapters.neo4j import SLOT_FIELD
 from adapters.trich_xuat import (
     GOI_Y_VAI,
+    PROMPT_KHONG_TU_DIEN,
     PROMPT_TRICH_XUAT,
     THAM_SO_LLM,
     VI_DU_DAU_RA,
     ThongKeTrichXuat,
     dung_prompt,
+    khoi_tu_dien,
 )
 from core.audit import EVENT_EXTRACT_DOC, EVENT_INGEST_DOC, TIER_OBSERVATION
 from core.facts import (
@@ -675,3 +677,149 @@ def test_port_audit_hong_o_extract_doc_khong_lam_hong_tai_lieu(workspace_dir, kh
     assert [s.chi_tiet["doc_key"] for s in mt.so_audit.cac_su_kien(EVENT_INGEST_DOC)] == ["b.md"]
     assert mt.so_audit.cac_su_kien(EVENT_EXTRACT_DOC) == []
     assert any(EVENT_EXTRACT_DOC in r.getMessage() for r in caplog.records if r.levelno == logging.WARNING)
+
+
+# --- Từ điển thực thể (story 2.12, FR-32) -------------------------------------------
+
+TU_DIEN_A = """
+version: 1
+muc:
+  - chuan: App01
+    scope: khach_hang_a
+    bi_danh: [app01.company.vn, APP-01]
+    xac_nhan: "sonlm 2026-09-05"
+"""
+
+THAN_APP_DAI = "Sự cố hosting. app01.company.vn trả lỗi 502 lúc cao điểm."
+FACT_APP_DAI = {"subject": "app01.company.vn", "symptom": "trả lỗi 502"}
+THAN_APP_NGAN = "Runbook App01. App01 trả lỗi 502 thì kiểm pool PHP-FPM."
+FACT_APP_NGAN = {"subject": "App01", "symptom": "trả lỗi 502"}
+
+
+def _viet_tu_dien(tmp_path, noi_dung=TU_DIEN_A):
+    f = tmp_path / "tu-dien.yaml"
+    f.write_text(noi_dung, encoding="utf-8")
+    return str(f)
+
+
+def test_khong_khai_tu_dien_thi_prompt_khong_doi_mot_byte():
+    """Ca đầu của I/O Matrix: `entity_dictionary_path` rỗng -> chạy y hệt hôm nay.
+
+    `PROMPT_KHONG_TU_DIEN` là hằng mà `tests/test_cham_trich_xuat.py` đối chiếu
+    với ba vòng đo đã trả tiền, nên đẳng thức này là chỗ nối hai khẳng định:
+    prompt mặc định của hôm nay bằng prompt mà `v1-deepseek` đã chạy.
+    """
+    assert dung_prompt("XYZ") == PROMPT_KHONG_TU_DIEN.replace("<<VAN_BAN>>", "XYZ")
+    assert "<<TU_DIEN>>" not in dung_prompt("XYZ")
+    assert khoi_tu_dien(()) == ""
+
+
+def test_khoi_tu_dien_vao_prompt_khi_co_muc():
+    from adapters.tu_dien_thuc_the import MucTuDien
+
+    khoi = khoi_tu_dien(
+        [MucTuDien("App01", "khach_hang_a", ("app01.company.vn", "APP-01"), "sonlm 2026-09-05")]
+    )
+    prompt = dung_prompt("XYZ", khoi)
+    assert "App01 <= app01.company.vn, APP-01" in prompt
+    assert "XYZ" in prompt and "<<TU_DIEN>>" not in prompt
+
+
+def test_tai_lieu_chua_chuoi_cho_chen_khong_tu_chen_duoc_khoi_tu_dien():
+    """Thay chỗ chèn từ điển **trước** chỗ chèn văn bản, và đây là lý do."""
+    prompt = dung_prompt("một tài liệu viết <<TU_DIEN>> trong thân")
+    assert "một tài liệu viết <<TU_DIEN>> trong thân" in prompt
+
+
+def test_bi_danh_dung_scope_gop_ve_mot_entity_va_mot_hyperedge(
+    workspace_dir, khong_gian, policy, tmp_path
+):
+    """Hàng "Bí danh đúng scope": hai cách viết cho **một** id entity (FR-32).
+
+    Hai tài liệu cùng scope `khach_hang_a`, một viết `app01.company.vn`, một
+    viết `App01`. Không có từ điển thì đó là hai node entity và hai hyperedge;
+    có từ điển thì là một, và `id_fact` của hai fact bằng nhau.
+    """
+    thu_muc = tmp_path / "nguon"
+    viet_tai_lieu(thu_muc, "a.md", scope="khach_hang_a", content_type="bao_cao_su_co", than=THAN_APP_DAI)
+    viet_tai_lieu(thu_muc, "b.md", scope="khach_hang_a", content_type="runbook", than=THAN_APP_NGAN)
+    mt = dung_moi_truong(
+        workspace_dir,
+        llm_theo_fact({THAN_APP_DAI: [FACT_APP_DAI], THAN_APP_NGAN: [FACT_APP_NGAN]}),
+        entity_dictionary_path=_viet_tu_dien(tmp_path),
+    )
+    asyncio.run(_nap(mt, thu_muc, khong_gian, policy))
+
+    he = ten_hyperedge(FACT_APP_NGAN)
+    assert list(mt.cac_node_vai(khong_gian, "hyperedge")) == [he]
+    assert mt.node(khong_gian, ten_entity("App01")) is not None
+    assert mt.node(khong_gian, ten_entity("app01.company.vn")) is None
+    # Khối từ điển của scope đó cũng đã đi vào prompt.
+    assert any("App01 <= app01.company.vn" in p for p in mt.llm.prompts)
+
+
+def test_bi_danh_khac_scope_khong_bi_thay(workspace_dir, khong_gian, policy, tmp_path):
+    """Hàng "Bí danh khác scope": cùng chuỗi đó ở scope khác **không** bị thay.
+
+    Đây là nửa quan trọng hơn của luật ràng scope: gộp `app01.company.vn` của
+    khách A với chuỗi cùng tên ở khách B là hỏng đúng chỗ Composition-Risk đo.
+    """
+    thu_muc = tmp_path / "nguon"
+    viet_tai_lieu(thu_muc, "b.md", scope="khach_hang_b", content_type="bao_cao_su_co", than=THAN_APP_DAI)
+    mt = dung_moi_truong(
+        workspace_dir,
+        llm_theo_fact({THAN_APP_DAI: [FACT_APP_DAI]}),
+        entity_dictionary_path=_viet_tu_dien(tmp_path),
+    )
+    asyncio.run(_nap(mt, thu_muc, khong_gian, policy))
+
+    assert mt.node(khong_gian, ten_entity("app01.company.vn")) is not None
+    assert mt.node(khong_gian, ten_entity("App01")) is None
+    # Prompt của tài liệu này không mang khối từ điển của khách A.
+    assert not any("App01 <= app01.company.vn" in p for p in mt.llm.prompts)
+
+
+def test_khong_tu_dien_thi_hai_cach_viet_van_la_hai_entity(
+    workspace_dir, khong_gian, policy, tmp_path
+):
+    """Đối chứng: chính hai tài liệu đó, không khai từ điển, cho hai node."""
+    thu_muc = tmp_path / "nguon"
+    viet_tai_lieu(thu_muc, "a.md", scope="khach_hang_a", content_type="bao_cao_su_co", than=THAN_APP_DAI)
+    viet_tai_lieu(thu_muc, "b.md", scope="khach_hang_a", content_type="runbook", than=THAN_APP_NGAN)
+    mt = dung_moi_truong(
+        workspace_dir,
+        llm_theo_fact({THAN_APP_DAI: [FACT_APP_DAI], THAN_APP_NGAN: [FACT_APP_NGAN]}),
+    )
+    asyncio.run(_nap(mt, thu_muc, khong_gian, policy))
+    assert mt.node(khong_gian, ten_entity("App01")) is not None
+    assert mt.node(khong_gian, ten_entity("app01.company.vn")) is not None
+    assert len(mt.cac_node_vai(khong_gian, "hyperedge")) == 2
+
+
+def test_tu_dien_hong_dung_ca_dot_truoc_khi_goi_llm(
+    workspace_dir, khong_gian, policy, tmp_path
+):
+    """Từ điển sai lược đồ là **từ chối cả đợt**, không phải một đợt bỏ qua từ điển.
+
+    Cùng chiều với bảng hạng độ nhạy: một cấu hình hỏng dừng đợt, không rơi về
+    một mặc định. Ở đây còn thêm một điều kiện - nó phải dừng **trước** lời gọi
+    LLM đầu tiên, vì mỗi lời gọi là tiền thật.
+    """
+    from adapters.tu_dien_thuc_the import TuDienThucTheInvalid
+
+    thu_muc = tmp_path / "nguon"
+    viet_tai_lieu(thu_muc, "a.md", scope="khach_hang_a", content_type="runbook", than=THAN_APP_NGAN)
+    hong = tmp_path / "hong.yaml"
+    hong.write_text("version: 1\nmuc:\n  - chuan: A\n    scope: x\n    bi_danh: [a]\n", encoding="utf-8")
+    mt = dung_moi_truong(
+        workspace_dir,
+        llm_theo_fact({THAN_APP_NGAN: [FACT_APP_NGAN]}),
+        entity_dictionary_path=str(hong),
+    )
+    with pytest.raises(TuDienThucTheInvalid) as e:
+        asyncio.run(_nap(mt, thu_muc, khong_gian, policy))
+    assert e.value.code == "TU_DIEN_THUC_THE_INVALID"
+    assert "xac_nhan" in str(e.value)
+    # Không lời gọi LLM nào: một từ điển hỏng phải dừng đợt **trước** khi tiêu
+    # tiền, cùng chiều với bảng hạng độ nhạy hỏng (từ chối cả đợt, không đoán).
+    assert mt.llm.prompts == []

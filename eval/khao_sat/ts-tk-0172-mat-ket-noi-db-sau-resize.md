@@ -14,8 +14,8 @@ content_type: bao_cao_su_co
 | Dịch vụ | Cloud Database, Cloud Server |
 | Mức ưu tiên | Nghiêm trọng |
 | Người tiếp nhận | NV24 |
-| Mở lúc | 03/10/2026 14:07 |
-| Đóng lúc | 03/10/2026 15:22 |
+| Mở lúc | 15/08/2026 14:07 |
+| Đóng lúc | 15/08/2026 15:22 |
 
 ## Mô tả từ khách hàng
 Sau khi resize máy chủ ứng dụng, ứng dụng không kết nối được tới cơ sở dữ liệu. Khách báo hệ thống

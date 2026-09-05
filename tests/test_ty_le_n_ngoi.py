@@ -29,8 +29,11 @@ from adapters.sensitivity_loader import tai_hang_do_nhay
 from eval.cau_hoi import AnhDoThi, HyperedgeAnh, TaiLieuAnh, doc_anh_do_thi
 from eval.ty_le_n_ngoi import (
     NGUONG_NHAY_CAM,
+    ThieuMauDoDai,
+    dai_ba_ty_le,
     NHAN_KHONG_KHOA,
     TOI_THIEU_VAI_N_NGOI,
+    VAI_THUC_THE,
     HangKhongXacDinh,
     KhongCoTaiLieuChung,
     ThieuCotDoiChieu,
@@ -53,26 +56,47 @@ ANH_KHAO_SAT = GOC_REPO / "eval" / "anh_do_thi" / "khao_sat.json"
 ANH_REAL = GOC_REPO / "eval" / "anh_do_thi" / "real_rut_gon.json"
 ANH_THAT_KHU = GOC_REPO / "eval" / "anh_do_thi" / "that_khu_rut_gon.json"
 
-# Số khóa của space `synth`, đếm ngày 04/09/2026 trên ảnh chụp
-# `eval/anh_do_thi/synth.json` (254 hyperedge / 50 tài liệu, chụp 03/09/2026).
-# Viết tay chứ không tính lại trong test: một kỳ vọng tính bằng chính hàm đang
-# đo là một test luôn xanh.
-SYNTH_HYPEREDGE = 254
-SYNTH_N_NGOI = 228
-SYNTH_NHAY_CAM = 81
-SYNTH_NHAY_CAM_N_NGOI = 76
+# Số khóa của space `synth`, đếm ngày 05/09/2026 trên ảnh chụp
+# `eval/anh_do_thi/synth.json` (281 hyperedge / 52 tài liệu, chụp 05/09 ngay sau
+# đợt nạp lại `9c4a1ba7` của story 2.12). Viết tay chứ không tính lại trong
+# test: một kỳ vọng tính bằng chính hàm đang đo là một test luôn xanh.
+#
+# **Số cũ của story 2.10 giữ lại để so, đúng như điều kiện đổi của ADR-012 đòi**
+# (đếm 04/09 trên 254 hyperedge / 50 tài liệu): Overall 228/254 = 89,8% ·
+# Sensitive 76/81 = 93,8% · Composition-Risk 0/81 = 0%.
+#
+# 52 tài liệu chứ không 50: corpus lên 42 (hai tài liệu bí danh của story 2.12)
+# cộng 10 tài liệu bộ vàng, nạp lại **toàn bộ** sau `--xoa-space` để từ điển
+# thực thể áp cho mọi tài liệu chứ không chỉ tài liệu mới.
+SYNTH_HYPEREDGE = 281
+SYNTH_N_NGOI = 252
+SYNTH_NHAY_CAM = 93
+SYNTH_NHAY_CAM_N_NGOI = 78
 SYNTH_COMPOSITION_RISK = 0
+# Số chẩn đoán **vai thực thể** (story 2.12): cùng phép đếm của tỷ lệ 3 nhưng
+# `E(h)` thu về ba vai `subject`/`owner`/`source`. Đếm 05/09/2026 sau khi phép
+# lộ đã siết theo scope; chưa siết là 13/93. Trên ảnh chụp *trước* đợt nạp lại
+# nó là 8/81 (chưa siết 9/81).
+SYNTH_CR_VAI_THUC_THE = 12
 
-# Số khóa của space `khao_sat`, đếm ngày 04/09/2026 trên ảnh chụp
-# `eval/anh_do_thi/khao_sat.json` (398 hyperedge / 50 bản ghi, chụp 04/09 ngay sau
-# đợt nạp `32293e26e25f450bb7004ed3d4c63826`). Cùng luật viết tay với số của
+# Số khóa của space `khao_sat`, đếm ngày 05/09/2026 trên ảnh chụp
+# `eval/anh_do_thi/khao_sat.json` (379 hyperedge / 50 bản ghi, chụp 05/09 ngay
+# sau đợt nạp lại `3b0f428f` của story 2.12). Cùng luật viết tay với số của
 # `synth`: một lần nạp lại làm số lệch thì phải đối chiếu lại, không chép số mới
 # vào chương 4.
-KHAO_SAT_HYPEREDGE = 398
-KHAO_SAT_N_NGOI = 319
-KHAO_SAT_NHAY_CAM = 151
-KHAO_SAT_NHAY_CAM_N_NGOI = 133
+#
+# **Số cũ của story 2.10 giữ lại để so** (đếm 04/09 trên 398 hyperedge, đợt
+# `32293e26`): Overall 319/398 = 80,2% · Sensitive 133/151 = 88,1% ·
+# Composition-Risk 0/151 = 0%. Đợt nạp lại **không** có từ điển thực thể (không
+# có `config/tu-dien-thuc-the/khao_sat.yaml`); thứ đổi là **nội dung** 50 bản
+# ghi - ba khiếm khuyết đã khai được sửa - cộng dao động của một lần chạy LLM.
+KHAO_SAT_HYPEREDGE = 379
+KHAO_SAT_N_NGOI = 308
+KHAO_SAT_NHAY_CAM = 150
+KHAO_SAT_NHAY_CAM_N_NGOI = 135
 KHAO_SAT_COMPOSITION_RISK = 0
+# Chẩn đoán vai thực thể (story 2.12), sau khi siết theo scope; chưa siết 13/150.
+KHAO_SAT_CR_VAI_THUC_THE = 7
 
 # Số khóa của space `real`, đếm ngày 04/09/2026 trên ảnh chụp **rút gọn**
 # `eval/anh_do_thi/real_rut_gon.json` (369 hyperedge / 41 tài liệu, chụp 04/09
@@ -108,11 +132,23 @@ REAL_COMPOSITION_RISK = 0
 #
 # Ba tỷ lệ thấp hơn `real` rất xa (67,8% so với 100,0%) và đó là điều phải đọc:
 # hai con số 100% của `real` là hằng của bộ trích xuất, còn 67,8% là một phép đo.
-THAT_KHU_HYPEREDGE = 720
+# **Đợt thứ hai, 05/09/2026** (`13d3ed8d`, story 2.12): cùng 50 tài liệu đó,
+# cùng model, **không** từ điển thực thể (từ điển của space này là nội dung tài
+# liệu công ty nên nó không nằm trong `config/`). Nó là mẫu thứ hai của cùng
+# một phép đo, thứ mà ledger của story 2.10 đã xin: hai lần chạy cùng đầu vào
+# lệch nhau 720 -> 712 hyperedge, Overall 67,8% -> 75,0%, Sensitive 71,6% ->
+# 81,0%. Ba tỷ lệ vì vậy là số của **một lần chạy**, không phải hằng của tập dữ
+# liệu, và chương 4 phải trình chúng như thế.
+#
+# Số của đợt 05/09 sáng (`6278dd87`) giữ lại để so: 720 hyperedge, Overall
+# 488/720 = 67,8% · Sensitive 161/225 = 71,6% · Composition-Risk 0/225 = 0%.
+THAT_KHU_HYPEREDGE = 712
 THAT_KHU_TAI_LIEU = 50
-THAT_KHU_N_NGOI = 488
-THAT_KHU_NHAY_CAM = 225
-THAT_KHU_NHAY_CAM_N_NGOI = 161
+THAT_KHU_N_NGOI = 534
+THAT_KHU_NHAY_CAM = 211
+# Chẩn đoán vai thực thể của cột này (story 2.12), đếm 05/09/2026.
+THAT_KHU_CR_VAI_THUC_THE = 4
+THAT_KHU_NHAY_CAM_N_NGOI = 171
 THAT_KHU_COMPOSITION_RISK = 0
 
 # Số khóa của cột `that_khu` **hạn chế về 41 tài liệu có ở cả hai kho** - mẫu số
@@ -124,10 +160,10 @@ THAT_KHU_COMPOSITION_RISK = 0
 # Tính lại được ngay trong repo vì hai ảnh rút gọn dùng **chung một muối**: 41
 # `doc_key` đã băm của `real` là tập con thật sự của 50 `doc_key` của `that_khu`.
 THAT_KHU_CHUNG_TAI_LIEU = 41
-THAT_KHU_CHUNG_HYPEREDGE = 630
-THAT_KHU_CHUNG_N_NGOI = 405
-THAT_KHU_CHUNG_NHAY_CAM = 218
-THAT_KHU_CHUNG_NHAY_CAM_N_NGOI = 154
+THAT_KHU_CHUNG_HYPEREDGE = 614
+THAT_KHU_CHUNG_N_NGOI = 444
+THAT_KHU_CHUNG_NHAY_CAM = 203
+THAT_KHU_CHUNG_NHAY_CAM_N_NGOI = 163
 THAT_KHU_CHUNG_COMPOSITION_RISK = 0
 
 # Ba hạng đóng băng từ story 2.1, ngưỡng nhạy cảm gắn vào số giữa.
@@ -457,8 +493,10 @@ def test_doi_chieu_hai_space_khop_co(hang):
         "Sensitive N-ary",
         "Composition-Risk",
     ]
-    assert dong[0].chenh == pytest.approx(-0.0961, abs=5e-4)
-    assert dong[1].chenh == pytest.approx(-0.0572, abs=5e-4)
+    # Đợt nạp lại 05/09 đổi dấu của chênh thứ hai: `khao_sat` nay **cao hơn**
+    # `synth` ở Sensitive N-ary. Số của story 2.10 là -9,6 và -5,7 điểm.
+    assert dong[0].chenh == pytest.approx(-0.0841, abs=5e-4)
+    assert dong[1].chenh == pytest.approx(+0.0613, abs=5e-4)
     assert dong[2].chenh == pytest.approx(0.0, abs=1e-9)
 
 
@@ -470,20 +508,159 @@ def test_composition_risk_khong_tren_ca_hai_space_la_that(hang):
     nên hai tài liệu hiếm khi sinh cùng một id entity, và một mảnh không lộ là đủ
     chặn phép ghép. Khóa hai số này lại để 2.12 chạy xong thì có chỗ đỏ buộc đếm
     lại chứ không phải một con số 0 đọc thành "không có rủi ro".
+
+    **Bốn con số này đổi ở story 2.12 vì hai nguyên nhân, và chúng phải tách
+    ra.** Một, phép lộ nay siết theo scope (mục bổ sung 05/09/2026 của ADR-012):
+    trên ảnh chụp *trước* đợt nạp lại nó đưa synth 26 -> 22 và khao_sat 40 -> 25.
+    Hai, ba đợt nạp lại cùng ngày đổi chính đồ thị: số được assert dưới đây là
+    **34/93** và **23/150**, đếm trên ảnh chụp sau đợt nạp.
+
+    Ba tỷ lệ chính thức thì không đổi vì phép siết, và
+    `test_siet_theo_scope_khong_doi_ba_ty_le_tren_bon_anh_da_commit` ngay dưới
+    là chỗ khẳng định đó - nó chạy cả hai bản trên cùng bốn ảnh.
     """
     synth = ba_ty_le(doc_anh_do_thi(ANH_SYNTH), hang)
     khao_sat = ba_ty_le(doc_anh_do_thi(ANH_KHAO_SAT), hang)
-    assert synth.so_nhay_cam_lo_mot_phan == 26
-    assert khao_sat.so_nhay_cam_lo_mot_phan == 40
+    assert synth.so_nhay_cam_lo_mot_phan == 34
+    assert khao_sat.so_nhay_cam_lo_mot_phan == 23
     # Tử số tỷ lệ 3 bằng 0, nên mọi ca có entity lộ đều là ca lộ *một phần*: hai
     # số này bằng nhau hôm nay, và chúng tách ra ngay khi 2.12 làm tử số khác 0.
-    assert synth.so_nhay_cam_co_entity_lo == 26
-    assert khao_sat.so_nhay_cam_co_entity_lo == 40
-    assert synth.trung_binh_phan_entity_lo == pytest.approx(0.2985, abs=5e-4)
-    assert khao_sat.trung_binh_phan_entity_lo == pytest.approx(0.2754, abs=5e-4)
+    assert synth.so_nhay_cam_co_entity_lo == 34
+    assert khao_sat.so_nhay_cam_co_entity_lo == 23
+    assert synth.trung_binh_phan_entity_lo == pytest.approx(0.3479, abs=5e-4)
+    assert khao_sat.trung_binh_phan_entity_lo == pytest.approx(0.2613, abs=5e-4)
     # Có ca lộ một phần mà không ca nào lộ hết: đó là hình dạng của kết quả.
     assert synth.so_nhay_cam_lo_mot_phan > synth.composition_risk.tu_so == 0
     assert khao_sat.so_nhay_cam_lo_mot_phan > khao_sat.composition_risk.tu_so == 0
+
+
+# ---------------------------------------------------------------------------
+# Siết phép lộ theo scope (story 2.12, ca 3 của "Điều kiện đổi định nghĩa")
+# ---------------------------------------------------------------------------
+
+
+def test_siet_theo_scope_khong_doi_ba_ty_le_tren_bon_anh_da_commit(hang):
+    """Bằng chứng đo được của mục bổ sung ADR-012 ngày 05/09/2026.
+
+    ADR-012 đòi ba điều khi đổi một định nghĩa, và một trong ba là ba tỷ lệ được
+    đếm lại với số cũ giữ lại để so. Ở thời điểm chốt, siết theo scope **không
+    đổi một con số nào** trên cả bốn ảnh chụp đã commit - tử số tỷ lệ 3 đang bằng
+    0 ở cả bốn, nên phép siết chỉ có thể giữ nguyên nó. Đây là cửa sổ an toàn mà
+    chính ADR mô tả, và test này là chỗ nó được khẳng định bằng máy chứ không
+    bằng một câu trong tài liệu.
+
+    Test sẽ đỏ ngay khi một lần nạp lại làm tử số khác 0 - đúng lúc phải đọc lại
+    ADR trước khi báo cáo con số mới.
+    """
+    for duong_dan in (ANH_SYNTH, ANH_KHAO_SAT, ANH_REAL, ANH_THAT_KHU):
+        anh = doc_anh_do_thi(duong_dan)
+        cu = ba_ty_le(anh, hang, siet_theo_scope=False)
+        moi = ba_ty_le(anh, hang, siet_theo_scope=True)
+        assert cu.bo_ba() == moi.bo_ba(), duong_dan.name
+        assert moi.siet_theo_scope is True and cu.siet_theo_scope is False
+
+
+def test_siet_theo_scope_bo_phep_ghep_khong_ai_thuc_hien_duoc(hang):
+    """Mảnh lộ ở scope khác không còn tính là lộ.
+
+    Ca dựng tay: một ca nhạy cảm của `khach_hang_a` có đúng một entity, và entity
+    đó chỉ xuất hiện ở một hyperedge không nhạy cảm của `khach_hang_b`. Không vai
+    nào thấy cả hai khoang, nên phép ghép đó không ai thực hiện được - định nghĩa
+    gốc vẫn đếm nó, bản siết thì không.
+    """
+    nhay = _he("n", "khach_hang_a:bao_cao_su_co", {"subject": ["web01"]})
+    lo_ben_kia = _he("k", "khach_hang_b:runbook", {"subject": ["web01"]})
+    anh = _anh([nhay, lo_ben_kia])
+    assert ba_ty_le(anh, hang, siet_theo_scope=False).composition_risk.tu_so == 1
+    assert ba_ty_le(anh, hang, siet_theo_scope=True).composition_risk.tu_so == 0
+
+
+def test_siet_theo_scope_giu_phep_ghep_trong_cung_scope(hang):
+    """Cùng ca đó nhưng hai hyperedge cùng scope thì vẫn là composition risk."""
+    nhay = _he("n", "khach_hang_a:bao_cao_su_co", {"subject": ["web01"]})
+    lo_cung_scope = _he("k", "khach_hang_a:runbook", {"subject": ["web01"]})
+    anh = _anh([nhay, lo_cung_scope])
+    assert ba_ty_le(anh, hang, siet_theo_scope=True).composition_risk.tu_so == 1
+
+
+def test_hyperedge_khong_khoa_nhin_thay_phan_lo_cua_moi_scope_sinh_ra_no(hang):
+    """Ca AD-5: hyperedge không khóa thuộc về **mọi** scope của `doc_key` nó.
+
+    Phía an toàn là phía đếm nhiều rủi ro hơn, đúng chiều mà `hang_cua_hyperedge`
+    đã chọn khi lấy hạng **cao nhất**.
+    """
+    nhay = _he("n", None, {"subject": ["web01"]}, doc_key=("a.md", "b.md"))
+    lo_b = _he("k", "khach_hang_b:runbook", {"subject": ["web01"]})
+    anh = _anh(
+        [nhay, lo_b],
+        tai_lieu=(
+            ("a.md", "khach_hang_a", "bao_cao_su_co"),
+            ("b.md", "khach_hang_b", "runbook"),
+        ),
+    )
+    assert ba_ty_le(anh, hang, siet_theo_scope=True).composition_risk.tu_so == 1
+
+
+def test_composition_risk_vai_thuc_the_la_chan_doan_khong_phai_ty_le_thu_tu(hang):
+    """Chỉ ba vai `subject`/`owner`/`source` vào tập entity của số chẩn đoán.
+
+    Ca dựng tay: mọi thực thể của một ca nhạy cảm đều lộ, nhưng `remediation` của
+    nó là một mệnh đề không lặp lại ở đâu. Tỷ lệ chính thức đếm cả mệnh đề nên nó
+    bằng 0; số chẩn đoán chỉ đếm ba vai thực thể nên nó bằng 1. Đó đúng là hình
+    dạng mà `E(h)` của ADR-012 tạo ra trên dữ liệu thật, và là lý do số này tồn
+    tại.
+    """
+    nhay = _he(
+        "n",
+        "noi_bo:bao_cao_su_co",
+        {
+            "subject": ["web01"],
+            "owner": ["Phòng IT"],
+            "remediation": ["khởi động lại pool php-fpm rồi kiểm tra lại log"],
+        },
+    )
+    lo = _he("k", "noi_bo:runbook", {"subject": ["web01"], "owner": ["Phòng IT"]})
+    kq = ba_ty_le(_anh([nhay, lo]), hang)
+    assert kq.composition_risk.tu_so == 0
+    assert kq.composition_risk_vai_thuc_the.tu_so == 1
+    assert kq.id_composition_risk_vai_thuc_the == ("n",)
+    # Cùng mẫu số với tỷ lệ 3: hai số đọc cạnh nhau mới nói được điều gì.
+    assert kq.composition_risk_vai_thuc_the.mau_so == kq.composition_risk.mau_so
+
+
+def test_so_chan_doan_vai_thuc_the_cua_bon_anh_da_commit(hang):
+    """Số khóa của dòng chẩn đoán mới, đếm 05/09/2026 trên bốn ảnh đã commit.
+
+    Bốn con số đọc từ chính bốn hằng ở đầu file, **sau khi siết theo scope** và
+    **sau ba đợt nạp lại 05/09**: `synth` 12/93, `khao_sat` 7/150, `real` 0/144,
+    `that_khu` 4/211. Chưa siết thì `synth` là 13/93, và khoảng cách giữa hai
+    con số đó chính là phần "phép ghép không ai thực hiện được".
+
+    Trên ảnh chụp *trước* đợt nạp lại nó là 8/81 (chưa siết 9/81); spec của
+    story 2.12 trích con số 9/81 đó.
+    """
+    so = {}
+    for ten, duong_dan in (
+        ("synth", ANH_SYNTH),
+        ("khao_sat", ANH_KHAO_SAT),
+        ("real", ANH_REAL),
+        ("that_khu", ANH_THAT_KHU),
+    ):
+        kq = ba_ty_le(doc_anh_do_thi(duong_dan), hang)
+        so[ten] = (
+            kq.composition_risk_vai_thuc_the.tu_so,
+            kq.composition_risk_vai_thuc_the.mau_so,
+        )
+    assert so == {
+        "synth": (SYNTH_CR_VAI_THUC_THE, SYNTH_NHAY_CAM),
+        "khao_sat": (KHAO_SAT_CR_VAI_THUC_THE, KHAO_SAT_NHAY_CAM),
+        "real": (0, REAL_NHAY_CAM),
+        "that_khu": (THAT_KHU_CR_VAI_THUC_THE, THAT_KHU_NHAY_CAM),
+    }, so
+    # Chưa siết theo scope thì cao hơn ở hai cột corpus dựng; khoảng cách đó là
+    # phần "phép ghép không ai thực hiện được".
+    chua_siet = ba_ty_le(doc_anh_do_thi(ANH_SYNTH), hang, siet_theo_scope=False)
+    assert chua_siet.composition_risk_vai_thuc_the.tu_so == 13
 
 
 # ---------------------------------------------------------------------------
@@ -625,6 +802,48 @@ def test_trang_ghi_duoc_va_co_ca_hai_cot_cung_cot_chenh(tmp_path):
     assert f"{KHAO_SAT_N_NGOI}/{KHAO_SAT_HYPEREDGE}" in trang
     # Hai điều phải đọc trước ba con số.
     assert "hệ trích được" in trang and "giả lập" in trang
+
+
+def test_trang_in_so_chan_doan_vai_thuc_the(tmp_path):
+    """AC story 2.12: kết luận mỏ neo phát biểu được **kèm số chẩn đoán vai thực thể**.
+
+    Số 0 của tỷ lệ 3 đọc được hai cách; dòng vai thực thể là chỗ người đọc chương
+    4 phân biệt "0 vì tri thức kín" với "0 vì `E(h)` đếm cả mệnh đề".
+    """
+    from eval.xem_ty_le import main
+
+    dich = tmp_path / "ty_le.html"
+    assert main([str(dich)]) == 0
+    trang = dich.read_text(encoding="utf-8")
+    assert "vai mang thực thể" in trang
+    for vai in VAI_THUC_THE:
+        assert f"<code>{vai}</code>" in trang or vai in trang
+    # Con số của cột mốc, tính từ chính ảnh chụp.
+    assert f"{SYNTH_CR_VAI_THUC_THE}/{SYNTH_NHAY_CAM}" in trang
+    # Và trang nói ra rằng phép lộ đã siết theo scope.
+    assert "siết theo scope" in trang
+
+
+def test_ket_luan_mo_neo_mang_so_chan_doan_vai_thuc_the(tmp_path):
+    """Khối đối chứng bốn cột: câu kết luận mỏ neo phải mang cả hai con số."""
+    from eval.xem_ty_le import main
+
+    dich = tmp_path / "ty_le.html"
+    ma = main(
+        [
+            str(dich),
+            "--anh-real",
+            str(ANH_REAL),
+            "--anh-that-khu",
+            str(ANH_THAT_KHU),
+        ]
+    )
+    assert ma == 0
+    trang = dich.read_text(encoding="utf-8")
+    assert "Mỏ neo Composition-Risk" in trang
+    assert f"{THAT_KHU_CR_VAI_THUC_THE}/{THAT_KHU_NHAY_CAM}" in trang
+    assert f"{SYNTH_CR_VAI_THUC_THE}/{SYNTH_NHAY_CAM}" in trang
+    assert "chẩn đoán" in trang
 
 
 def test_trang_noi_ra_hai_cot_khong_cung_truc_loai_noi_dung(tmp_path):
@@ -814,7 +1033,8 @@ def test_trang_ba_cot_in_cot_real_va_canh_bao_bo_trich_xuat_khac(tmp_path):
     # Story 2.13 thay câu "chưa đo lần nào" bằng con số đo được; trang phải mang
     # **cả hai** vế, precision của Qwen và của DeepSeek, nếu không người đọc chỉ
     # thấy một số mà không có gì để so.
-    assert "48.2%" in trang and "70.7%" in trang and "dưới cổng" in trang
+    # 71,0% là precision của `v3-deepseek-tu-dien`, vòng chốt từ story 2.12.
+    assert "48.2%" in trang and "71.0%" in trang and "dưới cổng" in trang
 
 
 def test_thieu_co_anh_real_thi_van_in_hai_cot_nhu_cu(tmp_path):
@@ -957,7 +1177,7 @@ def test_hai_ty_le_100_phan_tram_cua_real_la_hien_tuong_cua_bo_trich_xuat(hang):
     synth = ba_ty_le(doc_anh_do_thi(ANH_SYNTH), hang)
 
     assert real.phan_hyperedge_hai_vai() == 0.0
-    assert synth.phan_hyperedge_hai_vai() == pytest.approx(0.1024, abs=5e-4)
+    assert synth.phan_hyperedge_hai_vai() == pytest.approx(0.1032, abs=5e-4)
     assert real.so_vai_pho_bien_nhat() == 5
     assert synth.so_vai_pho_bien_nhat() == 3
     assert min(real.phan_bo_so_vai) == 3, "real không có hyperedge dưới 3 vai"
@@ -965,10 +1185,10 @@ def test_hai_ty_le_100_phan_tram_cua_real_la_hien_tuong_cua_bo_trich_xuat(hang):
     vai, cua_real, cua_synth = real.vai_da_dien_nhieu_nhat(synth)
     assert vai == "owner"
     assert cua_real == pytest.approx(0.9648, abs=5e-4)
-    assert cua_synth == pytest.approx(0.1890, abs=5e-4)
+    assert cua_synth == pytest.approx(0.1851, abs=5e-4)
 
     assert real.phan_entity_lap_vai() == pytest.approx(0.0949, abs=5e-4)
-    assert synth.phan_entity_lap_vai() == pytest.approx(0.0039, abs=5e-4)
+    assert synth.phan_entity_lap_vai() == pytest.approx(0.0320, abs=5e-4)
 
 
 def test_canh_bao_cot_real_mang_ba_bang_chung_do_duoc(tmp_path):
@@ -984,9 +1204,9 @@ def test_canh_bao_cot_real_mang_ba_bang_chung_do_duoc(tmp_path):
     dich = tmp_path / "ty_le.html"
     assert main([str(dich), "--anh-real", str(ANH_REAL)]) == 0
     trang = dich.read_text(encoding="utf-8")
-    assert "0.0%" in trang and "10.2%" in trang, "dấu 1: hyperedge 2 vai"
+    assert "0.0%" in trang and "10.3%" in trang, "dấu 1: hyperedge 2 vai"
     assert "<code>owner</code>" in trang and "96.5%" in trang, "dấu 2: vai điền thừa"
-    assert "9.5%" in trang and "0.4%" in trang, "dấu 3: entity lặp giữa các vai"
+    assert "9.5%" in trang and "3.2%" in trang, "dấu 3: entity lặp giữa các vai"
     assert "không khôi phục được mỏ neo Composition-Risk" in trang
 
 
@@ -1392,7 +1612,7 @@ def test_hai_anh_that_dung_cung_muoi():
 
     a = _json.loads(ANH_THAT_KHU.read_text(encoding="utf-8"))
     b = _json.loads(ANH_REAL.read_text(encoding="utf-8"))
-    assert a["muoi_id"] == b["muoi_id"] == "dffc42de62eed6e1"
+    assert a["muoi_id"] == b["muoi_id"] == MUOI_ID_CHOT
 
 
 def test_hai_anh_dung_chung_muoi_va_cung_tap_tai_lieu():
@@ -1463,20 +1683,20 @@ def test_doi_chung_hai_bo_trich_xuat_tren_tap_tai_lieu_chung(hang):
 
     # Qwen đẩy **mọi** hyperedge lên >= 3 vai; DeepSeek để 35,7% ở 2 vai.
     assert real.phan_hyperedge_hai_vai() == 0.0
-    assert tk.phan_hyperedge_hai_vai() == pytest.approx(0.357, abs=5e-3)
+    assert tk.phan_hyperedge_hai_vai() == pytest.approx(0.277, abs=5e-3)
     # Vai `owner` là dấu rõ nhất: 96,5% so với 5,9% trên **cùng** tài liệu, mà
     # 30/41 tài liệu là runbook không nêu người phụ trách.
     assert real.phan_bo_vai["owner"] / real.so_hyperedge == pytest.approx(0.965, abs=5e-3)
-    assert tk.phan_bo_vai["owner"] / tk.so_hyperedge == pytest.approx(0.059, abs=5e-3)
+    assert tk.phan_bo_vai["owner"] / tk.so_hyperedge == pytest.approx(0.134, abs=5e-3)
     # Và `owner` phải là **vai lệch nhiều nhất** giữa hai cột, không phải một vai
     # tình cờ: đó mới là phát biểu "Qwen tự điền người phụ trách".
     assert real.vai_da_dien_nhieu_nhat(tk)[0] == "owner"
     # Chênh ba tỷ lệ, con số mà chương 4 trích.
     assert real.overall_n_ary.ti_le - tk.overall_n_ary.ti_le == pytest.approx(
-        0.357, abs=5e-3
+        0.277, abs=5e-3
     )
     assert real.sensitive_n_ary.ti_le - tk.sensitive_n_ary.ti_le == pytest.approx(
-        0.294, abs=5e-3
+        0.197, abs=5e-3
     )
 
 
@@ -1541,7 +1761,7 @@ def test_chan_doan_composition_risk_cua_that_khu(hang):
     assert kq.composition_risk.tu_so == 0
     assert kq.so_nhay_cam_co_entity_lo == 6
     assert kq.so_nhay_cam_lo_mot_phan == 6
-    assert kq.trung_binh_phan_entity_lo == pytest.approx(0.339, abs=5e-3)
+    assert kq.trung_binh_phan_entity_lo == pytest.approx(0.311, abs=5e-3)
 
 
 def test_hai_anh_khac_muoi_thi_tu_choi_ca_dot(tmp_path, capsys):
@@ -1628,3 +1848,229 @@ def test_canh_bao_qwen_chi_vao_cot_real_khong_vao_cot_that_khu(tmp_path, capsys)
     assert "cột that_khu KHÔNG khôi phục" not in ra
     assert ra.count("trích bằng Qwen 2.5 7B cục bộ") == 1
     assert "cột that_khu trích bằng Qwen" not in ra
+
+
+# ---------------------------------------------------------------------------
+# Dải sai số của ba tỷ lệ trên nhiều lần chạy cùng một cấu hình (story 2.12)
+# ---------------------------------------------------------------------------
+
+# Ba mẫu của **cùng một cấu hình** `that_khu`: cùng 50 tài liệu đã khử, cùng
+# `deepseek-v4-flash`, cùng prompt, không từ điển - khác đúng **lần chạy**. Mẫu 2
+# là bản đang được báo cáo (`that_khu_rut_gon.json`); hai mẫu kia chỉ tồn tại để
+# đo dải, và chúng có commit vì "người đọc repo tính lại được" là điều kiện mà
+# ADR-012 đặt cho mọi con số của chương 4.
+# Muối chốt của mọi ảnh rút gọn dựng từ tài liệu công ty. Cùng muối là điều
+# kiện để hai ảnh so được với nhau: hai muối cho hai tập id rời nhau hoàn toàn.
+MUOI_ID_CHOT = "dffc42de62eed6e1"
+ANH_THAT_KHU_LAN1 = GOC_REPO / "eval" / "anh_do_thi" / "that_khu_lan1_rut_gon.json"
+ANH_THAT_KHU_LAN3 = GOC_REPO / "eval" / "anh_do_thi" / "that_khu_lan3_rut_gon.json"
+# Mẫu thứ hai của **cột mốc**: cùng `eval/corpus` + `eval/data`, cùng model,
+# **có** từ điển thực thể (space dùng một lần được cấp một bản chép của
+# `config/tu-dien-thuc-the/synth.yaml` với cùng sha256, xóa ngay sau khi nạp).
+ANH_SYNTH_LAN2 = GOC_REPO / "eval" / "anh_do_thi" / "synth_lan2_rut_gon.json"
+
+# Dải đo được ngày 05/09/2026 trên ba mẫu `that_khu`, viết tay theo cùng luật số
+# khóa của story 2.10: một kỳ vọng tính bằng chính hàm đang đo là một test luôn
+# xanh. Ba lần chạy cho 720, 712, 716 hyperedge.
+THAT_KHU_DAI_OVERALL = (0.678, 0.750)
+THAT_KHU_DAI_SENSITIVE = (0.716, 0.810)
+
+# Dải của **cột mốc** trên hai mẫu. Đây là con số ngược với dự đoán và là phát
+# hiện chính của phép đo: biên độ **phụ thuộc corpus rất mạnh**. Corpus dựng 52
+# tài liệu ngắn cho biên độ khoảng một điểm; 50 tài liệu công ty thật cho bảy
+# tới mười. Một "biên độ chung ±7 điểm" là một phát biểu sai theo cả hai chiều.
+SYNTH_DAI_OVERALL = (0.897, 0.907)
+SYNTH_DAI_SENSITIVE = (0.831, 0.839)
+
+
+def test_dai_can_it_nhat_hai_mau(hang):
+    """Một mẫu cho biên độ 0, và "biên độ 0,0 điểm" đọc y như một kết quả tốt."""
+    b = ba_ty_le(doc_anh_do_thi(ANH_SYNTH), hang)
+    with pytest.raises(ThieuMauDoDai) as e:
+        dai_ba_ty_le("synth", b)
+    assert e.value.code == "THIEU_MAU_DO_DAI"
+
+
+def test_dai_tu_choi_khi_mot_mau_co_mau_so_rong(hang):
+    """"Không tính được" không có chỗ trong một phép lấy min và max."""
+    rong = ba_ty_le(_anh([_he("a", "noi_bo:runbook", {"subject": ["x"]})]), hang)
+    day = ba_ty_le(doc_anh_do_thi(ANH_SYNTH), hang)
+    with pytest.raises(ThieuMauDoDai, match="mẫu số rỗng"):
+        dai_ba_ty_le("thu", rong, day)
+
+
+def test_dai_tinh_dung_min_max_bien_do_trung_binh():
+    """Bốn số dẫn xuất tính từ chính danh sách giá trị, không từ một hằng."""
+    from eval.ty_le_n_ngoi import DaiTyLe
+
+    d = DaiTyLe(ten="x", ten_cau_hinh="c", gia_tri=(0.60, 0.75, 0.70), mau_so=(1, 1, 1))
+    assert (d.so_mau, d.nho_nhat, d.lon_nhat) == (3, 0.60, 0.75)
+    assert d.bien_do == pytest.approx(0.15)
+    assert d.trung_binh == pytest.approx(0.6833, abs=5e-4)
+    # Một chênh nhỏ hơn biên độ của chính phép đo không đọc thành kết luận được.
+    assert d.nho_hon_bien_do(0.05) is True
+    assert d.nho_hon_bien_do(-0.05) is True
+    assert d.nho_hon_bien_do(0.20) is False
+    assert d.nho_hon_bien_do(None) is True
+
+
+def test_dai_ba_mau_cua_that_khu_tren_anh_da_commit(hang):
+    """**Số trụ mới của chương 4**: ba tỷ lệ có biên độ, và biên độ đó lớn.
+
+    Ba mẫu là ba lần nạp cùng 50 tài liệu, cùng model, cùng prompt, không từ
+    điển - khác đúng lần chạy. Token vào của cả ba **bằng nhau tới từng token**
+    (120.848; nó là số đếm trên chuỗi prompt), nên thứ đổi là đầu ra của LLM,
+    tức chính tập fact mà ba tỷ lệ đếm trên.
+
+    Biên độ 7,2 và 9,5 điểm phần trăm **lớn hơn** phần lớn chênh lệch mà epic 2
+    từng đọc thành kết luận - chênh "khớp cỡ" của story 2.10 là 9,6 và 5,7 điểm,
+    và chênh của cổng R2 ở 2.12 là 0,3 điểm. Đó là lý do test này tồn tại: nó là
+    chỗ con số ấy có một địa chỉ, thay vì một câu văn xuôi ai cũng gật đầu rồi
+    vẫn trích số.
+    """
+    mau = [
+        ba_ty_le(doc_anh_do_thi(f), hang)
+        for f in (ANH_THAT_KHU_LAN1, ANH_THAT_KHU, ANH_THAT_KHU_LAN3)
+    ]
+    assert [b.so_hyperedge for b in mau] == [720, 712, 716]
+    # Cả ba cùng 50 tài liệu và cùng muối: nếu không thì đây là ba tập khác nhau.
+    assert {b.so_tai_lieu for b in mau} == {THAT_KHU_TAI_LIEU}
+    assert {doc_anh_do_thi(f).muoi_id for f in (ANH_THAT_KHU_LAN1, ANH_THAT_KHU, ANH_THAT_KHU_LAN3)} == {
+        MUOI_ID_CHOT
+    }
+
+    ov, se, cr = dai_ba_ty_le("that_khu", *mau)
+    assert (round(ov.nho_nhat, 3), round(ov.lon_nhat, 3)) == THAT_KHU_DAI_OVERALL
+    assert (round(se.nho_nhat, 3), round(se.lon_nhat, 3)) == THAT_KHU_DAI_SENSITIVE
+    assert ov.bien_do == pytest.approx(0.072, abs=5e-4)
+    assert se.bien_do == pytest.approx(0.095, abs=5e-4)
+    # Composition-Risk bằng 0 ở cả ba lần: **đó** là một phát biểu ổn định, khác
+    # hẳn hai tỷ lệ đầu. Số 0 không phải nhiễu của một lần chạy.
+    assert cr.bien_do == 0.0 and cr.lon_nhat == 0.0
+
+    # Bản đang báo cáo là mẫu 2, và nó **không** đổi: dải là một phát biểu thêm
+    # về sai số, không phải một phép thay số.
+    assert mau[1].overall_n_ary == TyLe("Overall N-ary", THAT_KHU_N_NGOI, THAT_KHU_HYPEREDGE)
+
+
+def test_hai_chenh_lech_ma_epic_2_tung_phat_bieu_so_voi_bien_do(hang):
+    """Ba phép so, và kết quả **không giống nhau** - đó mới là điều đáng khóa.
+
+    Một test khẳng định "cả ba chênh lệch đều nằm trong biên độ" sẽ tiện hơn cho
+    câu chuyện và sai. Số thật:
+
+    - Chênh **Sensitive N-ary** giữa `synth` và `khao_sat` (+6,1 điểm) **nhỏ hơn**
+      biên độ 9,5 điểm: nó không đọc thành một phát biểu định lượng được.
+    - Chênh **Overall N-ary** (-8,4 điểm) **lớn hơn** biên độ 7,2 điểm, nhưng chỉ
+      hơn 1,2 điểm. Nó ở ngay mép, nên nó cũng không chịu nổi một chữ số thập
+      phân nào của báo cáo.
+    - Chênh của cổng R2 giữa hai prompt (0,3 điểm trên 8 tài liệu chấm) nhỏ hơn
+      **cả hai** biên độ, và nhỏ hơn rất xa.
+    """
+    mau = [
+        ba_ty_le(doc_anh_do_thi(f), hang)
+        for f in (ANH_THAT_KHU_LAN1, ANH_THAT_KHU, ANH_THAT_KHU_LAN3)
+    ]
+    ov, se, _ = dai_ba_ty_le("that_khu", *mau)
+    synth = ba_ty_le(doc_anh_do_thi(ANH_SYNTH), hang)
+    khao_sat = ba_ty_le(doc_anh_do_thi(ANH_KHAO_SAT), hang)
+    dong = doi_chieu(synth, khao_sat)
+
+    assert se.nho_hon_bien_do(dong[1].chenh), "chênh Sensitive phải nhỏ hơn biên độ"
+    assert not ov.nho_hon_bien_do(dong[0].chenh), "chênh Overall lớn hơn biên độ"
+    # Nhưng chỉ hơn chút: khoảng cách tới biên độ dưới 2 điểm phần trăm.
+    assert abs(dong[0].chenh) - ov.bien_do == pytest.approx(0.012, abs=5e-3)
+
+    from eval.xem_ty_le import PRECISION_GHEP_CAP, PRECISION_GHEP_CAP_TU_DIEN
+
+    chenh_r2 = PRECISION_GHEP_CAP_TU_DIEN - PRECISION_GHEP_CAP
+    assert ov.nho_hon_bien_do(chenh_r2) and se.nho_hon_bien_do(chenh_r2)
+
+
+def test_dai_hai_mau_cua_cot_moc(hang):
+    """Cột mốc cũng phải có dải - nó là cột mà mọi chênh lệch đo so với.
+
+    `synth_lan2` là một **space dùng một lần**: cùng `eval/corpus` + `eval/data`,
+    cùng model, **có** từ điển (space đó được cấp một bản chép của
+    `config/tu-dien-thuc-the/synth.yaml` với cùng sha256, xóa ngay sau khi nạp),
+    khác đúng lần chạy. Space `synth` **không** bị nạp lại: nạp lại nó là làm
+    trôi 28 nhãn truy hồi vừa soát tay.
+    """
+    moc = ba_ty_le(doc_anh_do_thi(ANH_SYNTH), hang)
+    lan2 = ba_ty_le(doc_anh_do_thi(ANH_SYNTH_LAN2), hang)
+    assert (moc.so_hyperedge, lan2.so_hyperedge) == (281, 268)
+    assert moc.so_tai_lieu == lan2.so_tai_lieu == 52
+
+    ov, se, cr = dai_ba_ty_le("synth", moc, lan2)
+    assert (round(ov.nho_nhat, 3), round(ov.lon_nhat, 3)) == SYNTH_DAI_OVERALL
+    assert (round(se.nho_nhat, 3), round(se.lon_nhat, 3)) == SYNTH_DAI_SENSITIVE
+    assert ov.bien_do == pytest.approx(0.010, abs=5e-4)
+    assert se.bien_do == pytest.approx(0.007, abs=5e-4)
+    assert cr.bien_do == 0.0
+
+
+def test_bien_do_phu_thuoc_corpus_chu_khong_phai_mot_hang_chung(hang):
+    """**Phát hiện chính của phép đo dải**, và nó ngược với dự đoán ban đầu.
+
+    Biên độ của corpus dựng nhỏ hơn biên độ của tài liệu công ty thật **gần bảy
+    lần**. Một câu "ba tỷ lệ có biên độ khoảng bảy điểm" vì vậy sai theo cả hai
+    chiều: nó thổi phồng nhiễu của cột mốc, và nó dùng nhiễu của cột ồn nhất để
+    hạ những chênh lệch thật sự đọc được ở hai cột sạch.
+
+    Hệ quả cho `eval/xem_ty_le.py`: biên độ phải tra **theo cấu hình**, không lấy
+    max chung - đó đúng là điều `_cau_ha_xuong_dinh_tinh` làm.
+    """
+    moc = [ba_ty_le(doc_anh_do_thi(f), hang) for f in (ANH_SYNTH, ANH_SYNTH_LAN2)]
+    tk = [
+        ba_ty_le(doc_anh_do_thi(f), hang)
+        for f in (ANH_THAT_KHU_LAN1, ANH_THAT_KHU, ANH_THAT_KHU_LAN3)
+    ]
+    ov_moc = dai_ba_ty_le("synth", *moc)[0]
+    ov_tk = dai_ba_ty_le("that_khu", *tk)[0]
+    assert ov_tk.bien_do > 5 * ov_moc.bien_do, (ov_moc.bien_do, ov_tk.bien_do)
+
+
+def test_trang_in_dai_va_tu_ha_chenh_lech_nho_hon_bien_do(tmp_path):
+    """AC: dải in **ngay cạnh** ba tỷ lệ, và trang tự hạ hàng nào cần hạ."""
+    from eval.xem_ty_le import main
+
+    dich = tmp_path / "ty_le.html"
+    ma = main(
+        [
+            str(dich),
+            "--anh-that-khu",
+            str(ANH_THAT_KHU),
+            "--mau-moc",
+            str(ANH_SYNTH_LAN2),
+            "--mau-that-khu",
+            str(ANH_THAT_KHU_LAN1),
+            "--mau-that-khu",
+            str(ANH_THAT_KHU_LAN3),
+        ]
+    )
+    assert ma == 0
+    trang = dich.read_text(encoding="utf-8")
+    assert "số của MỘT lần chạy" in trang
+    assert "biên độ 7.2 điểm" in trang and "biên độ 1.0 điểm" in trang
+    assert "3 lần chạy" in trang and "2 lần chạy" in trang
+    # Chênh Sensitive giữa mốc và that_khu (-2,8 điểm) nhỏ hơn biên độ 9,5 điểm.
+    assert "chỉ đọc được ở mức định tính" in trang
+    # Cột chưa có mẫu lặp phải được nói ra, không im lặng mượn biên độ của mốc.
+    assert "Chưa có mẫu lặp cho" in trang and "khao_sat" in trang
+    # Câu về cổng R2 phải có mặt: 0,3 điểm nhỏ hơn mọi biên độ đo được.
+    assert "0,3 điểm" in trang
+
+
+def test_mau_phai_la_mot_lan_chay_khac_cua_cung_cau_hinh(tmp_path, capsys):
+    """Trộn một space khác vào phép đo dải là đo trên hai tập dữ liệu."""
+    from eval.xem_ty_le import main, ly_do_tu_choi_mau
+
+    anh = doc_anh_do_thi(ANH_KHAO_SAT)
+    assert ly_do_tu_choi_mau(ANH_KHAO_SAT, "synth", anh) is not None
+    assert ly_do_tu_choi_mau(ANH_SYNTH_LAN2, "synth", doc_anh_do_thi(ANH_SYNTH_LAN2)) is None
+    assert ly_do_tu_choi_mau(ANH_SYNTH, "synth", doc_anh_do_thi(ANH_SYNTH)) is None
+
+    dich = tmp_path / "ty_le.html"
+    assert main([str(dich), "--mau-moc", str(ANH_KHAO_SAT)]) == 1
+    assert "không phải một lần chạy khác" in capsys.readouterr().err
+    assert not dich.exists()

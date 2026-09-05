@@ -14,8 +14,8 @@ content_type: bao_cao_su_co
 | Dịch vụ | WAF |
 | Mức ưu tiên | Cao |
 | Người tiếp nhận | NV21 |
-| Mở lúc | 26/09/2026 09:12 |
-| Đóng lúc | 26/09/2026 11:40 |
+| Mở lúc | 08/08/2026 09:12 |
+| Đóng lúc | 08/08/2026 11:40 |
 
 ## Mô tả từ khách hàng
 Sau khi bật rule chỉ cho phép một số IP truy cập, toàn bộ nhân viên tại văn phòng Hà Nội của

@@ -14,8 +14,8 @@ content_type: bao_cao_su_co
 | Dịch vụ | CDN |
 | Mức ưu tiên | Trung bình |
 | Người tiếp nhận | NV22 |
-| Mở lúc | 02/10/2026 13:15 |
-| Đóng lúc | 02/10/2026 13:48 |
+| Mở lúc | 14/08/2026 13:15 |
+| Đóng lúc | 14/08/2026 13:48 |
 
 ## Mô tả từ khách hàng
 Khách chèn tham số chuyển đổi hình ảnh theo đúng tài liệu, nhưng truy cập link ảnh sau chuyển đổi

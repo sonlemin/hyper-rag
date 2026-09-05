@@ -1,0 +1,105 @@
+# Từ điển thực thể chuẩn của space `synth` (story 2.12, FR-32).
+#
+# **Đây là bảng đang chạy, không phải đề xuất.** Mọi mục mang dấu `xac_nhan` của
+# người; bản đề xuất do máy gom nằm ở `eval/de_xuat/synth.yaml` và có lược đồ
+# khác hẳn, nên một lần `cp` thẳng sang đây là loader nổ chứ không phải một phép
+# gộp thực thể lặng lẽ chạy.
+#
+# Bảng nạp bằng `adapters/tu_dien_thuc_the.py`, khai ở field
+# `entity_dictionary_path` của `EngineACL`. Phần *áp* là `core.facts.ap_bi_danh`:
+# hàm thuần, chạy sau `kiem_fact` và trước `id_fact`, **khớp trọn** giá trị slot
+# và **đúng một bước**. Khối từ điển cũng đi vào prompt, nhưng đó chỉ là gợi ý -
+# thứ bảo đảm hai cách viết cho một `id_fact` là phép áp, không phải lời dặn.
+#
+# **Đổi file này là re-ingest.** Nó đổi giá trị slot, tức đổi id entity và id
+# hyperedge, tức đổi ba tỷ lệ n-ngôi và làm trôi nhãn truy hồi vàng. `version`
+# của bảng là sha256 nội dung file, ghi vào audit của đợt nạp.
+#
+# **Ràng theo scope.** Một mục chỉ áp cho tài liệu đúng scope của nó (`*` cho
+# thuật ngữ chung). Gộp `web01` của khách hàng A với `web01` của khách hàng B là
+# hỏng đúng chỗ tỷ lệ Composition-Risk đo, và phép lộ của tỷ lệ đó nay cũng siết
+# theo scope (mục bổ sung 05/09/2026 của ADR-012).
+#
+# ---------------------------------------------------------------------------
+# HAI NHÓM MỤC, HAI XUẤT XỨ KHÁC NHAU - đọc trước khi thêm một mục
+# ---------------------------------------------------------------------------
+#
+# **(A) Bốn mục do công cụ gom, sonlm xác nhận 05/09/2026.** Chúng đến từ
+# `eval/de_xuat_bi_danh.py` chạy trên ảnh chụp `synth` ngày **03/09**, tức bản
+# *trước* đợt nạp lại của story 2.12; bằng chứng xuất xứ giữ ở
+# `eval/de_xuat/synth-truoc-nap-lai-05-09.yaml`. Bản đề xuất sinh **sau** đợt
+# nạp (`eval/de_xuat/synth.yaml`) nói về một đồ thị khác và không kiểm lại được
+# lời khai này - nó là bằng chứng của một chuyện khác, xem chú thích trong chính
+# nó. Cả bốn mục chỉ khác nhau ở chữ hoa chữ thường.
+#
+# Hai điều phải nói ra ở đây chứ không giấu trong ledger.
+#
+# Một: mục `Mỗi quý` **không phải một thực thể** mà là một cụm tần suất ở vai
+# `time`. Rủi ro đã nêu, sonlm vẫn nhận. Hệ quả: bảng này hôm nay pha lẫn
+# **chuẩn hóa thực thể** với **chuẩn hóa chính tả**, và chương 4 phải phát biểu
+# điều đó thay vì trình FR-32 như một phép gộp thực thể thuần.
+#
+# Hai: trên dữ liệu hiện có, mục `Mỗi quý` là một **mục không áp được**. Đếm
+# trên ảnh chụp sau đợt nạp 05/09: `Mỗi quý` xuất hiện 4 lần và **cả 4 đều ở
+# scope `noi_bo`**; `mỗi quý` xuất hiện 1 lần và nó ở `khach_hang_a`
+# (`k1-05-cmdb-app01.md`). Mục khai `scope: noi_bo`, nên bí danh của nó không
+# bao giờ gặp một tài liệu `noi_bo` để tra trúng. Nó **không sai** - luật ràng
+# theo scope đang làm đúng việc của nó, và một mục `scope: "*"` ở đây sẽ gộp một
+# cụm tần suất của khách hàng A với một cụm của nội bộ - nhưng nó cũng không gộp
+# gì cả, và khối chú thích này từng khai một phép gộp không xảy ra. Ghi ledger.
+#
+# Nhóm `Trực ban Tech Support` / `trực ban Tech Support` **không** vào bảng: hai
+# cách viết đó nằm ở hai scope khác nhau (`khach_hang_b` và `noi_bo`), nên gộp
+# chúng là một phép gộp xuyên scope. Công cụ liệt kê nó riêng ở
+# `nhom_lien_scope` của file đề xuất và không đề xuất nó.
+#
+# **(B) Một mục soạn tay cùng tài liệu bí danh của story 2.12, sonlm xác nhận
+# 05/09/2026 với đủ sáu bí danh.** Hai tài liệu `k1-08` và `k1-09` mới thêm vào
+# corpus nên chúng chưa có trong ảnh chụp, tức công cụ không thể đề xuất chúng.
+# Mục `App01` vì vậy soạn tay cùng lúc với tài liệu, và nó là **cặp bí danh bắc
+# qua ranh giới nhạy cảm** duy nhất của corpus: `APP-01` chỉ xuất hiện ở `k1-09`
+# (`bao_cao_su_co`, hạng 20, nhạy cảm), `app01.company.vn` chỉ ở `k1-08`
+# (`troubleshooting`, hạng 8, không nhạy cảm), và `App01` ở
+# `k1-01`/`k1-03`/`k1-05`. Chưa chuẩn hóa thì `APP-01` là một entity không bao
+# giờ lộ ở vùng không nhạy cảm và nó một mình chặn ca `k1-09` khỏi tử số
+# Composition-Risk; chuẩn hóa xong thì cả ba về một id.
+#
+# `k1-09` còn được sửa **một câu** trước khi nạp cho ca này có đường nối ở cả hai
+# vai mang thực thể chứ không chỉ ở `subject`: xem `ghi_chu` của mục đó trong
+# `eval/corpus_thiet_ke.yaml`.
+#
+# Danh sách bí danh của mục đó khai **rộng hơn** ba cách viết có trong corpus
+# (`app01`, `APP01`, `App-01` không xuất hiện ở tài liệu nào). Đó là chủ đích:
+# phép áp khớp **trọn** giá trị slot và **không** bỏ qua hoa thường, nên một
+# cách viết mà LLM trả về hơi khác là một entity trượt khỏi bảng. Một bí danh
+# thừa không hại gì - nó chỉ không bao giờ tra trúng.
+version: 1
+muc:
+  # --- (A) Bốn mục do công cụ gom, sonlm xác nhận ---------------------------
+  - chuan: phòng IT
+    scope: noi_bo
+    bi_danh: [Phòng IT]
+    xac_nhan: "sonlm 2026-09-05"
+  - chuan: cổng nội bộ
+    scope: noi_bo
+    bi_danh: [Cổng nội bộ]
+    xac_nhan: "sonlm 2026-09-05"
+  # Cụm tần suất ở vai `time`, không phải một thực thể. Rủi ro đã nêu, vẫn nhận.
+  - chuan: Mỗi quý
+    scope: noi_bo
+    bi_danh: [mỗi quý]
+    xac_nhan: "sonlm 2026-09-05"
+  - chuan: Nhóm Tích hợp
+    scope: khach_hang_b
+    bi_danh: [nhóm Tích hợp]
+    xac_nhan: "sonlm 2026-09-05"
+
+  # --- (B) Mục soạn tay cùng hai tài liệu bí danh của story 2.12 ------------
+  #
+  # Mục này do agent soạn cùng `k1-08`/`k1-09` chứ không do công cụ đề xuất (hai
+  # tài liệu đó mới thêm nên chưa có trong ảnh chụp). sonlm xem cả sáu bí danh
+  # và xác nhận nguyên vẹn ngày 05/09/2026.
+  - chuan: App01
+    scope: khach_hang_a
+    bi_danh: [app01.company.vn, APP-01, app-01, app01, APP01, App-01]
+    xac_nhan: "sonlm 2026-09-05"

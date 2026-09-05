@@ -47,6 +47,16 @@ NGUONG_NHAY_CAM: int = 20
 # hai thứ khác bản chất vào một ô.
 NHAN_KHONG_KHOA: str = "(không khóa, hạng suy từ doc_key)"
 
+# Ba vai **mang thực thể**, dùng cho một số **chẩn đoán** cạnh tỷ lệ 3 (story
+# 2.12). `E(h)` của ADR-012 đếm mọi giá trị slot là một entity, kể cả `cause` và
+# `remediation` vốn là mệnh đề trong chính nhãn tay của bộ vàng 2.5 - và một
+# mệnh đề gần như không bao giờ lặp lại nguyên văn ở một tài liệu khác, nên nó
+# một mình chặn được ca đó khỏi tử số. Ba vai dưới đây là phần của `E(h)` mà
+# chuẩn hóa bí danh thật sự chạm tới. Con số tính trên chúng **không thay** tỷ
+# lệ chính thức; nó nói cho người đọc chương 4 biết số 0 của tỷ lệ 3 đến từ định
+# nghĩa đếm hay từ hình dạng tri thức.
+VAI_THUC_THE: tuple[str, ...] = ("subject", "owner", "source")
+
 
 class HangKhongXacDinh(ValueError):
     """Không suy được hạng độ nhạy cho một hyperedge, từ cả hai nguồn.
@@ -146,6 +156,23 @@ class BaTyLe:
     # xuất nhồi vai cho đủ. Trùng *trong* một vai không tính: đó là LLM lặp một
     # giá trị, một hiện tượng khác.
     so_entity_lap_vai: int = 0
+    # --- Chẩn đoán của story 2.12 ---------------------------------------------
+    #
+    # Composition-Risk tính lại trên **chỉ ba vai mang thực thể** (`VAI_THUC_THE`)
+    # thay vì trên cả `E(h)`. Không phải tỷ lệ thứ tư và không thay tỷ lệ 3: nó
+    # trả lời câu "số 0 kia đến từ định nghĩa đếm hay từ tri thức". `E(h)` gồm cả
+    # `cause` và `remediation`, hai vai mà bộ vàng nhãn tay ghi thành mệnh đề, và
+    # một mệnh đề gần như không bao giờ lặp nguyên văn ở tài liệu khác - nên
+    # riêng nó đã chặn được ca đó khỏi tử số dù mọi thực thể đều lộ.
+    composition_risk_vai_thuc_the: TyLe = field(
+        default_factory=lambda: TyLe("Composition-Risk (vai thực thể)", 0, 0)
+    )
+    id_composition_risk_vai_thuc_the: tuple[str, ...] = ()
+    # Phép lộ có bị **siết theo scope** không (story 2.12, ca 3 của ADR-012).
+    # Ghi vào kết quả chứ không chỉ là tham số của hàm: hai lần chạy khác cờ này
+    # cho hai con số cùng tên, và một bảng không nói ra mình dùng cờ nào là một
+    # bảng không đối chiếu lại được.
+    siet_theo_scope: bool = True
 
     def bo_ba(self) -> tuple[TyLe, TyLe, TyLe]:
         return (self.overall_n_ary, self.sensitive_n_ary, self.composition_risk)
@@ -203,6 +230,43 @@ def entity_cua(h: HyperedgeAnh) -> frozenset[str]:
     return frozenset(e for gia_tri in h.slots.values() for e in gia_tri)
 
 
+def entity_vai_thuc_the(h: HyperedgeAnh) -> frozenset[str]:
+    """Phần của `E(h)` nằm ở ba vai mang thực thể (`VAI_THUC_THE`).
+
+    **Không** phải một `E(h)` thứ hai: định nghĩa đóng băng của ADR-012 giữ
+    nguyên và tỷ lệ chính thức vẫn tính trên `entity_cua`. Đây là đầu vào của
+    một dòng chẩn đoán.
+    """
+    return frozenset(
+        e for vai in VAI_THUC_THE for e in h.slots.get(vai, ())
+    )
+
+
+def scope_cua_hyperedge(
+    h: HyperedgeAnh, scope_theo_doc_key: Mapping[str, str]
+) -> frozenset[str]:
+    """Các scope mà một hyperedge thuộc về (story 2.12, ca 3 của ADR-012).
+
+    Cùng hai nguồn với `hang_cua_hyperedge`: khóa lọc của chính hyperedge trước,
+    rồi sổ tài liệu cho ca **không khóa** (hợp nhất khác scope, AD-5). Khác ở
+    chỗ trả một **tập**: một hyperedge không khóa tồn tại vì tài liệu của cả hai
+    scope, nên nó nằm trong tầm nhìn của cả hai.
+
+    Trả tập rỗng khi không suy được scope nào. Nơi gọi coi tập rỗng là "không
+    thấy mảnh nào lộ" - phía an toàn, vì tử số của tỷ lệ 3 là phía *có* rủi ro.
+    """
+    if h.scope is not None:
+        return frozenset({h.scope})
+    return frozenset(
+        s for dk in h.doc_key if (s := scope_theo_doc_key.get(dk)) is not None
+    )
+
+
+def scope_theo_doc_key(anh: AnhDoThi) -> Mapping[str, str]:
+    """`{doc_key: scope}` đọc từ sổ tài liệu đã chụp cùng đồ thị."""
+    return {t.doc_key: t.scope for t in anh.tai_lieu}
+
+
 def hang_cua_hyperedge(
     h: HyperedgeAnh, hang: Mapping[str, int], loai_theo_doc_key: Mapping[str, str]
 ) -> int:
@@ -255,15 +319,31 @@ def loai_theo_doc_key(anh: AnhDoThi) -> Mapping[str, str]:
     return {t.doc_key: t.content_type for t in anh.tai_lieu}
 
 
-def ba_ty_le(anh: AnhDoThi, hang: Mapping[str, int]) -> BaTyLe:
+def ba_ty_le(
+    anh: AnhDoThi, hang: Mapping[str, int], *, siet_theo_scope: bool = True
+) -> BaTyLe:
     """Ba tỷ lệ của một ảnh chụp. Hàm thuần: cùng đầu vào là cùng đầu ra.
 
     Một lượt qua danh sách hyperedge tính hạng, một lượt dựng chỉ mục entity ->
     có xuất hiện ở hyperedge không nhạy cảm nào không, rồi một lượt chấm
     composition risk. Không sắp xếp lại gì ngoài id trả ra, vì ảnh chụp đã sắp
     sẵn và thứ tự đó là thứ người soát đọc.
+
+    `siet_theo_scope` là **ca 3 của phần "Điều kiện đổi định nghĩa" trong
+    ADR-012**, mở ngày 05/09/2026 (mục bổ sung của story 2.12). Định nghĩa gốc
+    hỏi "mọi entity còn xuất hiện ở một hyperedge không nhạy cảm" mà không đòi
+    hyperedge đó nằm trong tầm nhìn của ai: nó vì vậy đếm cả phép ghép mà không
+    ai thực hiện được, ví dụ mảnh lộ ở một tài liệu `khach_hang_b` trong khi ca
+    nhạy cảm thuộc `khach_hang_a`. Bật cờ này thì chỉ mục lộ dựng **theo từng
+    scope**, và một ca nhạy cảm chỉ tra chỉ mục của scope mình.
+
+    Cờ tồn tại vì chính ADR đó đòi "số cũ giữ lại để so": chạy với `False` cho
+    lại đúng con số trước khi siết, và mục bổ sung của ADR dựng bằng hai lần
+    chạy đó chứ không bằng hai con số chép tay. `E(h)`, ngưỡng n-ngôi và ngưỡng
+    nhạy cảm **không** đổi.
     """
     theo_doc_key = loai_theo_doc_key(anh)
+    theo_scope = scope_theo_doc_key(anh)
     hang_cua: dict[str, int] = {
         h.id: hang_cua_hyperedge(h, hang, theo_doc_key) for h in anh.hyperedge
     }
@@ -273,22 +353,45 @@ def ba_ty_le(anh: AnhDoThi, hang: Mapping[str, int]) -> BaTyLe:
 
     # Entity nào còn lộ ở ít nhất một hyperedge **không** nhạy cảm. Dựng một lần
     # rồi tra, thay vì quét lại toàn bộ đồ thị cho từng ca nhạy cảm.
-    lo_o_khong_nhay: set[str] = set()
+    #
+    # Khi siết theo scope thì chỉ mục là `{scope: tập entity}` và một ca nhạy cảm
+    # tra **hợp** các scope của chính nó (một hyperedge không khóa thuộc về mọi
+    # scope sinh ra nó, nên nó nhìn thấy phần lộ của cả hai - phía an toàn là
+    # phía đếm nhiều rủi ro hơn).
+    lo_chung: set[str] = set()
+    lo_theo_scope: dict[str, set[str]] = {}
     for h in anh.hyperedge:
-        if hang_cua[h.id] < NGUONG_NHAY_CAM:
-            lo_o_khong_nhay |= entity_cua(h)
+        if hang_cua[h.id] >= NGUONG_NHAY_CAM:
+            continue
+        e = entity_cua(h)
+        lo_chung |= e
+        for sc in scope_cua_hyperedge(h, theo_scope):
+            lo_theo_scope.setdefault(sc, set()).update(e)
+
+    def tap_lo(h: HyperedgeAnh) -> set[str]:
+        if not siet_theo_scope:
+            return lo_chung
+        ra: set[str] = set()
+        for sc in scope_cua_hyperedge(h, theo_scope):
+            ra |= lo_theo_scope.get(sc, set())
+        return ra
 
     rui_ro: list[str] = []
+    rui_ro_vai_thuc_the: list[str] = []
     lo_mot_phan = 0
     phan_lo: list[float] = []
     for h in nhay_cam:
+        lo = tap_lo(h)
         e = entity_cua(h)
+        e_tt = entity_vai_thuc_the(h)
+        if e_tt and e_tt <= lo:
+            rui_ro_vai_thuc_the.append(h.id)
         if not e:
             # `E(h)` rỗng bị loại tường minh khỏi cả tử số lẫn hai số chẩn đoán:
             # mệnh đề "mọi e đều lộ" đúng một cách rỗng (ADR-012), và một ca
             # không có entity nào thì "hở bao nhiêu phần" không có nghĩa.
             continue
-        da_lo = len(e & lo_o_khong_nhay)
+        da_lo = len(e & lo)
         if da_lo == len(e):
             rui_ro.append(h.id)
         elif da_lo:
@@ -350,7 +453,125 @@ def ba_ty_le(anh: AnhDoThi, hang: Mapping[str, int]) -> BaTyLe:
         phan_bo_so_vai=dict(sorted(phan_bo_so_vai.items())),
         phan_bo_vai=dict(sorted(phan_bo_vai.items())),
         so_entity_lap_vai=lap_vai,
+        composition_risk_vai_thuc_the=TyLe(
+            "Composition-Risk (vai thực thể)",
+            len(rui_ro_vai_thuc_the),
+            len(nhay_cam),
+        ),
+        id_composition_risk_vai_thuc_the=tuple(rui_ro_vai_thuc_the),
+        siet_theo_scope=siet_theo_scope,
     )
+
+
+# ---------------------------------------------------------------------------
+# Dải sai số của ba tỷ lệ trên nhiều lần chạy cùng một cấu hình (story 2.12)
+# ---------------------------------------------------------------------------
+
+
+class ThieuMauDoDai(ValueError):
+    """Đo dải với ít hơn hai mẫu.
+
+    Một mẫu cho biên độ 0, và một trang in "biên độ 0,0 điểm" đọc y như một phép
+    đo đã chạy và cho kết quả tuyệt vời - trong khi nó chỉ nói rằng chưa ai chạy
+    lần thứ hai. Từ chối chứ không trả một dải rỗng.
+
+    `code` ổn định để test assert trên `code` (AD-8).
+    """
+
+    code = "THIEU_MAU_DO_DAI"
+
+
+@dataclass(frozen=True)
+class DaiTyLe:
+    """Dải quan sát được của **một** tỷ lệ trên N lần chạy cùng một cấu hình.
+
+    "Cùng một cấu hình" nghĩa là cùng thư mục nguồn, cùng model, cùng prompt,
+    cùng từ điển - khác đúng một thứ: lần chạy. Hàm này **không kiểm được** điều
+    đó (một `BaTyLe` không mang cấu hình), nên nơi gọi phải khai `ten_cau_hinh`
+    và chịu trách nhiệm về nó; đó là lý do tham số đầu tiên là một cái tên chứ
+    không phải một tùy chọn.
+
+    `bien_do` là max trừ min, tính bằng **điểm phần trăm** khi in ra. Nó là con
+    số mà mọi chênh lệch khác của báo cáo phải được so lại: một chênh lệch nhỏ
+    hơn biên độ của chính phép đo thì không đọc thành kết luận định lượng được.
+    """
+
+    ten: str
+    ten_cau_hinh: str
+    gia_tri: tuple[float, ...]
+    mau_so: tuple[int, ...]
+
+    @property
+    def so_mau(self) -> int:
+        return len(self.gia_tri)
+
+    @property
+    def nho_nhat(self) -> float:
+        return min(self.gia_tri)
+
+    @property
+    def lon_nhat(self) -> float:
+        return max(self.gia_tri)
+
+    @property
+    def bien_do(self) -> float:
+        """Max trừ min. Không phải độ lệch chuẩn: với 2-3 mẫu, biên độ quan sát
+        được là phát biểu duy nhất còn trung thực."""
+        return self.lon_nhat - self.nho_nhat
+
+    @property
+    def trung_binh(self) -> float:
+        return sum(self.gia_tri) / len(self.gia_tri)
+
+    def mo_ta(self) -> str:
+        """Một dòng đọc được, kèm **số mẫu** - một dải không nói nó dựng trên mấy
+        lần chạy là một dải không đọc được."""
+        return (
+            f"{self.nho_nhat:.1%} - {self.lon_nhat:.1%}"
+            f" (biên độ {self.bien_do * 100:.1f} điểm, trung bình"
+            f" {self.trung_binh:.1%}, {self.so_mau} lần chạy)"
+        )
+
+    def nho_hon_bien_do(self, chenh: float | None) -> bool:
+        """Một chênh lệch có nằm **trong** biên độ của chính phép đo không.
+
+        `True` nghĩa là chênh đó không đọc thành một kết luận định lượng được:
+        hai lần chạy cùng đầu vào đã lệch nhau chừng ấy. `None` (không tính
+        được) trả `True`, cùng chiều thận trọng.
+        """
+        return True if chenh is None else abs(chenh) < self.bien_do
+
+
+def dai_ba_ty_le(ten_cau_hinh: str, *bo: BaTyLe) -> tuple[DaiTyLe, ...]:
+    """Dải của ba tỷ lệ trên N lần chạy **cùng một cấu hình**. Hàm thuần.
+
+    Ba dải trả về theo đúng thứ tự ba tỷ lệ của ADR-012. Mẫu số rỗng ở bất kỳ
+    mẫu nào là từ chối: "không tính được" không có chỗ trong một phép lấy min và
+    max, và trộn nó vào bằng cách coi như 0 là bịa một mẫu.
+    """
+    if len(bo) < 2:
+        raise ThieuMauDoDai(
+            f"đo dải cần ít nhất hai lần chạy, nhận {len(bo)}: một mẫu cho biên"
+            " độ 0, và một trang in 'biên độ 0,0 điểm' đọc y như một phép đo đã"
+            " chạy chứ không như một phép đo chưa có mẫu thứ hai"
+        )
+    ra: list[DaiTyLe] = []
+    for cot in zip(*(b.bo_ba() for b in bo)):
+        thieu = [t for t in cot if t.ti_le is None]
+        if thieu:
+            raise ThieuMauDoDai(
+                f"tỷ lệ {cot[0].ten!r} có {len(thieu)}/{len(cot)} mẫu mẫu số rỗng:"
+                " không lấy min/max trên một giá trị không tính được"
+            )
+        ra.append(
+            DaiTyLe(
+                ten=cot[0].ten,
+                ten_cau_hinh=ten_cau_hinh,
+                gia_tri=tuple(t.ti_le for t in cot),
+                mau_so=tuple(t.mau_so for t in cot),
+            )
+        )
+    return tuple(ra)
 
 
 # ---------------------------------------------------------------------------

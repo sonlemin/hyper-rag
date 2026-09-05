@@ -1,0 +1,57 @@
+# **Bản SAU đợt nạp lại 05/09/2026.** Nó **không** phải xuất xứ của
+# `config/tu-dien-thuc-the/synth.yaml` - bảng đó gom từ ảnh chụp trước đợt
+# nạp, giữ ở `synth-truoc-nap-lai-05-09.yaml`. File này là bằng chứng của
+# một chuyện khác: vòng "gom -> xác nhận -> nạp lại" **chưa hội tụ**. Bốn
+# nhóm cũ đã gộp đúng và biến mất khỏi đây, nhưng đồ thị mới lại sinh ba
+# nhóm hoa/thường khác chưa ai gom, cộng hai nhóm liên scope. Mỗi lượt nạp
+# lại sinh vật liệu mới cho lượt sau; xem khoản ledger cùng tên.
+# ĐỀ XUẤT bí danh thực thể - **không phải** từ điển đang chạy (story 2.12).
+# Sinh bằng `python -m eval.de_xuat_bi_danh`. Lược đồ ở đây khác lược đồ
+# của `config/tu-dien-thuc-the/`: khóa gốc là `de_xuat`, và mục không có
+# `xac_nhan`. Người xác nhận chép sang từng mục một, thêm dấu
+# `xac_nhan: "<tên> <ngày>"`, và bỏ `ly_do`/`so_lan`/`llm`.
+version: 1
+space: synth
+ngay_anh_chup: '2026-09-05T07:15:45.909875+00:00'
+anh_chup: eval/anh_do_thi/synth.json
+model: null
+so_nhom: 3
+nhom_lien_scope:
+- - Mỗi quý
+  - mỗi quý
+- - Trực ban Tech Support
+  - trực ban Tech Support
+de_xuat:
+- chuan: cảnh báo mức nghiêm trọng
+  scope: noi_bo
+  bi_danh:
+  - Cảnh báo mức nghiêm trọng
+  ly_do:
+  - hoa/thường
+  so_lan:
+    Cảnh báo mức nghiêm trọng: 1
+    cảnh báo mức nghiêm trọng: 2
+  cung_nhom_o_scope: []
+  llm: null
+- chuan: người trực
+  scope: noi_bo
+  bi_danh:
+  - Người trực
+  ly_do:
+  - hoa/thường
+  so_lan:
+    Người trực: 1
+    người trực: 2
+  cung_nhom_o_scope: []
+  llm: null
+- chuan: tường lửa biên
+  scope: noi_bo
+  bi_danh:
+  - Tường lửa biên
+  ly_do:
+  - hoa/thường
+  so_lan:
+    Tường lửa biên: 1
+    tường lửa biên: 3
+  cung_nhom_o_scope: []
+  llm: null

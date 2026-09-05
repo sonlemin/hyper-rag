@@ -14,8 +14,8 @@ content_type: known_issue
 | Dịch vụ | Kubernetes Engine |
 | Mức ưu tiên | Thấp |
 | Người tiếp nhận | NV22 |
-| Mở lúc | 20/10/2026 09:30 |
-| Đóng lúc | 20/10/2026 10:10 |
+| Mở lúc | 01/09/2026 09:30 |
+| Đóng lúc | 01/09/2026 10:10 |
 
 ## Mô tả từ khách hàng
 Khách đang dùng ổ 100 GB nhưng chỉ dùng hết 30 GB, muốn giảm xuống 50 GB để tiết kiệm chi phí.

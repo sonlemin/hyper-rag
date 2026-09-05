@@ -14,8 +14,8 @@ content_type: bao_cao_su_co
 | Dịch vụ | Call Center |
 | Mức ưu tiên | Cao |
 | Người tiếp nhận | NV22 |
-| Mở lúc | 12/10/2026 14:00 |
-| Đóng lúc | 13/10/2026 17:20 |
+| Mở lúc | 24/08/2026 14:00 |
+| Đóng lúc | 25/08/2026 17:20 |
 
 ## Mô tả từ khách hàng
 Cuộc gọi rớt và tiếng ngắt quãng trong khoảng 09:00 tới 11:00 và 14:00 tới 16:00. Ngoài hai khung

@@ -1,34 +1,37 @@
 {
   "version": 1,
-  "ngay": "2026-09-03T18:42:06.920766+00:00",
+  "ngay": "2026-09-05T07:13:47.439540+00:00",
   "lenh": "uv run python -m api.do_chi_phi eval/khao_sat --space khao_sat --xuat-json eval/so_do_nap/nap-khao-sat.json",
   "space": "khao_sat",
-  "dot_id": "32293e26e25f450bb7004ed3d4c63826",
+  "dot_id": "3b0f428fe2db407b9d16dd200763ccbd",
   "so_tai_lieu": 50,
+  "so_tai_lieu_gui": 50,
+  "so_tai_lieu_khong_fact": 0,
+  "so_tai_lieu_tu_choi": 0,
   "theo_model": [
     {
       "model": "deepseek-v4-flash",
       "loai": "llm",
       "nha_cung_cap": "deepseek",
       "so_lan": 50,
-      "token_vao": 67917,
-      "token_ra": 26710,
-      "chi_phi_usd": 0.06514068
+      "token_vao": 67912,
+      "token_ra": 26214,
+      "chi_phi_usd": 0.06448376
     },
     {
       "model": "text-embedding-3-small",
       "loai": "embedding",
       "nha_cung_cap": "openai",
-      "so_lan": 159,
-      "token_vao": 75493,
+      "so_lan": 157,
+      "token_vao": 74703,
       "token_ra": 0,
-      "chi_phi_usd": 0.00150986
+      "chi_phi_usd": 0.00149406
     }
   ],
   "tong": {
-    "so_lan": 209,
-    "token_vao": 143410,
-    "token_ra": 26710,
-    "chi_phi_usd": 0.06665054000000001
+    "so_lan": 207,
+    "token_vao": 142615,
+    "token_ra": 26214,
+    "chi_phi_usd": 0.06597782
   }
 }

@@ -38,6 +38,7 @@ from adapters.llm_wrapper import ham_tu_moi_truong
 from adapters.model_catalog import DanhMucModel, danh_muc_mac_dinh
 from api.audit_postgres import TongChiPhi
 from core.audit import thoi_diem_utc
+from core.ids import validate_space
 from core.ingest_scan import KetQuaQuet
 
 logger = logging.getLogger(__name__)
@@ -96,18 +97,53 @@ class LanNap:
         return self.trang_thai == TRANG_THAI_DOT_DANG_CHAY
 
 
-def dung_engine_tu_moi_truong(audit) -> EngineACL:
+# Từ điển thực thể theo **quy ước tên space** (story 2.12, FR-32): space `X`
+# dùng `config/tu-dien-thuc-the/X.yaml` nếu file đó có, không thì chạy không từ
+# điển. Quy ước sống ở `api/` chứ không ở `adapters/` một cách có chủ đích: tầng
+# adapter giữ luật "khóa cấu hình vắng nghĩa là **không có** từ điển, không có
+# mặc định ngầm", còn đây là chỗ *một* quy ước của repo được áp cho **cả hai
+# lối vào** - CLI `api.do_chi_phi` và màn nạp web đều đi qua `chay_lan_nap`.
+#
+# Vì sao không phải một biến môi trường và không phải một cờ dòng lệnh: đổi từ
+# điển là đổi id entity và id hyperedge, tức re-ingest. Hai môi trường hai từ
+# điển là hai kho không so được với nhau; và một cờ chỉ có ở CLI nghĩa là màn
+# web nạp cùng tài liệu đó ra id khác, tức hai cửa cho hai kho.
+THU_MUC_TU_DIEN: Path = Path(__file__).resolve().parent.parent / "config" / "tu-dien-thuc-the"
+
+
+def duong_dan_tu_dien(space: str | None, thu_muc: Path | None = None) -> Path | None:
+    """File từ điển của một space theo quy ước, hoặc `None` nếu không có.
+
+    `None` cho cả ca không truyền space: đoán một từ điển cho một space không
+    biết tên là đúng thứ luật ràng-theo-scope cấm.
+    """
+    if not space:
+        return None
+    # `space` đi thẳng vào một đường dẫn, nên nó phải qua cùng cửa hình dạng mà
+    # cả hệ dùng: `--space ../../etc` mà không kiểm là một lệnh nạp đọc được một
+    # YAML bất kỳ ngoài `config/tu-dien-thuc-the/`.
+    validate_space(space)
+    f = (THU_MUC_TU_DIEN if thu_muc is None else Path(thu_muc)) / f"{space}.yaml"
+    return f if f.is_file() else None
+
+
+def dung_engine_tu_moi_truong(audit, *, space: str | None = None) -> EngineACL:
     """`EngineACL` với provider thật, cấu hình kho đọc từ môi trường.
 
     Một hàm có tên vì cả script lẫn màn cần đúng một cách dựng engine; hai bản
     sao là hai bộ tham số sẽ trôi khỏi nhau.
+
+    `space` chỉ dùng để tra từ điển thực thể theo quy ước tên file. Không truyền
+    thì engine chạy **không** từ điển, đúng hành vi trước story 2.12.
     """
     ham = ham_tu_moi_truong(audit=audit)
+    tu_dien = duong_dan_tu_dien(space)
     return EngineACL(
         **cau_hinh_kho_tu_moi_truong(),
         llm_model_func=ham.llm,
         embedding_func=ham.embedding,
         llm_model_max_token_size=ham.llm_max_token,
+        entity_dictionary_path=None if tu_dien is None else str(tu_dien),
     )
 
 
@@ -145,7 +181,13 @@ async def chay_lan_nap(
     """
     lan = LanNap(space=space) if lan is None else lan
     lan.space, lan.trang_thai, lan.bat_dau = space, TRANG_THAI_DOT_DANG_CHAY, thoi_diem_utc()
-    engine = (dung_engine_tu_moi_truong if tao_engine is None else tao_engine)(audit)
+    # Seam tiêm giữ chữ ký cũ `(audit)`; đường thật thêm `space` để tra từ điển
+    # thực thể theo quy ước tên file (story 2.12).
+    engine = (
+        dung_engine_tu_moi_truong(audit, space=space)
+        if tao_engine is None
+        else tao_engine(audit)
+    )
     try:
         try:
             await nap_cac_tai_lieu(
@@ -315,6 +357,7 @@ __all__ = [
     "chi_phi_theo_tai_lieu",
     "dong_chi_phi_dict",
     "dung_engine_tu_moi_truong",
+    "duong_dan_tu_dien",
     "tong_chi_phi_dict",
     "ghi_so_do_json",
     "so_do_nap",

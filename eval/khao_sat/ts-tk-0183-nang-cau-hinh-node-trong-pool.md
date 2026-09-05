@@ -14,8 +14,8 @@ content_type: vong_doi_ticket
 | Dịch vụ | Kubernetes Engine |
 | Mức ưu tiên | Trung bình |
 | Người tiếp nhận | NV24 |
-| Mở lúc | 06/10/2026 09:20 |
-| Đóng lúc | 06/10/2026 10:40 |
+| Mở lúc | 18/08/2026 09:20 |
+| Đóng lúc | 18/08/2026 10:40 |
 
 ## Mô tả từ khách hàng
 Khách vào Cloud Server nâng RAM cho một node trong pool. Sau vài ngày node bị recycle và quay về

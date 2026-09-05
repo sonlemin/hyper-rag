@@ -32,8 +32,26 @@ eval/anh_do_thi/real*.json
 # trích xuất. Nội dung tuy **đã khử** vẫn là văn bản công ty, nên bản đầy đủ
 # không vào git dù nó đi được ra API ngoài.
 eval/anh_do_thi/that_khu*.json
+# `synth_lan2` là **space dùng một lần** của phép đo dải sai số (story 2.12):
+# cùng thư mục nguồn với `synth`, cùng cấu hình, khác đúng lần chạy. Nó không
+# phải một space dữ liệu thật, nhưng nó cũng không phải một space được báo cáo -
+# chỉ **bản rút gọn** của nó vào repo, đúng luật chung của dòng `!` bên dưới, và
+# space trên máy chủ đã xóa ngay sau khi chụp.
+eval/anh_do_thi/synth_lan2*.json
 # Bản **rút gọn** thì ngược lại: nó *phải* có commit. Mọi id entity và `doc_key`
 # đã thành băm có muối (muối giữ ngoài repo), nên nó không mang một giá trị nào,
 # còn ba tỷ lệ n-ngôi thì tính lại được từ nó - đó là chỗ đứng để
 # `tests/test_ty_le_n_ngoi.py` bắt được số trôi thay vì tin hằng chép tay.
 !eval/anh_do_thi/*_rut_gon.json
+
+# File đề xuất bí danh (story 2.12, `eval/de_xuat_bi_danh.py`). Đề xuất của
+# space dữ liệu thật liệt kê nguyên văn tên entity của tài liệu công ty, nên
+# mặc định là **không** vào git; chỉ hai space dựng được mở lại, đúng cùng danh
+# sách mà `eval/chup_do_thi.py` cho ghi ảnh đầy đủ vào repo.
+# Thứ tự ba khối là luật của git (pattern khớp **cuối cùng** thắng), không phải
+# thẩm mỹ: chặn hết, mở lại hai space dựng, rồi chặn lại rác của `--ghi-de`.
+# Đảo hai khối cuối là `synth.yaml.bak.yaml` vào được git.
+eval/de_xuat/*.yaml
+!eval/de_xuat/synth*.yaml
+!eval/de_xuat/khao_sat*.yaml
+eval/de_xuat/*.bak.yaml

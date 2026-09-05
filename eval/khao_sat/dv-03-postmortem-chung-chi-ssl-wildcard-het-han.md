@@ -9,7 +9,7 @@ content_type: postmortem
 # Báo cáo sự cố INC-0924: chứng chỉ SSL wildcard hết hạn, 6 tên miền lỗi HTTPS
 
 ## Tóm tắt
-Ngày 24/09/2026 lúc 07:00, chứng chỉ wildcard `*.khachhang02.example` hết hạn. Sáu tên miền
+Ngày 06/08/2026 lúc 07:00, chứng chỉ wildcard `*.khachhang02.example` hết hạn. Sáu tên miền
 con trả lỗi `NET::ERR_CERT_DATE_INVALID` trong 1 giờ 24 phút. Khắc phục bằng cách phát hành
 lại chứng chỉ và nạp lên WAF cùng load balancer.
 
@@ -24,14 +24,14 @@ lại chứng chỉ và nạp lên WAF cùng load balancer.
 ## Nguyên nhân gốc
 Chứng chỉ này được gia hạn tay từ đầu vì tên miền dùng DNS của khách hàng, không tự động
 xác thực được. Lịch nhắc gia hạn đặt trong lịch cá nhân của một nhân sự đã chuyển bộ phận
-tháng 07. Không có bảng theo dõi hạn chứng chỉ dùng chung.
+tháng 06. Không có bảng theo dõi hạn chứng chỉ dùng chung.
 
 ## Biện pháp khắc phục
 | Việc | Người | Hạn | Trạng thái |
 |---|---|---|---|
-| Lập bảng theo dõi hạn của toàn bộ chứng chỉ đang phục vụ | NV05 | 30/09 | xong |
-| Cảnh báo trước hạn 30 ngày và 7 ngày vào kênh vận hành | NV05 | 30/09 | xong |
-| Xin khách hàng ủy quyền bản ghi DNS để tự động gia hạn | NV09 | 15/10 | đang làm |
+| Lập bảng theo dõi hạn của toàn bộ chứng chỉ đang phục vụ | NV05 | 12/08 | xong |
+| Cảnh báo trước hạn 30 ngày và 7 ngày vào kênh vận hành | NV05 | 12/08 | xong |
+| Xin khách hàng ủy quyền bản ghi DNS để tự động gia hạn | NV09 | 27/08 | đang làm |
 
 ## Bài học
 Chứng chỉ nạp ở hai nơi thì phải thay ở cả hai nơi. Lần này bốn tên miền hết lỗi trước hai

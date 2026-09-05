@@ -14,15 +14,15 @@ Push image trả về `500 Internal Server Error` hoặc `denied: quota exceeded
 
 ## Kiểm tra
 ```
-bizfly registry quota show
-bizfly registry repo list --sort size
+cloudctl registry quota show
+cloudctl registry repo list --sort size
 ```
 
 ## Hướng dẫn xử lý
 1. Liệt kê tag cũ hơn 90 ngày của các repo lớn nhất.
 2. Xóa tag không còn dùng, giữ lại mọi tag đang chạy trên sản xuất.
 ```
-bizfly registry tag delete --repo <ten-repo> --tag <tag>
+cloudctl registry tag delete --repo <ten-repo> --tag <tag>
 ```
 3. Nếu vẫn thiếu, liên hệ bộ phận dịch vụ để tăng quota cho tài khoản.
 

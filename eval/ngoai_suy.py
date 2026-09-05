@@ -33,6 +33,9 @@ bằng 1 và cả token lẫn tiền là số đọc thẳng từ `audit_log`. �
 tài liệu thì hệ số nhân khác 1 trở lại, và khoản 1 lặng lẽ quay về ngoại suy
 trong khi mọi tài liệu vẫn gọi nó là số đo.
 
+Story 2.12 thêm hai tài liệu bí danh (40 -> 42 mục) và nạp lại `synth` ngày
+05/09/2026 (đợt `9c4a1ba7`), nên hai bên đổi cùng lúc và hệ số vẫn bằng 1.
+
 Cờ `đo` nói về *nguồn* của token và đơn giá, không nói "không còn giả định nào":
 với khoản `đo`, đơn giá và token trên một tài liệu đều là số đã đo; với khoản
 `giả định` thì chính token hoặc chính đơn giá là thứ được đoán. Vì thế mỗi khoản đều liệt kê giả
@@ -317,7 +320,12 @@ class GiaDinh:
     # `eval/corpus_thiet_ke.yaml` (`tests/test_cham_trich_xuat.py` khóa hai bên
     # bằng nhau). Khi lần nạp thật chạy trên đủ 40 tài liệu thì `ti_le` bằng 1 và
     # khoản `nap_corpus` thôi là phép nhân: nó trở thành số đo.
-    so_tai_lieu_corpus: int = 40
+    #
+    # 40 -> **42** ở story 2.12 (hai tài liệu bí danh), đổi **cùng lúc** với
+    # `eval/so_do_nap/nap-that.json` của đợt nạp lại `synth` ngày 05/09/2026 nên
+    # `ti_le` vẫn bằng 1 và khoản 1 vẫn là số đo trực tiếp. Sửa một mình nó thì
+    # bảng ngoại suy đổi tổng hai lần cho một thay đổi.
+    so_tai_lieu_corpus: int = 42
     # Khoản 2: 52 câu × 3 cấu hình đo × số vai người hỏi thật dùng (devops,
     # tech_support của `config/policy-toi-gian.yaml`).
     so_cau: int = 52

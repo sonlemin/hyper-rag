@@ -306,21 +306,54 @@ def test_hoan_vi_entity_giua_cac_hyperedge_bi_bat():
 
 
 def test_khong_gia_tri_slot_hay_ten_tai_lieu_nao_con_lai(anh_day_du, anh_rut):
-    """Quét nguyên văn file: không một giá trị nào của bản đầy đủ còn trong bản rút gọn."""
+    """Quét nguyên văn **cả file**: không một giá trị nào của bản đầy đủ còn lại.
+
+    Vùng quét là cả file, không phải một phép chiếu vài trường - đây là phép
+    kiểm mạnh nhất của một file **có commit** dựng từ tài liệu công ty, và thu
+    hẹp vùng quét là mở đúng chỗ nó canh.
+
+    Thứ được thu hẹp là **danh sách chuỗi đi tìm**, không phải vùng quét: bản rút
+    gọn cố ý giữ nguyên `khoa`, `scope`, `content_type` và `version` (chúng là
+    thứ `ba_ty_le` cần và chúng không mang nội dung tài liệu nào), nên một entity
+    trùng đúng một trong những giá trị *được phép giữ* đó không phải một rò rỉ.
+    Ca thật: entity tên `ticket` nằm trong `content_type` `vong_doi_ticket`. Danh
+    sách được phép đọc từ **chính bản đầy đủ**, không viết cứng, nên thêm một
+    `content_type` mới không làm phép kiểm này báo sai.
+    """
     van_ban = json.dumps(anh_rut, ensure_ascii=False)
+    # Giá trị **được phép** còn nguyên trong bản rút gọn, đọc từ bản đầy đủ.
+    duoc_giu = {str(anh_day_du["version"]), anh_day_du["ngay_do"], anh_day_du["policy_version"]}
+    for m in anh_day_du["tai_lieu"]:
+        duoc_giu |= {m["scope"], m["content_type"]}
+    for h in anh_day_du["hyperedge"]:
+        if h["khoa"]:
+            duoc_giu |= {h["khoa"], *h["khoa"].split(":")}
+    duoc_giu |= set(anh_day_du["hyperedge"][0]["slots"]) if anh_day_du["hyperedge"] else set()
+
+    def con_trong_file(gia_tri: str) -> bool:
+        """Chuỗi còn trong file, và nó **không** phải một giá trị được phép giữ.
+
+        Chỉ tha đúng ca "trùng khít hoặc là chuỗi con của một giá trị được phép":
+        một entity dài chứa tên tài liệu vẫn là rò rỉ dù nó cũng chứa chữ
+        `runbook`.
+        """
+        if gia_tri not in van_ban:
+            return False
+        return not any(gia_tri in g for g in duoc_giu)
+
     con_lai = []
     for m in anh_day_du["tai_lieu"]:
-        if m["doc_key"] in van_ban:
+        if con_trong_file(m["doc_key"]):
             con_lai.append(m["doc_key"])
         # `sha256` cũng là một giá trị của tài liệu thật, không phải metadata vô
         # hại: nó là băm không muối của nguyên văn thân.
-        if m["sha256"] in van_ban:
+        if con_trong_file(m["sha256"]):
             con_lai.append(m["sha256"])
     for h in anh_day_du["hyperedge"]:
-        if h["id"] in van_ban:
+        if con_trong_file(h["id"]):
             con_lai.append(h["id"])
         for gt in h["slots"].values():
-            con_lai += [e for e in gt if e in van_ban]
+            con_lai += [e for e in gt if con_trong_file(e)]
     assert not con_lai, sorted(set(con_lai))[:10]
 
 

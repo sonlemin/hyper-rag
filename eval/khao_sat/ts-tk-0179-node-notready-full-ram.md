@@ -14,8 +14,8 @@ content_type: bao_cao_su_co
 | Dịch vụ | Kubernetes Engine |
 | Mức ưu tiên | Cao |
 | Người tiếp nhận | NV23 |
-| Mở lúc | 05/10/2026 21:14 |
-| Đóng lúc | 05/10/2026 22:03 |
+| Mở lúc | 17/08/2026 21:14 |
+| Đóng lúc | 17/08/2026 22:03 |
 
 ## Mô tả từ khách hàng
 Một node đang chạy tự nhiên chuyển NotReady, pod trên node đó bị đẩy đi hết.

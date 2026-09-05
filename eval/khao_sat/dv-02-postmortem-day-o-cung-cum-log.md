@@ -9,7 +9,7 @@ content_type: postmortem
 # Báo cáo sự cố INC-0918: cụm log ngừng nhận dữ liệu do đầy ổ cứng
 
 ## Tóm tắt
-Ngày 18/09/2026, cụm log nội bộ ngừng nhận dữ liệu trong 3 giờ 12 phút. Phân vùng
+Ngày 31/07/2026, cụm log nội bộ ngừng nhận dữ liệu trong 3 giờ 12 phút. Phân vùng
 `/var/lib/elasticsearch` đạt 100%, node chuyển sang trạng thái chỉ đọc. Không mất dữ liệu
 đã ghi, nhưng log của toàn bộ dịch vụ trong khoảng đó không thu được.
 
@@ -23,16 +23,16 @@ Ngày 18/09/2026, cụm log nội bộ ngừng nhận dữ liệu trong 3 giờ 
 
 ## Nguyên nhân gốc
 Chính sách vòng đời chỉ mục được đặt giữ 30 ngày, nhưng job dọn dẹp chạy bằng cron trên
-node log-01. Node đó được dựng lại ngày 05/09 và cron không được đưa vào ảnh máy chủ, nên
+node log-01. Node đó được dựng lại ngày 18/07 và cron không được đưa vào ảnh máy chủ, nên
 job im lặng ngừng chạy 13 ngày. Không có cảnh báo nào theo dõi việc job có chạy hay không.
 
 ## Biện pháp khắc phục
 | Việc | Người | Hạn | Trạng thái |
 |---|---|---|---|
-| Chuyển dọn chỉ mục sang chính sách vòng đời của Elasticsearch | NV04 | 25/09 | xong |
-| Thêm cảnh báo khi job dọn không chạy quá 48 giờ | NV04 | 25/09 | xong |
-| Bổ sung người gác kênh trực đêm cho cảnh báo mức cao | NV09 | 30/09 | đang làm |
-| Đưa cron vào ảnh máy chủ, không cài tay sau khi dựng | NV06 | 30/09 | đang làm |
+| Chuyển dọn chỉ mục sang chính sách vòng đời của Elasticsearch | NV04 | 07/08 | xong |
+| Thêm cảnh báo khi job dọn không chạy quá 48 giờ | NV04 | 07/08 | xong |
+| Bổ sung người gác kênh trực đêm cho cảnh báo mức cao | NV09 | 12/08 | đang làm |
+| Đưa cron vào ảnh máy chủ, không cài tay sau khi dựng | NV06 | 12/08 | đang làm |
 
 ## Bài học
 Cảnh báo có bắn nhưng không có người nhận thì bằng không. Ngưỡng 85% cho 3 giờ 29 phút

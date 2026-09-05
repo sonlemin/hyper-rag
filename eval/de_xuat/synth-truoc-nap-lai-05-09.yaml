@@ -1,0 +1,65 @@
+# **Bản TRƯỚC đợt nạp lại 05/09/2026** - đây là bằng chứng xuất xứ của bốn
+# mục nhóm (A) trong `config/tu-dien-thuc-the/synth.yaml`: chúng gom từ ảnh
+# chụp `synth` ngày 03/09, tức ảnh mà bảng đang chạy được xác nhận trên đó.
+# Đợt nạp lại của story 2.12 ghi đè `eval/anh_do_thi/synth.json`, nên bản đề
+# xuất sinh lại sau đó (`synth.yaml`) nói về một đồ thị khác và **không**
+# kiểm lại được lời khai của bảng. Giữ cả hai file, mỗi file một việc.
+# ĐỀ XUẤT bí danh thực thể - **không phải** từ điển đang chạy (story 2.12).
+# Sinh bằng `python -m eval.de_xuat_bi_danh`. Lược đồ ở đây khác lược đồ
+# của `config/tu-dien-thuc-the/`: khóa gốc là `de_xuat`, và mục không có
+# `xac_nhan`. Người xác nhận chép sang từng mục một, thêm dấu
+# `xac_nhan: "<tên> <ngày>"`, và bỏ `ly_do`/`so_lan`/`llm`.
+version: 1
+space: synth
+ngay_anh_chup: '2026-09-03T04:07:47.393406+00:00'
+anh_chup: eval/anh_do_thi/synth.json (bản TRƯỚC đợt nạp lại 05/09, xem lịch sử git)
+model: null
+so_nhom: 4
+nhom_lien_scope:
+- - Trực ban Tech Support
+  - trực ban Tech Support
+de_xuat:
+- chuan: Nhóm Tích hợp
+  scope: khach_hang_b
+  bi_danh:
+  - nhóm Tích hợp
+  ly_do:
+  - hoa/thường
+  so_lan:
+    Nhóm Tích hợp: 1
+    nhóm Tích hợp: 1
+  cung_nhom_o_scope: []
+  llm: null
+- chuan: cổng nội bộ
+  scope: noi_bo
+  bi_danh:
+  - Cổng nội bộ
+  ly_do:
+  - hoa/thường
+  so_lan:
+    Cổng nội bộ: 1
+    cổng nội bộ: 5
+  cung_nhom_o_scope: []
+  llm: null
+- chuan: Mỗi quý
+  scope: noi_bo
+  bi_danh:
+  - mỗi quý
+  ly_do:
+  - hoa/thường
+  so_lan:
+    Mỗi quý: 1
+    mỗi quý: 1
+  cung_nhom_o_scope: []
+  llm: null
+- chuan: phòng IT
+  scope: noi_bo
+  bi_danh:
+  - Phòng IT
+  ly_do:
+  - hoa/thường
+  so_lan:
+    Phòng IT: 1
+    phòng IT: 4
+  cung_nhom_o_scope: []
+  llm: null

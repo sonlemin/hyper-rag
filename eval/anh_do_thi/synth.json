@@ -1,10 +1,10 @@
 {
   "version": 2,
   "space": "synth",
-  "ngay_do": "2026-09-03T04:07:47.393406+00:00",
+  "ngay_do": "2026-09-05T07:15:45.909875+00:00",
   "policy_version": "fd8a92df457321e625bf16a08fb3dc244dc4bbcbfe87b45cd11465807446fd87",
-  "so_tai_lieu": 50,
-  "so_hyperedge": 254,
+  "so_tai_lieu": 52,
+  "so_hyperedge": 281,
   "so_hyperedge_da_nguon": 0,
   "tai_lieu": [
     {
@@ -108,6 +108,18 @@
       "sha256": "f7edf31872ff2a1e0cc0ce92641fefb65bac138f0e65de27920b67d7ae5bcbf8",
       "scope": "noi_bo",
       "content_type": "sop"
+    },
+    {
+      "doc_key": "k1-08-troubleshooting-app01-loi-502.md",
+      "sha256": "d45bb03bac91e4ad88a1050079ea10d4c9bda774aba7b071268dc4df03cbecc8",
+      "scope": "khach_hang_a",
+      "content_type": "troubleshooting"
+    },
+    {
+      "doc_key": "k1-09-bao-cao-su-co-inc-1611.md",
+      "sha256": "6fd70b3c6161d5bd9b7c16c4efc95b56618074851c823595a49610155f4bae07",
+      "scope": "khach_hang_a",
+      "content_type": "bao_cao_su_co"
     },
     {
       "doc_key": "k2-01-canh-bao-day-o-dia-log01.md",
@@ -310,43 +322,46 @@
   ],
   "hyperedge": [
     {
-      "id": "he-00465dc349588ae60f5c2f0b",
+      "id": "he-00722bace22850c8ced56fc8",
       "doc_key": [
-        "k2-03-bao-cao-su-co-inc-1520.md"
+        "10-so-tay-ha-tang-noi-bo.txt"
       ],
-      "khoa": "noi_bo:bao_cao_su_co",
+      "khoa": "noi_bo:bi_mat_ha_tang",
       "slots": {
         "subject": [
-          "dữ liệu chấm công"
-        ],
-        "symptom": [
-          "không mất"
-        ],
-        "remediation": [
-          "bản ghi được nhập lại từ máy quét cửa"
-        ]
-      }
-    },
-    {
-      "id": "he-03590f8461190d47df91b665",
-      "doc_key": [
-        "k1-06-log-app01-ngay-12-08.md"
-      ],
-      "khoa": "khach_hang_a:log",
-      "slots": {
-        "subject": [
-          "nhật ký của web01"
+          "tài liệu hạn chế"
         ],
         "condition": [
-          "được giữ 90 ngày"
+          "chỉ chia sẻ trong nhóm Hạ tầng"
         ],
         "remediation": [
-          "chuyển sang kho lưu trữ lạnh"
+          "gửi ra ngoài phải có phê duyệt của Giám đốc Kỹ thuật"
         ]
       }
     },
     {
-      "id": "he-04d12c7b95d9bf759ba76450",
+      "id": "he-01a6b1db9959f1b09162f08f",
+      "doc_key": [
+        "n-15-log-tuong-lua-ngay-20-08.md"
+      ],
+      "khoa": "noi_bo:log",
+      "slots": {
+        "subject": [
+          "tường lửa biên"
+        ],
+        "symptom": [
+          "217 lượt quét cổng liên tiếp từ cùng một nguồn"
+        ],
+        "remediation": [
+          "tự động đưa vào danh sách chặn 24 giờ"
+        ],
+        "time": [
+          "20/08 08:15"
+        ]
+      }
+    },
+    {
+      "id": "he-022aae40e346710a6263d5ed",
       "doc_key": [
         "k2-06-known-issue-xoay-vong-log.md"
       ],
@@ -355,23 +370,155 @@
         "subject": [
           "lỗi KI-014"
         ],
-        "symptom": [
-          "tác vụ xoay vòng nhật ký dừng im lặng"
-        ],
         "cause": [
-          "gặp một file nhật ký đang bị tiến trình khác giữ"
-        ],
-        "condition": [
-          "từ phiên bản công cụ xoay vòng 3.19"
-        ],
-        "remediation": [
-          "chạy tay lệnh xoay vòng mỗi sáng thứ Hai và kiểm dấu thời gian của file nhật ký mới nhất"
+          "nguyên nhân xa của sự cố INC-1520"
         ],
         "source": [
           "KI-014"
+        ]
+      }
+    },
+    {
+      "id": "he-022ed16bbb63216cc486e687",
+      "doc_key": [
+        "k1-03-bao-cao-su-co-inc-1208.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "App01"
+        ],
+        "symptom": [
+          "trang thanh toán ngừng phục vụ 40 phút, trả lỗi 502 với tỷ lệ 100%"
+        ],
+        "cause": [
+          "chỉnh sai giới hạn bộ nhớ PHP-FPM trong một phiếu thay đổi được duyệt tối hôm trước"
+        ],
+        "condition": [
+          "lưu lượng vượt 5000 req/phút"
+        ],
+        "remediation": [
+          "trả giới hạn bộ nhớ PHP-FPM về mức cũ rồi nạp lại cấu hình theo SOP-12"
+        ],
+        "source": [
+          "INC-1208"
         ],
         "time": [
-          "chưa có bản vá tính tới ngày 20/08"
+          "12/08/2026 lúc 09:20"
+        ],
+        "owner": [
+          "Trần Thị Hạnh"
+        ]
+      }
+    },
+    {
+      "id": "he-029b599e9d242c79c03c9755",
+      "doc_key": [
+        "06-quan-ly-thay-doi.txt"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "thay đổi mức rủi ro cao"
+        ],
+        "condition": [
+          "chạm cơ sở dữ liệu hoặc cấu hình mạng"
+        ],
+        "remediation": [
+          "do Hội đồng thay đổi họp thứ Ba hàng tuần phê duyệt"
+        ]
+      }
+    },
+    {
+      "id": "he-02f82a28e74447af4c643e33",
+      "doc_key": [
+        "02-vpn-va-mat-khau.txt"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "tài khoản VPN"
+        ],
+        "condition": [
+          "yêu cầu gửi qua hệ thống Jira kèm xác nhận của quản lý trực tiếp"
+        ],
+        "remediation": [
+          "phòng IT cấp trong vòng 1 ngày làm việc"
+        ],
+        "source": [
+          "hệ thống Jira"
+        ],
+        "owner": [
+          "phòng IT"
+        ]
+      }
+    },
+    {
+      "id": "he-0388e79885a52a615a79ad74",
+      "doc_key": [
+        "n-10-tai-lieu-san-pham-cong-noi-bo.md"
+      ],
+      "khoa": "noi_bo:tai_lieu_san_pham",
+      "slots": {
+        "subject": [
+          "cổng nội bộ"
+        ],
+        "condition": [
+          "phần vận hành kỹ thuật"
+        ],
+        "owner": [
+          "nhóm Hạ tầng"
+        ]
+      }
+    },
+    {
+      "id": "he-03bf47e2d553c5d3647e8518",
+      "doc_key": [
+        "n-19-bi-mat-ha-tang-kho-khoa-khach-hang-b.md"
+      ],
+      "khoa": "khach_hang_b:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "truy cập quản trị vào cụm máy chủ của khách hàng B"
+        ],
+        "condition": [
+          "đi qua máy chủ nhảy jump-b.it.local, dải mạng quản trị là 10.40.0.0/24"
+        ]
+      }
+    },
+    {
+      "id": "he-03c24af1c05f50f5114cc596",
+      "doc_key": [
+        "k3-07-vong-doi-ticket-inc-1533.md"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "bước định tuyến sai"
+        ],
+        "cause": [
+          "định tuyến sai"
+        ],
+        "time": [
+          "mất 45 phút"
+        ]
+      }
+    },
+    {
+      "id": "he-03e139df0a3a461f1456dd4e",
+      "doc_key": [
+        "n-07-troubleshooting-email-khong-gui-duoc.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "thư gửi ra ngoài"
+        ],
+        "condition": [
+          "bị trả lại"
+        ],
+        "remediation": [
+          "đọc mã lỗi trong thư trả lại trước khi gửi lại lần nữa"
         ]
       }
     },
@@ -394,54 +541,6 @@
       }
     },
     {
-      "id": "he-05e194708f3fda33ed494ac0",
-      "doc_key": [
-        "k2-06-known-issue-xoay-vong-log.md"
-      ],
-      "khoa": "noi_bo:known_issue",
-      "slots": {
-        "subject": [
-          "tác vụ xoay vòng nhật ký"
-        ],
-        "symptom": [
-          "dừng im lặng khi gặp một file nhật ký đang bị tiến trình khác giữ, và không ghi dòng lỗi nào vào nhật ký hệ thống"
-        ],
-        "cause": [
-          "gặp một file nhật ký đang bị tiến trình khác giữ"
-        ],
-        "condition": [
-          "từ phiên bản công cụ xoay vòng 3.19"
-        ],
-        "remediation": [
-          "chạy tay lệnh xoay vòng mỗi sáng thứ Hai và kiểm dấu thời gian của file nhật ký mới nhất"
-        ],
-        "source": [
-          "KI-014"
-        ],
-        "time": [
-          "chưa có bản vá tính tới ngày 20/08"
-        ]
-      }
-    },
-    {
-      "id": "he-06267515716100a624e9a3fa",
-      "doc_key": [
-        "06-quan-ly-thay-doi.txt"
-      ],
-      "khoa": "noi_bo:runbook",
-      "slots": {
-        "subject": [
-          "người thực hiện thay đổi"
-        ],
-        "remediation": [
-          "ghi kết quả vào phiếu và đóng phiếu trong 2 ngày làm việc"
-        ],
-        "time": [
-          "sau mỗi thay đổi"
-        ]
-      }
-    },
-    {
       "id": "he-0689816c8361b21d6a8ebc96",
       "doc_key": [
         "n-16-vong-doi-ticket-yeu-cau-cap-quyen.md"
@@ -460,100 +559,79 @@
       }
     },
     {
-      "id": "he-083796756bcd2133aecdfb68",
+      "id": "he-06e61c5981ca8ebcb7489b4c",
       "doc_key": [
-        "k2-03-bao-cao-su-co-inc-1520.md"
+        "n-12-runbook-sao-luu-co-so-du-lieu.md"
       ],
-      "khoa": "noi_bo:bao_cao_su_co",
+      "khoa": "noi_bo:runbook",
       "slots": {
         "subject": [
-          "hệ thống chấm công"
-        ],
-        "symptom": [
-          "mất bản ghi của buổi sáng"
-        ],
-        "cause": [
-          "phân vùng nhật ký đầy"
-        ]
-      }
-    },
-    {
-      "id": "he-09613c5a0c03e7b283b8540e",
-      "doc_key": [
-        "n-06-troubleshooting-may-in-mang.md"
-      ],
-      "khoa": "noi_bo:troubleshooting",
-      "slots": {
-        "subject": [
-          "máy in mạng"
-        ],
-        "symptom": [
-          "không nhận lệnh in đi qua VPN"
+          "người vận hành"
         ],
         "condition": [
-          "máy tính không ở dải mạng văn phòng"
+          "nếu bản sao lưu gần nhất hỏng"
+        ],
+        "remediation": [
+          "phải dừng lại và báo ngay thay vì thử phục hồi từ bản cũ hơn mà không thông báo"
         ]
       }
     },
     {
-      "id": "he-09878b92de38072d41e0da77",
-      "doc_key": [
-        "k2-06-known-issue-xoay-vong-log.md"
-      ],
-      "khoa": "noi_bo:known_issue",
-      "slots": {
-        "subject": [
-          "dung lượng phân vùng nhật ký"
-        ],
-        "symptom": [
-          "tăng đều mà số file nhật ký không đổi trong nhiều ngày"
-        ],
-        "cause": [
-          "tác vụ xoay vòng nhật ký dừng im lặng"
-        ],
-        "condition": [
-          "khi gặp một file nhật ký đang bị tiến trình khác giữ"
-        ]
-      }
-    },
-    {
-      "id": "he-0b0a169e808cb2ed8e59caef",
-      "doc_key": [
-        "k2-05-cmdb-may-chu-log01.md"
-      ],
-      "khoa": "noi_bo:cmdb",
-      "slots": {
-        "subject": [
-          "log01"
-        ],
-        "source": [
-          "CMDB"
-        ],
-        "owner": [
-          "nhóm Hạ tầng"
-        ]
-      }
-    },
-    {
-      "id": "he-0d3e35e00859da4977b485be",
+      "id": "he-08c4c7d64ed5e99ca3757f73",
       "doc_key": [
         "n-19-bi-mat-ha-tang-kho-khoa-khach-hang-b.md"
       ],
       "khoa": "khach_hang_b:bi_mat_ha_tang",
       "slots": {
         "subject": [
-          "tài liệu Sổ tay kho khóa và chứng thư của khách hàng B"
+          "đường dẫn khóa riêng của khách hàng B"
         ],
         "condition": [
-          "không được chia sẻ sang nhóm vận hành khách hàng A dưới bất kỳ hình thức nào, kể cả khi hai bên cùng xử lý một sự cố"
+          "chỉ kỹ sư của nhóm vận hành khách hàng B được cấp quyền đọc"
         ],
-        "source": [
-          "Sổ tay kho khóa và chứng thư của khách hàng B"
+        "time": [
+          "thời hạn mỗi lần cấp là 4 giờ"
         ]
       }
     },
     {
-      "id": "he-0f90dfbf2d96cfd2f882d8a1",
+      "id": "he-0a666aecfcdb09d3c49080ac",
+      "doc_key": [
+        "k2-02-runbook-xu-ly-day-o-dia.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "máy chủ nội bộ"
+        ],
+        "condition": [
+          "phân vùng đầy"
+        ],
+        "remediation": [
+          "xác định thư mục chiếm nhiều dung lượng nhất, không xóa file nào trước khi biết chủ sở hữu của nó"
+        ]
+      }
+    },
+    {
+      "id": "he-0bf44c0bab761a6e03d86684",
+      "doc_key": [
+        "n-04-sop-tiep-nhan-yeu-cau-ho-tro.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "yêu cầu chạm dữ liệu khách hàng"
+        ],
+        "remediation": [
+          "phải được chuyển thẳng cho nhóm vận hành của khách hàng đó, Tech Support không tự xử lý"
+        ],
+        "source": [
+          "SOP-05"
+        ]
+      }
+    },
+    {
+      "id": "he-0e67fe5d43e70854fdf54d3f",
       "doc_key": [
         "k1-04-postmortem-inc-1208.md"
       ],
@@ -569,40 +647,67 @@
           "tách kênh cảnh báo nghiêm trọng khỏi kênh chat chung"
         ],
         "time": [
-          "12 phút kể từ khi lỗi 502 bắt đầu"
+          "hạn hoàn thành 15/09"
         ]
       }
     },
     {
-      "id": "he-1052ab379974d65544056533",
+      "id": "he-0fb1a0b639abdcdb5957d9bc",
       "doc_key": [
-        "k1-03-bao-cao-su-co-inc-1208.md"
+        "k3-05-postmortem-inc-1533.md"
       ],
-      "khoa": "khach_hang_a:bao_cao_su_co",
+      "khoa": "khach_hang_b:postmortem",
       "slots": {
         "subject": [
-          "trang thanh toán App01"
+          "dịch vụ của khách hàng B"
         ],
         "symptom": [
-          "ngừng phục vụ 40 phút, trả lỗi 502 với tỷ lệ 100%"
+          "gián đoạn 2 giờ 10 phút"
         ],
         "cause": [
-          "chỉnh sai giới hạn bộ nhớ PHP-FPM"
-        ],
-        "condition": [
-          "lưu lượng vượt 5000 req/phút"
-        ],
-        "remediation": [
-          "trả giới hạn bộ nhớ PHP-FPM về mức cũ rồi nạp lại cấu hình theo SOP-12"
-        ],
-        "source": [
-          "INC-1208"
+          "chứng thư số hết hạn không được gia hạn do cảnh báo không được đọc"
         ],
         "time": [
-          "12/08/2026 lúc 09:20"
+          "đầu tháng"
+        ]
+      }
+    },
+    {
+      "id": "he-1008f7f81b3f21972d33abca",
+      "doc_key": [
+        "09-bao-cao-su-co-inc-1417.txt"
+      ],
+      "khoa": "noi_bo:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "chứng chỉ TLS"
         ],
-        "owner": [
-          "Trần Thị Hạnh"
+        "condition": [
+          "mọi chứng chỉ TLS"
+        ],
+        "remediation": [
+          "phải được theo dõi hạn trên hệ thống giám sát và cảnh báo trước 30 ngày"
+        ]
+      }
+    },
+    {
+      "id": "he-10960de0a8407a224c974566",
+      "doc_key": [
+        "n-02-faq-vpn-cho-nhan-vien-moi.md"
+      ],
+      "khoa": "noi_bo:faq",
+      "slots": {
+        "subject": [
+          "VPN"
+        ],
+        "condition": [
+          "kể từ khi có phê duyệt"
+        ],
+        "remediation": [
+          "thời hạn xử lý là 2 ngày làm việc"
+        ],
+        "time": [
+          "2 ngày làm việc"
         ]
       }
     },
@@ -625,23 +730,41 @@
       }
     },
     {
-      "id": "he-13c9bde7bdfb38717443dbc5",
+      "id": "he-1302d841d0a6b994b48c3c3b",
       "doc_key": [
-        "k3-07-vong-doi-ticket-inc-1533.md"
+        "07-giam-sat-va-canh-bao.txt"
       ],
-      "khoa": "khach_hang_b:vong_doi_ticket",
+      "khoa": "noi_bo:runbook",
       "slots": {
         "subject": [
-          "ticket INC-1533"
+          "Ngưỡng cảnh báo dung lượng đĩa"
         ],
         "symptom": [
-          "cổng thanh toán báo lỗi chứng thư"
+          "cảnh báo"
+        ],
+        "condition": [
+          "85 phần trăm"
+        ]
+      }
+    },
+    {
+      "id": "he-1383237b8d9901fe3d6df4bb",
+      "doc_key": [
+        "k1-07-sop-12-quan-ly-thay-doi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "phiếu thay đổi"
+        ],
+        "condition": [
+          "chạm một dịch vụ"
         ],
         "source": [
-          "đầu mối kỹ thuật của khách hàng B"
+          "SOP-12"
         ],
-        "time": [
-          "00 giờ 18 ngày 26/08"
+        "owner": [
+          "trưởng nhóm vận hành của dịch vụ"
         ]
       }
     },
@@ -664,47 +787,65 @@
       }
     },
     {
-      "id": "he-16baded6e7a87d911c957510",
+      "id": "he-15a96d6418a0fc09522d43a3",
       "doc_key": [
-        "08-bao-cao-su-co-inc-1305.txt"
+        "k3-04-bao-cao-su-co-inc-1533.md"
       ],
-      "khoa": "noi_bo:bao_cao_su_co",
+      "khoa": "khach_hang_b:bao_cao_su_co",
       "slots": {
         "subject": [
-          "cụm cơ sở dữ liệu DB02"
-        ],
-        "symptom": [
-          "ngừng nhận ghi, các đơn hàng mới không lưu được trong 25 phút"
-        ],
-        "cause": [
-          "phân vùng lưu nhật ký giao dịch của DB02 đầy 100 phần trăm do một tiến trình xuất báo cáo ghi tạm vào cùng phân vùng"
+          "chứng thư số"
         ],
         "remediation": [
-          "dừng tiến trình xuất báo cáo, xóa file tạm và mở rộng phân vùng nhật ký thêm 200 GB"
+          "cấp chứng thư mới và nạp lại cấu hình Nginx"
         ],
         "source": [
-          "INC-1305"
+          "INC-1533"
         ],
         "time": [
-          "03/09/2026 lúc 01:40"
+          "26/08, lúc 02 giờ 11"
         ],
         "owner": [
-          "Lê Quốc Duy"
+          "Phạm Quốc Bảo"
         ]
       }
     },
     {
-      "id": "he-190c9c04fca8fbe730565547",
+      "id": "he-164a67500e4ca52d7b18eeb0",
+      "doc_key": [
+        "04-sao-luu-du-lieu.txt"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "phòng IT"
+        ],
+        "condition": [
+          "Mỗi quý"
+        ],
+        "remediation": [
+          "diễn tập khôi phục một bản sao lưu ngẫu nhiên để kiểm chứng bản sao lưu dùng được thật"
+        ],
+        "time": [
+          "Mỗi quý"
+        ],
+        "owner": [
+          "phòng IT"
+        ]
+      }
+    },
+    {
+      "id": "he-168dda74d5e6ed18082f114a",
       "doc_key": [
         "n-08-known-issue-trinh-duyet-cu-loi-dang-nhap.md"
       ],
       "khoa": "noi_bo:known_issue",
       "slots": {
         "subject": [
-          "Cổng nội bộ"
+          "cổng nội bộ"
         ],
         "symptom": [
-          "không đăng nhập được, trang đăng nhập nạp lại chính nó sau khi nhập đúng mật khẩu, không hiện thông báo lỗi"
+          "không đăng nhập được trên trình duyệt Chrome phiên bản dưới 110"
         ],
         "cause": [
           "thư viện xác thực dùng một hàm mật mã chỉ có ở bản mới hơn"
@@ -717,6 +858,129 @@
         ],
         "source": [
           "Lỗi đã biết KI-009"
+        ]
+      }
+    },
+    {
+      "id": "he-16ebfecbe09b4d225efff120",
+      "doc_key": [
+        "n-15-log-tuong-lua-ngay-20-08.md"
+      ],
+      "khoa": "noi_bo:log",
+      "slots": {
+        "subject": [
+          "phiên VPN"
+        ],
+        "symptom": [
+          "firewall allow: phiên VPN mới từ một nhân viên đang công tác"
+        ],
+        "condition": [
+          "có xác thực hai bước"
+        ],
+        "time": [
+          "20/08 11:02"
+        ]
+      }
+    },
+    {
+      "id": "he-16ff43e49e0cf8cdcc56365d",
+      "doc_key": [
+        "n-19-bi-mat-ha-tang-kho-khoa-khach-hang-b.md"
+      ],
+      "khoa": "khach_hang_b:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "mọi lượt đọc khóa riêng"
+        ],
+        "remediation": [
+          "ghi lại danh tính người đọc và được đối soát hằng tháng với danh sách nhân sự của nhóm"
+        ]
+      }
+    },
+    {
+      "id": "he-17a17927f0e92769079ff842",
+      "doc_key": [
+        "10-so-tay-ha-tang-noi-bo.txt"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "mật khẩu quản trị cơ sở dữ liệu"
+        ],
+        "remediation": [
+          "được xoay vòng bằng tác vụ tự động của Vault"
+        ],
+        "time": [
+          "mỗi 90 ngày"
+        ],
+        "owner": [
+          "phòng IT"
+        ]
+      }
+    },
+    {
+      "id": "he-17a819d8b3e74edff01e9453",
+      "doc_key": [
+        "08-bao-cao-su-co-inc-1305.txt"
+      ],
+      "khoa": "noi_bo:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "cảnh báo dung lượng đĩa của DB02"
+        ],
+        "condition": [
+          "ngưỡng cảnh báo"
+        ],
+        "remediation": [
+          "hạ ngưỡng xuống 75 phần trăm"
+        ],
+        "source": [
+          "bài học từ INC-1305"
+        ]
+      }
+    },
+    {
+      "id": "he-188208903f6bd8711f3d9478",
+      "doc_key": [
+        "k1-08-troubleshooting-app01-loi-502.md"
+      ],
+      "khoa": "khach_hang_a:troubleshooting",
+      "slots": {
+        "subject": [
+          "App01"
+        ],
+        "symptom": [
+          "trang thanh toán của khách hàng A trả lỗi 502"
+        ],
+        "condition": [
+          "lỗi 502 kéo dài quá 3 phút"
+        ],
+        "remediation": [
+          "báo trực ban thay vì tự thao tác"
+        ],
+        "source": [
+          "Hướng dẫn tự kiểm tra"
+        ]
+      }
+    },
+    {
+      "id": "he-18b7cefcd1a3d480a0270bcf",
+      "doc_key": [
+        "n-06-troubleshooting-may-in-mang.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "máy in của phòng Kế toán"
+        ],
+        "condition": [
+          "trong tuần chốt sổ"
+        ],
+        "remediation": [
+          "trừ"
+        ],
+        "time": [
+          "trong tuần chốt sổ"
         ]
       }
     },
@@ -736,20 +1000,29 @@
       }
     },
     {
-      "id": "he-1b3db3c1159793e9c1f3be8b",
+      "id": "he-1aaefc697e361238b15f8943",
       "doc_key": [
-        "k2-05-cmdb-may-chu-log01.md"
+        "k1-04-postmortem-inc-1208.md"
       ],
-      "khoa": "noi_bo:cmdb",
+      "khoa": "khach_hang_a:postmortem",
       "slots": {
         "subject": [
-          "log01"
+          "App01"
         ],
-        "source": [
-          "CMDB"
+        "symptom": [
+          "lỗi 502"
+        ],
+        "cause": [
+          "phiếu thay đổi giới hạn bộ nhớ PHP-FPM được duyệt mà không qua bước thử trên môi trường thử nghiệm"
+        ],
+        "remediation": [
+          "dịch vụ phục hồi lúc 10:00"
+        ],
+        "time": [
+          "12/08/2026 lúc 09:20"
         ],
         "owner": [
-          "Lê Thị Hà"
+          "Trần Thị Hạnh"
         ]
       }
     },
@@ -772,20 +1045,20 @@
       }
     },
     {
-      "id": "he-1bc1ddfa198d39dd3b3ac5a3",
+      "id": "he-1bc36f0b2a92f2fff61ab457",
       "doc_key": [
-        "n-07-troubleshooting-email-khong-gui-duoc.md"
+        "03-truc-su-co.txt"
       ],
-      "khoa": "noi_bo:troubleshooting",
+      "khoa": "noi_bo:runbook",
       "slots": {
         "subject": [
-          "thư gửi ra ngoài"
+          "sự cố mức nghiêm trọng (P1, dịch vụ ngừng hoàn toàn)"
         ],
-        "symptom": [
-          "bị trả lại"
+        "condition": [
+          "phải được báo cho người trực trong 15 phút"
         ],
         "remediation": [
-          "đọc mã lỗi trong thư trả lại trước khi gửi lại lần nữa"
+          "mở cầu xử lý trong 30 phút"
         ]
       }
     },
@@ -811,305 +1084,227 @@
       }
     },
     {
-      "id": "he-1d7ae9001d16691484a3cd8c",
+      "id": "he-1c1424398c14759a04643161",
       "doc_key": [
-        "k1-06-log-app01-ngay-12-08.md"
+        "k3-01-tai-lieu-san-pham-cong-thanh-toan-b.md"
       ],
-      "khoa": "khach_hang_a:log",
+      "khoa": "khach_hang_b:tai_lieu_san_pham",
       "slots": {
         "subject": [
-          "web01"
+          "hợp đồng dịch vụ"
         ],
-        "symptom": [
-          "nginx error: connect() to unix socket failed (11: Resource temporarily unavailable), trả 502 cho toàn bộ yêu cầu"
+        "condition": [
+          "mỗi tháng"
+        ],
+        "remediation": [
+          "thời gian đáp ứng sự cố nghiêm trọng là 30 phút"
         ],
         "time": [
-          "12/08/2026 09:22"
+          "thời gian sẵn sàng 99,5%"
         ]
       }
     },
     {
-      "id": "he-1e613bfe269f9166a467653a",
+      "id": "he-1f04bec3046f339d883fa425",
+      "doc_key": [
+        "n-01-faq-dat-lai-mat-khau.md"
+      ],
+      "khoa": "noi_bo:faq",
+      "slots": {
+        "subject": [
+          "tài khoản nội bộ"
+        ],
+        "symptom": [
+          "bị khóa"
+        ],
+        "condition": [
+          "nhập sai mật khẩu 5 lần liên tiếp"
+        ],
+        "remediation": [
+          "phải nhờ Tech Support mở khóa nếu sai tiếp"
+        ],
+        "time": [
+          "15 phút"
+        ]
+      }
+    },
+    {
+      "id": "he-207d8ad94edb0718da949420",
       "doc_key": [
         "n-19-bi-mat-ha-tang-kho-khoa-khach-hang-b.md"
       ],
       "khoa": "khach_hang_b:bi_mat_ha_tang",
       "slots": {
         "subject": [
-          "đường dẫn khóa riêng của khách hàng B"
+          "tài liệu Sổ tay kho khóa và chứng thư của khách hàng B"
         ],
         "condition": [
-          "chỉ kỹ sư của nhóm vận hành khách hàng B được cấp quyền đọc"
+          "không được chia sẻ sang nhóm vận hành khách hàng A dưới bất kỳ hình thức nào, kể cả khi hai bên cùng xử lý một sự cố"
+        ]
+      }
+    },
+    {
+      "id": "he-21be7c528c40b4a0dc4f1dc3",
+      "doc_key": [
+        "n-16-vong-doi-ticket-yeu-cau-cap-quyen.md"
+      ],
+      "khoa": "noi_bo:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "ticket cấp quyền"
         ],
-        "source": [
-          "Sổ tay kho khóa và chứng thư của khách hàng B"
+        "condition": [
+          "sau khi có phê duyệt"
+        ],
+        "remediation": [
+          "chuyển cho nhóm quản trị hệ thống tương ứng để cấp quyền"
         ],
         "time": [
-          "thời hạn mỗi lần cấp là 4 giờ"
+          "2 ngày làm việc"
         ]
       }
     },
     {
-      "id": "he-208954cddbc8cd69275a5847",
+      "id": "he-222e863137725c0ecc173405",
       "doc_key": [
-        "n-04-sop-tiep-nhan-yeu-cau-ho-tro.md"
+        "k2-04-vong-doi-ticket-inc-1520.md"
       ],
-      "khoa": "noi_bo:sop",
+      "khoa": "noi_bo:vong_doi_ticket",
       "slots": {
         "subject": [
-          "Ticket P1 và P2"
-        ],
-        "remediation": [
-          "phải có người nhận xử lý đích danh, không được để ở hàng đợi chung quá 10 phút"
-        ]
-      }
-    },
-    {
-      "id": "he-20b57cc242973a302d6e97b3",
-      "doc_key": [
-        "08-bao-cao-su-co-inc-1305.txt"
-      ],
-      "khoa": "noi_bo:bao_cao_su_co",
-      "slots": {
-        "subject": [
-          "cảnh báo dung lượng đĩa của DB02"
-        ],
-        "condition": [
-          "ngưỡng 75 phần trăm"
-        ],
-        "remediation": [
-          "hạ ngưỡng xuống 75 phần trăm"
-        ],
-        "source": [
-          "bài học"
-        ]
-      }
-    },
-    {
-      "id": "he-21168ed5a245844815c94952",
-      "doc_key": [
-        "n-08-known-issue-trinh-duyet-cu-loi-dang-nhap.md"
-      ],
-      "khoa": "noi_bo:known_issue",
-      "slots": {
-        "subject": [
-          "Lỗi KI-009"
+          "ticket INC-1520"
         ],
         "symptom": [
-          "không liên quan tới bất kỳ sự cố nào của hệ thống nhật ký hay của cổng thanh toán"
-        ]
-      }
-    },
-    {
-      "id": "he-2214674ed9f9beed6a41bc57",
-      "doc_key": [
-        "k2-01-canh-bao-day-o-dia-log01.md"
-      ],
-      "khoa": "noi_bo:canh_bao",
-      "slots": {
-        "subject": [
-          "cảnh báo phân vùng đầy mức nghiêm trọng"
-        ],
-        "condition": [
-          "phân vùng vượt 95% dung lượng"
-        ],
-        "remediation": [
-          "gọi điện cho kỹ sư trực hạ tầng"
+          "chạm nhiều dịch vụ cùng lúc"
         ],
         "owner": [
-          "kỹ sư trực hạ tầng"
+          "nhóm Hạ tầng"
         ]
       }
     },
     {
-      "id": "he-224ce51efdefea24d5bcdfd3",
+      "id": "he-227972614fe579fa8708b4ca",
       "doc_key": [
-        "03-truc-su-co.txt"
+        "k2-07-troubleshooting-dich-vu-cham.md"
       ],
-      "khoa": "noi_bo:runbook",
+      "khoa": "noi_bo:troubleshooting",
       "slots": {
         "subject": [
-          "việc thay đổi cấu hình hạ tầng"
+          "Jira nội bộ"
+        ],
+        "symptom": [
+          "không mở được"
         ],
         "condition": [
-          "trong lúc xử lý sự cố"
-        ],
-        "remediation": [
-          "phải có hai người xác nhận, một người thao tác và một người soát lại"
+          "ngoài mạng công ty"
         ]
       }
     },
     {
-      "id": "he-22f2293a8118b60f533809e8",
-      "doc_key": [
-        "k3-06-cmdb-chung-thu-so-khach-hang-b.md"
-      ],
-      "khoa": "khach_hang_b:cmdb",
-      "slots": {
-        "subject": [
-          "pay.khachhangb.vn"
-        ],
-        "condition": [
-          "dùng chứng thư số do nhà cung cấp bên ngoài cấp, chu kỳ 90 ngày"
-        ],
-        "source": [
-          "Bản ghi CMDB chứng thư số của khách hàng B"
-        ],
-        "time": [
-          "ngày hết hạn gần nhất là 26/08"
-        ]
-      }
-    },
-    {
-      "id": "he-23fa7599fe852a4498e3c29c",
+      "id": "he-244222f7027c4d6b95d9758c",
       "doc_key": [
         "k2-03-bao-cao-su-co-inc-1520.md"
       ],
       "khoa": "noi_bo:bao_cao_su_co",
       "slots": {
         "subject": [
-          "kho ảnh Docker"
+          "Jira nội bộ"
         ],
         "symptom": [
-          "từ chối mọi lượt đẩy ảnh mới"
-        ],
-        "cause": [
-          "phân vùng nhật ký đầy"
+          "chỉ đọc"
         ]
       }
     },
     {
-      "id": "he-246eb8bcc0fdbf4c5d475621",
+      "id": "he-267e4c30cc4bcf0563be3fc9",
+      "doc_key": [
+        "n-13-runbook-trien-khai-ban-va-thang.md"
+      ],
+      "khoa": "khach_hang_b:runbook",
+      "slots": {
+        "subject": [
+          "kết quả triển khai"
+        ],
+        "remediation": [
+          "báo cho đầu mối kỹ thuật của khách hàng B"
+        ],
+        "time": [
+          "chậm nhất 09 giờ sáng cùng ngày"
+        ]
+      }
+    },
+    {
+      "id": "he-270390a67a5c13438441dcde",
+      "doc_key": [
+        "n-06-troubleshooting-may-in-mang.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "máy in mạng"
+        ],
+        "cause": [
+          "máy in mạng không nhận lệnh in đi qua VPN"
+        ],
+        "condition": [
+          "máy tính không ở dải mạng văn phòng"
+        ]
+      }
+    },
+    {
+      "id": "he-270dead1e33dab0ddbf5bc03",
       "doc_key": [
         "n-15-log-tuong-lua-ngay-20-08.md"
       ],
       "khoa": "noi_bo:log",
       "slots": {
         "subject": [
-          "tường lửa biên"
+          "nhật ký tường lửa"
         ],
-        "symptom": [
-          "firewall deny: nguồn ngoài Internet tới cổng 22 của dải mạng người dùng"
+        "condition": [
+          "theo yêu cầu đối soát an toàn thông tin"
         ],
-        "cause": [
-          "luật mặc định chặn"
+        "remediation": [
+          "được giữ"
         ],
         "time": [
-          "20/08 lúc 08:14"
+          "12 tháng"
         ]
       }
     },
     {
-      "id": "he-25e2fca1509d62c711442ab4",
+      "id": "he-29350ebf1f8d982dab1633b8",
       "doc_key": [
-        "n-09-known-issue-bao-cao-thang-cham.md"
+        "n-04-sop-tiep-nhan-yeu-cau-ho-tro.md"
       ],
-      "khoa": "khach_hang_a:known_issue",
+      "khoa": "noi_bo:sop",
       "slots": {
         "subject": [
-          "lỗi KI-021"
+          "mức P1"
         ],
         "condition": [
-          "chỉ ảnh hưởng ba người dùng nội bộ của khách hàng A"
-        ],
-        "remediation": [
-          "xếp mức thấp"
-        ]
-      }
-    },
-    {
-      "id": "he-2636c59b5899622c02de633d",
-      "doc_key": [
-        "k2-06-known-issue-xoay-vong-log.md"
-      ],
-      "khoa": "noi_bo:known_issue",
-      "slots": {
-        "subject": [
-          "lỗi KI-014"
-        ],
-        "symptom": [
-          "được đánh giá mức trung bình"
-        ],
-        "cause": [
-          "có cách vòng tránh"
+          "dịch vụ ngừng hoàn toàn"
         ],
         "source": [
-          "KI-014"
+          "SOP-05"
         ]
       }
     },
     {
-      "id": "he-27ff980223d3100d3d8cffa0",
+      "id": "he-2bda1d0460829064232a2051",
       "doc_key": [
-        "01-cap-quyen-gitlab.txt"
+        "k2-02-runbook-xu-ly-day-o-dia.md"
       ],
       "khoa": "noi_bo:runbook",
       "slots": {
         "subject": [
-          "quyền ghi vào nhánh chính (main)"
+          "nhật ký trên phân vùng log"
         ],
         "condition": [
-          "chỉ cấp cho kỹ sư từ cấp Senior trở lên"
+          "cũ hơn 30 ngày"
         ],
         "remediation": [
-          "phê duyệt"
-        ],
-        "owner": [
-          "Giám đốc Kỹ thuật (CTO)"
-        ]
-      }
-    },
-    {
-      "id": "he-287d55c54df2ba52b51a1fc7",
-      "doc_key": [
-        "09-bao-cao-su-co-inc-1417.txt"
-      ],
-      "khoa": "noi_bo:bao_cao_su_co",
-      "slots": {
-        "subject": [
-          "chứng chỉ TLS"
-        ],
-        "condition": [
-          "phải được theo dõi hạn trên hệ thống giám sát và cảnh báo trước 30 ngày"
-        ],
-        "remediation": [
-          "theo dõi hạn trên hệ thống giám sát và cảnh báo trước 30 ngày"
-        ]
-      }
-    },
-    {
-      "id": "he-28bd5c47c9d575a34ce0c1a2",
-      "doc_key": [
-        "08-bao-cao-su-co-inc-1305.txt"
-      ],
-      "khoa": "noi_bo:bao_cao_su_co",
-      "slots": {
-        "subject": [
-          "tiến trình xuất báo cáo"
-        ],
-        "remediation": [
-          "phải ghi tạm vào phân vùng riêng"
-        ],
-        "source": [
-          "bài học"
-        ]
-      }
-    },
-    {
-      "id": "he-2ac4a8489536057cfc9ca877",
-      "doc_key": [
-        "01-cap-quyen-gitlab.txt"
-      ],
-      "khoa": "noi_bo:runbook",
-      "slots": {
-        "subject": [
-          "nhân viên mới phòng Kỹ thuật"
-        ],
-        "condition": [
-          "sau khi trưởng phòng Kỹ thuật phê duyệt"
-        ],
-        "remediation": [
-          "được cấp tài khoản GitLab và quyền đọc kho mã nguồn"
+          "nén ngay mà không cần phê duyệt"
         ]
       }
     },
@@ -1153,7 +1348,82 @@
       }
     },
     {
-      "id": "he-305314e32b08d4a25881d5e9",
+      "id": "he-2feb187a346128beb4a3e71d",
+      "doc_key": [
+        "n-08-known-issue-trinh-duyet-cu-loi-dang-nhap.md"
+      ],
+      "khoa": "noi_bo:known_issue",
+      "slots": {
+        "subject": [
+          "Lỗi đăng nhập"
+        ],
+        "cause": [
+          "không liên quan tới bất kỳ sự cố nào của hệ thống nhật ký hay của cổng thanh toán"
+        ]
+      }
+    },
+    {
+      "id": "he-3045258117fdffba880a20fe",
+      "doc_key": [
+        "k2-01-canh-bao-day-o-dia-log01.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "máy chủ nội bộ"
+        ],
+        "symptom": [
+          "cảnh báo mức nghiêm trọng"
+        ],
+        "condition": [
+          "phân vùng vượt 95% dung lượng"
+        ],
+        "remediation": [
+          "gọi điện cho kỹ sư trực hạ tầng"
+        ]
+      }
+    },
+    {
+      "id": "he-308019510f61916ea20f3892",
+      "doc_key": [
+        "k3-05-postmortem-inc-1533.md"
+      ],
+      "khoa": "khach_hang_b:postmortem",
+      "slots": {
+        "subject": [
+          "tên miền của khách hàng B"
+        ],
+        "remediation": [
+          "rà toàn bộ tên miền, đối chiếu nhóm sở hữu với hộp thư nhận nhắc"
+        ],
+        "time": [
+          "hạn hoàn thành 05/09"
+        ],
+        "owner": [
+          "trưởng nhóm vận hành khách hàng B"
+        ]
+      }
+    },
+    {
+      "id": "he-317cdefeba8bf426e0a7bd31",
+      "doc_key": [
+        "10-so-tay-ha-tang-noi-bo.txt"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "dải mạng quản trị"
+        ],
+        "condition": [
+          "là 10.20.0.0/24, tách khỏi dải mạng người dùng"
+        ],
+        "remediation": [
+          "chỉ mở từ máy chủ nhảy"
+        ]
+      }
+    },
+    {
+      "id": "he-327ae18f7514da57309d8fce",
       "doc_key": [
         "n-11-tai-lieu-san-pham-app02-khach-hang-a.md"
       ],
@@ -1162,218 +1432,191 @@
         "subject": [
           "App02"
         ],
-        "symptom": [
-          "màn quản trị đơn hàng của khách hàng A"
-        ],
         "condition": [
           "chạy tách hẳn trang thanh toán App01 và dùng cơ sở dữ liệu riêng"
         ]
       }
     },
     {
-      "id": "he-30fdd6374fb6a0215aa98a43",
+      "id": "he-32a74d9ff769e753463e4451",
       "doc_key": [
-        "n-03-faq-cong-thanh-toan-khach-hang-a.md"
+        "n-13-runbook-trien-khai-ban-va-thang.md"
       ],
-      "khoa": "khach_hang_a:faq",
+      "khoa": "khach_hang_b:runbook",
       "slots": {
         "subject": [
-          "trang bảo trì"
+          "bản vá tháng"
         ],
         "condition": [
-          "khi có bảo trì"
-        ],
-        "remediation": [
-          "thông báo đăng trước 24 giờ trên trang trạng thái của khách hàng A"
-        ]
-      }
-    },
-    {
-      "id": "he-31a83c2eb9bd39c7f66e3c4f",
-      "doc_key": [
-        "n-05-sop-ban-giao-ca-truc.md"
-      ],
-      "khoa": "noi_bo:sop",
-      "slots": {
-        "subject": [
-          "ca cũ"
-        ],
-        "condition": [
-          "thiếu chữ ký của người nhận ca"
-        ],
-        "remediation": [
-          "vẫn chịu trách nhiệm cho tới khi có chữ ký"
-        ],
-        "source": [
-          "SOP-18"
-        ]
-      }
-    },
-    {
-      "id": "he-3234fa5d6ee378b808070968",
-      "doc_key": [
-        "04-sao-luu-du-lieu.txt"
-      ],
-      "khoa": "noi_bo:runbook",
-      "slots": {
-        "subject": [
-          "Cơ sở dữ liệu sản xuất"
-        ],
-        "condition": [
-          "bản sao lưu giữ 30 ngày trên hệ thống lưu trữ riêng"
-        ],
-        "remediation": [
-          "sao lưu tự động"
+          "đúng cửa sổ đã thỏa thuận với khách hàng B"
         ],
         "time": [
-          "mỗi ngày lúc 2 giờ sáng"
+          "01 giờ đến 03 giờ ngày Chủ nhật đầu tháng"
         ]
       }
     },
     {
-      "id": "he-32e3a3851530ad1b1c74e5db",
+      "id": "he-32d9823c25676fa1c60a9baf",
+      "doc_key": [
+        "n-09-known-issue-bao-cao-thang-cham.md"
+      ],
+      "khoa": "khach_hang_a:known_issue",
+      "slots": {
+        "subject": [
+          "báo cáo doanh thu tháng của khách hàng A"
+        ],
+        "condition": [
+          "chỉ xuất hiện trên màn quản trị đơn hàng"
+        ],
+        "remediation": [
+          "chia báo cáo thành từng tháng rồi cộng lại, hoặc đặt lịch chạy báo cáo vào ban đêm"
+        ]
+      }
+    },
+    {
+      "id": "he-335dd6adf328c3d9cdd1d2f2",
+      "doc_key": [
+        "n-11-tai-lieu-san-pham-app02-khach-hang-a.md"
+      ],
+      "khoa": "khach_hang_a:tai_lieu_san_pham",
+      "slots": {
+        "subject": [
+          "App02"
+        ],
+        "condition": [
+          "chỉ mở cho tài khoản nhân viên của khách hàng A, không phục vụ người mua hàng và không nhận giao dịch thẻ"
+        ]
+      }
+    },
+    {
+      "id": "he-33919ecf147d781f564aa8c3",
+      "doc_key": [
+        "k2-03-bao-cao-su-co-inc-1520.md"
+      ],
+      "khoa": "noi_bo:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "phân vùng nhật ký của máy chủ log01"
+        ],
+        "symptom": [
+          "đầy 100%"
+        ],
+        "cause": [
+          "tác vụ xoay vòng nhật ký ngừng chạy từ ngày 11/08"
+        ],
+        "remediation": [
+          "nén nhật ký cũ hơn 30 ngày, khôi phục tác vụ xoay vòng"
+        ],
+        "time": [
+          "18/08 lúc 09 giờ 40"
+        ],
+        "owner": [
+          "Lê Thị Hà"
+        ]
+      }
+    },
+    {
+      "id": "he-36fa04bbf24d34b1705ceb49",
       "doc_key": [
         "n-06-troubleshooting-may-in-mang.md"
       ],
       "khoa": "noi_bo:troubleshooting",
       "slots": {
         "subject": [
-          "máy in của phòng Kế toán"
+          "máy in mạng"
+        ],
+        "cause": [
+          "kẹt giấy hoặc hết mực"
         ],
         "condition": [
-          "tuần chốt sổ"
+          "đèn đỏ nhấp nháy"
         ],
         "remediation": [
-          "không được xử lý trong 2 ngày làm việc"
-        ],
-        "time": [
-          "trong tuần chốt sổ"
+          "không phải lỗi mạng"
         ]
       }
     },
     {
-      "id": "he-3633129969dcdb2e773d5f2f",
+      "id": "he-378a554b9cc1505e51d484cb",
       "doc_key": [
-        "k1-01-runbook-app01-khoi-dong-lai.md"
+        "k3-06-cmdb-chung-thu-so-khach-hang-b.md"
       ],
-      "khoa": "khach_hang_a:runbook",
+      "khoa": "khach_hang_b:cmdb",
       "slots": {
         "subject": [
-          "người trực"
+          "portal.khachhangb.vn"
         ],
         "condition": [
-          "sau khi khởi động lại"
+          "chứng thư nội bộ"
         ],
-        "remediation": [
-          "ghi thao tác vào nhật ký sự cố của khách hàng A trong vòng 24 giờ"
+        "source": [
+          "Bản ghi CMDB chứng thư số của khách hàng B"
         ],
         "time": [
-          "trong vòng 24 giờ"
+          "ngày hết hạn là 02/12"
+        ],
+        "owner": [
+          "nhóm Hạ tầng"
         ]
       }
     },
     {
-      "id": "he-3646a9a31444be580c05c408",
+      "id": "he-3807d01cdf4bbd1265c6119c",
+      "doc_key": [
+        "07-giam-sat-va-canh-bao.txt"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "Hệ thống giám sát Zabbix"
+        ],
+        "condition": [
+          "mỗi 60 giây"
+        ],
+        "remediation": [
+          "quét các máy chủ sản xuất và gửi cảnh báo vào kênh Slack #canh-bao-ha-tang"
+        ]
+      }
+    },
+    {
+      "id": "he-39253cd5ab6c51e906a3022f",
       "doc_key": [
         "k3-01-tai-lieu-san-pham-cong-thanh-toan-b.md"
       ],
       "khoa": "khach_hang_b:tai_lieu_san_pham",
       "slots": {
         "subject": [
-          "dịch vụ cổng thanh toán của khách hàng B"
-        ],
-        "condition": [
-          "theo hợp đồng dịch vụ"
-        ],
-        "remediation": [
-          "cam kết thời gian sẵn sàng 99,5%"
-        ],
-        "time": [
-          "mỗi tháng"
-        ]
-      }
-    },
-    {
-      "id": "he-36d173be7ddb6694c06af3e4",
-      "doc_key": [
-        "k2-01-canh-bao-day-o-dia-log01.md"
-      ],
-      "khoa": "noi_bo:canh_bao",
-      "slots": {
-        "subject": [
-          "cảnh báo dung lượng"
-        ],
-        "condition": [
-          "không được tắt tiếng quá 30 phút"
-        ],
-        "remediation": [
-          "ngoại lệ phải có phê duyệt của trưởng nhóm Hạ tầng"
-        ],
-        "owner": [
-          "trưởng nhóm Hạ tầng"
-        ]
-      }
-    },
-    {
-      "id": "he-37fada2e5cd1e82508e8649c",
-      "doc_key": [
-        "n-12-runbook-sao-luu-co-so-du-lieu.md"
-      ],
-      "khoa": "noi_bo:runbook",
-      "slots": {
-        "subject": [
-          "phục hồi trên môi trường sản xuất"
-        ],
-        "condition": [
-          "có phê duyệt của Giám đốc Kỹ thuật và có mặt hai người, một thao tác một soát lại"
-        ],
-        "remediation": [
-          "chỉ chạy khi có phê duyệt và có mặt hai người"
-        ]
-      }
-    },
-    {
-      "id": "he-39c9c79f7d2cc9e0302f23e2",
-      "doc_key": [
-        "n-03-faq-cong-thanh-toan-khach-hang-a.md"
-      ],
-      "khoa": "khach_hang_a:faq",
-      "slots": {
-        "subject": [
-          "tiền đã trừ mà đơn chưa lên"
-        ],
-        "remediation": [
-          "mở ticket đối soát giao dịch, tiền được hoàn tự động trong 3 ngày làm việc nếu đơn không hình thành"
-        ],
-        "owner": [
-          "đội hỗ trợ khách hàng A"
-        ]
-      }
-    },
-    {
-      "id": "he-3a07e8e44b065a6938f93fdb",
-      "doc_key": [
-        "k1-04-postmortem-inc-1208.md"
-      ],
-      "khoa": "khach_hang_a:postmortem",
-      "slots": {
-        "subject": [
-          "App01"
+          "trình duyệt và ứng dụng đối tác"
         ],
         "symptom": [
-          "lỗi 502"
+          "từ chối kết nối"
         ],
-        "cause": [
-          "phiếu thay đổi giới hạn bộ nhớ PHP-FPM được duyệt mà không qua bước thử trên môi trường thử nghiệm"
+        "condition": [
+          "chứng thư số của tên miền hết hạn"
         ],
         "remediation": [
-          "bổ sung bước thử bắt buộc cho mọi phiếu thay đổi chạm tham số bộ nhớ"
+          "không có chế độ chạy tạm"
+        ]
+      }
+    },
+    {
+      "id": "he-3a98e64055db3e388b244338",
+      "doc_key": [
+        "k1-07-sop-12-quan-ly-thay-doi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "thao tác khẩn cấp"
         ],
-        "time": [
-          "12/08/2026 lúc 09:20"
+        "condition": [
+          "không có phiếu trước"
         ],
-        "owner": [
-          "Trần Thị Hạnh"
+        "remediation": [
+          "phải bổ sung phiếu thay đổi trong 24 giờ kể từ khi dịch vụ phục hồi"
+        ],
+        "source": [
+          "SOP-12"
         ]
       }
     },
@@ -1396,65 +1639,104 @@
       }
     },
     {
-      "id": "he-3b37f8bdec034970298f1280",
+      "id": "he-3bca45167461932e4c6c1b8b",
       "doc_key": [
-        "n-01-faq-dat-lai-mat-khau.md"
+        "n-18-bi-mat-ha-tang-duong-vao-khach-hang-a.md"
       ],
-      "khoa": "noi_bo:faq",
+      "khoa": "khach_hang_a:bi_mat_ha_tang",
       "slots": {
         "subject": [
-          "VPN"
-        ],
-        "cause": [
-          "mật khẩu VPN dùng chung với tài khoản nội bộ"
+          "Khóa SSH quản trị của cụm khách hàng A"
         ],
         "condition": [
-          "đổi mật khẩu rồi mà VPN vẫn báo sai"
+          "cấp theo yêu cầu"
         ],
-        "remediation": [
-          "đăng xuất VPN rồi đăng nhập lại"
-        ]
-      }
-    },
-    {
-      "id": "he-3bde659b84a308b0e3cdf1f5",
-      "doc_key": [
-        "k2-01-canh-bao-day-o-dia-log01.md"
-      ],
-      "khoa": "noi_bo:canh_bao",
-      "slots": {
-        "subject": [
-          "cảnh báo phân vùng đầy mức cảnh giác"
-        ],
-        "condition": [
-          "phân vùng vượt 85% dung lượng"
-        ],
-        "remediation": [
-          "gửi vào kênh chat của nhóm Hạ tầng"
-        ],
-        "owner": [
-          "nhóm Hạ tầng"
-        ]
-      }
-    },
-    {
-      "id": "he-3ca04fbe967a83b89ed4f557",
-      "doc_key": [
-        "k3-05-postmortem-inc-1533.md"
-      ],
-      "khoa": "khach_hang_b:postmortem",
-      "slots": {
-        "subject": [
-          "tên miền của khách hàng B"
-        ],
-        "remediation": [
-          "rà toàn bộ, đối chiếu nhóm sở hữu với hộp thư nhận nhắc"
+        "source": [
+          "Sổ tay đường vào hạ tầng khách hàng A"
         ],
         "time": [
-          "hạn hoàn thành 05/09"
+          "thời hạn 8 giờ"
         ],
         "owner": [
-          "trưởng nhóm vận hành khách hàng B"
+          "trưởng nhóm vận hành khách hàng A"
+        ]
+      }
+    },
+    {
+      "id": "he-3c1a019f7f75c727ae13d01c",
+      "doc_key": [
+        "k2-06-known-issue-xoay-vong-log.md"
+      ],
+      "khoa": "noi_bo:known_issue",
+      "slots": {
+        "subject": [
+          "tác vụ xoay vòng nhật ký"
+        ],
+        "symptom": [
+          "dung lượng phân vùng nhật ký tăng đều mà số file nhật ký không đổi trong nhiều ngày"
+        ],
+        "cause": [
+          "tác vụ xoay vòng nhật ký dừng im lặng"
+        ],
+        "condition": [
+          "khi gặp một file nhật ký đang bị tiến trình khác giữ"
+        ],
+        "source": [
+          "KI-014"
+        ]
+      }
+    },
+    {
+      "id": "he-3d89dcd078666b3e606f9cf6",
+      "doc_key": [
+        "n-18-bi-mat-ha-tang-duong-vao-khach-hang-a.md"
+      ],
+      "khoa": "khach_hang_a:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "mọi phiên truy cập quản trị vào cụm máy chủ của khách hàng A"
+        ],
+        "remediation": [
+          "được ghi lại và giữ 90 ngày"
+        ],
+        "source": [
+          "Sổ tay đường vào hạ tầng khách hàng A"
+        ]
+      }
+    },
+    {
+      "id": "he-3f1b347b3abb2f44af4dad36",
+      "doc_key": [
+        "01-cap-quyen-gitlab.txt"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "Nhân viên mới thuộc phòng Kỹ thuật"
+        ],
+        "condition": [
+          "sau khi trưởng phòng Kỹ thuật phê duyệt"
+        ],
+        "remediation": [
+          "được cấp tài khoản GitLab và quyền đọc kho mã nguồn"
+        ]
+      }
+    },
+    {
+      "id": "he-3f51fad31d2c07d6e66e4f78",
+      "doc_key": [
+        "n-19-bi-mat-ha-tang-kho-khoa-khach-hang-b.md"
+      ],
+      "khoa": "khach_hang_b:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "khóa riêng của mọi chứng thư số thuộc khách hàng B"
+        ],
+        "condition": [
+          "lưu trong kho khóa Vault"
+        ],
+        "remediation": [
+          "đường dẫn tách riêng khỏi khóa của khách hàng khác"
         ]
       }
     },
@@ -1498,146 +1780,128 @@
       }
     },
     {
-      "id": "he-406cb7b61c9a9ca5a73ef3c0",
+      "id": "he-4171a8b9a50424fbbbc7c3fd",
       "doc_key": [
-        "n-14-canh-bao-tai-cpu-may-chu-web.md"
+        "k1-01-runbook-app01-khoi-dong-lai.md"
       ],
-      "khoa": "khach_hang_a:canh_bao",
-      "slots": {
-        "subject": [
-          "lịch sử cảnh báo CPU"
-        ],
-        "cause": [
-          "ngắn hơn lịch sử cảnh báo lỗi ứng dụng"
-        ],
-        "time": [
-          "90 ngày"
-        ]
-      }
-    },
-    {
-      "id": "he-41d6642993c407923d179ed2",
-      "doc_key": [
-        "n-11-tai-lieu-san-pham-app02-khach-hang-a.md"
-      ],
-      "khoa": "khach_hang_a:tai_lieu_san_pham",
-      "slots": {
-        "subject": [
-          "App02"
-        ],
-        "cause": [
-          "thấp hơn App01 vì đây là công cụ nội bộ của khách"
-        ],
-        "condition": [
-          "thời gian sẵn sàng cam kết 99% mỗi tháng"
-        ]
-      }
-    },
-    {
-      "id": "he-431707923d05cccd19e77c4a",
-      "doc_key": [
-        "07-giam-sat-va-canh-bao.txt"
-      ],
-      "khoa": "noi_bo:runbook",
+      "khoa": "khach_hang_a:runbook",
       "slots": {
         "subject": [
           "người trực"
         ],
-        "remediation": [
-          "xác nhận cảnh báo trên Zabbix rồi ghi hướng xử lý vào kênh Slack"
-        ]
-      }
-    },
-    {
-      "id": "he-435f28807229ab6a3652dbc3",
-      "doc_key": [
-        "n-18-bi-mat-ha-tang-duong-vao-khach-hang-a.md"
-      ],
-      "khoa": "khach_hang_a:bi_mat_ha_tang",
-      "slots": {
-        "subject": [
-          "tài liệu Sổ tay đường vào hạ tầng khách hàng A"
-        ],
         "condition": [
-          "chỉ chia sẻ trong nhóm vận hành khách hàng A và nhóm Hạ tầng"
+          "sau khi khởi động lại"
         ],
         "remediation": [
-          "gửi ra ngoài phải có phê duyệt của Giám đốc Kỹ thuật"
-        ],
-        "source": [
-          "Sổ tay đường vào hạ tầng khách hàng A"
+          "ghi thao tác vào nhật ký sự cố của khách hàng A trong vòng 24 giờ"
         ]
       }
     },
     {
-      "id": "he-440188c46dcd333af3c0c14b",
+      "id": "he-4275ff9b89e9b0109f30fa0b",
       "doc_key": [
-        "n-14-canh-bao-tai-cpu-may-chu-web.md"
-      ],
-      "khoa": "khach_hang_a:canh_bao",
-      "slots": {
-        "subject": [
-          "cảnh báo CPU"
-        ],
-        "symptom": [
-          "không gọi điện cho kỹ sư trực"
-        ],
-        "cause": [
-          "khác với cảnh báo tỷ lệ lỗi của trang thanh toán"
-        ]
-      }
-    },
-    {
-      "id": "he-444e2daf5cf6c0f6c409203f",
-      "doc_key": [
-        "k1-03-bao-cao-su-co-inc-1208.md"
-      ],
-      "khoa": "khach_hang_a:bao_cao_su_co",
-      "slots": {
-        "subject": [
-          "sự cố INC-1208"
-        ],
-        "remediation": [
-          "báo cho quản lý dịch vụ của khách hàng A trong vòng một ngày làm việc"
-        ],
-        "source": [
-          "tài liệu hạn chế"
-        ],
-        "time": [
-          "12/08/2026"
-        ]
-      }
-    },
-    {
-      "id": "he-45907485975660c5993aa23a",
-      "doc_key": [
-        "n-04-sop-tiep-nhan-yeu-cau-ho-tro.md"
-      ],
-      "khoa": "noi_bo:sop",
-      "slots": {
-        "subject": [
-          "yêu cầu hỗ trợ"
-        ],
-        "remediation": [
-          "vào hệ thống qua một cửa duy nhất là Jira nội bộ, kể cả yêu cầu gửi bằng thư điện tử hay tin nhắn đều được trực ban tạo lại thành ticket"
-        ],
-        "source": [
-          "SOP-05"
-        ]
-      }
-    },
-    {
-      "id": "he-4616406d357a1b26ec2fe394",
-      "doc_key": [
-        "n-06-troubleshooting-may-in-mang.md"
+        "n-07-troubleshooting-email-khong-gui-duoc.md"
       ],
       "khoa": "noi_bo:troubleshooting",
       "slots": {
         "subject": [
-          "hàng đợi in trên máy tính"
+          "thư điện tử"
+        ],
+        "condition": [
+          "có tệp đính kèm lớn hơn 25 MB"
         ],
         "remediation": [
-          "xóa hàng đợi in rồi in lại một trang thử"
+          "phải dùng kho chia sẻ nội bộ thay vì đính kèm"
+        ]
+      }
+    },
+    {
+      "id": "he-43c921898d5e3fee0b254c54",
+      "doc_key": [
+        "08-bao-cao-su-co-inc-1305.txt"
+      ],
+      "khoa": "noi_bo:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "cụm cơ sở dữ liệu DB02"
+        ],
+        "symptom": [
+          "ngừng nhận ghi, các đơn hàng mới không lưu được trong 25 phút"
+        ],
+        "cause": [
+          "phân vùng lưu nhật ký giao dịch của DB02 đầy 100 phần trăm do một tiến trình xuất báo cáo ghi tạm vào cùng phân vùng"
+        ],
+        "remediation": [
+          "dừng tiến trình xuất báo cáo, xóa file tạm và mở rộng phân vùng nhật ký thêm 200 GB"
+        ],
+        "source": [
+          "INC-1305"
+        ],
+        "time": [
+          "03/09/2026 lúc 01:40"
+        ],
+        "owner": [
+          "Lê Quốc Duy, đội Cơ sở dữ liệu"
+        ]
+      }
+    },
+    {
+      "id": "he-44474f50fd5bb3a7db5bfe00",
+      "doc_key": [
+        "k1-09-bao-cao-su-co-inc-1611.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "lịch xuất báo cáo"
+        ],
+        "cause": [
+          "tiến trình xuất báo cáo chạy sai lịch"
+        ],
+        "condition": [
+          "trùng khung giờ cao điểm của trang thanh toán"
+        ]
+      }
+    },
+    {
+      "id": "he-4588daf990926804131dda31",
+      "doc_key": [
+        "k1-07-sop-12-quan-ly-thay-doi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "SOP-12"
+        ],
+        "condition": [
+          "áp dụng cho mọi dịch vụ nội bộ và mọi dịch vụ chạy cho khách hàng"
+        ],
+        "remediation": [
+          "không có ngoại lệ theo khách hàng"
+        ],
+        "source": [
+          "SOP-12"
+        ]
+      }
+    },
+    {
+      "id": "he-4724d813056df3db1ccc7da1",
+      "doc_key": [
+        "04-sao-luu-du-lieu.txt"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "Cơ sở dữ liệu sản xuất"
+        ],
+        "condition": [
+          "mỗi ngày lúc 2 giờ sáng"
+        ],
+        "remediation": [
+          "sao lưu tự động"
+        ],
+        "time": [
+          "mỗi ngày lúc 2 giờ sáng"
         ]
       }
     },
@@ -1663,62 +1927,116 @@
       }
     },
     {
-      "id": "he-48dad2662e979c1df88582aa",
+      "id": "he-478adc3641a7c9affe808689",
       "doc_key": [
-        "n-06-troubleshooting-may-in-mang.md"
+        "k3-04-bao-cao-su-co-inc-1533.md"
       ],
-      "khoa": "noi_bo:troubleshooting",
+      "khoa": "khach_hang_b:bao_cao_su_co",
       "slots": {
         "subject": [
-          "máy in mạng"
-        ],
-        "symptom": [
-          "kẹt giấy hoặc hết mực"
-        ],
-        "cause": [
-          "không phải lỗi mạng"
+          "cảnh báo hết hạn"
         ],
         "condition": [
-          "đèn đỏ nhấp nháy"
+          "gửi tới hộp thư của nhóm Tích hợp cũ"
+        ],
+        "source": [
+          "INC-1533"
+        ],
+        "time": [
+          "từ ngày 27/07"
         ]
       }
     },
     {
-      "id": "he-496f1715f4e446fa6aeddac5",
+      "id": "he-47adb53623882e175a26947d",
       "doc_key": [
-        "n-05-sop-ban-giao-ca-truc.md"
+        "n-04-sop-tiep-nhan-yeu-cau-ho-tro.md"
       ],
       "khoa": "noi_bo:sop",
       "slots": {
         "subject": [
-          "người nhận ca"
+          "mức P4"
         ],
-        "remediation": [
-          "ký xác nhận vào sổ bàn giao điện tử"
+        "condition": [
+          "đề nghị cải tiến"
         ],
         "source": [
-          "SOP-18"
+          "SOP-05"
         ]
       }
     },
     {
-      "id": "he-4a54fa989ea3513a54404f58",
+      "id": "he-48be59b0f90f92db199f260b",
       "doc_key": [
-        "n-09-known-issue-bao-cao-thang-cham.md"
+        "n-12-runbook-sao-luu-co-so-du-lieu.md"
       ],
-      "khoa": "khach_hang_a:known_issue",
+      "khoa": "noi_bo:runbook",
       "slots": {
         "subject": [
-          "báo cáo doanh thu tháng của khách hàng A"
+          "diễn tập phục hồi"
         ],
         "condition": [
-          "chạy chậm"
+          "Mỗi quý"
         ],
         "remediation": [
-          "bản vá tối ưu truy vấn đã lên kế hoạch cho đợt phát hành tháng sau"
+          "phải diễn tập phục hồi ít nhất một cơ sở dữ liệu trên môi trường thử nghiệm và ghi kết quả vào sổ diễn tập"
+        ]
+      }
+    },
+    {
+      "id": "he-48fbd98fe71676c2c74a1e89",
+      "doc_key": [
+        "k2-07-troubleshooting-dich-vu-cham.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "trình duyệt"
         ],
-        "time": [
-          "tháng sau"
+        "condition": [
+          "chỉ một mình bạn gặp lỗi"
+        ],
+        "remediation": [
+          "xóa bộ nhớ đệm rồi đăng nhập lại trước khi mở ticket"
+        ]
+      }
+    },
+    {
+      "id": "he-494aad99371ffc2404013e09",
+      "doc_key": [
+        "k1-01-runbook-app01-khoi-dong-lai.md"
+      ],
+      "khoa": "khach_hang_a:runbook",
+      "slots": {
+        "subject": [
+          "tham số giới hạn bộ nhớ PHP-FPM"
+        ],
+        "condition": [
+          "mọi lần chỉnh"
+        ],
+        "remediation": [
+          "phải có phiếu thay đổi theo SOP-12, kể cả khi đang xử lý sự cố"
+        ]
+      }
+    },
+    {
+      "id": "he-4a9eb2ecffc32fdb06f00640",
+      "doc_key": [
+        "k2-01-canh-bao-day-o-dia-log01.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "máy chủ nội bộ"
+        ],
+        "symptom": [
+          "cảnh báo 'phân vùng đầy' mức cảnh giác"
+        ],
+        "condition": [
+          "một phân vùng vượt 85% dung lượng"
+        ],
+        "remediation": [
+          "gửi vào kênh chat của nhóm Hạ tầng"
         ]
       }
     },
@@ -1744,77 +2062,113 @@
       }
     },
     {
-      "id": "he-4b7242f0d7b7fdbf855caf8a",
+      "id": "he-4b793c6e7179267a43ca582e",
+      "doc_key": [
+        "n-07-troubleshooting-email-khong-gui-duoc.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "thư gửi tới một tên miền cụ thể"
+        ],
+        "condition": [
+          "bị trả lại"
+        ],
+        "remediation": [
+          "báo Tech Support kèm nguyên văn thư trả lại, đừng thử gửi lặp lại"
+        ]
+      }
+    },
+    {
+      "id": "he-4c03aa9456955c3525505f4a",
+      "doc_key": [
+        "n-14-canh-bao-tai-cpu-may-chu-web.md"
+      ],
+      "khoa": "khach_hang_a:canh_bao",
+      "slots": {
+        "subject": [
+          "cảnh báo CPU"
+        ],
+        "condition": [
+          "khác với cảnh báo tỷ lệ lỗi của trang thanh toán"
+        ],
+        "remediation": [
+          "không gọi điện cho kỹ sư trực"
+        ]
+      }
+    },
+    {
+      "id": "he-4c56216479322543a97a8804",
       "doc_key": [
         "07-giam-sat-va-canh-bao.txt"
       ],
       "khoa": "noi_bo:runbook",
       "slots": {
         "subject": [
-          "cảnh báo dung lượng đĩa"
-        ],
-        "symptom": [
-          "cảnh báo"
+          "Cảnh báo mức nghiêm trọng"
         ],
         "condition": [
-          "ngưỡng 85 phần trăm"
-        ]
-      }
-    },
-    {
-      "id": "he-4bf03ece4df6a24a7670e16d",
-      "doc_key": [
-        "k1-07-sop-12-quan-ly-thay-doi.md"
-      ],
-      "khoa": "noi_bo:sop",
-      "slots": {
-        "subject": [
-          "thay đổi chạm nhiều dịch vụ"
-        ],
-        "source": [
-          "SOP-12"
-        ],
-        "owner": [
-          "Giám đốc Kỹ thuật"
-        ]
-      }
-    },
-    {
-      "id": "he-4ccb6a915ec9abe0f8851736",
-      "doc_key": [
-        "k1-06-log-app01-ngay-12-08.md"
-      ],
-      "khoa": "khach_hang_a:log",
-      "slots": {
-        "subject": [
-          "dịch vụ php7.4-fpm"
+          "không có ai xác nhận trong 10 phút"
         ],
         "remediation": [
-          "bắt đầu dừng dịch vụ theo yêu cầu của người vận hành"
-        ],
-        "time": [
-          "12/08/2026 09:52"
+          "gửi cuộc gọi tự động tới người trực"
         ]
       }
     },
     {
-      "id": "he-4db1d5c92f422143638aa6c8",
+      "id": "he-4cc0e480bbbeb4ebe5561286",
       "doc_key": [
-        "03-truc-su-co.txt"
+        "n-08-known-issue-trinh-duyet-cu-loi-dang-nhap.md"
       ],
-      "khoa": "noi_bo:runbook",
+      "khoa": "noi_bo:known_issue",
       "slots": {
         "subject": [
-          "lịch trực sự cố"
+          "cổng nội bộ"
+        ],
+        "remediation": [
+          "không có bản vá phía máy chủ"
+        ],
+        "source": [
+          "Lỗi đã biết KI-009"
+        ]
+      }
+    },
+    {
+      "id": "he-4dd0629d04dd2a581da5cade",
+      "doc_key": [
+        "n-03-faq-cong-thanh-toan-khach-hang-a.md"
+      ],
+      "khoa": "khach_hang_a:faq",
+      "slots": {
+        "subject": [
+          "đội hỗ trợ khách hàng A"
         ],
         "condition": [
-          "xoay vòng theo tuần giữa các kỹ sư vận hành"
+          "khi cần xem nhật ký máy chủ"
+        ],
+        "remediation": [
+          "không được xem, chỉ tra được trạng thái giao dịch trên màn quản trị đơn hàng"
+        ]
+      }
+    },
+    {
+      "id": "he-4f70764142369eb419d52bf5",
+      "doc_key": [
+        "n-15-log-tuong-lua-ngay-20-08.md"
+      ],
+      "khoa": "noi_bo:log",
+      "slots": {
+        "subject": [
+          "tường lửa biên"
+        ],
+        "symptom": [
+          "firewall deny: yêu cầu ra ngoài tới một tên miền nằm trong danh sách chặn"
+        ],
+        "cause": [
+          "theo chính sách sử dụng Internet"
         ],
         "time": [
-          "công bố vào thứ Sáu tuần trước"
-        ],
-        "owner": [
-          "phòng Kỹ thuật"
+          "20/08 15:47"
         ]
       }
     },
@@ -1830,6 +2184,27 @@
         ],
         "time": [
           "01 giờ các ngày còn lại trong tuần"
+        ]
+      }
+    },
+    {
+      "id": "he-506e8436a773173e724f2cfd",
+      "doc_key": [
+        "k3-07-vong-doi-ticket-inc-1533.md"
+      ],
+      "khoa": "khach_hang_b:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "sự cố INC-1533"
+        ],
+        "symptom": [
+          "cổng thanh toán báo lỗi chứng thư"
+        ],
+        "source": [
+          "ticket do đầu mối kỹ thuật của khách hàng B mở"
+        ],
+        "time": [
+          "00 giờ 18 ngày 26/08"
         ]
       }
     },
@@ -1855,6 +2230,30 @@
       }
     },
     {
+      "id": "he-52852beec872be913a4ff6d4",
+      "doc_key": [
+        "k1-04-postmortem-inc-1208.md"
+      ],
+      "khoa": "khach_hang_a:postmortem",
+      "slots": {
+        "subject": [
+          "quy trình thay đổi"
+        ],
+        "cause": [
+          "phiếu thay đổi giới hạn bộ nhớ PHP-FPM được duyệt mà không qua bước thử trên môi trường thử nghiệm"
+        ],
+        "remediation": [
+          "bổ sung bước thử bắt buộc cho mọi phiếu thay đổi chạm tham số bộ nhớ"
+        ],
+        "time": [
+          "hạn hoàn thành 30/08"
+        ],
+        "owner": [
+          "trưởng nhóm vận hành khách hàng A"
+        ]
+      }
+    },
+    {
       "id": "he-52e627284df42d38760056e4",
       "doc_key": [
         "k2-02-runbook-xu-ly-day-o-dia.md"
@@ -1873,170 +2272,155 @@
       }
     },
     {
-      "id": "he-54011072748fe08134d41734",
+      "id": "he-5730e81e1ae1aaf6942e42cc",
+      "doc_key": [
+        "n-15-log-tuong-lua-ngay-20-08.md"
+      ],
+      "khoa": "noi_bo:log",
+      "slots": {
+        "subject": [
+          "tường lửa biên"
+        ],
+        "symptom": [
+          "firewall deny: nguồn ngoài Internet tới cổng 22 của dải mạng người dùng"
+        ],
+        "cause": [
+          "luật mặc định chặn"
+        ],
+        "time": [
+          "20/08 08:14"
+        ]
+      }
+    },
+    {
+      "id": "he-589799003407c2871578370d",
+      "doc_key": [
+        "04-sao-luu-du-lieu.txt"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "Bản sao lưu tuần"
+        ],
+        "condition": [
+          "phục vụ yêu cầu đối chiếu số liệu của phòng Kế toán"
+        ],
+        "owner": [
+          "phòng Kế toán"
+        ]
+      }
+    },
+    {
+      "id": "he-59eda56755edea6c7fb42f81",
       "doc_key": [
         "n-08-known-issue-trinh-duyet-cu-loi-dang-nhap.md"
       ],
       "khoa": "noi_bo:known_issue",
       "slots": {
         "subject": [
-          "Lỗi KI-009"
-        ],
-        "condition": [
-          "khoảng 12 máy trạm cũ của phòng Kho"
-        ],
-        "remediation": [
-          "đã lên kế hoạch thay máy trong quý sau"
-        ]
-      }
-    },
-    {
-      "id": "he-5493bf86464e96c18beb262c",
-      "doc_key": [
-        "n-05-sop-ban-giao-ca-truc.md"
-      ],
-      "khoa": "noi_bo:sop",
-      "slots": {
-        "subject": [
-          "thao tác khẩn cấp không có phiếu trước"
-        ],
-        "condition": [
-          "kể từ khi dịch vụ phục hồi"
-        ],
-        "remediation": [
-          "phải bổ sung phiếu thay đổi trong 24 giờ"
-        ],
-        "source": [
-          "SOP-18"
-        ]
-      }
-    },
-    {
-      "id": "he-564c029c417cc943a30efea9",
-      "doc_key": [
-        "n-16-vong-doi-ticket-yeu-cau-cap-quyen.md"
-      ],
-      "khoa": "noi_bo:vong_doi_ticket",
-      "slots": {
-        "subject": [
-          "ticket cấp quyền"
-        ],
-        "condition": [
-          "sau khi trực ban Tech Support kiểm tính đầy đủ"
-        ],
-        "remediation": [
-          "chuyển cho người phê duyệt là trưởng phòng của người xin"
-        ]
-      }
-    },
-    {
-      "id": "he-5917daa97985fd75ed45ea78",
-      "doc_key": [
-        "n-02-faq-vpn-cho-nhan-vien-moi.md"
-      ],
-      "khoa": "noi_bo:faq",
-      "slots": {
-        "subject": [
-          "yêu cầu VPN"
-        ],
-        "remediation": [
-          "gửi yêu cầu qua Jira nội bộ với nhãn 'vpn-request'"
-        ],
-        "owner": [
-          "trưởng phòng trực tiếp phê duyệt"
-        ]
-      }
-    },
-    {
-      "id": "he-59b6c51b0bb537b69b28052d",
-      "doc_key": [
-        "k2-07-troubleshooting-dich-vu-cham.md"
-      ],
-      "khoa": "noi_bo:troubleshooting",
-      "slots": {
-        "subject": [
-          "cổng nội bộ và Jira nội bộ"
+          "12 máy trạm cũ của phòng Kho"
         ],
         "symptom": [
-          "không mở được"
+          "bị ảnh hưởng bởi lỗi đăng nhập"
         ],
-        "condition": [
-          "ngoài mạng công ty"
+        "remediation": [
+          "đã lên kế hoạch thay máy"
+        ],
+        "time": [
+          "quý sau"
         ]
       }
     },
     {
-      "id": "he-59fbfd9d25a3e75a83bc1228",
+      "id": "he-5a79af4934bc6d2b3a92fff0",
       "doc_key": [
         "k2-03-bao-cao-su-co-inc-1520.md"
       ],
       "khoa": "noi_bo:bao_cao_su_co",
       "slots": {
         "subject": [
-          "Jira nội bộ"
+          "kho ảnh Docker"
         ],
         "symptom": [
-          "chỉ đọc"
-        ],
-        "cause": [
-          "phân vùng nhật ký đầy"
+          "từ chối mọi lượt đẩy ảnh mới"
         ]
       }
     },
     {
-      "id": "he-5af65de0e7ec01dc2a5481bd",
+      "id": "he-5c065c722dd991565c1a1a1d",
       "doc_key": [
-        "n-04-sop-tiep-nhan-yeu-cau-ho-tro.md"
+        "07-giam-sat-va-canh-bao.txt"
       ],
-      "khoa": "noi_bo:sop",
+      "khoa": "noi_bo:runbook",
       "slots": {
         "subject": [
-          "mức P4"
+          "Ngưỡng cảnh báo CPU"
+        ],
+        "symptom": [
+          "cảnh báo"
         ],
         "condition": [
-          "đề nghị cải tiến"
+          "90 phần trăm duy trì trong 5 phút"
         ]
       }
     },
     {
-      "id": "he-5bed1d547a2e72658ef476db",
+      "id": "he-5dbf527f053596b3f2a96830",
       "doc_key": [
-        "k1-07-sop-12-quan-ly-thay-doi.md"
+        "k1-02-canh-bao-app01-502.md"
       ],
-      "khoa": "noi_bo:sop",
+      "khoa": "khach_hang_a:canh_bao",
       "slots": {
         "subject": [
-          "thay đổi cấu hình trên hệ thống sản xuất"
+          "cảnh báo mức nghiêm trọng"
         ],
         "condition": [
-          "trừ thao tác khẩn cấp trong lúc xử lý sự cố"
+          "mức nghiêm trọng"
         ],
         "remediation": [
-          "phải có phiếu thay đổi được phê duyệt trước 24 giờ"
-        ],
-        "source": [
-          "SOP-12"
+          "gọi điện cho kỹ sư trực"
         ]
       }
     },
     {
-      "id": "he-5ea9e310c03ab620da75685b",
+      "id": "he-5f1d87349d5cc81c12c486b3",
       "doc_key": [
-        "k1-07-sop-12-quan-ly-thay-doi.md"
+        "k2-03-bao-cao-su-co-inc-1520.md"
       ],
-      "khoa": "noi_bo:sop",
+      "khoa": "noi_bo:bao_cao_su_co",
       "slots": {
         "subject": [
-          "phiếu thay đổi chạm tham số bộ nhớ, tham số tiến trình hoặc cấu hình mạng"
+          "hệ thống chấm công"
         ],
-        "condition": [
-          "trước khi duyệt"
+        "symptom": [
+          "mất bản ghi của buổi sáng"
         ],
         "remediation": [
-          "phải được thử trên môi trường thử nghiệm"
+          "bản ghi được nhập lại từ máy quét cửa"
+        ]
+      }
+    },
+    {
+      "id": "he-60229bafbb20c4b642673ffd",
+      "doc_key": [
+        "k1-06-log-app01-ngay-12-08.md"
+      ],
+      "khoa": "khach_hang_a:log",
+      "slots": {
+        "subject": [
+          "php-fpm pool www"
+        ],
+        "symptom": [
+          "child 4471 exited on signal 9 (SIGKILL)"
+        ],
+        "condition": [
+          "pool www đang có 12 tiến trình"
         ],
         "source": [
-          "SOP-12"
+          "nhật ký máy chủ web01"
+        ],
+        "time": [
+          "12/08/2026 lúc 09:21"
         ]
       }
     },
@@ -2062,62 +2446,41 @@
       }
     },
     {
-      "id": "he-640d5ba03fc4227abd09f399",
+      "id": "he-63cfdc662dbf334deaa49ee5",
       "doc_key": [
-        "n-10-tai-lieu-san-pham-cong-noi-bo.md"
+        "n-11-tai-lieu-san-pham-app02-khach-hang-a.md"
       ],
-      "khoa": "noi_bo:tai_lieu_san_pham",
+      "khoa": "khach_hang_a:tai_lieu_san_pham",
       "slots": {
         "subject": [
-          "cổng nội bộ"
+          "App02"
         ],
-        "symptom": [
-          "ghi lại mọi phiên đăng nhập"
+        "condition": [
+          "cửa sổ bảo trì là 22 giờ đến 24 giờ ngày thứ Năm hằng tuần"
         ],
-        "cause": [
-          "phục vụ đối soát"
-        ],
-        "source": [
-          "hệ nhật ký tập trung"
+        "time": [
+          "22 giờ đến 24 giờ ngày thứ Năm hằng tuần"
         ]
       }
     },
     {
-      "id": "he-645304a0a7c7fb3d2aae0a9a",
+      "id": "he-648b7be7e2e8f00def43f771",
       "doc_key": [
         "k3-06-cmdb-chung-thu-so-khach-hang-b.md"
       ],
       "khoa": "khach_hang_b:cmdb",
       "slots": {
         "subject": [
-          "api.khachhangb.vn"
+          "pay.khachhangb.vn"
         ],
         "condition": [
-          "dùng chứng thư cùng nhà cung cấp"
+          "chứng thư số do nhà cung cấp bên ngoài cấp"
         ],
         "source": [
           "Bản ghi CMDB chứng thư số của khách hàng B"
         ],
         "time": [
-          "ngày hết hạn là 14/11"
-        ],
-        "owner": [
-          "nhóm vận hành khách hàng B"
-        ]
-      }
-    },
-    {
-      "id": "he-64545e0d9eb179ec5842a6df",
-      "doc_key": [
-        "k2-02-runbook-xu-ly-day-o-dia.md"
-      ],
-      "khoa": "noi_bo:runbook",
-      "slots": {
-        "subject": [
-          "phân vùng đầy trên máy chủ nội bộ"
-        ],
-        "remediation": [
-          "xác định thư mục chiếm nhiều dung lượng nhất, không xóa file nào trước khi biết chủ sở hữu của nó"
+          "chu kỳ 90 ngày, ngày hết hạn gần nhất là 26/08"
         ]
       }
     },
@@ -2140,119 +2503,107 @@
       }
     },
     {
-      "id": "he-654196ffe28303457078d63f",
+      "id": "he-654bae75e9d1e42078824700",
       "doc_key": [
-        "03-truc-su-co.txt"
+        "k2-04-vong-doi-ticket-inc-1520.md"
       ],
-      "khoa": "noi_bo:runbook",
+      "khoa": "noi_bo:vong_doi_ticket",
       "slots": {
         "subject": [
-          "người trực"
+          "ticket P1"
         ],
         "condition": [
-          "sự cố P1"
+          "theo quy định"
         ],
         "remediation": [
-          "được quyền khởi động lại dịch vụ trên máy chủ sản xuất mà không cần phê duyệt, nhưng phải ghi lại thao tác vào nhật ký sự cố trong vòng 24 giờ"
-        ]
-      }
-    },
-    {
-      "id": "he-65f39bde7bbea8c0c898932f",
-      "doc_key": [
-        "n-19-bi-mat-ha-tang-kho-khoa-khach-hang-b.md"
-      ],
-      "khoa": "khach_hang_b:bi_mat_ha_tang",
-      "slots": {
-        "subject": [
-          "mọi lượt đọc khóa riêng"
-        ],
-        "remediation": [
-          "ghi lại danh tính người đọc và được đối soát hằng tháng với danh sách nhân sự của nhóm"
-        ],
-        "source": [
-          "Sổ tay kho khóa và chứng thư của khách hàng B"
+          "cập nhật tiến độ"
         ],
         "time": [
-          "hằng tháng"
+          "mỗi 15 phút"
         ]
       }
     },
     {
-      "id": "he-6633cdcf03a4b01bca768ddd",
+      "id": "he-678a2c8e9702fee3e4535135",
       "doc_key": [
-        "k2-07-troubleshooting-dich-vu-cham.md"
-      ],
-      "khoa": "noi_bo:troubleshooting",
-      "slots": {
-        "subject": [
-          "ticket mở từ hướng dẫn này"
-        ],
-        "remediation": [
-          "ghi rõ đã làm tới bước nào"
-        ],
-        "owner": [
-          "Tech Support"
-        ]
-      }
-    },
-    {
-      "id": "he-6ac41b0f42cba679d1037b32",
-      "doc_key": [
-        "n-13-runbook-trien-khai-ban-va-thang.md"
-      ],
-      "khoa": "khach_hang_b:runbook",
-      "slots": {
-        "subject": [
-          "kết quả triển khai"
-        ],
-        "remediation": [
-          "báo cho đầu mối kỹ thuật của khách hàng B chậm nhất 09 giờ sáng cùng ngày"
-        ],
-        "time": [
-          "chậm nhất 09 giờ sáng cùng ngày"
-        ]
-      }
-    },
-    {
-      "id": "he-6b00394d3e2ea3880b2f4b73",
-      "doc_key": [
-        "04-sao-luu-du-lieu.txt"
-      ],
-      "khoa": "noi_bo:runbook",
-      "slots": {
-        "subject": [
-          "Yêu cầu khôi phục dữ liệu"
-        ],
-        "condition": [
-          "do trưởng bộ phận sở hữu dữ liệu gửi qua Jira"
-        ],
-        "remediation": [
-          "thực hiện và phản hồi trong 4 giờ làm việc"
-        ],
-        "owner": [
-          "phòng IT"
-        ]
-      }
-    },
-    {
-      "id": "he-6c02999276d4f92e8dd62aab",
-      "doc_key": [
-        "n-14-canh-bao-tai-cpu-may-chu-web.md"
+        "k1-02-canh-bao-app01-502.md"
       ],
       "khoa": "khach_hang_a:canh_bao",
       "slots": {
         "subject": [
-          "cụm máy chủ web của khách hàng A"
-        ],
-        "symptom": [
-          "cảnh báo 'CPU cao' mức cảnh giác"
-        ],
-        "condition": [
-          "tải CPU trung bình vượt 70% trong 15 phút liên tục"
+          "hệ giám sát"
         ],
         "source": [
-          "cấu hình cảnh báo"
+          "Nginx"
+        ],
+        "time": [
+          "mỗi 30 giây"
+        ]
+      }
+    },
+    {
+      "id": "he-67d1163da35a66beecc1e174",
+      "doc_key": [
+        "k1-09-bao-cao-su-co-inc-1611.md"
+      ],
+      "khoa": "khach_hang_a:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "App01"
+        ],
+        "symptom": [
+          "ngừng phục vụ trang thanh toán trong 25 phút"
+        ],
+        "cause": [
+          "một tiến trình xuất báo cáo chạy sai lịch chiếm hết kết nối cơ sở dữ liệu của APP-01"
+        ],
+        "remediation": [
+          "dừng tiến trình xuất báo cáo rồi mở lại nhóm kết nối của APP-01 theo SOP-12"
+        ],
+        "source": [
+          "SOP-12 và nhật ký trực ban ngày 15/08/2026"
+        ],
+        "time": [
+          "15/08/2026 lúc 14:05"
+        ],
+        "owner": [
+          "Trần Thị Hạnh"
+        ]
+      }
+    },
+    {
+      "id": "he-69157b753d46da6713a5d94e",
+      "doc_key": [
+        "07-giam-sat-va-canh-bao.txt"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "Cảnh báo lặp lại"
+        ],
+        "condition": [
+          "quá 3 lần trong một giờ"
+        ],
+        "remediation": [
+          "được nâng lên cho trưởng nhóm Vận hành"
+        ]
+      }
+    },
+    {
+      "id": "he-6a4377a262b27a2b3573b0c5",
+      "doc_key": [
+        "n-05-sop-ban-giao-ca-truc.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "người nhận ca"
+        ],
+        "condition": [
+          "thiếu chữ ký thì ca cũ vẫn chịu trách nhiệm cho tới khi có chữ ký"
+        ],
+        "remediation": [
+          "ký xác nhận vào sổ bàn giao điện tử"
         ]
       }
     },
@@ -2293,46 +2644,64 @@
       }
     },
     {
-      "id": "he-6d8295b7e8a3879868aab0ef",
+      "id": "he-6f2cf90e2509f961284c6e53",
       "doc_key": [
-        "n-11-tai-lieu-san-pham-app02-khach-hang-a.md"
-      ],
-      "khoa": "khach_hang_a:tai_lieu_san_pham",
-      "slots": {
-        "subject": [
-          "App02"
-        ],
-        "condition": [
-          "dịch vụ của khách hàng A"
-        ],
-        "source": [
-          "Tài liệu dịch vụ App02 của khách hàng A"
-        ]
-      }
-    },
-    {
-      "id": "he-7125f62a09c40d604687bcef",
-      "doc_key": [
-        "n-02-faq-vpn-cho-nhan-vien-moi.md"
+        "n-01-faq-dat-lai-mat-khau.md"
       ],
       "khoa": "noi_bo:faq",
       "slots": {
         "subject": [
-          "yêu cầu VPN"
+          "Tech Support"
+        ],
+        "symptom": [
+          "không xem được mật khẩu"
         ],
         "condition": [
-          "kể từ khi có phê duyệt"
+          "khi người dùng quên mật khẩu"
         ],
         "remediation": [
-          "thời hạn xử lý là 2 ngày làm việc"
-        ],
-        "time": [
-          "2 ngày làm việc"
+          "chỉ kích hoạt lại đường đặt lại mật khẩu"
         ]
       }
     },
     {
-      "id": "he-712bd3386f8c66e8a137c350",
+      "id": "he-714c9e17282190cc6db3e9f1",
+      "doc_key": [
+        "k2-05-cmdb-may-chu-log01.md"
+      ],
+      "khoa": "noi_bo:cmdb",
+      "slots": {
+        "subject": [
+          "hệ thống chấm công"
+        ],
+        "condition": [
+          "ghi nhật ký trực tiếp vào log01"
+        ]
+      }
+    },
+    {
+      "id": "he-71669be1d8068a9e16a9d8fc",
+      "doc_key": [
+        "n-18-bi-mat-ha-tang-duong-vao-khach-hang-a.md"
+      ],
+      "khoa": "khach_hang_a:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "Dải mạng quản trị của cụm khách hàng A"
+        ],
+        "condition": [
+          "là 10.30.0.0/24"
+        ],
+        "remediation": [
+          "tách khỏi dải mạng dịch vụ và chỉ mở từ máy chủ nhảy"
+        ],
+        "source": [
+          "Sổ tay đường vào hạ tầng khách hàng A"
+        ]
+      }
+    },
+    {
+      "id": "he-716764836d4968f1da78522b",
       "doc_key": [
         "k1-06-log-app01-ngay-12-08.md"
       ],
@@ -2342,67 +2711,109 @@
           "php-fpm pool www"
         ],
         "symptom": [
-          "child 4471 exited on signal 9 (SIGKILL), pool www đang có 12 tiến trình"
+          "fpm is running, mã lỗi 502 về 0"
+        ],
+        "condition": [
+          "khởi động lại với 24 tiến trình"
+        ],
+        "source": [
+          "nhật ký máy chủ web01"
         ],
         "time": [
-          "12/08/2026 09:21"
+          "12/08/2026 lúc 10:00"
         ]
       }
     },
     {
-      "id": "he-71a43ebb3bf4559caee60334",
+      "id": "he-74835779ead2ba0267e2a17a",
       "doc_key": [
-        "n-04-sop-tiep-nhan-yeu-cau-ho-tro.md"
+        "n-17-cmdb-thiet-bi-mang-van-phong.md"
+      ],
+      "khoa": "noi_bo:cmdb",
+      "slots": {
+        "subject": [
+          "Bản ghi thiết bị mạng"
+        ],
+        "condition": [
+          "sớm hơn nếu có thay đổi phần cứng"
+        ],
+        "time": [
+          "mỗi 6 tháng"
+        ]
+      }
+    },
+    {
+      "id": "he-7562ba3ddee080e58037f9e3",
+      "doc_key": [
+        "01-cap-quyen-gitlab.txt"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "Quyền ghi vào nhánh chính (main)"
+        ],
+        "condition": [
+          "chỉ cấp cho kỹ sư từ cấp Senior trở lên"
+        ],
+        "remediation": [
+          "do Giám đốc Kỹ thuật (CTO) phê duyệt"
+        ]
+      }
+    },
+    {
+      "id": "he-75a5ebc93c5d6dd6b5f263dd",
+      "doc_key": [
+        "n-05-sop-ban-giao-ca-truc.md"
       ],
       "khoa": "noi_bo:sop",
       "slots": {
         "subject": [
-          "mức P1"
+          "người bàn giao"
         ],
         "condition": [
-          "dịch vụ ngừng hoàn toàn"
-        ]
-      }
-    },
-    {
-      "id": "he-71fcfa03c22133043aa9d3ba",
-      "doc_key": [
-        "n-15-log-tuong-lua-ngay-20-08.md"
-      ],
-      "khoa": "noi_bo:log",
-      "slots": {
-        "subject": [
-          "phiên VPN"
-        ],
-        "symptom": [
-          "firewall allow"
-        ],
-        "condition": [
-          "từ một nhân viên đang công tác, có xác thực hai bước"
-        ],
-        "time": [
-          "20/08 lúc 11:02"
-        ]
-      }
-    },
-    {
-      "id": "he-7412e6c9c5e793dcaf9ed343",
-      "doc_key": [
-        "k3-04-bao-cao-su-co-inc-1533.md"
-      ],
-      "khoa": "khach_hang_b:bao_cao_su_co",
-      "slots": {
-        "subject": [
-          "dịch vụ"
+          "khi bàn giao một tài sản sang nhóm khác"
         ],
         "remediation": [
-          "Kỹ sư Phạm Quốc Bảo cấp chứng thư mới và nạp lại cấu hình Nginx"
+          "phải cập nhật nhóm sở hữu và hộp thư nhận cảnh báo trong cùng ngày"
+        ]
+      }
+    },
+    {
+      "id": "he-76dba0a98497333fa0b8df2d",
+      "doc_key": [
+        "k2-02-runbook-xu-ly-day-o-dia.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "nhật ký"
         ],
-        "time": [
-          "phục hồi lúc 02 giờ 11 cùng ngày"
+        "condition": [
+          "cũ hơn 90 ngày"
+        ],
+        "remediation": [
+          "xóa sau khi đã chuyển sang kho lưu trữ lạnh"
         ],
         "owner": [
-          "Phạm Quốc Bảo"
+          "kỹ sư hạ tầng"
+        ]
+      }
+    },
+    {
+      "id": "he-77d36e84bbde203b5eb4ec17",
+      "doc_key": [
+        "n-10-tai-lieu-san-pham-cong-noi-bo.md"
+      ],
+      "khoa": "noi_bo:tai_lieu_san_pham",
+      "slots": {
+        "subject": [
+          "cổng nội bộ"
+        ],
+        "condition": [
+          "trong mạng công ty hoặc qua VPN"
+        ],
+        "remediation": [
+          "không có đường truy cập công khai từ Internet"
         ]
       }
     },
@@ -2425,6 +2836,54 @@
       }
     },
     {
+      "id": "he-784cbd6606ec577d7d491b5d",
+      "doc_key": [
+        "04-sao-luu-du-lieu.txt"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "phòng IT"
+        ],
+        "condition": [
+          "nhận yêu cầu khôi phục dữ liệu"
+        ],
+        "remediation": [
+          "thực hiện và phản hồi trong 4 giờ làm việc"
+        ],
+        "time": [
+          "trong 4 giờ làm việc"
+        ],
+        "owner": [
+          "phòng IT"
+        ]
+      }
+    },
+    {
+      "id": "he-784e9d9bbafdc9a80cbd35c9",
+      "doc_key": [
+        "k1-06-log-app01-ngay-12-08.md"
+      ],
+      "khoa": "khach_hang_a:log",
+      "slots": {
+        "subject": [
+          "dịch vụ php7.4-fpm"
+        ],
+        "remediation": [
+          "dừng dịch vụ"
+        ],
+        "source": [
+          "systemd"
+        ],
+        "time": [
+          "12/08/2026 lúc 09:52"
+        ],
+        "owner": [
+          "người vận hành"
+        ]
+      }
+    },
+    {
       "id": "he-78716fc5d477bcd4baab19e4",
       "doc_key": [
         "n-07-troubleshooting-email-khong-gui-duoc.md"
@@ -2443,41 +2902,110 @@
       }
     },
     {
-      "id": "he-79c45143ded9bc4622971245",
+      "id": "he-78862310b2d7a70ec748861c",
       "doc_key": [
-        "n-03-faq-cong-thanh-toan-khach-hang-a.md"
+        "n-18-bi-mat-ha-tang-duong-vao-khach-hang-a.md"
       ],
-      "khoa": "khach_hang_a:faq",
+      "khoa": "khach_hang_a:bi_mat_ha_tang",
       "slots": {
         "subject": [
-          "trang thanh toán"
+          "cụm máy chủ của khách hàng A"
         ],
-        "symptom": [
-          "chậm vào cuối tháng"
-        ],
-        "cause": [
-          "lưu lượng cuối tháng cao hơn ngày thường"
+        "condition": [
+          "truy cập quản trị"
         ],
         "remediation": [
-          "trả lời khách là do lưu lượng cao, không nêu số liệu hạ tầng cụ thể"
+          "chỉ đi qua máy chủ nhảy jump-a.it.local"
+        ],
+        "source": [
+          "Sổ tay đường vào hạ tầng khách hàng A"
         ]
       }
     },
     {
-      "id": "he-7a43c114c5008e14785955a3",
+      "id": "he-7a329b2f9e4fcbb0cbdafd5d",
+      "doc_key": [
+        "n-15-log-tuong-lua-ngay-20-08.md"
+      ],
+      "khoa": "noi_bo:log",
+      "slots": {
+        "subject": [
+          "bộ luật tường lửa"
+        ],
+        "symptom": [
+          "bộ luật được nạp lại theo lịch hằng ngày, không có luật nào thay đổi so với hôm trước"
+        ],
+        "time": [
+          "20/08 19:30"
+        ]
+      }
+    },
+    {
+      "id": "he-7a6b465f6a678bf41f125c0e",
+      "doc_key": [
+        "k3-02-runbook-gia-han-chung-thu-so.md"
+      ],
+      "khoa": "khach_hang_b:runbook",
+      "slots": {
+        "subject": [
+          "hệ nhắc gia hạn"
+        ],
+        "remediation": [
+          "gửi thư điện tử tới hộp thư của nhóm sở hữu tên miền"
+        ],
+        "time": [
+          "trước 30 ngày, trước 14 ngày và trước 7 ngày"
+        ]
+      }
+    },
+    {
+      "id": "he-7ac40aa2d17a3e3ecbb89f7a",
+      "doc_key": [
+        "k2-05-cmdb-may-chu-log01.md"
+      ],
+      "khoa": "noi_bo:cmdb",
+      "slots": {
+        "subject": [
+          "log01"
+        ],
+        "owner": [
+          "Lê Thị Hà"
+        ]
+      }
+    },
+    {
+      "id": "he-7af9a59e109c7c3f5554f2d4",
+      "doc_key": [
+        "k2-02-runbook-xu-ly-day-o-dia.md"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "file thuộc thư mục cơ sở dữ liệu"
+        ],
+        "condition": [
+          "trong bất kỳ tình huống nào, kể cả khi phân vùng đã đầy 100%"
+        ],
+        "remediation": [
+          "không được xóa"
+        ]
+      }
+    },
+    {
+      "id": "he-7b6eb855d5c56d9cf13661fb",
       "doc_key": [
         "k1-02-canh-bao-app01-502.md"
       ],
       "khoa": "khach_hang_a:canh_bao",
       "slots": {
         "subject": [
-          "cảnh báo 'App01 lưu lượng cao'"
+          "hệ giám sát"
         ],
-        "symptom": [
-          "bắn cảnh báo"
+        "remediation": [
+          "giữ lịch sử cảnh báo"
         ],
-        "condition": [
-          "lưu lượng vượt 5000 req/phút trong 10 phút liên tục"
+        "time": [
+          "180 ngày"
         ]
       }
     },
@@ -2500,146 +3028,110 @@
       }
     },
     {
-      "id": "he-7c3e54c7c2367203c6cb5d37",
+      "id": "he-7bf793ee11ec20a6b90277c8",
       "doc_key": [
-        "10-so-tay-ha-tang-noi-bo.txt"
+        "k2-05-cmdb-may-chu-log01.md"
       ],
-      "khoa": "noi_bo:bi_mat_ha_tang",
+      "khoa": "noi_bo:cmdb",
       "slots": {
         "subject": [
-          "dải mạng quản trị"
+          "kho ảnh Docker"
         ],
         "condition": [
-          "10.20.0.0/24, tách khỏi dải mạng người dùng"
-        ],
-        "remediation": [
-          "chỉ mở từ máy chủ nhảy"
+          "ghi nhật ký trực tiếp vào log01"
         ]
       }
     },
     {
-      "id": "he-7d99aa02851268ccd010cfda",
+      "id": "he-7c5cc3fba996fe797670e60e",
       "doc_key": [
-        "n-13-runbook-trien-khai-ban-va-thang.md"
+        "n-08-known-issue-trinh-duyet-cu-loi-dang-nhap.md"
+      ],
+      "khoa": "noi_bo:known_issue",
+      "slots": {
+        "subject": [
+          "trang đăng nhập"
+        ],
+        "symptom": [
+          "nạp lại chính nó sau khi nhập đúng mật khẩu, không hiện thông báo lỗi nào"
+        ],
+        "condition": [
+          "trên trình duyệt Chrome phiên bản dưới 110"
+        ]
+      }
+    },
+    {
+      "id": "he-7c64a72b90fe7805531ee868",
+      "doc_key": [
+        "k3-02-runbook-gia-han-chung-thu-so.md"
       ],
       "khoa": "khach_hang_b:runbook",
       "slots": {
         "subject": [
-          "bản vá tháng"
+          "tên miền"
         ],
         "condition": [
-          "triển khai trong cửa sổ bảo trì 01 giờ đến 03 giờ ngày Chủ nhật đầu tháng"
+          "khi đổi nhóm sở hữu"
         ],
-        "source": [
-          "thỏa thuận với khách hàng B"
-        ],
-        "time": [
-          "01 giờ đến 03 giờ ngày Chủ nhật đầu tháng"
+        "remediation": [
+          "người bàn giao phải cập nhật hộp thư nhận nhắc trong cùng ngày bàn giao"
         ]
       }
     },
     {
-      "id": "he-7dd5b6207f0e4c0bbc89fb1e",
+      "id": "he-7d978ba6eb9af7c59150dc24",
       "doc_key": [
-        "02-vpn-va-mat-khau.txt"
+        "k1-08-troubleshooting-app01-loi-502.md"
       ],
-      "khoa": "noi_bo:runbook",
+      "khoa": "khach_hang_a:troubleshooting",
       "slots": {
         "subject": [
-          "tài khoản VPN"
-        ],
-        "condition": [
-          "yêu cầu cấp mới"
-        ],
-        "remediation": [
-          "phòng IT cấp trong vòng 1 ngày làm việc, yêu cầu gửi qua hệ thống Jira kèm xác nhận của quản lý trực tiếp"
+          "App01"
         ],
         "owner": [
-          "phòng IT"
+          "Trần Thị Hạnh"
         ]
       }
     },
     {
-      "id": "he-7ddabcd8b889bfd11bbd9b2b",
+      "id": "he-7e491320fa2b4a50faeb87ee",
       "doc_key": [
-        "n-04-sop-tiep-nhan-yeu-cau-ho-tro.md"
+        "k3-03-canh-bao-chung-thu-sap-het-han.md"
       ],
-      "khoa": "noi_bo:sop",
+      "khoa": "khach_hang_b:canh_bao",
       "slots": {
         "subject": [
-          "trực ban Tech Support"
-        ],
-        "condition": [
-          "kể từ khi ticket được tạo"
-        ],
-        "remediation": [
-          "phân loại mức ưu tiên"
-        ],
-        "time": [
-          "trong 15 phút"
-        ]
-      }
-    },
-    {
-      "id": "he-7e12ab107ba511d5f0f2e8b1",
-      "doc_key": [
-        "k2-04-vong-doi-ticket-inc-1520.md"
-      ],
-      "khoa": "noi_bo:vong_doi_ticket",
-      "slots": {
-        "subject": [
-          "sự cố INC-1520"
+          "cảnh báo cho tên miền pay.khachhangb.vn"
         ],
         "symptom": [
-          "chạm nhiều dịch vụ cùng lúc"
+          "đã bắn đủ ba lượt"
         ],
-        "source": [
-          "hệ giám sát"
+        "cause": [
+          "gửi tới hộp thư của nhóm Tích hợp cũ"
         ],
         "time": [
-          "18/08 lúc 09:42"
+          "từ ngày 27/07"
+        ]
+      }
+    },
+    {
+      "id": "he-7f451837b11bfc80d3453930",
+      "doc_key": [
+        "k3-06-cmdb-chung-thu-so-khach-hang-b.md"
+      ],
+      "khoa": "khach_hang_b:cmdb",
+      "slots": {
+        "subject": [
+          "pay.khachhangb.vn"
+        ],
+        "remediation": [
+          "cập nhật nhóm sở hữu thành nhóm vận hành khách hàng B"
+        ],
+        "time": [
+          "ngày 26/08"
         ],
         "owner": [
-          "nhóm Hạ tầng"
-        ]
-      }
-    },
-    {
-      "id": "he-7e24671b04d3c555e70fe145",
-      "doc_key": [
-        "07-giam-sat-va-canh-bao.txt"
-      ],
-      "khoa": "noi_bo:runbook",
-      "slots": {
-        "subject": [
-          "Phòng IT"
-        ],
-        "remediation": [
-          "rà soát danh sách cảnh báo nhiễu và tắt các luật cảnh báo không còn đúng"
-        ],
-        "time": [
-          "ngày làm việc đầu tiên mỗi tháng"
-        ]
-      }
-    },
-    {
-      "id": "he-7f0bdeb9ac8e67e15f9732d4",
-      "doc_key": [
-        "04-sao-luu-du-lieu.txt"
-      ],
-      "khoa": "noi_bo:runbook",
-      "slots": {
-        "subject": [
-          "Bản sao lưu tuần"
-        ],
-        "condition": [
-          "giữ 6 tháng"
-        ],
-        "remediation": [
-          "phục vụ yêu cầu đối chiếu số liệu của phòng Kế toán"
-        ],
-        "time": [
-          "sáng Chủ nhật"
+          "nhóm vận hành khách hàng B"
         ]
       }
     },
@@ -2665,38 +3157,119 @@
       }
     },
     {
-      "id": "he-81a27160d8a8f865854355de",
+      "id": "he-814e5ea9bfbe9760e875d0e1",
       "doc_key": [
-        "n-10-tai-lieu-san-pham-cong-noi-bo.md"
+        "n-06-troubleshooting-may-in-mang.md"
       ],
-      "khoa": "noi_bo:tai_lieu_san_pham",
+      "khoa": "noi_bo:troubleshooting",
       "slots": {
         "subject": [
-          "cổng nội bộ"
+          "lỗi treo hàng đợi"
         ],
         "condition": [
-          "đăng nhập dùng chung tài khoản với thư điện tử công ty và với VPN"
+          "phần lớn"
+        ],
+        "remediation": [
+          "hết ở bước xóa hàng đợi in"
         ]
       }
     },
     {
-      "id": "he-83172204da8cc653d7cb0f6d",
+      "id": "he-8225d42bdebfc8325b49a01c",
       "doc_key": [
-        "n-17-cmdb-thiet-bi-mang-van-phong.md"
+        "n-04-sop-tiep-nhan-yeu-cau-ho-tro.md"
       ],
-      "khoa": "noi_bo:cmdb",
+      "khoa": "noi_bo:sop",
       "slots": {
         "subject": [
-          "tường lửa biên"
+          "Ticket P1 và P2"
         ],
-        "condition": [
-          "chạy chế độ dự phòng nóng"
+        "remediation": [
+          "phải có người nhận xử lý đích danh, không được để ở hàng đợi chung quá 10 phút"
         ],
         "source": [
-          "bản ghi CMDB thiết bị mạng của văn phòng"
+          "SOP-05"
+        ]
+      }
+    },
+    {
+      "id": "he-827391fec18fe5d974f8ab5f",
+      "doc_key": [
+        "10-so-tay-ha-tang-noi-bo.txt"
+      ],
+      "khoa": "noi_bo:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "truy cập quản trị vào máy chủ sản xuất"
         ],
-        "owner": [
-          "nhóm Hạ tầng"
+        "condition": [
+          "chỉ đi qua máy chủ nhảy bastion.it.local"
+        ],
+        "remediation": [
+          "mọi phiên SSH được ghi lại và giữ 90 ngày"
+        ]
+      }
+    },
+    {
+      "id": "he-830b45229cf553e0ecbbfc00",
+      "doc_key": [
+        "n-11-tai-lieu-san-pham-app02-khach-hang-a.md"
+      ],
+      "khoa": "khach_hang_a:tai_lieu_san_pham",
+      "slots": {
+        "subject": [
+          "App02"
+        ],
+        "condition": [
+          "thời gian sẵn sàng cam kết là 99% mỗi tháng"
+        ],
+        "time": [
+          "mỗi tháng"
+        ]
+      }
+    },
+    {
+      "id": "he-833c3718f8824d459ddb25de",
+      "doc_key": [
+        "01-cap-quyen-gitlab.txt"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "Yêu cầu cấp quyền"
+        ],
+        "condition": [
+          "gửi qua hệ thống Jira, gắn nhãn \"access-request\""
+        ],
+        "time": [
+          "thời hạn xử lý 2 ngày làm việc"
+        ]
+      }
+    },
+    {
+      "id": "he-837694e76c084ace9d8574b4",
+      "doc_key": [
+        "n-09-known-issue-bao-cao-thang-cham.md"
+      ],
+      "khoa": "khach_hang_a:known_issue",
+      "slots": {
+        "subject": [
+          "lỗi KI-021"
+        ],
+        "symptom": [
+          "báo cáo chạy chậm"
+        ],
+        "cause": [
+          "truy vấn quét toàn bảng đơn hàng"
+        ],
+        "condition": [
+          "khoảng thời gian chọn vượt 90 ngày"
+        ],
+        "remediation": [
+          "chia báo cáo thành từng tháng hoặc chạy ban đêm"
+        ],
+        "source": [
+          "KI-021"
         ]
       }
     },
@@ -2719,107 +3292,68 @@
       }
     },
     {
-      "id": "he-84627c9b2dc2ca76fc1e8419",
+      "id": "he-843e200c0256b9317bcf62ce",
       "doc_key": [
-        "n-10-tai-lieu-san-pham-cong-noi-bo.md"
+        "k1-05-cmdb-app01.md"
       ],
-      "khoa": "noi_bo:tai_lieu_san_pham",
+      "khoa": "khach_hang_a:cmdb",
       "slots": {
         "subject": [
-          "cổng nội bộ"
+          "App01"
         ],
-        "owner": [
-          "phòng Hành chính"
+        "source": [
+          "Bản ghi CMDB cụm ứng dụng App01 của khách hàng A"
         ]
       }
     },
     {
-      "id": "he-85c05f6f6cee72636531c22f",
-      "doc_key": [
-        "n-07-troubleshooting-email-khong-gui-duoc.md"
-      ],
-      "khoa": "noi_bo:troubleshooting",
-      "slots": {
-        "subject": [
-          "thư điện tử"
-        ],
-        "condition": [
-          "tệp đính kèm lớn hơn 25 MB"
-        ],
-        "remediation": [
-          "phải dùng kho chia sẻ nội bộ thay vì đính kèm"
-        ]
-      }
-    },
-    {
-      "id": "he-866f143b1b9603392157a360",
-      "doc_key": [
-        "07-giam-sat-va-canh-bao.txt"
-      ],
-      "khoa": "noi_bo:runbook",
-      "slots": {
-        "subject": [
-          "cảnh báo CPU"
-        ],
-        "symptom": [
-          "cảnh báo"
-        ],
-        "condition": [
-          "ngưỡng 90 phần trăm duy trì trong 5 phút"
-        ]
-      }
-    },
-    {
-      "id": "he-86e7a751a4993cf27d0a14be",
-      "doc_key": [
-        "k1-02-canh-bao-app01-502.md"
-      ],
-      "khoa": "khach_hang_a:canh_bao",
-      "slots": {
-        "subject": [
-          "cảnh báo mức cảnh giác"
-        ],
-        "remediation": [
-          "gửi vào kênh chat của nhóm vận hành khách hàng A"
-        ]
-      }
-    },
-    {
-      "id": "he-86ea74510994c3116f4fc4b4",
-      "doc_key": [
-        "n-17-cmdb-thiet-bi-mang-van-phong.md"
-      ],
-      "khoa": "noi_bo:cmdb",
-      "slots": {
-        "subject": [
-          "bản ghi thiết bị mạng"
-        ],
-        "condition": [
-          "sớm hơn nếu có thay đổi phần cứng"
-        ],
-        "time": [
-          "mỗi 6 tháng"
-        ]
-      }
-    },
-    {
-      "id": "he-87e49ce5f1ea35f94fc8f3b5",
+      "id": "he-870fb812f4f19f157b56cdcc",
       "doc_key": [
         "01-cap-quyen-gitlab.txt"
       ],
       "khoa": "noi_bo:runbook",
       "slots": {
         "subject": [
-          "yêu cầu cấp quyền"
+          "Tài khoản"
         ],
         "condition": [
-          "gắn nhãn 'access-request'"
+          "không hoạt động 90 ngày"
         ],
-        "source": [
-          "hệ thống Jira"
+        "remediation": [
+          "bị khóa tự động và phải xin cấp lại từ đầu"
+        ]
+      }
+    },
+    {
+      "id": "he-87c8d1a4216792af4c1c4b6f",
+      "doc_key": [
+        "n-14-canh-bao-tai-cpu-may-chu-web.md"
+      ],
+      "khoa": "khach_hang_a:canh_bao",
+      "slots": {
+        "subject": [
+          "lịch sử cảnh báo CPU"
+        ],
+        "condition": [
+          "ngắn hơn lịch sử cảnh báo lỗi ứng dụng"
         ],
         "time": [
-          "thời hạn xử lý 2 ngày làm việc"
+          "90 ngày"
+        ]
+      }
+    },
+    {
+      "id": "he-880c05176cae82233af54e7a",
+      "doc_key": [
+        "n-16-vong-doi-ticket-yeu-cau-cap-quyen.md"
+      ],
+      "khoa": "noi_bo:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "người cấp quyền"
+        ],
+        "remediation": [
+          "phải ghi lại vào ticket mức quyền đã cấp và thời hạn hiệu lực trước khi chuyển sang trạng thái chờ xác nhận"
         ]
       }
     },
@@ -2863,284 +3397,140 @@
       }
     },
     {
-      "id": "he-89353ee3a9f6e1aaf74114ee",
-      "doc_key": [
-        "06-quan-ly-thay-doi.txt"
-      ],
-      "khoa": "noi_bo:runbook",
-      "slots": {
-        "subject": [
-          "thay đổi mức rủi ro cao"
-        ],
-        "condition": [
-          "chạm cơ sở dữ liệu hoặc cấu hình mạng"
-        ],
-        "remediation": [
-          "phê duyệt"
-        ],
-        "time": [
-          "họp thứ Ba hàng tuần"
-        ],
-        "owner": [
-          "Hội đồng thay đổi"
-        ]
-      }
-    },
-    {
-      "id": "he-894800d89bf21ffd78338074",
-      "doc_key": [
-        "k2-04-vong-doi-ticket-inc-1520.md"
-      ],
-      "khoa": "noi_bo:vong_doi_ticket",
-      "slots": {
-        "subject": [
-          "ticket INC-1520"
-        ],
-        "condition": [
-          "mức ưu tiên P1"
-        ],
-        "remediation": [
-          "cập nhật tiến độ mỗi 15 phút"
-        ],
-        "owner": [
-          "Lê Thị Hà"
-        ]
-      }
-    },
-    {
-      "id": "he-8c85c39502f237b2088c9b7c",
+      "id": "he-8a8f42c2c7079f9d44ef4ed4",
       "doc_key": [
         "02-vpn-va-mat-khau.txt"
       ],
       "khoa": "noi_bo:runbook",
       "slots": {
         "subject": [
-          "mật khẩu VPN"
+          "tài khoản VPN"
         ],
         "condition": [
-          "hết hạn sau 90 ngày"
+          "nhân viên nghỉ việc"
         ],
         "remediation": [
-          "phải đổi qua cổng self-service tại địa chỉ nội bộ portal.it.local"
+          "bị thu hồi VPN ngay trong ngày làm việc cuối cùng"
+        ],
+        "source": [
+          "danh sách từ phòng Nhân sự"
+        ],
+        "owner": [
+          "phòng IT"
         ]
       }
     },
     {
-      "id": "he-8d0bc86fca99ffcadf09f0e8",
-      "doc_key": [
-        "n-11-tai-lieu-san-pham-app02-khach-hang-a.md"
-      ],
-      "khoa": "khach_hang_a:tai_lieu_san_pham",
-      "slots": {
-        "subject": [
-          "App02"
-        ],
-        "condition": [
-          "chỉ mở cho tài khoản nhân viên của khách hàng A"
-        ],
-        "remediation": [
-          "không phục vụ người mua hàng và không nhận giao dịch thẻ"
-        ]
-      }
-    },
-    {
-      "id": "he-8e602a19464b69e4969d0f4e",
-      "doc_key": [
-        "k3-06-cmdb-chung-thu-so-khach-hang-b.md"
-      ],
-      "khoa": "khach_hang_b:cmdb",
-      "slots": {
-        "subject": [
-          "bản ghi chứng thư số"
-        ],
-        "remediation": [
-          "phải được rà soát mỗi tháng và mọi lần đổi nhóm sở hữu phải cập nhật cả trường hộp thư nhận nhắc"
-        ]
-      }
-    },
-    {
-      "id": "he-8e9ed5777461e42be4b5f9d0",
-      "doc_key": [
-        "07-giam-sat-va-canh-bao.txt"
-      ],
-      "khoa": "noi_bo:runbook",
-      "slots": {
-        "subject": [
-          "Zabbix"
-        ],
-        "condition": [
-          "quét các máy chủ sản xuất"
-        ],
-        "remediation": [
-          "gửi cảnh báo vào kênh Slack #canh-bao-ha-tang"
-        ],
-        "time": [
-          "mỗi 60 giây"
-        ]
-      }
-    },
-    {
-      "id": "he-907c28d1e6e0039a2c719991",
-      "doc_key": [
-        "06-quan-ly-thay-doi.txt"
-      ],
-      "khoa": "noi_bo:runbook",
-      "slots": {
-        "subject": [
-          "triển khai thay đổi"
-        ],
-        "condition": [
-          "triển khai ngoài cửa sổ này"
-        ],
-        "remediation": [
-          "phải có phê duyệt của Giám đốc Kỹ thuật"
-        ],
-        "time": [
-          "22 giờ đến 24 giờ các ngày thứ Tư"
-        ]
-      }
-    },
-    {
-      "id": "he-90d9ebd8d12ba5b05ed416b5",
-      "doc_key": [
-        "08-bao-cao-su-co-inc-1305.txt"
-      ],
-      "khoa": "noi_bo:bao_cao_su_co",
-      "slots": {
-        "subject": [
-          "dịch vụ ghi"
-        ],
-        "symptom": [
-          "phục hồi"
-        ],
-        "remediation": [
-          "dừng tiến trình xuất báo cáo, xóa file tạm và mở rộng phân vùng nhật ký thêm 200 GB"
-        ],
-        "time": [
-          "02:05"
-        ]
-      }
-    },
-    {
-      "id": "he-90db922aac6106389d44a2aa",
+      "id": "he-8b292664becd9146e573543c",
       "doc_key": [
         "n-04-sop-tiep-nhan-yeu-cau-ho-tro.md"
       ],
       "khoa": "noi_bo:sop",
       "slots": {
         "subject": [
-          "yêu cầu chạm dữ liệu khách hàng"
+          "mức P3"
+        ],
+        "condition": [
+          "yêu cầu thông thường"
+        ],
+        "source": [
+          "SOP-05"
+        ]
+      }
+    },
+    {
+      "id": "he-908f07e73d55293d53589091",
+      "doc_key": [
+        "n-03-faq-cong-thanh-toan-khach-hang-a.md"
+      ],
+      "khoa": "khach_hang_a:faq",
+      "slots": {
+        "subject": [
+          "trang thanh toán"
+        ],
+        "condition": [
+          "khi bảo trì"
         ],
         "remediation": [
-          "phải được chuyển thẳng cho nhóm vận hành của khách hàng đó, Tech Support không tự xử lý"
+          "có thông báo đăng trước 24 giờ trên trang trạng thái của khách hàng A"
         ]
       }
     },
     {
-      "id": "he-914c75cfb6f91667a467e00d",
-      "doc_key": [
-        "k1-06-log-app01-ngay-12-08.md"
-      ],
-      "khoa": "khach_hang_a:log",
-      "slots": {
-        "subject": [
-          "php-fpm pool www"
-        ],
-        "symptom": [
-          "fpm is running, pool www khởi động lại với 24 tiến trình, mã lỗi 502 về 0"
-        ],
-        "time": [
-          "12/08/2026 10:00"
-        ]
-      }
-    },
-    {
-      "id": "he-91de2cd2275e66c6007b37c5",
-      "doc_key": [
-        "k1-02-canh-bao-app01-502.md"
-      ],
-      "khoa": "khach_hang_a:canh_bao",
-      "slots": {
-        "subject": [
-          "cảnh báo 'App01 tỷ lệ lỗi 502'"
-        ],
-        "symptom": [
-          "bắn cảnh báo"
-        ],
-        "condition": [
-          "tỷ lệ phản hồi 502 vượt 2% trong cửa sổ 5 phút"
-        ]
-      }
-    },
-    {
-      "id": "he-949a3984d232518fd74c362f",
-      "doc_key": [
-        "k3-06-cmdb-chung-thu-so-khach-hang-b.md"
-      ],
-      "khoa": "khach_hang_b:cmdb",
-      "slots": {
-        "subject": [
-          "pay.khachhangb.vn"
-        ],
-        "condition": [
-          "trước đó"
-        ],
-        "owner": [
-          "nhóm Tích hợp"
-        ]
-      }
-    },
-    {
-      "id": "he-95e75d33d1081bc4bb3f35d0",
-      "doc_key": [
-        "07-giam-sat-va-canh-bao.txt"
-      ],
-      "khoa": "noi_bo:runbook",
-      "slots": {
-        "subject": [
-          "cảnh báo mức nghiêm trọng"
-        ],
-        "condition": [
-          "không có ai xác nhận trong 10 phút"
-        ],
-        "remediation": [
-          "gửi cuộc gọi tự động tới người trực"
-        ]
-      }
-    },
-    {
-      "id": "he-9767e2b8af66af9f7db1a204",
-      "doc_key": [
-        "k3-04-bao-cao-su-co-inc-1533.md"
-      ],
-      "khoa": "khach_hang_b:bao_cao_su_co",
-      "slots": {
-        "subject": [
-          "trình duyệt và ứng dụng đối tác"
-        ],
-        "symptom": [
-          "báo lỗi chứng thư không hợp lệ"
-        ],
-        "condition": [
-          "trong khi máy chủ và cơ sở dữ liệu đều bình thường"
-        ]
-      }
-    },
-    {
-      "id": "he-9774f03786a7ab8fcc43bf71",
+      "id": "he-90a552a8ee5ff796140ef4e0",
       "doc_key": [
         "03-truc-su-co.txt"
       ],
       "khoa": "noi_bo:runbook",
       "slots": {
         "subject": [
-          "sự cố mức nghiêm trọng (P1)"
+          "người trực"
         ],
         "condition": [
-          "dịch vụ ngừng hoàn toàn"
+          "được quyền khởi động lại dịch vụ trên máy chủ sản xuất mà không cần phê duyệt"
         ],
         "remediation": [
-          "báo cho người trực trong 15 phút và mở cầu xử lý trong 30 phút"
+          "phải ghi lại thao tác vào nhật ký sự cố trong vòng 24 giờ"
+        ]
+      }
+    },
+    {
+      "id": "he-91468be20049c85439d8ed1b",
+      "doc_key": [
+        "07-giam-sat-va-canh-bao.txt"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "phòng IT"
+        ],
+        "remediation": [
+          "rà soát danh sách cảnh báo nhiễu và tắt các luật cảnh báo không còn đúng"
+        ],
+        "time": [
+          "ngày làm việc đầu tiên mỗi tháng"
+        ]
+      }
+    },
+    {
+      "id": "he-93f635133233a9a98054b4fd",
+      "doc_key": [
+        "n-03-faq-cong-thanh-toan-khach-hang-a.md"
+      ],
+      "khoa": "khach_hang_a:faq",
+      "slots": {
+        "subject": [
+          "giao dịch"
+        ],
+        "condition": [
+          "tiền đã trừ mà đơn chưa lên"
+        ],
+        "remediation": [
+          "mở ticket đối soát giao dịch, tiền được hoàn tự động trong 3 ngày làm việc nếu đơn không hình thành"
+        ],
+        "owner": [
+          "đội hỗ trợ khách hàng A"
+        ]
+      }
+    },
+    {
+      "id": "he-94ef31d00d13fa3062bf90aa",
+      "doc_key": [
+        "k3-04-bao-cao-su-co-inc-1533.md"
+      ],
+      "khoa": "khach_hang_b:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "Nhóm Tích hợp"
+        ],
+        "remediation": [
+          "bàn giao tên miền cho nhóm vận hành khách hàng B"
+        ],
+        "source": [
+          "INC-1533"
+        ],
+        "time": [
+          "từ ngày 01/08"
         ]
       }
     },
@@ -3163,92 +3553,23 @@
       }
     },
     {
-      "id": "he-9940105eaf856505c759e16e",
+      "id": "he-9b52b665a06488bd9f0285aa",
       "doc_key": [
-        "n-10-tai-lieu-san-pham-cong-noi-bo.md"
+        "k1-07-sop-12-quan-ly-thay-doi.md"
       ],
-      "khoa": "noi_bo:tai_lieu_san_pham",
+      "khoa": "noi_bo:sop",
       "slots": {
         "subject": [
-          "cổng nội bộ"
+          "phiếu thay đổi"
         ],
         "condition": [
-          "chỉ mở trong mạng công ty hoặc qua VPN"
+          "chạm tham số bộ nhớ, tham số tiến trình hoặc cấu hình mạng"
         ],
         "remediation": [
-          "không có đường truy cập công khai từ Internet"
-        ]
-      }
-    },
-    {
-      "id": "he-9a1cae33f2082d36f2a7bac1",
-      "doc_key": [
-        "k1-04-postmortem-inc-1208.md"
-      ],
-      "khoa": "khach_hang_a:postmortem",
-      "slots": {
-        "subject": [
-          "phiếu thay đổi chạm tham số bộ nhớ"
+          "phải được thử trên môi trường thử nghiệm trước khi duyệt"
         ],
-        "remediation": [
-          "bổ sung bước thử bắt buộc"
-        ],
-        "time": [
-          "hạn hoàn thành 30/08"
-        ],
-        "owner": [
-          "trưởng nhóm vận hành khách hàng A"
-        ]
-      }
-    },
-    {
-      "id": "he-9a8bd8a12f07e3f04463b63b",
-      "doc_key": [
-        "n-09-known-issue-bao-cao-thang-cham.md"
-      ],
-      "khoa": "khach_hang_a:known_issue",
-      "slots": {
-        "subject": [
-          "báo cáo doanh thu tháng của khách hàng A"
-        ],
-        "condition": [
-          "chạy chậm"
-        ],
-        "remediation": [
-          "chia báo cáo thành từng tháng rồi cộng lại, hoặc đặt lịch chạy báo cáo vào ban đêm"
-        ]
-      }
-    },
-    {
-      "id": "he-9c2876751c6afbc0c6004c17",
-      "doc_key": [
-        "n-17-cmdb-thiet-bi-mang-van-phong.md"
-      ],
-      "khoa": "noi_bo:cmdb",
-      "slots": {
-        "subject": [
-          "đường truyền Internet chính và đường dự phòng"
-        ],
-        "condition": [
-          "thuộc hai nhà cung cấp khác nhau"
-        ],
-        "remediation": [
-          "tự chuyển đổi trong 30 giây"
-        ]
-      }
-    },
-    {
-      "id": "he-9c951b38798c3fc545dc23ab",
-      "doc_key": [
-        "k1-02-canh-bao-app01-502.md"
-      ],
-      "khoa": "khach_hang_a:canh_bao",
-      "slots": {
-        "subject": [
-          "cảnh báo mức nghiêm trọng"
-        ],
-        "remediation": [
-          "gọi điện cho kỹ sư trực"
+        "source": [
+          "SOP-12"
         ]
       }
     },
@@ -3289,6 +3610,24 @@
       }
     },
     {
+      "id": "he-9d7926c21f8d01dfb9a2c5d4",
+      "doc_key": [
+        "k2-07-troubleshooting-dich-vu-cham.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "cổng nội bộ"
+        ],
+        "symptom": [
+          "không mở được"
+        ],
+        "condition": [
+          "ngoài mạng công ty"
+        ]
+      }
+    },
+    {
       "id": "he-9d9129c3361634f280502679",
       "doc_key": [
         "k1-05-cmdb-app01.md"
@@ -3307,35 +3646,128 @@
       }
     },
     {
-      "id": "he-9f226c05adc0b7e46d831380",
+      "id": "he-9d9918a1466abda60e145012",
       "doc_key": [
-        "n-04-sop-tiep-nhan-yeu-cau-ho-tro.md"
+        "k1-06-log-app01-ngay-12-08.md"
       ],
-      "khoa": "noi_bo:sop",
+      "khoa": "khach_hang_a:log",
       "slots": {
         "subject": [
-          "mức P3"
+          "web01"
         ],
-        "condition": [
-          "yêu cầu thông thường"
+        "symptom": [
+          "connect() to unix socket failed (11: Resource temporarily unavailable), trả 502 cho toàn bộ yêu cầu"
+        ],
+        "source": [
+          "nhật ký máy chủ web01"
+        ],
+        "time": [
+          "12/08/2026 lúc 09:22"
         ]
       }
     },
     {
-      "id": "he-9fa2196cc98ce58068752832",
+      "id": "he-9df22d6346bf7bb4472b22a1",
       "doc_key": [
-        "01-cap-quyen-gitlab.txt"
+        "n-02-faq-vpn-cho-nhan-vien-moi.md"
       ],
-      "khoa": "noi_bo:runbook",
+      "khoa": "noi_bo:faq",
       "slots": {
         "subject": [
-          "tài khoản GitLab"
+          "VPN"
         ],
         "condition": [
-          "không hoạt động 90 ngày"
+          "phiên đăng nhập từ ngoài Việt Nam"
         ],
         "remediation": [
-          "bị khóa tự động và phải xin cấp lại từ đầu"
+          "yêu cầu xác thực hai bước mỗi lần"
+        ]
+      }
+    },
+    {
+      "id": "he-a05476561a00bb186e937144",
+      "doc_key": [
+        "n-18-bi-mat-ha-tang-duong-vao-khach-hang-a.md"
+      ],
+      "khoa": "khach_hang_a:bi_mat_ha_tang",
+      "slots": {
+        "subject": [
+          "Tài liệu này"
+        ],
+        "condition": [
+          "chỉ chia sẻ trong nhóm vận hành khách hàng A và nhóm Hạ tầng"
+        ],
+        "remediation": [
+          "gửi ra ngoài phải có phê duyệt của Giám đốc Kỹ thuật"
+        ],
+        "source": [
+          "Sổ tay đường vào hạ tầng khách hàng A"
+        ]
+      }
+    },
+    {
+      "id": "he-a0dfeee24f6222aa4081f5a9",
+      "doc_key": [
+        "k3-05-postmortem-inc-1533.md"
+      ],
+      "khoa": "khach_hang_b:postmortem",
+      "slots": {
+        "subject": [
+          "chứng thư số của khách hàng B"
+        ],
+        "symptom": [
+          "sự cố INC-1533"
+        ],
+        "cause": [
+          "đợt bàn giao ngày 01/08 chuyển tên miền pay.khachhangb.vn sang nhóm vận hành khách hàng B mà không cập nhật hộp thư nhận cảnh báo trong bản ghi CMDB"
+        ],
+        "source": [
+          "tài liệu hạn chế"
+        ],
+        "time": [
+          "01/08"
+        ]
+      }
+    },
+    {
+      "id": "he-a12c79d04bd7a84157851322",
+      "doc_key": [
+        "k3-06-cmdb-chung-thu-so-khach-hang-b.md"
+      ],
+      "khoa": "khach_hang_b:cmdb",
+      "slots": {
+        "subject": [
+          "api.khachhangb.vn"
+        ],
+        "condition": [
+          "chứng thư cùng nhà cung cấp"
+        ],
+        "source": [
+          "Bản ghi CMDB chứng thư số của khách hàng B"
+        ],
+        "time": [
+          "ngày hết hạn là 14/11"
+        ],
+        "owner": [
+          "nhóm vận hành khách hàng B"
+        ]
+      }
+    },
+    {
+      "id": "he-a279f65ef88a086de485c5af",
+      "doc_key": [
+        "k2-05-cmdb-may-chu-log01.md"
+      ],
+      "khoa": "noi_bo:cmdb",
+      "slots": {
+        "subject": [
+          "tác vụ xoay vòng nhật ký"
+        ],
+        "condition": [
+          "kết quả được ghi vào chính log01"
+        ],
+        "time": [
+          "hằng ngày lúc 03 giờ"
         ]
       }
     },
@@ -3370,77 +3802,200 @@
       }
     },
     {
-      "id": "he-a31c8f557eb50b0f46847fb1",
+      "id": "he-a3815fd81a2bdf8b3d5bf6a9",
       "doc_key": [
-        "10-so-tay-ha-tang-noi-bo.txt"
+        "k3-06-cmdb-chung-thu-so-khach-hang-b.md"
       ],
-      "khoa": "noi_bo:bi_mat_ha_tang",
+      "khoa": "khach_hang_b:cmdb",
       "slots": {
         "subject": [
-          "tài liệu Sổ tay hạ tầng nội bộ"
+          "pay.khachhangb.vn"
         ],
         "condition": [
-          "chỉ chia sẻ trong nhóm Hạ tầng"
+          "trước đó"
         ],
-        "remediation": [
-          "gửi ra ngoài phải có phê duyệt của Giám đốc Kỹ thuật"
+        "owner": [
+          "Nhóm Tích hợp"
         ]
       }
     },
     {
-      "id": "he-a3a5c914a5168073eee44a69",
+      "id": "he-a467f05025b0fb606172fb6f",
       "doc_key": [
-        "k3-07-vong-doi-ticket-inc-1533.md"
+        "k2-07-troubleshooting-dich-vu-cham.md"
       ],
-      "khoa": "khach_hang_b:vong_doi_ticket",
+      "khoa": "noi_bo:troubleshooting",
       "slots": {
         "subject": [
-          "bước định tuyến sai"
+          "ticket"
+        ],
+        "condition": [
+          "mở từ hướng dẫn này"
+        ],
+        "remediation": [
+          "ghi rõ bạn đã làm tới bước nào"
+        ],
+        "owner": [
+          "Tech Support"
+        ]
+      }
+    },
+    {
+      "id": "he-a46ed76a9d218f74e941e987",
+      "doc_key": [
+        "k2-04-vong-doi-ticket-inc-1520.md"
+      ],
+      "khoa": "noi_bo:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "ticket INC-1520"
+        ],
+        "remediation": [
+          "chuyển sang trạng thái chờ xác nhận"
+        ],
+        "time": [
+          "11:15"
+        ]
+      }
+    },
+    {
+      "id": "he-a4bf6987f13ed5131a0c5e38",
+      "doc_key": [
+        "k1-08-troubleshooting-app01-loi-502.md"
+      ],
+      "khoa": "khach_hang_a:troubleshooting",
+      "slots": {
+        "subject": [
+          "App01"
+        ],
+        "symptom": [
+          "số yêu cầu mỗi phút vượt 5000 req/phút"
         ],
         "cause": [
-          "đã bàn giao tên miền từ ngày 01/08"
-        ],
-        "time": [
-          "mất 45 phút"
-        ]
-      }
-    },
-    {
-      "id": "he-a61bcc396cb074bc112d0d60",
-      "doc_key": [
-        "10-so-tay-ha-tang-noi-bo.txt"
-      ],
-      "khoa": "noi_bo:bi_mat_ha_tang",
-      "slots": {
-        "subject": [
-          "truy cập quản trị vào máy chủ sản xuất"
+          "dấu quá tải chứ không phải lỗi cấu hình"
         ],
         "condition": [
-          "chỉ đi qua máy chủ nhảy bastion.it.local"
-        ],
-        "remediation": [
-          "mọi phiên SSH được ghi lại và giữ 90 ngày"
+          "trên bảng theo dõi"
         ],
         "source": [
-          "Sổ tay hạ tầng nội bộ"
+          "Hướng dẫn tự kiểm tra"
         ]
       }
     },
     {
-      "id": "he-a9519e4a72d5720fc7d1dde1",
+      "id": "he-a609ed7fd1e4f076c9e85437",
       "doc_key": [
-        "k3-02-runbook-gia-han-chung-thu-so.md"
+        "02-vpn-va-mat-khau.txt"
       ],
-      "khoa": "khach_hang_b:runbook",
+      "khoa": "noi_bo:runbook",
       "slots": {
         "subject": [
-          "hệ nhắc gia hạn"
+          "mật khẩu VPN"
+        ],
+        "condition": [
+          "hết hạn sau 90 ngày"
         ],
         "remediation": [
-          "gửi thư điện tử"
+          "phải đổi qua cổng self-service tại địa chỉ nội bộ portal.it.local"
+        ],
+        "source": [
+          "cổng nội bộ"
+        ]
+      }
+    },
+    {
+      "id": "he-a6e03c0033e287b550d1eace",
+      "doc_key": [
+        "k2-05-cmdb-may-chu-log01.md"
+      ],
+      "khoa": "noi_bo:cmdb",
+      "slots": {
+        "subject": [
+          "log01"
+        ],
+        "symptom": [
+          "cả bốn dịch vụ dừng nhận yêu cầu mới"
+        ],
+        "condition": [
+          "không ghi được nhật ký"
+        ]
+      }
+    },
+    {
+      "id": "he-a7c4d64d994dbc4acefc79fb",
+      "doc_key": [
+        "06-quan-ly-thay-doi.txt"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "phiếu thay đổi"
+        ],
+        "condition": [
+          "sau mỗi thay đổi"
+        ],
+        "remediation": [
+          "người thực hiện ghi kết quả vào phiếu và đóng phiếu trong 2 ngày làm việc"
+        ]
+      }
+    },
+    {
+      "id": "he-a8c00d25495c8806e491860f",
+      "doc_key": [
+        "n-02-faq-vpn-cho-nhan-vien-moi.md"
+      ],
+      "khoa": "noi_bo:faq",
+      "slots": {
+        "subject": [
+          "cổng nội bộ"
+        ],
+        "symptom": [
+          "không mở được"
+        ],
+        "condition": [
+          "dù đã bật VPN"
+        ],
+        "remediation": [
+          "xem hướng dẫn tự kiểm khi dịch vụ nội bộ chậm hoặc không truy cập được, làm hết bốn bước rồi mới mở ticket"
+        ]
+      }
+    },
+    {
+      "id": "he-aac1d6d33fe42ae62c191059",
+      "doc_key": [
+        "08-bao-cao-su-co-inc-1305.txt"
+      ],
+      "khoa": "noi_bo:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "tiến trình xuất báo cáo"
+        ],
+        "condition": [
+          "khi ghi tạm vào phân vùng nhật ký của DB02"
+        ],
+        "remediation": [
+          "phải ghi tạm vào phân vùng riêng"
+        ],
+        "source": [
+          "bài học từ INC-1305"
+        ]
+      }
+    },
+    {
+      "id": "he-aafd045ea9e239b3dc0cf2c3",
+      "doc_key": [
+        "n-09-known-issue-bao-cao-thang-cham.md"
+      ],
+      "khoa": "khach_hang_a:known_issue",
+      "slots": {
+        "subject": [
+          "báo cáo doanh thu tháng của khách hàng A"
+        ],
+        "remediation": [
+          "bản vá tối ưu truy vấn đã lên kế hoạch cho đợt phát hành tháng sau"
         ],
         "time": [
-          "trước 30 ngày, trước 14 ngày và trước 7 ngày tới hộp thư của nhóm sở hữu tên miền"
+          "tháng sau"
         ]
       }
     },
@@ -3463,83 +4018,38 @@
       }
     },
     {
-      "id": "he-ad600c879453db2cecf33dab",
+      "id": "he-ad846c5113e9ccad3f9719e7",
       "doc_key": [
-        "n-18-bi-mat-ha-tang-duong-vao-khach-hang-a.md"
+        "n-16-vong-doi-ticket-yeu-cau-cap-quyen.md"
       ],
-      "khoa": "khach_hang_a:bi_mat_ha_tang",
+      "khoa": "noi_bo:vong_doi_ticket",
       "slots": {
         "subject": [
-          "truy cập quản trị vào cụm máy chủ của khách hàng A"
+          "ticket cấp quyền"
         ],
         "condition": [
-          "chỉ đi qua máy chủ nhảy jump-a.it.local"
+          "sau khi người xin mở"
         ],
         "remediation": [
-          "mọi phiên được ghi lại và giữ 90 ngày"
-        ],
-        "source": [
-          "Sổ tay đường vào hạ tầng khách hàng A"
+          "trực ban Tech Support kiểm tính đầy đủ của yêu cầu rồi chuyển cho người phê duyệt là trưởng phòng của người xin"
         ]
       }
     },
     {
-      "id": "he-adaacc745762c82f45f00e56",
+      "id": "he-b03551ac0e0a2d82a538a865",
       "doc_key": [
-        "k3-01-tai-lieu-san-pham-cong-thanh-toan-b.md"
+        "03-truc-su-co.txt"
       ],
-      "khoa": "khach_hang_b:tai_lieu_san_pham",
+      "khoa": "noi_bo:runbook",
       "slots": {
         "subject": [
-          "dịch vụ cổng thanh toán của khách hàng B"
+          "việc thay đổi cấu hình hạ tầng trong lúc xử lý sự cố"
         ],
         "condition": [
-          "cửa sổ bảo trì thỏa thuận là 01 giờ đến 03 giờ ngày Chủ nhật đầu tháng"
-        ],
-        "time": [
-          "24 giờ mỗi ngày"
-        ]
-      }
-    },
-    {
-      "id": "he-af705e01937e9b533e9c0c14",
-      "doc_key": [
-        "n-18-bi-mat-ha-tang-duong-vao-khach-hang-a.md"
-      ],
-      "khoa": "khach_hang_a:bi_mat_ha_tang",
-      "slots": {
-        "subject": [
-          "tài khoản quản trị cơ sở dữ liệu db01"
+          "phải có hai người xác nhận"
         ],
         "remediation": [
-          "được xoay vòng mỗi 90 ngày bằng tác vụ tự động của Vault"
-        ],
-        "source": [
-          "Sổ tay đường vào hạ tầng khách hàng A"
-        ]
-      }
-    },
-    {
-      "id": "he-b0554ce64ecca5e4f6efcaef",
-      "doc_key": [
-        "k3-05-postmortem-inc-1533.md"
-      ],
-      "khoa": "khach_hang_b:postmortem",
-      "slots": {
-        "subject": [
-          "chứng thư số của khách hàng B"
-        ],
-        "symptom": [
-          "gián đoạn 2 giờ 10 phút"
-        ],
-        "cause": [
-          "đợt bàn giao ngày 01/08 chuyển tên miền pay.khachhangb.vn sang nhóm vận hành khách hàng B mà không cập nhật hộp thư nhận cảnh báo trong bản ghi CMDB"
-        ],
-        "source": [
-          "Postmortem sự cố INC-1533"
-        ],
-        "time": [
-          "đầu tháng 08"
+          "một người thao tác và một người soát lại"
         ]
       }
     },
@@ -3562,44 +4072,152 @@
       }
     },
     {
-      "id": "he-b15530a637c80f196c44a470",
+      "id": "he-b189508bfd8e9da146abb81f",
       "doc_key": [
-        "n-01-faq-dat-lai-mat-khau.md"
+        "n-18-bi-mat-ha-tang-duong-vao-khach-hang-a.md"
       ],
-      "khoa": "noi_bo:faq",
+      "khoa": "khach_hang_a:bi_mat_ha_tang",
       "slots": {
         "subject": [
-          "tài khoản nội bộ"
-        ],
-        "symptom": [
-          "tài khoản bị khóa"
-        ],
-        "condition": [
-          "nhập sai mật khẩu 5 lần liên tiếp"
+          "Khóa SSH quản trị của cụm khách hàng A"
         ],
         "remediation": [
-          "nhờ Tech Support mở khóa"
+          "lưu trong kho khóa Vault"
         ],
-        "time": [
-          "15 phút"
+        "source": [
+          "Sổ tay đường vào hạ tầng khách hàng A"
         ]
       }
     },
     {
-      "id": "he-b5a133f79934e65b1b19864a",
+      "id": "he-b2bb3027ad9f6e73a59a7612",
       "doc_key": [
-        "k1-04-postmortem-inc-1208.md"
+        "k1-02-canh-bao-app01-502.md"
       ],
-      "khoa": "khach_hang_a:postmortem",
+      "khoa": "khach_hang_a:canh_bao",
       "slots": {
         "subject": [
-          "kênh cảnh báo nghiêm trọng"
+          "App01"
+        ],
+        "symptom": [
+          "lưu lượng vượt 5000 req/phút trong 10 phút liên tục"
+        ],
+        "condition": [
+          "lưu lượng vượt 5000 req/phút trong 10 phút liên tục"
+        ],
+        "source": [
+          "cảnh báo 'App01 lưu lượng cao'"
+        ]
+      }
+    },
+    {
+      "id": "he-b2f6f5c53e79d6004ea5507c",
+      "doc_key": [
+        "n-17-cmdb-thiet-bi-mang-van-phong.md"
+      ],
+      "khoa": "noi_bo:cmdb",
+      "slots": {
+        "subject": [
+          "Hệ thống phát sóng không dây"
+        ],
+        "condition": [
+          "gồm 14 điểm phát trải trên ba tầng"
         ],
         "remediation": [
-          "tách khỏi kênh chat chung"
+          "quản lý tập trung bằng bộ điều khiển đặt cùng tủ mạng tầng 3"
+        ]
+      }
+    },
+    {
+      "id": "he-b3413abe522270337c81efa8",
+      "doc_key": [
+        "n-04-sop-tiep-nhan-yeu-cau-ho-tro.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "mức P2"
+        ],
+        "condition": [
+          "dịch vụ suy giảm"
+        ],
+        "source": [
+          "SOP-05"
+        ]
+      }
+    },
+    {
+      "id": "he-b37d957977ae950f25e280e2",
+      "doc_key": [
+        "n-10-tai-lieu-san-pham-cong-noi-bo.md"
+      ],
+      "khoa": "noi_bo:tai_lieu_san_pham",
+      "slots": {
+        "subject": [
+          "cổng nội bộ"
+        ],
+        "condition": [
+          "đăng nhập"
+        ],
+        "remediation": [
+          "dùng chung tài khoản với thư điện tử công ty và với VPN"
+        ]
+      }
+    },
+    {
+      "id": "he-b4c8b3ef7fa82625774b172e",
+      "doc_key": [
+        "k3-06-cmdb-chung-thu-so-khach-hang-b.md"
+      ],
+      "khoa": "khach_hang_b:cmdb",
+      "slots": {
+        "subject": [
+          "bản ghi chứng thư số"
+        ],
+        "condition": [
+          "mọi lần đổi nhóm sở hữu"
+        ],
+        "remediation": [
+          "cập nhật cả trường hộp thư nhận nhắc"
+        ]
+      }
+    },
+    {
+      "id": "he-b5d646c266a9b33f7de942d4",
+      "doc_key": [
+        "n-17-cmdb-thiet-bi-mang-van-phong.md"
+      ],
+      "khoa": "noi_bo:cmdb",
+      "slots": {
+        "subject": [
+          "Bộ chuyển mạch lõi"
+        ],
+        "condition": [
+          "có 48 cổng, phiên bản phần mềm 9.2"
         ],
         "time": [
-          "hạn hoàn thành 15/09"
+          "cửa sổ nâng cấp là 22 giờ ngày thứ Bảy cuối tháng"
+        ]
+      }
+    },
+    {
+      "id": "he-b6307f3d7c61e15f5b05c081",
+      "doc_key": [
+        "n-04-sop-tiep-nhan-yeu-cau-ho-tro.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "yêu cầu hỗ trợ"
+        ],
+        "condition": [
+          "vào hệ thống"
+        ],
+        "remediation": [
+          "qua một cửa duy nhất là Jira nội bộ"
+        ],
+        "source": [
+          "SOP-05"
         ]
       }
     },
@@ -3622,59 +4240,74 @@
       }
     },
     {
-      "id": "he-b92cb5c7250307168cbc231a",
+      "id": "he-b9c86a47adc8e507e5285a6d",
       "doc_key": [
-        "n-17-cmdb-thiet-bi-mang-van-phong.md"
+        "k1-04-postmortem-inc-1208.md"
       ],
-      "khoa": "noi_bo:cmdb",
+      "khoa": "khach_hang_a:postmortem",
       "slots": {
         "subject": [
-          "hệ thống phát sóng không dây"
+          "App01"
         ],
-        "condition": [
-          "gồm 14 điểm phát trải trên ba tầng, quản lý tập trung bằng bộ điều khiển đặt cùng tủ mạng tầng 3"
+        "symptom": [
+          "thời gian phát hiện là 12 phút kể từ khi lỗi 502 bắt đầu, chậm hơn cam kết 5 phút"
+        ],
+        "cause": [
+          "cảnh báo mức nghiêm trọng gửi nhầm vào kênh chat thay vì gọi điện"
         ]
       }
     },
     {
-      "id": "he-ba9f66b73bf8b4bcf5a19836",
+      "id": "he-bb95e82e838f923bf518024f",
       "doc_key": [
-        "n-15-log-tuong-lua-ngay-20-08.md"
+        "k1-03-bao-cao-su-co-inc-1208.md"
       ],
-      "khoa": "noi_bo:log",
+      "khoa": "khach_hang_a:bao_cao_su_co",
       "slots": {
         "subject": [
-          "tường lửa biên"
+          "sự cố INC-1208"
         ],
-        "symptom": [
-          "217 lượt quét cổng liên tiếp từ cùng một nguồn"
+        "condition": [
+          "mức nghiêm trọng P1"
         ],
         "remediation": [
-          "tự động đưa vào danh sách chặn 24 giờ"
-        ],
-        "time": [
-          "20/08 lúc 08:15"
+          "báo cho quản lý dịch vụ của khách hàng A trong vòng một ngày làm việc"
         ]
       }
     },
     {
-      "id": "he-be03620baf8d2ee9f13ef721",
+      "id": "he-bbbda40509f130a998f37fe4",
       "doc_key": [
-        "n-15-log-tuong-lua-ngay-20-08.md"
+        "k1-02-canh-bao-app01-502.md"
       ],
-      "khoa": "noi_bo:log",
+      "khoa": "khach_hang_a:canh_bao",
       "slots": {
         "subject": [
-          "bộ luật tường lửa"
-        ],
-        "symptom": [
-          "được nạp lại theo lịch hằng ngày"
+          "cảnh báo mức cảnh giác"
         ],
         "condition": [
-          "không có luật nào thay đổi so với hôm trước"
+          "mức cảnh giác"
         ],
-        "time": [
-          "20/08 lúc 19:30"
+        "remediation": [
+          "gửi vào kênh chat của nhóm vận hành khách hàng A"
+        ]
+      }
+    },
+    {
+      "id": "he-bdd3def92ffab46228e2d5d4",
+      "doc_key": [
+        "n-02-faq-vpn-cho-nhan-vien-moi.md"
+      ],
+      "khoa": "noi_bo:faq",
+      "slots": {
+        "subject": [
+          "VPN"
+        ],
+        "remediation": [
+          "gửi yêu cầu qua Jira nội bộ với nhãn 'vpn-request'"
+        ],
+        "owner": [
+          "trưởng phòng trực tiếp"
         ]
       }
     },
@@ -3715,86 +4348,83 @@
       }
     },
     {
-      "id": "he-bf2fb7cdf402b065163dad64",
+      "id": "he-bec03bcd5bb9747bcb3513be",
       "doc_key": [
-        "n-06-troubleshooting-may-in-mang.md"
+        "04-sao-luu-du-lieu.txt"
       ],
-      "khoa": "noi_bo:troubleshooting",
+      "khoa": "noi_bo:runbook",
       "slots": {
         "subject": [
-          "lỗi treo hàng đợi"
+          "Bản sao lưu tuần"
         ],
         "condition": [
-          "phần lớn"
+          "chạy sáng Chủ nhật"
         ],
         "remediation": [
-          "xóa hàng đợi in rồi in lại một trang thử"
-        ]
-      }
-    },
-    {
-      "id": "he-bf649ef7fa817e4bd9f208b6",
-      "doc_key": [
-        "k3-04-bao-cao-su-co-inc-1533.md"
-      ],
-      "khoa": "khach_hang_b:bao_cao_su_co",
-      "slots": {
-        "subject": [
-          "cảnh báo hết hạn"
-        ],
-        "cause": [
-          "nhóm này đã bàn giao tên miền cho nhóm vận hành khách hàng B từ ngày 01/08"
-        ],
-        "condition": [
-          "gửi tới hộp thư của nhóm Tích hợp cũ"
+          "giữ 6 tháng"
         ],
         "time": [
-          "từ ngày 27/07"
+          "sáng Chủ nhật"
         ]
       }
     },
     {
-      "id": "he-c0605da39a4b2de7c0d73913",
+      "id": "he-c0b0140564b0d3915fdef906",
       "doc_key": [
-        "k1-01-runbook-app01-khoi-dong-lai.md"
+        "10-so-tay-ha-tang-noi-bo.txt"
       ],
-      "khoa": "khach_hang_a:runbook",
+      "khoa": "noi_bo:bi_mat_ha_tang",
       "slots": {
         "subject": [
-          "tham số giới hạn bộ nhớ PHP-FPM"
-        ],
-        "condition": [
-          "mọi lần chỉnh"
+          "phòng IT"
         ],
         "remediation": [
-          "phải có phiếu thay đổi theo SOP-12, kể cả khi đang xử lý sự cố"
+          "kiểm chứng kết quả xoay vòng"
+        ],
+        "time": [
+          "Mỗi quý"
+        ]
+      }
+    },
+    {
+      "id": "he-c0f562c9c5ac6a7ef5edc5ed",
+      "doc_key": [
+        "k1-07-sop-12-quan-ly-thay-doi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "phiếu thay đổi"
+        ],
+        "condition": [
+          "chạm nhiều dịch vụ"
         ],
         "source": [
           "SOP-12"
+        ],
+        "owner": [
+          "Giám đốc Kỹ thuật"
         ]
       }
     },
     {
-      "id": "he-c0a7e5bd8211925f3dc12f58",
+      "id": "he-c172687bd32d4b5ddac2a95f",
       "doc_key": [
-        "k2-05-cmdb-may-chu-log01.md"
+        "k1-07-sop-12-quan-ly-thay-doi.md"
       ],
-      "khoa": "noi_bo:cmdb",
+      "khoa": "noi_bo:sop",
       "slots": {
         "subject": [
-          "log01"
-        ],
-        "symptom": [
-          "không ghi được nhật ký"
-        ],
-        "cause": [
-          "log01 không ghi được"
+          "thao tác khẩn cấp trong lúc xử lý sự cố"
         ],
         "condition": [
-          "cả bốn dịch vụ coi việc ghi nhật ký là bắt buộc"
+          "trong lúc xử lý sự cố"
         ],
         "remediation": [
-          "cả bốn dịch vụ dừng nhận yêu cầu mới"
+          "không cần phiếu thay đổi trước"
+        ],
+        "source": [
+          "SOP-12"
         ]
       }
     },
@@ -3814,35 +4444,41 @@
       }
     },
     {
-      "id": "he-c20e3a3f1d40692e75957dbd",
+      "id": "he-c35d2e4f9e775e0ea85842f9",
       "doc_key": [
-        "n-07-troubleshooting-email-khong-gui-duoc.md"
+        "04-sao-luu-du-lieu.txt"
       ],
-      "khoa": "noi_bo:troubleshooting",
+      "khoa": "noi_bo:runbook",
       "slots": {
         "subject": [
-          "thư gửi tới một tên miền cụ thể"
+          "bản sao lưu"
         ],
-        "symptom": [
-          "bị trả lại"
+        "condition": [
+          "giữ 30 ngày trên hệ thống lưu trữ riêng"
         ],
         "remediation": [
-          "báo Tech Support kèm nguyên văn thư trả lại, đừng thử gửi lặp lại"
+          "giữ 30 ngày"
         ]
       }
     },
     {
-      "id": "he-c3256e77d682fe8e47ff3e64",
+      "id": "he-c3efd5ed7444c9bc4d0c0642",
       "doc_key": [
-        "n-16-vong-doi-ticket-yeu-cau-cap-quyen.md"
+        "k1-08-troubleshooting-app01-loi-502.md"
       ],
-      "khoa": "noi_bo:vong_doi_ticket",
+      "khoa": "khach_hang_a:troubleshooting",
       "slots": {
         "subject": [
-          "người cấp quyền"
+          "SOP-12"
+        ],
+        "condition": [
+          "mọi thay đổi tham số giới hạn bộ nhớ"
         ],
         "remediation": [
-          "ghi lại vào ticket mức quyền đã cấp và thời hạn hiệu lực trước khi chuyển sang trạng thái chờ xác nhận"
+          "phải có phiếu thay đổi"
+        ],
+        "source": [
+          "Tài liệu này"
         ]
       }
     },
@@ -3862,77 +4498,38 @@
       }
     },
     {
-      "id": "he-c5b5061d2a5d217bd489c072",
+      "id": "he-c60a516a8722e84a4e2329d1",
       "doc_key": [
-        "n-05-sop-ban-giao-ca-truc.md"
+        "n-11-tai-lieu-san-pham-app02-khach-hang-a.md"
       ],
-      "khoa": "noi_bo:sop",
+      "khoa": "khach_hang_a:tai_lieu_san_pham",
       "slots": {
         "subject": [
-          "người bàn giao tài sản sang nhóm khác"
+          "App02"
         ],
         "condition": [
-          "khi bàn giao một tài sản sang nhóm khác"
-        ],
-        "remediation": [
-          "phải cập nhật nhóm sở hữu và hộp thư nhận cảnh báo trong cùng ngày"
+          "màn quản trị đơn hàng của khách hàng A"
         ],
         "source": [
-          "SOP-18"
+          "Tài liệu dịch vụ App02 của khách hàng A"
         ]
       }
     },
     {
-      "id": "he-c67704a1500081ee41f32f34",
+      "id": "he-c7c4de753bc225d29af5d4c4",
       "doc_key": [
-        "n-05-sop-ban-giao-ca-truc.md"
+        "n-02-faq-vpn-cho-nhan-vien-moi.md"
       ],
-      "khoa": "noi_bo:sop",
+      "khoa": "noi_bo:faq",
       "slots": {
         "subject": [
-          "ca trực vận hành"
+          "tài khoản VPN"
         ],
-        "remediation": [
-          "người giao và người nhận phải cùng có mặt trong 15 phút bàn giao"
-        ],
-        "source": [
-          "SOP-18"
-        ],
-        "time": [
-          "08 giờ và 20 giờ hằng ngày"
-        ]
-      }
-    },
-    {
-      "id": "he-c6ee126610ea1e56f6bf1581",
-      "doc_key": [
-        "k2-06-known-issue-xoay-vong-log.md"
-      ],
-      "khoa": "noi_bo:known_issue",
-      "slots": {
-        "subject": [
-          "lỗi KI-014"
-        ],
-        "cause": [
-          "nguyên nhân xa của sự cố INC-1520"
-        ],
-        "source": [
-          "INC-1520"
-        ]
-      }
-    },
-    {
-      "id": "he-c80d66b374d5014c33a79573",
-      "doc_key": [
-        "n-04-sop-tiep-nhan-yeu-cau-ho-tro.md"
-      ],
-      "khoa": "noi_bo:sop",
-      "slots": {
-        "subject": [
-          "mức P2"
+        "symptom": [
+          "thiết bị thứ ba đẩy phiên cũ ra"
         ],
         "condition": [
-          "dịch vụ suy giảm"
+          "mỗi tài khoản dùng tối đa 2 thiết bị cùng lúc"
         ]
       }
     },
@@ -3958,38 +4555,17 @@
       }
     },
     {
-      "id": "he-c99e422855e5516bb6011185",
+      "id": "he-ca31d58cb3d9b565a56fb303",
       "doc_key": [
-        "k2-01-canh-bao-day-o-dia-log01.md"
+        "n-05-sop-ban-giao-ca-truc.md"
       ],
-      "khoa": "noi_bo:canh_bao",
+      "khoa": "noi_bo:sop",
       "slots": {
         "subject": [
-          "máy chủ log01"
-        ],
-        "cause": [
-          "tốc độ ghi nhật ký ở đó cao hơn các máy chủ khác"
+          "nội dung bàn giao"
         ],
         "condition": [
-          "ngưỡng nghiêm trọng hạ xuống 90%"
-        ]
-      }
-    },
-    {
-      "id": "he-c9b9bc29b3a6b07d588d840b",
-      "doc_key": [
-        "n-02-faq-vpn-cho-nhan-vien-moi.md"
-      ],
-      "khoa": "noi_bo:faq",
-      "slots": {
-        "subject": [
-          "phiên đăng nhập VPN"
-        ],
-        "condition": [
-          "từ ngoài Việt Nam"
-        ],
-        "remediation": [
-          "yêu cầu xác thực hai bước mỗi lần"
+          "gồm cảnh báo đang mở, ticket P1 và P2 chưa đóng, thay đổi đang chạy dở và tài sản mới nhận trong ca"
         ]
       }
     },
@@ -4015,77 +4591,65 @@
       }
     },
     {
-      "id": "he-ca47c81a66ccc6091c3f08d1",
+      "id": "he-ca33c529c5e6e7ae5424dfe7",
       "doc_key": [
-        "07-giam-sat-va-canh-bao.txt"
+        "k1-03-bao-cao-su-co-inc-1208.md"
       ],
-      "khoa": "noi_bo:runbook",
+      "khoa": "khach_hang_a:bao_cao_su_co",
       "slots": {
         "subject": [
-          "cảnh báo lặp lại"
-        ],
-        "condition": [
-          "quá 3 lần trong một giờ"
-        ],
-        "remediation": [
-          "nâng lên cho trưởng nhóm Vận hành"
-        ]
-      }
-    },
-    {
-      "id": "he-cc01b8a2674c22a28dcca021",
-      "doc_key": [
-        "n-01-faq-dat-lai-mat-khau.md"
-      ],
-      "khoa": "noi_bo:faq",
-      "slots": {
-        "subject": [
-          "Tech Support"
-        ],
-        "remediation": [
-          "không xem được mật khẩu, chỉ kích hoạt lại đường đặt lại mật khẩu"
-        ]
-      }
-    },
-    {
-      "id": "he-cd86513c9502d688fcd22a7e",
-      "doc_key": [
-        "k2-03-bao-cao-su-co-inc-1520.md"
-      ],
-      "khoa": "noi_bo:bao_cao_su_co",
-      "slots": {
-        "subject": [
-          "phân vùng nhật ký của máy chủ log01"
+          "sự cố INC-1208"
         ],
         "symptom": [
-          "đầy 100% lúc 09 giờ 40"
+          "trang thanh toán App01 ngừng phục vụ 40 phút, ảnh hưởng nhóm khách VIP"
         ],
         "cause": [
-          "tác vụ xoay vòng nhật ký ngừng chạy từ ngày 11/08"
+          "chỉnh sai giới hạn bộ nhớ PHP-FPM"
         ],
         "remediation": [
-          "nén nhật ký cũ hơn 30 ngày, khôi phục tác vụ xoay vòng"
+          "trả giới hạn bộ nhớ PHP-FPM về mức cũ, nạp lại cấu hình theo SOP-12"
+        ],
+        "source": [
+          "INC-1208"
         ],
         "time": [
-          "18/08"
+          "12/08/2026 lúc 09:20"
         ],
         "owner": [
-          "Lê Thị Hà"
+          "Trần Thị Hạnh"
         ]
       }
     },
     {
-      "id": "he-cdf4ddc5f31ea5851d9e205d",
+      "id": "he-cd2b29abe89d1233e3f31cf8",
       "doc_key": [
-        "n-10-tai-lieu-san-pham-cong-noi-bo.md"
+        "k3-06-cmdb-chung-thu-so-khach-hang-b.md"
       ],
-      "khoa": "noi_bo:tai_lieu_san_pham",
+      "khoa": "khach_hang_b:cmdb",
       "slots": {
         "subject": [
-          "phần vận hành kỹ thuật của cổng nội bộ"
+          "bản ghi chứng thư số"
         ],
-        "owner": [
-          "nhóm Hạ tầng"
+        "remediation": [
+          "rà soát"
+        ],
+        "time": [
+          "mỗi tháng"
+        ]
+      }
+    },
+    {
+      "id": "he-cd72b894f5b4dff97b2a0545",
+      "doc_key": [
+        "n-06-troubleshooting-may-in-mang.md"
+      ],
+      "khoa": "noi_bo:troubleshooting",
+      "slots": {
+        "subject": [
+          "hàng đợi in"
+        ],
+        "remediation": [
+          "xóa hàng đợi in trên máy tính rồi in lại một trang thử"
         ]
       }
     },
@@ -4104,27 +4668,6 @@
         ],
         "owner": [
           "nhóm vận hành khách hàng A"
-        ]
-      }
-    },
-    {
-      "id": "he-cfe10bbbe1706cb50cece65f",
-      "doc_key": [
-        "k3-01-tai-lieu-san-pham-cong-thanh-toan-b.md"
-      ],
-      "khoa": "khach_hang_b:tai_lieu_san_pham",
-      "slots": {
-        "subject": [
-          "dịch vụ cổng thanh toán của khách hàng B"
-        ],
-        "condition": [
-          "theo hợp đồng dịch vụ"
-        ],
-        "remediation": [
-          "thời gian đáp ứng sự cố nghiêm trọng"
-        ],
-        "time": [
-          "30 phút"
         ]
       }
     },
@@ -4150,86 +4693,104 @@
       }
     },
     {
-      "id": "he-d1686e5e2e43179e743f693e",
+      "id": "he-d11f107308564354c9961271",
       "doc_key": [
-        "k2-02-runbook-xu-ly-day-o-dia.md"
+        "03-truc-su-co.txt"
       ],
       "khoa": "noi_bo:runbook",
       "slots": {
         "subject": [
-          "nhật ký cũ hơn 30 ngày trên phân vùng log"
+          "lịch trực sự cố"
         ],
         "condition": [
-          "cũ hơn 30 ngày"
+          "xoay vòng theo tuần giữa các kỹ sư vận hành"
         ],
-        "remediation": [
-          "nén ngay mà không cần phê duyệt"
+        "time": [
+          "công bố trên lịch chung của phòng Kỹ thuật vào thứ Sáu tuần trước"
+        ],
+        "owner": [
+          "phòng Kỹ thuật"
         ]
       }
     },
     {
-      "id": "he-d1b6cc33c9a0fbaabc9e2035",
+      "id": "he-d2f48bb8c77d1c49a0f6212c",
       "doc_key": [
         "n-18-bi-mat-ha-tang-duong-vao-khach-hang-a.md"
       ],
       "khoa": "khach_hang_a:bi_mat_ha_tang",
       "slots": {
         "subject": [
-          "khóa SSH quản trị của cụm khách hàng A"
+          "Tài khoản quản trị cơ sở dữ liệu db01"
         ],
-        "condition": [
-          "cấp theo yêu cầu có thời hạn 8 giờ"
+        "remediation": [
+          "được xoay vòng bằng tác vụ tự động của Vault"
         ],
         "source": [
           "Sổ tay đường vào hạ tầng khách hàng A"
         ],
-        "owner": [
-          "trưởng nhóm vận hành khách hàng A"
+        "time": [
+          "mỗi 90 ngày"
         ]
       }
     },
     {
-      "id": "he-d22cc0b5ef34ca9225dce589",
+      "id": "he-d32b34f328682e7acc804c4b",
       "doc_key": [
-        "n-11-tai-lieu-san-pham-app02-khach-hang-a.md"
+        "n-14-canh-bao-tai-cpu-may-chu-web.md"
       ],
-      "khoa": "khach_hang_a:tai_lieu_san_pham",
+      "khoa": "khach_hang_a:canh_bao",
       "slots": {
         "subject": [
-          "App02"
+          "cụm máy chủ web của khách hàng A"
+        ],
+        "symptom": [
+          "cảnh báo 'CPU cao' mức cảnh giác"
         ],
         "condition": [
-          "cửa sổ bảo trì"
+          "tải CPU trung bình vượt 70% trong 15 phút liên tục"
+        ]
+      }
+    },
+    {
+      "id": "he-d34b20f72d6b3f7b73cc86a8",
+      "doc_key": [
+        "k2-01-canh-bao-day-o-dia-log01.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "cảnh báo dung lượng"
+        ],
+        "condition": [
+          "không được tắt tiếng quá 30 phút"
         ],
         "remediation": [
-          "không trùng cửa sổ bảo trì của App01"
-        ],
-        "time": [
-          "22 giờ đến 24 giờ ngày thứ Năm hằng tuần"
+          "phải có phê duyệt của trưởng nhóm Hạ tầng"
         ]
       }
     },
     {
-      "id": "he-d542421a59242e7fccf3c931",
+      "id": "he-d4591b78bd7d2fc63a8ac054",
       "doc_key": [
-        "k3-06-cmdb-chung-thu-so-khach-hang-b.md"
+        "n-03-faq-cong-thanh-toan-khach-hang-a.md"
       ],
-      "khoa": "khach_hang_b:cmdb",
+      "khoa": "khach_hang_a:faq",
       "slots": {
         "subject": [
-          "portal.khachhangb.vn"
+          "trang thanh toán"
         ],
-        "condition": [
-          "dùng chứng thư nội bộ"
+        "symptom": [
+          "chậm vào cuối tháng"
         ],
-        "source": [
-          "Bản ghi CMDB chứng thư số của khách hàng B"
+        "cause": [
+          "lưu lượng cuối tháng cao hơn ngày thường"
         ],
-        "time": [
-          "ngày hết hạn là 02/12"
+        "remediation": [
+          "trả lời khách không nêu số liệu hạ tầng cụ thể"
         ],
         "owner": [
-          "nhóm Hạ tầng"
+          "đội hỗ trợ khách hàng A"
         ]
       }
     },
@@ -4255,6 +4816,45 @@
       }
     },
     {
+      "id": "he-d5b6499536b8a2b6f9e40f12",
+      "doc_key": [
+        "05-bao-cao-su-co-inc-1208.txt"
+      ],
+      "khoa": "noi_bo:bao_cao_su_co",
+      "slots": {
+        "subject": [
+          "dịch vụ"
+        ],
+        "symptom": [
+          "phục hồi lúc 10:00"
+        ],
+        "time": [
+          "10:00"
+        ]
+      }
+    },
+    {
+      "id": "he-d66603b853dc5df6afd556a8",
+      "doc_key": [
+        "k1-06-log-app01-ngay-12-08.md"
+      ],
+      "khoa": "khach_hang_a:log",
+      "slots": {
+        "subject": [
+          "web01"
+        ],
+        "symptom": [
+          "nginx error: upstream sent too big header while reading response header from upstream"
+        ],
+        "source": [
+          "nhật ký máy chủ web01"
+        ],
+        "time": [
+          "12/08/2026 lúc 09:20"
+        ]
+      }
+    },
+    {
       "id": "he-d6aad1aa1999aa8d7eec5fa2",
       "doc_key": [
         "k3-07-vong-doi-ticket-inc-1533.md"
@@ -4276,44 +4876,17 @@
       }
     },
     {
-      "id": "he-d7cf0996bdea9da2a7787101",
+      "id": "he-d845c5f89378116275b14ac2",
       "doc_key": [
-        "n-19-bi-mat-ha-tang-kho-khoa-khach-hang-b.md"
+        "k2-05-cmdb-may-chu-log01.md"
       ],
-      "khoa": "khach_hang_b:bi_mat_ha_tang",
+      "khoa": "noi_bo:cmdb",
       "slots": {
         "subject": [
-          "khóa riêng của mọi chứng thư số thuộc khách hàng B"
+          "cổng nội bộ"
         ],
         "condition": [
-          "lưu trong kho khóa Vault"
-        ],
-        "remediation": [
-          "đường dẫn tách riêng khỏi khóa của khách hàng khác"
-        ],
-        "source": [
-          "Sổ tay kho khóa và chứng thư của khách hàng B"
-        ]
-      }
-    },
-    {
-      "id": "he-d8681956a71b7d623b3f76be",
-      "doc_key": [
-        "10-so-tay-ha-tang-noi-bo.txt"
-      ],
-      "khoa": "noi_bo:bi_mat_ha_tang",
-      "slots": {
-        "subject": [
-          "mật khẩu quản trị cơ sở dữ liệu"
-        ],
-        "remediation": [
-          "xoay vòng bằng tác vụ tự động của Vault"
-        ],
-        "time": [
-          "mỗi 90 ngày"
-        ],
-        "owner": [
-          "phòng IT kiểm chứng kết quả xoay vòng mỗi quý"
+          "ghi nhật ký trực tiếp vào log01"
         ]
       }
     },
@@ -4348,20 +4921,44 @@
       }
     },
     {
-      "id": "he-da7aab86eeb740838fa7337a",
+      "id": "he-d96e8da7ffcd595a99ce2309",
       "doc_key": [
-        "k3-03-canh-bao-chung-thu-sap-het-han.md"
+        "k3-05-postmortem-inc-1533.md"
       ],
-      "khoa": "khach_hang_b:canh_bao",
+      "khoa": "khach_hang_b:postmortem",
       "slots": {
         "subject": [
-          "tên miền pay.khachhangb.vn"
+          "cảnh báo hết hạn chứng thư số"
         ],
         "symptom": [
-          "cảnh báo đã bắn đủ ba lượt từ ngày 27/07"
+          "đều bắn đúng lịch và đều rơi vào một hộp thư không còn ai đọc"
         ],
         "cause": [
-          "gửi tới hộp thư của nhóm Tích hợp cũ"
+          "hộp thư nhận cảnh báo không được cập nhật"
+        ],
+        "condition": [
+          "trước 30 ngày, 14 ngày và 7 ngày"
+        ],
+        "time": [
+          "trước 30 ngày, 14 ngày và 7 ngày"
+        ]
+      }
+    },
+    {
+      "id": "he-d9fb96adbe0b4126108aef8e",
+      "doc_key": [
+        "06-quan-ly-thay-doi.txt"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "triển khai thay đổi"
+        ],
+        "condition": [
+          "ngoài cửa sổ 22 giờ đến 24 giờ các ngày thứ Tư"
+        ],
+        "remediation": [
+          "phải có phê duyệt của Giám đốc Kỹ thuật"
         ]
       }
     },
@@ -4381,56 +4978,83 @@
       }
     },
     {
-      "id": "he-dbe5fc22b2ade682e5338468",
+      "id": "he-db3a42ba20927aa5a1f33b36",
       "doc_key": [
-        "04-sao-luu-du-lieu.txt"
+        "n-05-sop-ban-giao-ca-truc.md"
       ],
-      "khoa": "noi_bo:runbook",
+      "khoa": "noi_bo:sop",
       "slots": {
         "subject": [
-          "phòng IT"
+          "thao tác khẩn cấp"
+        ],
+        "condition": [
+          "không có phiếu trước"
         ],
         "remediation": [
-          "diễn tập khôi phục một bản sao lưu ngẫu nhiên để kiểm chứng bản sao lưu dùng được thật"
-        ],
-        "time": [
-          "Mỗi quý"
+          "phải bổ sung phiếu thay đổi trong 24 giờ kể từ khi dịch vụ phục hồi"
         ]
       }
     },
     {
-      "id": "he-dcaf9e8e840b202eae7a39bb",
+      "id": "he-db9a840276885e89ec02097f",
       "doc_key": [
-        "n-02-faq-vpn-cho-nhan-vien-moi.md"
+        "n-01-faq-dat-lai-mat-khau.md"
       ],
       "khoa": "noi_bo:faq",
       "slots": {
         "subject": [
-          "tài khoản VPN"
+          "VPN"
+        ],
+        "symptom": [
+          "vẫn báo sai"
+        ],
+        "cause": [
+          "mật khẩu VPN dùng chung với tài khoản nội bộ"
         ],
         "condition": [
-          "mỗi tài khoản dùng tối đa 2 thiết bị cùng lúc"
+          "sau khi đổi mật khẩu"
         ],
         "remediation": [
-          "thiết bị thứ ba đẩy phiên cũ ra"
+          "đăng xuất VPN rồi đăng nhập lại"
         ]
       }
     },
     {
-      "id": "he-dd32ed16ec9ac2519405d2a4",
+      "id": "he-dbf25f7a4ab3ee368d0a011e",
       "doc_key": [
-        "n-18-bi-mat-ha-tang-duong-vao-khach-hang-a.md"
+        "n-05-sop-ban-giao-ca-truc.md"
       ],
-      "khoa": "khach_hang_a:bi_mat_ha_tang",
+      "khoa": "noi_bo:sop",
       "slots": {
         "subject": [
-          "dải mạng quản trị của cụm khách hàng A"
+          "ca trực"
+        ],
+        "remediation": [
+          "người giao và người nhận phải cùng có mặt trong 15 phút bàn giao"
+        ],
+        "time": [
+          "08 giờ và 20 giờ hằng ngày"
+        ]
+      }
+    },
+    {
+      "id": "he-dc9ea1f5d232148586ae153a",
+      "doc_key": [
+        "k1-02-canh-bao-app01-502.md"
+      ],
+      "khoa": "khach_hang_a:canh_bao",
+      "slots": {
+        "subject": [
+          "App01"
+        ],
+        "symptom": [
+          "tỷ lệ phản hồi 502 vượt 2% trong cửa sổ 5 phút"
         ],
         "condition": [
-          "10.30.0.0/24, tách khỏi dải mạng dịch vụ và chỉ mở từ máy chủ nhảy"
+          "tỷ lệ lỗi 502 vượt 2% trong cửa sổ 5 phút"
         ],
         "source": [
-          "Sổ tay đường vào hạ tầng khách hàng A"
+          "cảnh báo 'App01 tỷ lệ lỗi 502'"
         ]
       }
     },
@@ -4456,45 +5080,6 @@
       }
     },
     {
-      "id": "he-dd4d16cc37fd2c8eb53bcd45",
-      "doc_key": [
-        "k1-07-sop-12-quan-ly-thay-doi.md"
-      ],
-      "khoa": "noi_bo:sop",
-      "slots": {
-        "subject": [
-          "phiếu thay đổi"
-        ],
-        "source": [
-          "SOP-12"
-        ],
-        "owner": [
-          "trưởng nhóm vận hành của dịch vụ"
-        ]
-      }
-    },
-    {
-      "id": "he-dd59a11152d76a4606e0825c",
-      "doc_key": [
-        "k3-01-tai-lieu-san-pham-cong-thanh-toan-b.md"
-      ],
-      "khoa": "khach_hang_b:tai_lieu_san_pham",
-      "slots": {
-        "subject": [
-          "trình duyệt và ứng dụng đối tác"
-        ],
-        "symptom": [
-          "từ chối kết nối"
-        ],
-        "condition": [
-          "khi chứng thư số của tên miền hết hạn"
-        ],
-        "remediation": [
-          "không có chế độ chạy tạm"
-        ]
-      }
-    },
-    {
       "id": "he-de10202d12585a33d95ce9be",
       "doc_key": [
         "k1-01-runbook-app01-khoi-dong-lai.md"
@@ -4516,59 +5101,23 @@
       }
     },
     {
-      "id": "he-de182dc38657a7cce92b0185",
+      "id": "he-dece495fdb9e10e237ad3dc5",
       "doc_key": [
-        "n-02-faq-vpn-cho-nhan-vien-moi.md"
+        "k1-06-log-app01-ngay-12-08.md"
       ],
-      "khoa": "noi_bo:faq",
+      "khoa": "khach_hang_a:log",
       "slots": {
         "subject": [
-          "dịch vụ nội bộ"
-        ],
-        "symptom": [
-          "chậm hoặc không truy cập được"
+          "nhật ký của web01"
         ],
         "condition": [
-          "dù đã bật VPN"
+          "được giữ 90 ngày"
         ],
         "remediation": [
-          "xem hướng dẫn tự kiểm, làm hết bốn bước rồi mới mở ticket"
-        ]
-      }
-    },
-    {
-      "id": "he-de3338265d5f45416a4c8644",
-      "doc_key": [
-        "n-15-log-tuong-lua-ngay-20-08.md"
-      ],
-      "khoa": "noi_bo:log",
-      "slots": {
-        "subject": [
-          "nhật ký tường lửa"
+          "chuyển sang kho lưu trữ lạnh"
         ],
-        "remediation": [
-          "được giữ theo yêu cầu đối soát an toàn thông tin"
-        ],
-        "time": [
-          "12 tháng"
-        ]
-      }
-    },
-    {
-      "id": "he-df2de04416ebf209d711bb70",
-      "doc_key": [
-        "k2-05-cmdb-may-chu-log01.md"
-      ],
-      "khoa": "noi_bo:cmdb",
-      "slots": {
-        "subject": [
-          "tác vụ xoay vòng nhật ký"
-        ],
-        "remediation": [
-          "kết quả được ghi vào chính log01"
-        ],
-        "time": [
-          "hằng ngày lúc 03 giờ"
+        "source": [
+          "nhật ký máy chủ web01"
         ]
       }
     },
@@ -4591,119 +5140,134 @@
       }
     },
     {
-      "id": "he-e00ac018fda094f0dbb28b61",
+      "id": "he-dfe99c04694a72a992d8ce69",
       "doc_key": [
-        "n-16-vong-doi-ticket-yeu-cau-cap-quyen.md"
+        "k2-06-known-issue-xoay-vong-log.md"
       ],
-      "khoa": "noi_bo:vong_doi_ticket",
+      "khoa": "noi_bo:known_issue",
       "slots": {
         "subject": [
-          "ticket cấp quyền"
+          "tác vụ xoay vòng nhật ký"
+        ],
+        "symptom": [
+          "dừng im lặng khi gặp một file nhật ký đang bị tiến trình khác giữ, và không ghi dòng lỗi nào vào nhật ký hệ thống"
+        ],
+        "cause": [
+          "file nhật ký đang bị tiến trình khác giữ"
         ],
         "condition": [
-          "sau khi có phê duyệt"
+          "từ phiên bản công cụ xoay vòng 3.19"
         ],
         "remediation": [
-          "chuyển cho nhóm quản trị hệ thống tương ứng để cấp quyền"
-        ],
-        "time": [
-          "thời hạn xử lý là 2 ngày làm việc"
-        ]
-      }
-    },
-    {
-      "id": "he-e0c20f6809a9da1f6c6380b2",
-      "doc_key": [
-        "k2-07-troubleshooting-dich-vu-cham.md"
-      ],
-      "khoa": "noi_bo:troubleshooting",
-      "slots": {
-        "subject": [
-          "người dùng"
-        ],
-        "condition": [
-          "chỉ một mình gặp lỗi"
-        ],
-        "remediation": [
-          "xóa bộ nhớ đệm trình duyệt rồi đăng nhập lại trước khi mở ticket"
-        ]
-      }
-    },
-    {
-      "id": "he-e1577f2b8c55035a5b073eb9",
-      "doc_key": [
-        "n-19-bi-mat-ha-tang-kho-khoa-khach-hang-b.md"
-      ],
-      "khoa": "khach_hang_b:bi_mat_ha_tang",
-      "slots": {
-        "subject": [
-          "truy cập quản trị vào cụm máy chủ của khách hàng B"
-        ],
-        "condition": [
-          "đi qua máy chủ nhảy jump-b.it.local, dải mạng quản trị là 10.40.0.0/24"
+          "chạy tay lệnh xoay vòng mỗi sáng thứ Hai và kiểm dấu thời gian của file nhật ký mới nhất"
         ],
         "source": [
-          "Sổ tay kho khóa và chứng thư của khách hàng B"
+          "KI-014"
+        ],
+        "time": [
+          "chưa có bản vá của nhà phát triển tính tới ngày 20/08"
         ]
       }
     },
     {
-      "id": "he-e1912ab49bee09934d2e7524",
+      "id": "he-e04b174aca2a50ace8588d00",
       "doc_key": [
-        "k2-02-runbook-xu-ly-day-o-dia.md"
+        "k2-01-canh-bao-day-o-dia-log01.md"
+      ],
+      "khoa": "noi_bo:canh_bao",
+      "slots": {
+        "subject": [
+          "máy chủ log01"
+        ],
+        "symptom": [
+          "cảnh báo mức nghiêm trọng"
+        ],
+        "cause": [
+          "tốc độ ghi nhật ký ở đó cao hơn các máy chủ khác"
+        ],
+        "condition": [
+          "phân vùng vượt 90% dung lượng"
+        ]
+      }
+    },
+    {
+      "id": "he-e0c242193b108af757cf5930",
+      "doc_key": [
+        "n-17-cmdb-thiet-bi-mang-van-phong.md"
+      ],
+      "khoa": "noi_bo:cmdb",
+      "slots": {
+        "subject": [
+          "Tường lửa biên"
+        ],
+        "condition": [
+          "chạy chế độ dự phòng nóng"
+        ],
+        "source": [
+          "Bản ghi CMDB thiết bị mạng của văn phòng"
+        ],
+        "owner": [
+          "nhóm Hạ tầng"
+        ]
+      }
+    },
+    {
+      "id": "he-e115b0837f392d90a6e97d70",
+      "doc_key": [
+        "k3-01-tai-lieu-san-pham-cong-thanh-toan-b.md"
+      ],
+      "khoa": "khach_hang_b:tai_lieu_san_pham",
+      "slots": {
+        "subject": [
+          "dịch vụ"
+        ],
+        "condition": [
+          "cửa sổ bảo trì thỏa thuận là 01 giờ đến 03 giờ ngày Chủ nhật đầu tháng"
+        ],
+        "time": [
+          "hoạt động 24 giờ mỗi ngày"
+        ]
+      }
+    },
+    {
+      "id": "he-e31d965433c8129f51b68f5a",
+      "doc_key": [
+        "k1-07-sop-12-quan-ly-thay-doi.md"
+      ],
+      "khoa": "noi_bo:sop",
+      "slots": {
+        "subject": [
+          "thay đổi cấu hình trên hệ thống sản xuất"
+        ],
+        "condition": [
+          "Mọi thay đổi cấu hình trên hệ thống sản xuất"
+        ],
+        "remediation": [
+          "phải có phiếu thay đổi được phê duyệt trước 24 giờ"
+        ],
+        "source": [
+          "SOP-12"
+        ]
+      }
+    },
+    {
+      "id": "he-e5520279187441957b305ec3",
+      "doc_key": [
+        "04-sao-luu-du-lieu.txt"
       ],
       "khoa": "noi_bo:runbook",
       "slots": {
         "subject": [
-          "nhật ký cũ hơn 90 ngày"
+          "Yêu cầu khôi phục dữ liệu"
         ],
         "condition": [
-          "cũ hơn 90 ngày"
+          "phải do trưởng bộ phận sở hữu dữ liệu gửi qua Jira"
         ],
         "remediation": [
-          "xóa sau khi đã chuyển sang kho lưu trữ lạnh"
+          "gửi qua Jira"
         ],
         "owner": [
-          "kỹ sư hạ tầng"
-        ]
-      }
-    },
-    {
-      "id": "he-e2779a8d10fcc397970d5267",
-      "doc_key": [
-        "k3-05-postmortem-inc-1533.md"
-      ],
-      "khoa": "khach_hang_b:postmortem",
-      "slots": {
-        "subject": [
-          "cảnh báo chứng thư số"
-        ],
-        "symptom": [
-          "bắn đúng lịch nhưng rơi vào hộp thư không còn ai đọc"
-        ],
-        "cause": [
-          "hộp thư nhận cảnh báo không được cập nhật trong bản ghi CMDB"
-        ],
-        "condition": [
-          "trước 30 ngày, 14 ngày và 7 ngày"
-        ]
-      }
-    },
-    {
-      "id": "he-e2fcf6d7d342560748f71ee4",
-      "doc_key": [
-        "k2-04-vong-doi-ticket-inc-1520.md"
-      ],
-      "khoa": "noi_bo:vong_doi_ticket",
-      "slots": {
-        "subject": [
-          "ticket P1"
-        ],
-        "condition": [
-          "đóng ticket"
-        ],
-        "remediation": [
-          "chỉ được đóng sau khi báo cáo sự cố đã nộp, hạn nộp là 24 giờ kể từ khi dịch vụ phục hồi"
+          "trưởng bộ phận sở hữu dữ liệu"
         ]
       }
     },
@@ -4726,28 +5290,7 @@
       }
     },
     {
-      "id": "he-e5b14d0195db5cb1df233ea2",
-      "doc_key": [
-        "k3-06-cmdb-chung-thu-so-khach-hang-b.md"
-      ],
-      "khoa": "khach_hang_b:cmdb",
-      "slots": {
-        "subject": [
-          "pay.khachhangb.vn"
-        ],
-        "remediation": [
-          "cập nhật trường nhóm sở hữu thành nhóm vận hành khách hàng B"
-        ],
-        "time": [
-          "ngày 26/08"
-        ],
-        "owner": [
-          "nhóm vận hành khách hàng B"
-        ]
-      }
-    },
-    {
-      "id": "he-e66121bf1c81341da2bd22fd",
+      "id": "he-e605a862d1db1bfc56e36319",
       "doc_key": [
         "k3-01-tai-lieu-san-pham-cong-thanh-toan-b.md"
       ],
@@ -4756,32 +5299,26 @@
         "subject": [
           "mọi thay đổi chạm cổng thanh toán của khách hàng B"
         ],
-        "condition": [
-          "phải báo trước cho đầu mối kỹ thuật của khách hàng"
-        ],
-        "time": [
-          "3 ngày làm việc"
+        "remediation": [
+          "phải báo trước cho đầu mối kỹ thuật của khách hàng 3 ngày làm việc"
         ]
       }
     },
     {
-      "id": "he-e69bf4f6acbf7ffe7fa94983",
+      "id": "he-e6867a8192492e4e8d4660ce",
       "doc_key": [
-        "k1-07-sop-12-quan-ly-thay-doi.md"
+        "k2-04-vong-doi-ticket-inc-1520.md"
       ],
-      "khoa": "noi_bo:sop",
+      "khoa": "noi_bo:vong_doi_ticket",
       "slots": {
         "subject": [
-          "thao tác khẩn cấp không có phiếu trước"
+          "ticket INC-1520"
         ],
-        "condition": [
-          "trong 24 giờ kể từ khi dịch vụ phục hồi"
+        "time": [
+          "09:55"
         ],
-        "remediation": [
-          "phải bổ sung phiếu thay đổi"
-        ],
-        "source": [
-          "SOP-12"
+        "owner": [
+          "Lê Thị Hà"
         ]
       }
     },
@@ -4810,20 +5347,38 @@
       }
     },
     {
-      "id": "he-e754798a15fee3ea623ba936",
+      "id": "he-e7f75afee47cef2e1769ab76",
       "doc_key": [
-        "n-12-runbook-sao-luu-co-so-du-lieu.md"
+        "k2-05-cmdb-may-chu-log01.md"
       ],
-      "khoa": "noi_bo:runbook",
+      "khoa": "noi_bo:cmdb",
       "slots": {
         "subject": [
-          "diễn tập phục hồi"
+          "Jira nội bộ"
         ],
         "condition": [
-          "mỗi quý"
+          "ghi nhật ký trực tiếp vào log01"
+        ]
+      }
+    },
+    {
+      "id": "he-e8e7cfae05747432b71214e0",
+      "doc_key": [
+        "k3-05-postmortem-inc-1533.md"
+      ],
+      "khoa": "khach_hang_b:postmortem",
+      "slots": {
+        "subject": [
+          "cam kết thời gian sẵn sàng 99,5%"
         ],
-        "remediation": [
-          "phục hồi ít nhất một cơ sở dữ liệu trên môi trường thử nghiệm và ghi kết quả vào sổ diễn tập"
+        "symptom": [
+          "vượt cam kết"
+        ],
+        "cause": [
+          "gián đoạn 2 giờ 10 phút"
+        ],
+        "condition": [
+          "tháng 08"
         ]
       }
     },
@@ -4842,6 +5397,24 @@
         ],
         "remediation": [
           "được làm trước, nhưng phải bổ sung phiếu thay đổi trong 24 giờ kể từ khi dịch vụ phục hồi"
+        ]
+      }
+    },
+    {
+      "id": "he-e9497f3a84867f1410eeaa02",
+      "doc_key": [
+        "k2-04-vong-doi-ticket-inc-1520.md"
+      ],
+      "khoa": "noi_bo:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "ticket INC-1520"
+        ],
+        "remediation": [
+          "được người mở xác nhận đóng"
+        ],
+        "time": [
+          "11:40"
         ]
       }
     },
@@ -4882,42 +5455,6 @@
       }
     },
     {
-      "id": "he-e9c24b4e6f191ab82a268707",
-      "doc_key": [
-        "n-03-faq-cong-thanh-toan-khach-hang-a.md"
-      ],
-      "khoa": "khach_hang_a:faq",
-      "slots": {
-        "subject": [
-          "đội hỗ trợ"
-        ],
-        "condition": [
-          "khi khách hỏi về nhật ký máy chủ"
-        ],
-        "remediation": [
-          "không được xem nhật ký máy chủ, chỉ tra được trạng thái giao dịch trên màn quản trị đơn hàng"
-        ]
-      }
-    },
-    {
-      "id": "he-e9c398bd35205202517ab683",
-      "doc_key": [
-        "k1-06-log-app01-ngay-12-08.md"
-      ],
-      "khoa": "khach_hang_a:log",
-      "slots": {
-        "subject": [
-          "web01"
-        ],
-        "symptom": [
-          "nginx error: upstream sent too big header while reading response header from upstream, client tới trang thanh toán"
-        ],
-        "time": [
-          "12/08/2026 09:20"
-        ]
-      }
-    },
-    {
       "id": "he-e9fdb4d9506b59f1419e97fe",
       "doc_key": [
         "k3-07-vong-doi-ticket-inc-1533.md"
@@ -4942,20 +5479,26 @@
       }
     },
     {
-      "id": "he-ed5c53664d12c9aadf78e09d",
+      "id": "he-eb5ffa8b46b631642387b098",
       "doc_key": [
-        "k1-07-sop-12-quan-ly-thay-doi.md"
+        "n-04-sop-tiep-nhan-yeu-cau-ho-tro.md"
       ],
       "khoa": "noi_bo:sop",
       "slots": {
         "subject": [
-          "SOP-12"
+          "trực ban Tech Support"
         ],
         "condition": [
-          "mọi dịch vụ nội bộ và mọi dịch vụ chạy cho khách hàng, không có ngoại lệ theo khách hàng"
+          "kể từ khi ticket được tạo"
         ],
         "remediation": [
-          "áp dụng"
+          "phân loại mức ưu tiên"
+        ],
+        "source": [
+          "SOP-05"
+        ],
+        "time": [
+          "trong 15 phút"
         ]
       }
     },
@@ -4971,6 +5514,27 @@
         ],
         "remediation": [
           "máy chủ ứng dụng trước, máy chủ cơ sở dữ liệu sau, không đảo thứ tự kể cả khi bản vá cơ sở dữ liệu nhỏ hơn"
+        ]
+      }
+    },
+    {
+      "id": "he-ee6b80846a5dc3f3b8769a98",
+      "doc_key": [
+        "k2-04-vong-doi-ticket-inc-1520.md"
+      ],
+      "khoa": "noi_bo:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "ticket P1"
+        ],
+        "condition": [
+          "chỉ được đóng sau khi báo cáo sự cố đã nộp"
+        ],
+        "remediation": [
+          "nộp báo cáo sự cố"
+        ],
+        "time": [
+          "hạn nộp là 24 giờ kể từ khi dịch vụ phục hồi"
         ]
       }
     },
@@ -4993,122 +5557,89 @@
       }
     },
     {
-      "id": "he-ee7b90b307bb481e5b969079",
+      "id": "he-f1120d175b96dabbb561d346",
       "doc_key": [
-        "k2-02-runbook-xu-ly-day-o-dia.md"
+        "k2-05-cmdb-may-chu-log01.md"
       ],
-      "khoa": "noi_bo:runbook",
+      "khoa": "noi_bo:cmdb",
       "slots": {
         "subject": [
-          "file thuộc thư mục cơ sở dữ liệu"
-        ],
-        "condition": [
-          "bất kỳ tình huống nào, kể cả khi phân vùng đã đầy 100%"
-        ],
-        "remediation": [
-          "không được xóa"
-        ]
-      }
-    },
-    {
-      "id": "he-f0388c55e43fa48449dd9da5",
-      "doc_key": [
-        "02-vpn-va-mat-khau.txt"
-      ],
-      "khoa": "noi_bo:runbook",
-      "slots": {
-        "subject": [
-          "tài khoản VPN của nhân viên nghỉ việc"
-        ],
-        "condition": [
-          "nghỉ việc"
-        ],
-        "remediation": [
-          "bị thu hồi VPN ngay trong ngày làm việc cuối cùng, do phòng IT thực hiện theo danh sách từ phòng Nhân sự"
+          "log01"
         ],
         "owner": [
-          "phòng IT"
+          "nhóm Hạ tầng"
         ]
       }
     },
     {
-      "id": "he-f14dde02e0b067e5248c8a02",
+      "id": "he-f2b937d6458622436a6af09c",
       "doc_key": [
-        "k1-04-postmortem-inc-1208.md"
+        "k1-08-troubleshooting-app01-loi-502.md"
       ],
-      "khoa": "khach_hang_a:postmortem",
+      "khoa": "khach_hang_a:troubleshooting",
       "slots": {
         "subject": [
-          "sự cố INC-1208"
+          "App01"
         ],
         "remediation": [
-          "phục hồi dịch vụ"
+          "ghi mốc giờ quan sát được rồi gửi kèm khi mở phiếu hỗ trợ"
+        ],
+        "source": [
+          "Hướng dẫn tự kiểm tra"
+        ]
+      }
+    },
+    {
+      "id": "he-f35e1840f92c35619b2bbbac",
+      "doc_key": [
+        "k2-04-vong-doi-ticket-inc-1520.md"
+      ],
+      "khoa": "noi_bo:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "ticket INC-1520"
+        ],
+        "condition": [
+          "mức ưu tiên P1"
         ],
         "time": [
-          "12/08/2026 từ 09:20 đến 10:00"
+          "trong 4 phút"
         ],
         "owner": [
-          "Trần Thị Hạnh"
+          "trực ban Tech Support"
         ]
       }
     },
     {
-      "id": "he-f1f782386066b49cf5b996e1",
+      "id": "he-f441870a3aa4ebccfeebd219",
       "doc_key": [
         "n-12-runbook-sao-luu-co-so-du-lieu.md"
       ],
       "khoa": "noi_bo:runbook",
       "slots": {
         "subject": [
-          "người vận hành"
+          "phục hồi trên môi trường sản xuất"
         ],
         "condition": [
-          "nếu bản sao lưu gần nhất hỏng"
-        ],
-        "remediation": [
-          "dừng lại và báo ngay thay vì thử phục hồi từ bản cũ hơn mà không thông báo"
+          "chỉ chạy khi có phê duyệt của Giám đốc Kỹ thuật và có mặt hai người, một thao tác một soát lại"
         ]
       }
     },
     {
-      "id": "he-f44c2ffec52c3d817c7777e1",
+      "id": "he-f48e0cb45faae37f68c7226c",
       "doc_key": [
         "n-17-cmdb-thiet-bi-mang-van-phong.md"
       ],
       "khoa": "noi_bo:cmdb",
       "slots": {
         "subject": [
-          "bộ chuyển mạch lõi"
+          "Đường truyền Internet chính và đường dự phòng"
         ],
         "condition": [
-          "có 48 cổng, phiên bản phần mềm 9.2"
-        ],
-        "time": [
-          "cửa sổ nâng cấp là 22 giờ ngày thứ Bảy cuối tháng"
-        ]
-      }
-    },
-    {
-      "id": "he-f4e51ae84e8d24a06ffb5190",
-      "doc_key": [
-        "n-15-log-tuong-lua-ngay-20-08.md"
-      ],
-      "khoa": "noi_bo:log",
-      "slots": {
-        "subject": [
-          "tường lửa biên"
-        ],
-        "symptom": [
-          "yêu cầu ra ngoài tới một tên miền nằm trong danh sách chặn"
-        ],
-        "cause": [
-          "theo chính sách sử dụng Internet"
+          "thuộc hai nhà cung cấp khác nhau"
         ],
         "remediation": [
-          "firewall deny"
-        ],
-        "time": [
-          "20/08 lúc 15:47"
+          "tự chuyển đổi trong 30 giây"
         ]
       }
     },
@@ -5155,83 +5686,122 @@
       }
     },
     {
-      "id": "he-f7d4061817c1e0f3ed3cb7be",
+      "id": "he-f90133119eadc190b483dd72",
       "doc_key": [
-        "k3-02-runbook-gia-han-chung-thu-so.md"
+        "k3-04-bao-cao-su-co-inc-1533.md"
       ],
-      "khoa": "khach_hang_b:runbook",
+      "khoa": "khach_hang_b:bao_cao_su_co",
       "slots": {
         "subject": [
-          "người bàn giao"
-        ],
-        "condition": [
-          "khi một tên miền đổi nhóm sở hữu"
-        ],
-        "remediation": [
-          "phải cập nhật hộp thư nhận nhắc trong cùng ngày bàn giao"
-        ]
-      }
-    },
-    {
-      "id": "he-fa250d5623c01ab91ac97556",
-      "doc_key": [
-        "05-bao-cao-su-co-inc-1208.txt"
-      ],
-      "khoa": "noi_bo:bao_cao_su_co",
-      "slots": {
-        "subject": [
-          "dịch vụ"
+          "trình duyệt và ứng dụng đối tác"
         ],
         "symptom": [
-          "phục hồi"
+          "báo lỗi chứng thư không hợp lệ"
         ],
-        "remediation": [
-          "trả giới hạn bộ nhớ PHP-FPM về mức cũ rồi nạp lại cấu hình theo SOP-12"
-        ],
-        "time": [
-          "lúc 10:00"
-        ]
-      }
-    },
-    {
-      "id": "he-fb0d8661c1bd9d860c24de78",
-      "doc_key": [
-        "k1-02-canh-bao-app01-502.md"
-      ],
-      "khoa": "khach_hang_a:canh_bao",
-      "slots": {
-        "subject": [
-          "hệ giám sát"
-        ],
-        "remediation": [
-          "giữ lịch sử cảnh báo 180 ngày"
+        "condition": [
+          "trong khi máy chủ và cơ sở dữ liệu đều bình thường"
         ],
         "source": [
-          "Nginx"
-        ],
-        "time": [
-          "mỗi 30 giây"
+          "INC-1533"
         ]
       }
     },
     {
-      "id": "he-fb7ebb5210ad5afce1c9498f",
+      "id": "he-fa53ebf055a948b790eac8ec",
       "doc_key": [
-        "n-05-sop-ban-giao-ca-truc.md"
+        "n-10-tai-lieu-san-pham-cong-noi-bo.md"
+      ],
+      "khoa": "noi_bo:tai_lieu_san_pham",
+      "slots": {
+        "subject": [
+          "cổng nội bộ"
+        ],
+        "condition": [
+          "chủ sở hữu sản phẩm"
+        ],
+        "owner": [
+          "phòng Hành chính"
+        ]
+      }
+    },
+    {
+      "id": "he-fa5e6788860589345ce2422c",
+      "doc_key": [
+        "07-giam-sat-va-canh-bao.txt"
+      ],
+      "khoa": "noi_bo:runbook",
+      "slots": {
+        "subject": [
+          "Người trực"
+        ],
+        "remediation": [
+          "phải xác nhận cảnh báo trên Zabbix rồi ghi hướng xử lý vào kênh Slack"
+        ]
+      }
+    },
+    {
+      "id": "he-faf7e2ef4aa330b017d03858",
+      "doc_key": [
+        "n-10-tai-lieu-san-pham-cong-noi-bo.md"
+      ],
+      "khoa": "noi_bo:tai_lieu_san_pham",
+      "slots": {
+        "subject": [
+          "cổng nội bộ"
+        ],
+        "symptom": [
+          "ghi lại mọi phiên đăng nhập"
+        ],
+        "cause": [
+          "để phục vụ đối soát"
+        ],
+        "source": [
+          "hệ nhật ký tập trung"
+        ]
+      }
+    },
+    {
+      "id": "he-fb857a6435a4be698a86583e",
+      "doc_key": [
+        "n-04-sop-tiep-nhan-yeu-cau-ho-tro.md"
       ],
       "khoa": "noi_bo:sop",
       "slots": {
         "subject": [
-          "nội dung bàn giao"
+          "yêu cầu hỗ trợ"
         ],
         "condition": [
-          "ca trực"
+          "gửi bằng thư điện tử hay tin nhắn"
         ],
         "remediation": [
-          "gồm cảnh báo đang mở, ticket P1 và P2 chưa đóng, thay đổi đang chạy dở và tài sản mới nhận trong ca"
+          "được trực ban tạo lại thành ticket"
         ],
         "source": [
-          "SOP-18"
+          "SOP-05"
+        ]
+      }
+    },
+    {
+      "id": "he-fc374ddab55ecbffb7bc0980",
+      "doc_key": [
+        "k2-04-vong-doi-ticket-inc-1520.md"
+      ],
+      "khoa": "noi_bo:vong_doi_ticket",
+      "slots": {
+        "subject": [
+          "ticket INC-1520"
+        ],
+        "symptom": [
+          "disk-full"
+        ],
+        "source": [
+          "hệ giám sát"
+        ],
+        "time": [
+          "09:42 ngày 18/08"
+        ],
+        "owner": [
+          "hệ giám sát"
         ]
       }
     }

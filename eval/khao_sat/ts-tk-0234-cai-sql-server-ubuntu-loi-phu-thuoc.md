@@ -14,8 +14,8 @@ content_type: vong_doi_ticket
 | Dịch vụ | Cloud Server |
 | Mức ưu tiên | Thấp |
 | Người tiếp nhận | NV24 |
-| Mở lúc | 18/10/2026 14:25 |
-| Đóng lúc | 18/10/2026 16:00 |
+| Mở lúc | 30/08/2026 14:25 |
+| Đóng lúc | 30/08/2026 16:00 |
 
 ## Mô tả từ khách hàng
 Cài SQL Server theo tài liệu, bước cài gói báo lỗi không tìm được gói phụ thuộc.
