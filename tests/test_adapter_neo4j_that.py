@@ -594,7 +594,7 @@ def test_trich_dan_cua_tren_neo4j_that(khong_gian, policy, bang):
         assert thay[he_moi] == (oracle.khoa_ky_vong(he1["scope"], he1["content_type"]), ())
 
 
-def test_hyperedge_ke_can_tren_neo4j_that(khong_gian, policy):
+def test_hyperedge_ke_can_tren_neo4j_that(khong_gian, policy, bang):
     """Story 5.2: pha một của vùng cấp chạy được trên Neo4j thật, đúng ngữ nghĩa.
 
     Pattern hai cạnh `(g)-[r1]-(e)-[r2]-(h)` với năm mệnh đề lọc và
@@ -624,9 +624,17 @@ def test_hyperedge_ke_can_tren_neo4j_that(khong_gian, policy):
             return ra
 
     ra = asyncio.run(chay())
-    assert ra["ts_tu_he2"] == (he1,)
-    assert ra["ts_tu_he3"] == () and ra["ts_ca_hai"] == ()
-    assert ra["dev_tu_he1"] == (he2,) and ra["dev_tu_he3"] == ()
+
+    def ky_vong(ten_vai, *goc):
+        return {id_hyperedge(THEO_ID[i]) for i in oracle.ke_can_ky_vong(bang, ten_vai, HYPEREDGES, list(goc))}
+
+    # Kỳ vọng suy từ oracle, không chép tay, để bản song sinh trên driver giả
+    # và bản này không trôi nhau (khoản ledger 2.12 về test marker).
+    assert set(ra["ts_tu_he2"]) == ky_vong("tech_support", "HE-02") == {he1}
+    assert set(ra["ts_tu_he3"]) == ky_vong("tech_support", "HE-03") == set()
+    assert set(ra["ts_ca_hai"]) == ky_vong("tech_support", "HE-02", "HE-01") == set()
+    assert set(ra["dev_tu_he1"]) == ky_vong("devops", "HE-01") == {he2}
+    assert set(ra["dev_tu_he3"]) == ky_vong("devops", "HE-03") == set()
 
 
 def test_do_thi_cua_tren_neo4j_that(khong_gian, policy, bang):

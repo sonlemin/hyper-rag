@@ -308,6 +308,9 @@ def test_vung_k1_tren_m1_he01_chung_app01_roi_o_hai_bo_loc(workspace_dir, khong_
     driver.xoa_nhat_ky()
     tho = _ke_can(engine, ctx, [HE02])
     assert tho == (HE01,), "HE-01 và HE-02 chung subject App01; HE-03/HE-04 rời"
+    # Cùng oracle với ca Neo4j thật (`tests/test_adapter_neo4j_that.py`): một
+    # nguồn kỳ vọng cho hai bản, không chép tay hai lần.
+    assert set(tho) == _ke_can_ky_vong(bang, "tech_support", "HE-02")
     cau = driver.cac_cau_doc()
     assert [lg.loai for lg in cau] == ["doc:hyperedge_ke_can"]
     canh_moi_bien_deu_bi_loc(cau[0].cypher)
@@ -330,17 +333,24 @@ def test_vung_k1_tren_m1_he01_chung_app01_roi_o_hai_bo_loc(workspace_dir, khong_
     assert engine.so_audit.cac_su_kien(EVENT_LLM_COST) == [] and engine.so_audit.cac_su_kien(EVENT_EMBEDDING_COST) == []
 
 
-def test_ke_can_khong_tra_goc_va_hyperedge_ngoai_quyen_vang(workspace_dir, khong_gian, policy):
+def _ke_can_ky_vong(bang, ten_vai, *goc) -> set[str]:
+    return {ten_hyperedge(THEO_ID[i]) for i in oracle.ke_can_ky_vong(bang, ten_vai, HYPEREDGES, list(goc))}
+
+
+def test_ke_can_khong_tra_goc_va_hyperedge_ngoai_quyen_vang(workspace_dir, khong_gian, policy, bang):
     """HE-03 (L0 với tech_support) không bao giờ có mặt; id vào không có trong kết quả; ngữ cảnh hệ thống bị từ chối."""
     from adapters.do_thi import DoThiNgoaiQuyen
 
     engine, *_ = _engine(workspace_dir, khong_gian, policy)
     ts = vai(policy, "tech_support", khong_gian)
-    assert _ke_can(engine, ts, [HE02, HE01]) == ()
+    assert _ke_can(engine, ts, [HE02, HE01]) == () and _ke_can_ky_vong(bang, "tech_support", "HE-02", "HE-01") == set()
     assert _ke_can(engine, ts, [HE03]) == () and _ke_can(engine, ts, ["HE-KHONG-CO"]) == ()
+    assert _ke_can_ky_vong(bang, "tech_support", "HE-03") == set()
     # devops thấy cả bốn: từ HE-01 tới HE-02 và ngược lại; HE-03/HE-04 không chung entity với ai.
     dev = vai(policy, "devops", khong_gian)
     assert _ke_can(engine, dev, [HE01]) == (HE02,) and _ke_can(engine, dev, [HE03]) == ()
+    assert set(_ke_can(engine, dev, [HE01])) == _ke_can_ky_vong(bang, "devops", "HE-01")
+    assert _ke_can_ky_vong(bang, "devops", "HE-03") == set()
     assert _vung(engine, ts, [HE03], 1) == {}, "gốc vô hình: vùng rỗng, không lỗi"
     with pytest.raises((DoThiNgoaiQuyen, TrichDanNgoaiQuyen)):
         _ke_can(engine, ngu_canh_ingest(khong_gian, policy), [HE02])

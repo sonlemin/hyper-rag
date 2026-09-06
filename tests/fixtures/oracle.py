@@ -113,6 +113,29 @@ def hyperedge_thay_duoc(bang: dict, vai: str, hyperedges) -> list[str]:
     ]
 
 
+def ke_can_ky_vong(bang: dict, vai: str, hyperedges, goc: list[str]) -> set[str]:
+    """Id fixture của hyperedge kề cận một bước hyperedge với `goc`, dưới vai (story 5.2).
+
+    Kề cận là chung ít nhất một giá trị slot (một entity) với một gốc; gốc phải
+    là hyperedge vai thấy, lân cận cũng vậy, và id vào không có trong kết quả.
+    Đây là oracle chung cho ca driver giả (`tests/test_break_glass_duyet.py`) và
+    ca Neo4j thật (`tests/test_adapter_neo4j_that.py`), để kỳ vọng không phải
+    hai bản chép tay (khoản ledger 2.12 về test marker).
+    """
+    thay = set(hyperedge_thay_duoc(bang, vai, hyperedges))
+    theo_id = {he["id"]: he for he in hyperedges}
+    gia_tri_goc = {
+        v for g in goc if g in thay for v in theo_id[g]["slots"].values()
+    }
+    return {
+        he["id"]
+        for he in hyperedges
+        if he["id"] in thay
+        and he["id"] not in goc
+        and gia_tri_goc & set(he["slots"].values())
+    }
+
+
 def slot_phai_che(bang: dict, vai: str, hyperedge) -> set[str]:
     """Tập slot phải che trên một hyperedge cụ thể với một vai.
 
