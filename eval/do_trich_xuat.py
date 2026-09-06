@@ -88,7 +88,7 @@ from eval.bo_vang import BoVangKhongHopLe, doc_bo_vang
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 THU_MUC_KET_QUA: Path = Path(__file__).resolve().parent / "ket_qua_do"
-POLICY_MAC_DINH: Path = REPO_ROOT / "config" / "policy-toi-gian.yaml"
+POLICY_MAC_DINH: Path = REPO_ROOT / "config" / "policy-day-du.yaml"
 
 VERSION_KET_QUA: int = 1
 DUOI_FILE: str = ".json"

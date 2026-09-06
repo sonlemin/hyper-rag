@@ -1,0 +1,87 @@
+# Cấu hình 3 của FR-28 và **bảng vận hành mặc định**: L0/L1/L2 đầy đủ (AD-4, AD-5, AD-6).
+#
+# Story 1.2 mở file này với đúng 3 loại nội dung (tên cũ `policy-toi-gian.yaml`);
+# story 3.2 khai đủ **13 loại có hạng** theo bản đồ ACL A4 của PRD addendum.
+# Ba cấu hình đo còn lại sinh ra từ chính bảng này bằng một phép biến đổi khai ở
+# đầu mỗi file, nên đây là bảng gốc: sửa một mức ở đây là phải sửa ba file kia.
+#
+# **Vì sao khai đủ 13 loại thay vì để mặc định L0 ngầm.** `RolePolicy.level` trả
+# L0 cho loại chưa khai, nên mức *thực tế* của một vai luôn phủ đủ bảng hạng.
+# Kiểm đơn điệu chỉ trên loại đã khai thì bỏ sót đúng ca validator sinh ra để
+# bắt: một bảng khai `cmdb: L2` mà bỏ `faq` là fail-open và đọc như fail-closed.
+# Khai đủ biến mặc định ngầm thành khẳng định tường minh, và validator đơn điệu
+# của AD-5 mới có 13 mắt để chấm thay vì 3.
+#
+# scopes        - các scope tài liệu mà vai chạm tới (thành phần trái của khóa lọc).
+#                 devops chạm cả tri thức nội bộ lẫn hồ sơ khách hàng A; tech_support
+#                 không chạm scope khách hàng, đó là biên cách ly của RT-01.
+# disclosure    - loại nội dung -> mức tiết lộ, khai đủ 13 loại của
+#                 `config/hang-do-nhay.yaml`, viết theo thứ tự hạng tăng dần để
+#                 đọc một cột là thấy ngay chuỗi mức có không tăng hay không.
+# masked_slots  - loại nội dung -> danh sách vai slot phải che (không phải tập phẳng).
+#                 Slot `owner` không khai ở đây: nó luôn được tổng quát hóa về mức
+#                 vai/nhóm tại tầng che, kể cả ở L2 (AD-9).
+#
+# **Hai chỗ là quyết định, không phải hệ quả của A4** (phép kiểm CSP của retro
+# Epic 2: 15 phép gán khả thi cho `tech_support`, 17 cho `devops`). Cả hai ghi ở
+# `docs/adr/ADR-014-hai-o-quyet-dinh-cua-bang-chinh-sach-day-du.md`; tóm tắt:
+#
+# 1. `devops` không bị A4 ép L0 ở đâu cả, kể cả `bi_mat_ha_tang`. Bảng giữ L1 ở
+#    đó, kế thừa từ bảng tối giản của story 1.2. Prose A4 một mình không chặn
+#    DevOps thấy tất; chọn L1 là một khẳng định của dự án.
+# 2. `canh_bao` (hạng 16) A4 không nhắc. Bảng chọn L1 cho `tech_support` vì đó là
+#    thứ duy nhất đưa nhóm câu hỏi N3 vào vùng L1 - không có nó thì khoảng cách
+#    recall(3) - recall(2) trên N3 bằng 0 vì một lý do của bảng chứ không của cơ
+#    chế, và một nửa phát biểu PRD 5.3 mất bằng chứng.
+#
+# Hai chỗ **bị ép**, không có lựa chọn: `devops` phải L2 ở `troubleshooting` và
+# `runbook` (A4 cho DevOps thấy runbook, đơn điệu kéo theo mọi hạng thấp hơn);
+# `tech_support` phải L0 ở `log`, `cmdb` (A4) và `bi_mat_ha_tang` (đơn điệu kéo
+# theo).
+#
+# `masked_slots` của `tech_support` lồng nhau theo hạng đúng điều kiện (2) của
+# AD-5, theo phân nhóm slot của A4 (triệu chứng, điều kiện, thời điểm công khai;
+# nguyên nhân, nguồn, chủ thể, khắc phục nhạy cảm):
+#   canh_bao [source, remediation]
+#     ⊆ bao_cao_su_co [cause, source, remediation]
+#       ⊆ postmortem [subject, cause, source, remediation]
+version: 1
+roles:
+  devops:
+    scopes: [noi_bo, khach_hang_a]
+    disclosure:
+      faq: L2                 # hạng 2
+      tai_lieu_san_pham: L2   # 4
+      sop: L2                 # 6
+      troubleshooting: L2     # 8  - bị ép bởi A4 + đơn điệu
+      runbook: L2             # 10 - A4: runbook -> DevOps
+      known_issue: L2         # 12
+      vong_doi_ticket: L2     # 14
+      canh_bao: L2            # 16
+      bao_cao_su_co: L2       # 20
+      postmortem: L2          # 22
+      log: L2                 # 24 - A4: log -> nhóm hạ tầng, devops ở trong nhóm
+      cmdb: L2                # 26 - A4: L0 với người *ngoài* nhóm hạ tầng
+      bi_mat_ha_tang: L1      # 30 - quyết định (1) ở trên
+    masked_slots:
+      bi_mat_ha_tang: [source, remediation]
+  tech_support:
+    scopes: [noi_bo]
+    disclosure:
+      faq: L2                 # 2
+      tai_lieu_san_pham: L2   # 4
+      sop: L2                 # 6  - A4: SOP đã duyệt -> L2 toàn công ty
+      troubleshooting: L2     # 8
+      runbook: L2             # 10
+      known_issue: L2         # 12
+      vong_doi_ticket: L2     # 14 - A4: ticket -> team + Tech Support
+      canh_bao: L1            # 16 - quyết định (2) ở trên
+      bao_cao_su_co: L1       # 20 - A4: lịch sử sự cố -> team + Tech Support
+      postmortem: L1          # 22 - A4: postmortem -> hạn chế
+      log: L0                 # 24 - A4: log -> chỉ nhóm hạ tầng
+      cmdb: L0                # 26 - A4: L0 với người ngoài nhóm hạ tầng
+      bi_mat_ha_tang: L0      # 30 - đơn điệu kéo theo
+    masked_slots:
+      canh_bao: [source, remediation]
+      bao_cao_su_co: [cause, source, remediation]
+      postmortem: [subject, cause, source, remediation]

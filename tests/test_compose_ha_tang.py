@@ -262,6 +262,36 @@ def test_compose_doi_khoa_ky_jwt_tu_env_goc_khong_co_mac_dinh():
     assert "${JWT_SECRET:-" not in tho
 
 
+def test_compose_khai_id_policy_mac_dinh_va_hai_file_tham_so_deu_co():
+    """`HYPER_RAG_POLICY_ID` là tham số môi trường, không phải secret (story 3.2).
+
+    Khai `:-day-du` chứ không `:?`, ngược với `JWT_SECRET` ngay trên và có lý
+    do: thiếu khóa ký là một hệ không xác thực được ai, còn thiếu id policy chỉ
+    có nghĩa "chạy bảng vận hành" - và đó đúng là thứ an toàn nhất trong bốn
+    cấu hình. Hai file tham số vẫn phải khai tường minh, để đọc một file là
+    biết môi trường đó chạy bảng nào mà không phải suy từ một mặc định.
+    """
+    from api.chinh_sach import BIEN_ID_POLICY, ID_MAC_DINH, danh_muc
+
+    goc = Path(__file__).resolve().parent.parent
+    tho = (goc / "docker-compose.yml").read_text(encoding="utf-8")
+    assert "${" + BIEN_ID_POLICY + ":-" + ID_MAC_DINH + "}" in tho
+    assert "${" + BIEN_ID_POLICY + ":?" not in tho
+    hop_le = set(danh_muc())
+    for ten_file in (".env.server", ".env.laptop"):
+        env = doc_env(ten_file)
+        assert BIEN_ID_POLICY in env, ten_file
+        assert env[BIEN_ID_POLICY] in hop_le, (ten_file, env[BIEN_ID_POLICY])
+
+
+@pytest.mark.parametrize("dv", SERVICE_PYTHON)
+def test_hai_service_python_deu_thay_id_policy(compose, dv):
+    """Cùng khối biến với `api`, cùng lý do với khóa ký: không tách một biến ra."""
+    from api.chinh_sach import BIEN_ID_POLICY
+
+    assert BIEN_ID_POLICY in compose["services"][dv]["environment"]
+
+
 @pytest.mark.parametrize("dv", SERVICE_PYTHON)
 def test_hai_service_python_deu_thay_khoa_ky(compose, dv):
     """Cả `api` lẫn `man-nap` cùng khối biến, nên cả hai cùng đòi khóa ký.

@@ -18,9 +18,23 @@ from pathlib import Path
 import yaml
 
 GOC_REPO = Path(__file__).resolve().parent.parent.parent
-POLICY_TOI_GIAN = GOC_REPO / "config" / "policy-toi-gian.yaml"
-POLICY_NHI_PHAN = GOC_REPO / "config" / "policy-nhi-phan.yaml"
-NHOM_PHU_TRACH = GOC_REPO / "config" / "nhom-phu-trach.yaml"
+THU_MUC_CAU_HINH = GOC_REPO / "config"
+
+# Bốn cấu hình đo của FR-28, theo đúng thứ tự PRD 5.3 đánh số chúng. Tên biến
+# mang số thứ tự vì tài liệu và ledger gọi chúng bằng số ("cấu hình 2"), còn tên
+# file mang tên phép biến đổi sinh ra nó.
+POLICY_TAT_PHAN_QUYEN = THU_MUC_CAU_HINH / "policy-tat-phan-quyen.yaml"  # (1)
+POLICY_NHI_PHAN = THU_MUC_CAU_HINH / "policy-nhi-phan.yaml"  # (2)
+POLICY_DAY_DU = THU_MUC_CAU_HINH / "policy-day-du.yaml"  # (3), bảng vận hành
+POLICY_TOI_THIEU_L1 = THU_MUC_CAU_HINH / "policy-toi-thieu-l1.yaml"  # (4)
+BON_CAU_HINH = (
+    POLICY_TAT_PHAN_QUYEN,
+    POLICY_NHI_PHAN,
+    POLICY_DAY_DU,
+    POLICY_TOI_THIEU_L1,
+)
+
+NHOM_PHU_TRACH = THU_MUC_CAU_HINH / "nhom-phu-trach.yaml"
 
 # Thứ tự mức, chỉ dùng để so sánh "đạt từ mức X trở lên".
 THU_TU_MUC = {"L0": 0, "L1": 1, "L2": 2}

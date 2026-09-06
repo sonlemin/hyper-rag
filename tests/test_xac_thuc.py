@@ -126,15 +126,49 @@ def kho_gia():
     )
 
 
+class AuditGia:
+    """Port audit giả: ghi vào một danh sách, hoặc dội nếu `no` được đặt.
+
+    Cùng hình dạng tối thiểu của `core.audit.AuditPort` (một `ghi` async) cộng
+    một `dong` để lifespan đóng được.
+    """
+
+    def __init__(self):
+        self.su_kien = []
+        self.no: BaseException | None = None
+        self.da_dong = False
+
+    async def ghi(self, su_kien):
+        if self.no is not None:
+            raise self.no
+        self.su_kien.append(su_kien)
+
+    async def dong(self):
+        self.da_dong = True
+
+
 @pytest.fixture
-def client(monkeypatch, kho_gia):
-    """`TestClient` chạy lifespan thật, trên một bảng `users` giả."""
+def audit_gia():
+    return AuditGia()
+
+
+def _cam_audit(monkeypatch, audit_gia):
+    async def _mo():
+        return audit_gia
+
+    monkeypatch.setattr(api_main, "mo_audit", _mo)
+
+
+@pytest.fixture
+def client(monkeypatch, kho_gia, audit_gia):
+    """`TestClient` chạy lifespan thật, trên một bảng `users` và một audit giả."""
     monkeypatch.setenv(BIEN_KHOA_KY, KHOA_TEST)
 
     async def _mo():
         return kho_gia
 
     monkeypatch.setattr(api_main, "mo_kho_tai_khoan", _mo)
+    _cam_audit(monkeypatch, audit_gia)
     with TestClient(api_main.app) as c:
         yield c
 
@@ -520,7 +554,7 @@ def test_lifespan_tu_choi_khoi_dong_khi_thieu_khoa_ky(monkeypatch, kho_gia):
     assert da_mo == [], "phải từ chối trước khi mở kết nối nào"
 
 
-def test_lifespan_dong_bo_dung_noi_dung_seed_va_dong_pool(monkeypatch, kho_gia):
+def test_lifespan_dong_bo_dung_noi_dung_seed_va_dong_pool(monkeypatch, kho_gia, audit_gia):
     """Khởi động: đổ seed một chiều từ file xuống bảng. Tắt: đóng pool.
 
     Chấm **nội dung** chứ không chỉ đếm số lần gọi. Đột biến `dong_bo(())`
@@ -534,6 +568,7 @@ def test_lifespan_dong_bo_dung_noi_dung_seed_va_dong_pool(monkeypatch, kho_gia):
         return kho_gia
 
     monkeypatch.setattr(api_main, "mo_kho_tai_khoan", _mo)
+    _cam_audit(monkeypatch, audit_gia)
     with TestClient(api_main.app):
         assert kho_gia.da_dong_bo == 1
         da = kho_gia.muc_da_dong_bo
@@ -552,6 +587,7 @@ def test_lifespan_dong_bo_dung_noi_dung_seed_va_dong_pool(monkeypatch, kho_gia):
         }
         assert khoa(da) == khoa(cho)
     assert kho_gia.da_dong is True
+    assert audit_gia.da_dong is True, "port audit đã mở mà không ai đóng"
 
 
 def test_lifespan_mo_kho_that_su_chay_ddl(monkeypatch):
@@ -578,8 +614,69 @@ def test_lifespan_mo_kho_that_su_chay_ddl(monkeypatch):
     assert da_lam == ["khoi_tao"]
 
 
-@pytest.mark.parametrize("cho_no", ["khoi_tao", "nap_tai_khoan", "dong_bo"])
-def test_khoi_dong_hong_o_bat_ky_buoc_nao_cung_dong_pool(monkeypatch, kho_gia, cho_no):
+def test_lifespan_mo_audit_that_su_chay_ddl(monkeypatch):
+    """`mo_audit` phải chạy DDL, và bỏ `khoi_tao()` phải đỏ.
+
+    Bản sao của ca ngay trên cho port audit: mọi ca lifespan khác monkeypatch
+    chính `mo_audit`, nên không ca nào chấm ruột nó. Bỏ `await audit.khoi_tao()`
+    là bảng `audit_log` không tồn tại ở lần deploy đầu và lần hoán policy đầu
+    tiên nổ ở tầng mutation - tức một thao tác admin hỏng vì một DDL chưa chạy,
+    xa chỗ gây ra.
+    """
+    da_lam = []
+
+    class AuditDoiKhoiTao:
+        async def khoi_tao(self):
+            da_lam.append("khoi_tao")
+
+        async def dong(self):
+            da_lam.append("dong")
+
+    async def _mo(cau_hinh=None):
+        return AuditDoiKhoiTao()
+
+    monkeypatch.setattr(
+        api_main.AuditPostgres, "mo", classmethod(lambda cls, *a, **k: _mo())
+    )
+    asyncio.run(api_main.mo_audit())
+    assert da_lam == ["khoi_tao"]
+
+
+def test_mo_audit_hong_o_ddl_van_dong_pool():
+    """Pool audit đã mở phải đóng khi `khoi_tao()` dội, không treo lại."""
+
+    class AuditNoDDL:
+        def __init__(self):
+            self.da_dong = False
+
+        async def khoi_tao(self):
+            raise RuntimeError("DDL audit hỏng")
+
+        async def dong(self):
+            self.da_dong = True
+
+    audit = AuditNoDDL()
+
+    async def chay():
+        goc = api_main.AuditPostgres.mo
+        try:
+            api_main.AuditPostgres.mo = classmethod(lambda cls, *a, **k: _tra())
+            with pytest.raises(RuntimeError):
+                await api_main.mo_audit()
+        finally:
+            api_main.AuditPostgres.mo = goc
+
+    async def _tra():
+        return audit
+
+    asyncio.run(chay())
+    assert audit.da_dong is True
+
+
+@pytest.mark.parametrize("cho_no", ["khoi_tao", "nap_tai_khoan", "dong_bo", "mo_audit"])
+def test_khoi_dong_hong_o_bat_ky_buoc_nao_cung_dong_pool(
+    monkeypatch, kho_gia, audit_gia, cho_no
+):
     """Pool đã mở phải đóng ở mọi đường thoát của bước khởi động.
 
     Ba bước hỏng được thật: DDL hỏng, seed hỏng (`IdentitySeedInvalid`), DB rớt
@@ -615,12 +712,21 @@ def test_khoi_dong_hong_o_bat_ky_buoc_nao_cung_dong_pool(monkeypatch, kho_gia, c
         return kho_gia
 
     monkeypatch.setattr(api_main, "mo_kho_tai_khoan", _mo)
+    _cam_audit(monkeypatch, audit_gia)
     if cho_no == "nap_tai_khoan":
         def _no():
             raise IdentitySeedInvalid("seed hỏng")
 
         monkeypatch.setattr(api_main, "nap_tai_khoan", _no)
         loi = IdentitySeedInvalid
+    elif cho_no == "mo_audit":
+        # Port audit mở **sau** khi pool tài khoản đã mở và seed đã đổ, nên nó
+        # là bước cuối có thể hỏng trước `yield` - và pool tài khoản phải đóng.
+        async def _no_audit():
+            raise RuntimeError("audit không mở được")
+
+        monkeypatch.setattr(api_main, "mo_audit", _no_audit)
+        loi = RuntimeError
     else:
         kho_gia.no_o_dong_bo = RuntimeError("DB rớt giữa transaction")
         loi = RuntimeError
@@ -736,6 +842,7 @@ def test_tai_khoan_demo_khong_admin_qua_cua_bang_chinh_co_cua_seed_that(
         }
     )
     monkeypatch.setenv(BIEN_KHOA_KY, KHOA_TEST)
+    _cam_audit(monkeypatch, AuditGia())
 
     async def _mo():
         return kho

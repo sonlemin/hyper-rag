@@ -14,13 +14,15 @@
 #
 # Ba scope, đơn trị mỗi tài liệu (AD-4), và scope mang chiều khách hàng. Biên
 # cách ly của RT-01 nằm ở đây: `devops` chạm `noi_bo` và `khach_hang_a` nhưng
-# **không** chạm `khach_hang_b` (`config/policy-toi-gian.yaml`), nên mọi tài
+# **không** chạm `khach_hang_b` (`config/policy-day-du.yaml`), nên mọi tài
 # liệu `khach_hang_b` là một ca thử thật của biên đó ở T3.
 #
 # Loại nội dung dùng 12 loại của A8 cộng `bi_mat_ha_tang`; hạng của từng loại ở
-# `config/hang-do-nhay.yaml`. Bảng chính sách đầy đủ là việc của story 3.2: cho
-# tới lúc đó, loại chưa khai trong `config/policy-toi-gian.yaml` là fail-closed
-# L0, đó là trạng thái đúng chứ không phải một lỗ.
+# `config/hang-do-nhay.yaml`. Story 3.2 khai đủ 13 loại trong cả bốn cấu hình
+# đo, nên **bảng này là mẫu đối chiếu của luật phủ**: một loại nội dung có trong
+# một bảng chính sách mà không có tài liệu nào ở đây (hay ở bộ vàng) là
+# `eval.bo_vang.BoVangKhongHopLe` - bảng chính sách khi đó mất ca tương ứng trên
+# dữ liệu thật. Corpus phủ đủ 13/13.
 version: 1
 
 # Số đỉnh của hyperedge demo App01 (PRD mục lục giả định 6.3 khoản 4). Chốt

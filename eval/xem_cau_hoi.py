@@ -294,7 +294,7 @@ def _tham_so(argv: list[str]) -> argparse.Namespace:
         type=Path,
         default=None,
         metavar="FILE",
-        help="bảng chính sách dùng để tính trần (mặc định config/policy-toi-gian.yaml)",
+        help="bảng chính sách dùng để tính trần (mặc định config/policy-day-du.yaml)",
     )
     return p.parse_args(argv)
 

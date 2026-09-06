@@ -1,0 +1,57 @@
+# Cấu hình 1 của FR-28: **tắt phân quyền**, cho trần recall của Đo 3 (PRD 5.3).
+# Cùng file này là đối chứng "chính hệ thống khi tắt cơ chế phân quyền" của Đo 1
+# (PRD 5.1) - một cấu hình, hai chỗ dùng, nên không có hai bản trôi dạt nhau.
+#
+# **Phép biến đổi sinh ra file này: mọi ô lên L2 trên cả 13 loại *và* cả 3 scope.**
+# Tắt phân quyền vẫn là một bảng chính sách chứ không phải một nhánh code (PRD
+# 5.3 nói thẳng điều đó): không có cờ `tat_phan_quyen` nào trong hệ, chỉ có một
+# file mà mọi vai thấy mọi thứ.
+#
+# Vì sao phải mở **cả scope** chứ không chỉ cột mức: trần recall là trần trên
+# *toàn bộ* nhãn truy hồi vàng, và nhãn có cặp ở `khach_hang_b` - scope mà không
+# vai nào chạm ở ba cấu hình kia. Giữ nguyên `scopes` thì "trần" của cấu hình 1
+# vẫn bỏ sót trọn kịch bản 3, tức nó không còn là trần.
+#
+# Hệ quả phải nhớ khi đọc số: file này **không pass mô hình đe dọa** và không bao
+# giờ là cấu hình vận hành. Nó là mốc trên của phổ, cùng vai trò với
+# `policy-toi-thieu-l1.yaml` ở đầu kia.
+#
+# 3 scope × 13 loại = **39 khóa lọc mỗi vai mỗi namespace**, dưới trần 50 của
+# AD-4 nhưng là con số cao nhất trong bốn cấu hình - chỗ trần đó gần bị chạm
+# nhất, và là lý do validator đếm rồi cảnh báo thay vì im lặng.
+version: 1
+roles:
+  devops:
+    scopes: [noi_bo, khach_hang_a, khach_hang_b]
+    disclosure:
+      faq: L2                 # hạng 2
+      tai_lieu_san_pham: L2   # 4
+      sop: L2                 # 6
+      troubleshooting: L2     # 8
+      runbook: L2             # 10
+      known_issue: L2         # 12
+      vong_doi_ticket: L2     # 14
+      canh_bao: L2            # 16
+      bao_cao_su_co: L2       # 20
+      postmortem: L2          # 22
+      log: L2                 # 24
+      cmdb: L2                # 26
+      bi_mat_ha_tang: L2      # 30
+    masked_slots: {}
+  tech_support:
+    scopes: [noi_bo, khach_hang_a, khach_hang_b]
+    disclosure:
+      faq: L2                 # 2
+      tai_lieu_san_pham: L2   # 4
+      sop: L2                 # 6
+      troubleshooting: L2     # 8
+      runbook: L2             # 10
+      known_issue: L2         # 12
+      vong_doi_ticket: L2     # 14
+      canh_bao: L2            # 16
+      bao_cao_su_co: L2       # 20
+      postmortem: L2          # 22
+      log: L2                 # 24
+      cmdb: L2                # 26
+      bi_mat_ha_tang: L2      # 30
+    masked_slots: {}

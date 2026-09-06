@@ -225,7 +225,11 @@ def test_tap_khoa_rong_tra_rong_va_khong_goi_qdrant(khong_gian, tmp_path):
         "      bao_cao_su_co: L0\n",
         encoding="utf-8",
     )
-    policy_mu = load_policy(bang_mu)
+    # Bảng hạng nhỏ tiêm thẳng vào loader: validator đơn điệu của AD-5 đòi bảng
+    # chính sách khai đủ mọi loại **có hạng**, nên một bảng hai dòng phải đi kèm
+    # một bảng hạng hai dòng. Hệ chạy thật chỉ có một bảng hạng, là file đóng
+    # băng của repo.
+    policy_mu = load_policy(bang_mu, hang={"runbook": 10, "bao_cao_su_co": 20})
 
     async def chay():
         client = QdrantGhiLai()

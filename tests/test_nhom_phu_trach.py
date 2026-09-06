@@ -35,7 +35,7 @@ from tests.ngu_canh import vai as ngu_canh_vai
 
 
 def _context(vai: str):
-    return ngu_canh_vai(load_policy(oracle.POLICY_TOI_GIAN), vai, "synth")
+    return ngu_canh_vai(load_policy(oracle.POLICY_DAY_DU), vai, "synth")
 
 
 def _khoa(he) -> str:
@@ -224,7 +224,7 @@ def test_hyperedge_khong_co_vai_owner_van_nhan_dau_che_mang_ten_nhom():
     **mất** trường. Cái giá là hệ lộ thêm bộ phận nào giữ tài liệu, và đó là
     quyết định của ADR-011 chứ không phải hệ quả phụ.
     """
-    bang = oracle.doc_bang_chinh_sach(oracle.POLICY_TOI_GIAN)
+    bang = oracle.doc_bang_chinh_sach(oracle.POLICY_DAY_DU)
     he = du_lieu_dung_tay.THEO_ID["HE-04"]
     assert OWNER_SLOT not in he["slots"], "fixture phải giữ ca biên thiếu owner"
     loai = he["content_type"]

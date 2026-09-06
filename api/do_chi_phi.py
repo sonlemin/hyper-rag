@@ -81,7 +81,7 @@ from core.audit import thoi_diem_utc
 from core.ingest_scan import KetQuaQuet, quet_cac_file
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-POLICY_MAC_DINH = REPO_ROOT / "config" / "policy-toi-gian.yaml"
+POLICY_MAC_DINH = REPO_ROOT / "config" / "policy-day-du.yaml"
 
 # Tiền tố của dòng `lenh` ghi vào file số đo: người đọc chương 4 phải dựng lại
 # được đúng lệnh đã sinh ra con số, không chỉ biết "một lần nạp nào đó".

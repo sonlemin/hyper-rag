@@ -331,12 +331,12 @@ def test_doi_bang_chinh_sach_khong_sua_code(workspace_dir, khong_gian, ten_vai):
     ngưỡng đã trôi khỏi L2, hoặc adapter đã bắt đầu đọc bảng chính sách.
     """
     bang_nhi_phan = oracle.doc_bang_chinh_sach(oracle.POLICY_NHI_PHAN)
-    bang_toi_gian = oracle.doc_bang_chinh_sach(oracle.POLICY_TOI_GIAN)
+    bang_day_du = oracle.doc_bang_chinh_sach(oracle.POLICY_DAY_DU)
     policy_nhi_phan = load_policy(oracle.POLICY_NHI_PHAN)
-    policy_toi_gian = load_policy(oracle.POLICY_TOI_GIAN)
+    policy_day_du = load_policy(oracle.POLICY_DAY_DU)
 
     async def chay():
-        adapter = await kho_da_nap(workspace_dir, khong_gian, policy_toi_gian)
+        adapter = await kho_da_nap(workspace_dir, khong_gian, policy_day_du)
         with use_context(vai(policy_nhi_phan, ten_vai, khong_gian)):
             return await adapter.all_keys()
 
@@ -345,11 +345,11 @@ def test_doi_bang_chinh_sach_khong_sua_code(workspace_dir, khong_gian, ten_vai):
     )
     # Hai bảng đồng ý ở ngưỡng chunk...
     assert oracle.chunk_thay_duoc(bang_nhi_phan, ten_vai, CHUNKS) == (
-        oracle.chunk_thay_duoc(bang_toi_gian, ten_vai, CHUNKS)
+        oracle.chunk_thay_duoc(bang_day_du, ten_vai, CHUNKS)
     )
     # ...và bất đồng ở ngưỡng hyperedge, nên phép thử không rỗng nghĩa.
     assert oracle.hyperedge_thay_duoc(bang_nhi_phan, ten_vai, HYPEREDGES) != (
-        oracle.hyperedge_thay_duoc(bang_toi_gian, ten_vai, HYPEREDGES)
+        oracle.hyperedge_thay_duoc(bang_day_du, ten_vai, HYPEREDGES)
     )
 
 

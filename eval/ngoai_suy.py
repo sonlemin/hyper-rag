@@ -327,7 +327,15 @@ class GiaDinh:
     # bảng ngoại suy đổi tổng hai lần cho một thay đổi.
     so_tai_lieu_corpus: int = 42
     # Khoản 2: 52 câu × 3 cấu hình đo × số vai người hỏi thật dùng (devops,
-    # tech_support của `config/policy-toi-gian.yaml`).
+    # tech_support của `config/policy-day-du.yaml`).
+    #
+    # **3 chứ không 4, dù `config/` có bốn file cấu hình từ story 3.2.** Cấu
+    # hình 4 (`policy-toi-thieu-l1.yaml`) chỉ chạy phần **recall tất định** của
+    # Đo 3 - nó không vào Đo 2 và không sinh câu trả lời nào, nên nó không gọi
+    # LLM và không vào phép ngoại suy chi phí (PRD 5.3: "cấu hình tham chiếu,
+    # không thuộc phát biểu cần chứng minh [...] chi phí không đáng kể"). Số này
+    # đếm cấu hình **sinh câu trả lời**, không đếm file trong `config/`; thêm
+    # một cấu hình đo thứ năm mà cũng chỉ đo recall thì nó vẫn là 3.
     so_cau: int = 52
     so_cau_hinh: int = 3
     so_vai: int = 2

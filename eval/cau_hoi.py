@@ -58,7 +58,7 @@ DUONG_DAN_ANH_MAC_DINH: Path = _GOC / "anh_do_thi" / "synth.json"
 DUONG_DAN_BO_CAU_HOI_MAC_DINH: Path = _GOC / "bo_cau_hoi.json"
 DUONG_DAN_NHAN_MAC_DINH: Path = _GOC / "nhan_truy_hoi_vang.json"
 DUONG_DAN_CORPUS_THIET_KE: Path = _GOC / "corpus_thiet_ke.yaml"
-POLICY_MAC_DINH: Path = _GOC.parent / "config" / "policy-toi-gian.yaml"
+POLICY_MAC_DINH: Path = _GOC.parent / "config" / "policy-day-du.yaml"
 
 # Ba lược đồ độc lập, ba hằng (vòng review 03/09): ép chung một số thì nâng
 # version của riêng ảnh chụp làm hai file kia đỏ, dù chúng không đổi một chữ.
@@ -1065,10 +1065,10 @@ class TranVai:
     def canh_bao(self) -> tuple[str, ...]:
         """Câu có trần 0 kèm lý do. **Cảnh báo, không phải lỗi.**
 
-        Hôm nay `config/policy-toi-gian.yaml` mới khai 3 trong 13 loại nội dung
-        và không vai nào chạm `khach_hang_b`, nên nhiều câu có trần 0. Đó là
-        trạng thái fail-closed đúng cho tới story 3.2; coi nó là lỗi thì bộ test
-        đỏ vì một việc chưa tới lượt làm.
+        Từ story 3.2 `config/policy-day-du.yaml` khai đủ 13 loại, nên nguyên
+        nhân còn lại của trần 0 là **scope**: không vai nào chạm `khach_hang_b`,
+        và đó là biên cách ly RT-01 chứ không phải một lỗ. Coi nó là lỗi thì bộ
+        test đỏ vì một trạng thái đúng.
         """
         ra = []
         for c in self.cau:

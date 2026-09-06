@@ -48,7 +48,7 @@ def policy():
 
     from tests.fixtures import oracle
 
-    return load_policy(oracle.POLICY_TOI_GIAN)
+    return load_policy(oracle.POLICY_DAY_DU)
 
 
 @pytest.fixture()
@@ -61,7 +61,7 @@ def bang():
     """
     from tests.fixtures import oracle
 
-    return oracle.doc_bang_chinh_sach(oracle.POLICY_TOI_GIAN)
+    return oracle.doc_bang_chinh_sach(oracle.POLICY_DAY_DU)
 
 
 @pytest.fixture()

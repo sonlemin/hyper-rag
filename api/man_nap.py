@@ -67,7 +67,7 @@ from core.ingest_scan import KICH_THUOC_TOI_DA, quet_cac_file
 logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-POLICY_MAC_DINH = REPO_ROOT / "config" / "policy-toi-gian.yaml"
+POLICY_MAC_DINH = REPO_ROOT / "config" / "policy-day-du.yaml"
 
 SPACE_MAC_DINH: str = "synth"
 

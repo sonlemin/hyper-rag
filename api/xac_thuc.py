@@ -53,6 +53,11 @@ HASH_GIA: str = "$2b$12$C6UzMDM.H6dfI/f/IKcEe.uMWX0hlBLPXBW/QJfBk2sRFrM0f9Sm2"
 MA_DANG_NHAP_SAI: str = "DANG_NHAP_SAI"
 MA_TOKEN_KHONG_HOP_LE: str = "TOKEN_KHONG_HOP_LE"
 MA_THIEU_QUYEN: str = "THIEU_QUYEN_DEMO_ADMIN"
+# Mã **khác** của cửa chỉ-`admin` (story 3.2). Hai cửa, hai mã: một tài khoản
+# `demo` bị từ chối ở đây phải đọc được rằng nó thiếu đúng cờ `admin`, chứ không
+# phải rằng nó thiếu "demo hoặc admin" - thứ mà nó có. Gộp một mã là biến hai
+# cửa quyền khác nhau thành một dòng log không phân biệt được.
+MA_THIEU_QUYEN_ADMIN: str = "THIEU_QUYEN_ADMIN"
 
 # Thông điệp cố định, không mang tên tài khoản. Thân phản hồi của ca "tài khoản
 # lạ" và ca "sai mật khẩu" phải giống nhau **từng byte**, nên một thông điệp
@@ -60,6 +65,7 @@ MA_THIEU_QUYEN: str = "THIEU_QUYEN_DEMO_ADMIN"
 THONG_DIEP_DANG_NHAP_SAI: str = "tài khoản hoặc mật khẩu không đúng"
 THONG_DIEP_TOKEN: str = "token không hợp lệ"
 THONG_DIEP_THIEU_QUYEN: str = "endpoint này đòi quyền demo hoặc admin"
+THONG_DIEP_THIEU_QUYEN_ADMIN: str = "endpoint này đòi quyền admin"
 
 
 class JwtSecretMissing(RuntimeError):
@@ -238,6 +244,23 @@ def doi_demo_hoac_admin(claim: ClaimNguoiHoi) -> ClaimNguoiHoi:
     """
     if not (claim.demo or claim.admin):
         raise LoiXacThuc(403, MA_THIEU_QUYEN, THONG_DIEP_THIEU_QUYEN)
+    return claim
+
+
+def doi_admin(claim: ClaimNguoiHoi) -> ClaimNguoiHoi:
+    """Cửa quyền của endpoint **chỉ** nhận `admin` (AD-10, FR-22 nền, story 3.2).
+
+    Đây là chỗ hai cờ của AD-10 khác nhau thật: `doi_demo_hoac_admin` là cửa của
+    API đổi vai và cache offline, còn đường hoán bảng chính sách đổi cái mà mọi
+    vai thấy được nên nó không được mở cho một tài khoản demo. Nới cửa kia để
+    dùng chung ở đây là cho một tài khoản demo ghi đè bảng chính sách.
+
+    `demo` **không** ngụ ý `admin` và ngược lại: hai cờ riêng, không phải hai
+    mức của một thang. `config/tai-khoan.yaml` giữ `demo01` (demo mà không
+    admin) đúng để ca từ chối này chứng minh được qua HTTP.
+    """
+    if not claim.admin:
+        raise LoiXacThuc(403, MA_THIEU_QUYEN_ADMIN, THONG_DIEP_THIEU_QUYEN_ADMIN)
     return claim
 
 

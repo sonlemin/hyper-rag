@@ -62,6 +62,9 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Iterable, Mapping, Sequence
 
+import yaml
+
+from adapters.policy_loader import cac_bang_chinh_sach as _quet_bang_chinh_sach
 from adapters.policy_loader import load_policy
 from adapters.sensitivity_loader import SensitivityRanksInvalid, bang_hang_mac_dinh
 from core import facts
@@ -71,11 +74,18 @@ from core.slots import SLOT_ROLES
 
 _GOC = Path(__file__).resolve().parent
 
-# Bảng chính sách hiện hành của repo. Từ story 2.8 luật phủ loại nội dung của bộ
-# vàng hỏi bảng *chính sách* chứ không hỏi bảng hạng độ nhạy: bảng hạng có 13
-# loại để story 3.2 dựng được bảng đầy đủ, còn bộ vàng chỉ nợ những loại đang
-# thật sự có ca đo.
-POLICY_MAC_DINH: Path = _GOC.parent / "config" / "policy-toi-gian.yaml"
+# Bảng chính sách vận hành của repo (cấu hình 3 của FR-28).
+POLICY_MAC_DINH: Path = _GOC.parent / "config" / "policy-day-du.yaml"
+
+# Số bảng chính sách tối thiểu để phép quét được coi là còn chạy. Guard cho
+# chính phép quét: một glob viết sai cho danh sách rỗng và luật phủ khi đó xanh
+# mãi mà không đọc file nào.
+TOI_THIEU_SO_BANG_CHINH_SACH: int = 2
+
+# Bảng thiết kế corpus - **nguồn chuẩn** của loại nội dung có mặt trên dữ liệu
+# thật. Corpus và bộ vàng nằm chung space `synth`, nên "dữ liệu thật" của luật
+# phủ là hợp của hai bộ.
+CORPUS_THIET_KE_MAC_DINH: Path = _GOC / "corpus_thiet_ke.yaml"
 
 DUONG_DAN_MAC_DINH: Path = _GOC / "bo_vang_trich_xuat.json"
 THU_MUC_DATA_MAC_DINH: Path = _GOC / "data"
@@ -472,31 +482,95 @@ def _kiem_toan_bo(
     _kiem_loai_noi_dung(tai_lieu, loi)
 
 
-def loai_cua_bang_chinh_sach(path: str | Path = POLICY_MAC_DINH) -> set[str]:
-    """Tập loại nội dung được *khai* trong một bảng chính sách.
+def cac_bang_chinh_sach(thu_muc: str | Path | None = None) -> list[Path]:
+    """Mọi file `config/policy-<id>.yaml`, quét chứ không liệt kê tên.
 
-    Hợp của cột `disclosure` qua mọi vai. Loại không có mặt ở đây là fail-closed
-    L0 với mọi vai (`core.policy.RolePolicy.level`), tức bảng chính sách không
-    có ca nào cho nó và bộ vàng không nợ nó một tài liệu.
+    Phép quét và hình dạng id sống ở `adapters/policy_loader`, không ở đây: cùng
+    một định nghĩa "một bảng chính sách" phải phục vụ cả luật phủ này lẫn danh
+    mục id của endpoint hoán policy. Hai bản riêng thì một
+    `config/policy-Thu Nghiem.yaml` bị luật phủ bắt tuân thủ trong khi API không
+    bao giờ hoán sang được.
+
+    Guard riêng của luật phủ: một phép quét trả về dưới hai file nghĩa là glob
+    hỏng, và khi đó luật này xanh mãi mà không đọc file nào.
     """
-    policy = load_policy(path)
-    return {loai for vai in policy.roles.values() for loai in vai.disclosure}
+    goc = Path(thu_muc) if thu_muc is not None else POLICY_MAC_DINH.parent
+    cac_bang = sorted(_quet_bang_chinh_sach(goc).values())
+    if len(cac_bang) < TOI_THIEU_SO_BANG_CHINH_SACH:
+        raise BoVangKhongHopLe(
+            [
+                f"chỉ tìm thấy {[p.name for p in cac_bang]} trong {goc}: phép quét"
+                " bảng chính sách hỏng, và khi đó luật phủ loại nội dung không canh gì"
+            ]
+        )
+    return cac_bang
+
+
+def loai_cua_bang_chinh_sach(path: str | Path | None = None) -> set[str]:
+    """Tập loại nội dung được *khai* trong bảng chính sách.
+
+    Hợp của cột `disclosure` qua mọi vai. `path` là `None` thì quét **cả bốn**
+    cấu hình đo của FR-28 và hợp lại: bảng vận hành và ba bảng đo không buộc
+    phải khai cùng một tập, và một loại chỉ có ở một cấu hình đo vẫn là một ca
+    mà phép đo của cấu hình đó sẽ mất nếu dữ liệu thật không có tài liệu nào.
+    """
+    cac_bang = [Path(path)] if path is not None else cac_bang_chinh_sach()
+    ra: set[str] = set()
+    for duong_dan in cac_bang:
+        policy = load_policy(duong_dan)
+        ra |= {loai for vai in policy.roles.values() for loai in vai.disclosure}
+    return ra
+
+
+def loai_cua_corpus(path: str | Path = CORPUS_THIET_KE_MAC_DINH) -> set[str]:
+    """Tập loại nội dung có tài liệu thật trong corpus dựng (bảng thiết kế 2.8).
+
+    Đọc **bảng thiết kế**, không quét thư mục: bảng là nguồn chuẩn và
+    `tests/test_corpus.py` đã canh một-một giữa nó với `eval/corpus/`.
+    """
+    duong_dan = Path(path)
+    try:
+        raw = yaml.safe_load(duong_dan.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, yaml.YAMLError) as loi:
+        raise BoVangKhongHopLe(
+            [f"không đọc được bảng thiết kế corpus {duong_dan}: {loi}"]
+        ) from None
+    muc = (raw or {}).get("tai_lieu")
+    if not isinstance(muc, list) or not muc:
+        raise BoVangKhongHopLe(
+            [f"bảng thiết kế corpus {duong_dan} không có khối `tai_lieu` dùng được"]
+        )
+    return {m["content_type"] for m in muc if isinstance(m, dict) and m.get("content_type")}
 
 
 def _kiem_loai_noi_dung(tai_lieu: Sequence[TaiLieuVang], loi: list[str]) -> None:
-    """Hai phép bao hàm, không phải một đẳng thức (story 2.8).
+    """Hai phép bao hàm, không phải một đẳng thức (story 2.8, mở rộng ở 3.2).
 
-    Từ 2.8 bảng hạng có 13 loại còn bộ vàng vẫn 10 tài liệu ba loại, nên luật cũ
-    ("bộ vàng phủ *mọi* loại của bảng hạng") biến một lần mở bảng hạng thành một
-    bộ vàng không hợp lệ và một lượt gán nhãn 10 tài liệu mới. Hai luật thay nó,
-    mỗi luật trả lời một câu hỏi khác nhau:
+    Câu hỏi mà luật phủ hỏi là **"bảng chính sách có mất ca nào trên dữ liệu
+    thật không"**. Lúc story 2.8 viết luật, dữ liệu thật của space `synth` là 10
+    tài liệu bộ vàng, nên mẫu đối chiếu là chính bộ vàng. Hôm nay `synth` có 52
+    tài liệu và `eval/corpus_thiet_ke.yaml` phủ đủ 13/13 loại, nên mẫu đối chiếu
+    là **corpus cộng bộ vàng**. Đối chiếu tiếp với riêng bộ vàng thì story 3.2
+    (khai đủ 13 loại) buộc phải gán nhãn tay 10 tài liệu mới và đổi mẫu số 151
+    slot của cổng R2 - tức luật cũ dời cái bẫy chứ không gỡ.
 
-    - **Phủ đủ bảng chính sách.** Loại nội dung mà bảng chính sách *đang khai*
-      phải có tài liệu vàng, nếu không phép đo mất ca tương ứng trên dữ liệu
-      thật. Loại chưa khai là L0 im lặng, không có ca nào để mất.
+    Hai luật, mỗi luật trả lời một câu hỏi khác nhau:
+
+    - **Phủ đủ bảng chính sách, trên dữ liệu thật.** Loại nội dung mà *bất kỳ*
+      cấu hình nào trong bốn cấu hình đo khai phải có tài liệu trong space
+      `synth` (corpus hoặc bộ vàng), nếu không phép đo mất ca tương ứng.
     - **Mọi loại của bộ vàng phải có hạng.** Chiều ngược lại vẫn bắt buộc: một
       tài liệu vàng mang loại không có hạng độ nhạy là một tài liệu không nạp
       được (`SensitivityRankUnknown` từ chối cả lô lúc ingest).
+
+    **Luật này nói về phép đo nào, và không nói về phép đo nào.** Corpus không
+    có nhãn trích xuất tay, nên "không mất ca trên dữ liệu thật" ở đây là phát
+    biểu về *hình dạng truy hồi*: có tài liệu thuộc loại đó trong kho để một
+    khóa lọc chạm tới. Cổng R2 của story 2.6 là chuyện khác và vẫn chỉ đứng trên
+    **3 loại** của bộ vàng (`runbook`, `bao_cao_su_co`, `bi_mat_ha_tang`), vì
+    precision ghép cặp cần nhãn tay từng slot. Đọc luật này thành "precision đã
+    được đo trên 13 loại" là đọc sai; muốn thế thì phải gán nhãn thêm và đổi mẫu
+    số 151 slot, đúng cái giá mà story 3.2 chọn không trả.
     """
     cua_bo = {t.content_type for t in tai_lieu}
     try:
@@ -519,9 +593,21 @@ def _kiem_loai_noi_dung(tai_lieu: Sequence[TaiLieuVang], loi: list[str]) -> None
     except (PolicyInvalid, OSError) as e:
         loi.append(f"không nạp được bảng chính sách để đối chiếu loại nội dung: {e}")
         return
-    loai_thieu = sorted(cua_policy - cua_bo)
+    except BoVangKhongHopLe as e:
+        # `BoVangKhongHopLe.loi` là một **danh sách**, và `str(e)` của nó là cả
+        # một khối nhiều dòng. Nhét nguyên khối vào một chuỗi lỗi khác cho một
+        # thông điệp lồng một repr list; nối phẳng vào đúng danh sách đang gom.
+        loi.extend(e.loi)
+        return
+    try:
+        cua_du_lieu = cua_bo | loai_cua_corpus()
+    except BoVangKhongHopLe as e:
+        loi.extend(e.loi)
+        return
+    loai_thieu = sorted(cua_policy - cua_du_lieu)
     if loai_thieu:
         loi.append(
-            f"loại nội dung có trong bảng chính sách mà không có tài liệu nào trong"
-            f" bộ vàng: {loai_thieu} - bảng chính sách mất ca tương ứng trên dữ liệu thật"
+            f"loại nội dung có trong một bảng chính sách mà không có tài liệu nào"
+            f" trong space `synth` (corpus hay bộ vàng): {loai_thieu} - bảng chính"
+            " sách mất ca tương ứng trên dữ liệu thật"
         )

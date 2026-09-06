@@ -2200,7 +2200,7 @@ def test_chia_chunk_khop_chunk_ma_ainsert_that_ghi_ra(tmp_path):
     from adapters.ingest import nap_thu_muc
     from adapters.policy_loader import load_policy
 
-    policy = load_policy(REPO_ROOT / "config" / "policy-toi-gian.yaml")
+    policy = load_policy(REPO_ROOT / "config" / "policy-day-du.yaml")
     asyncio.run(
         nap_thu_muc(
             mt.engine,

@@ -40,7 +40,7 @@ from tests.fixtures import du_lieu_dung_tay, oracle
 def _context(vai: str = "tech_support", duong_dan=None):
     from adapters.policy_loader import load_policy
 
-    policy = load_policy(duong_dan or oracle.POLICY_TOI_GIAN)
+    policy = load_policy(duong_dan or oracle.POLICY_DAY_DU)
     return user_context(
         policy=policy, role=vai, space="synth", real_account="tk_" + vai
     )
@@ -108,7 +108,7 @@ def test_tam_vai_slot_dung_mot_noi():
 
 def test_oracle_ky_vong_che_dung_theo_bang():
     """Oracle tính đúng kỳ vọng che, để mọi assert dưới đây có đối chứng."""
-    bang = oracle.doc_bang_chinh_sach(oracle.POLICY_TOI_GIAN)
+    bang = oracle.doc_bang_chinh_sach(oracle.POLICY_DAY_DU)
     he02 = du_lieu_dung_tay.THEO_ID["HE-02"]
     he03 = du_lieu_dung_tay.THEO_ID["HE-03"]
 
@@ -147,7 +147,7 @@ def test_hai_ban_ngu_nghia_che_hoi_tu():
     hyperedge, đúng bằng kỳ vọng oracle. Hai bản lệch nhau thì test đỏ ở đây
     chứ không đỏ ở một assert Đo 1 nào đó ba story sau.
     """
-    bang = oracle.doc_bang_chinh_sach(oracle.POLICY_TOI_GIAN)
+    bang = oracle.doc_bang_chinh_sach(oracle.POLICY_DAY_DU)
     for vai in ("devops", "tech_support"):
         ctx = _context(vai)
         thay_duoc = set(
@@ -188,7 +188,7 @@ def test_1_6_unit_001_vai_l1_che_dung_slot_bang_khai():
     `tech_support` thấy hyperedge `bao_cao_su_co` ở mức L1 phải biết rằng sự cố
     tồn tại mà không đọc được nguyên nhân, nguồn và cách xử lý.
     """
-    bang = oracle.doc_bang_chinh_sach(oracle.POLICY_TOI_GIAN)
+    bang = oracle.doc_bang_chinh_sach(oracle.POLICY_DAY_DU)
     he = du_lieu_dung_tay.THEO_ID["HE-02"]
     ctx = _context("tech_support")
 
@@ -220,7 +220,7 @@ def test_nguyen_van_slot_bi_che_khong_con_o_bat_ky_dau_nao_trong_ban_ghi():
 
 def test_1_6_unit_002_vai_l2_khong_che_thua_tru_owner():
     """L2 giữ nguyên sáu slot còn lại; `owner` vẫn tổng quát hóa (AD-9)."""
-    bang = oracle.doc_bang_chinh_sach(oracle.POLICY_TOI_GIAN)
+    bang = oracle.doc_bang_chinh_sach(oracle.POLICY_DAY_DU)
     he = du_lieu_dung_tay.THEO_ID["HE-02"]
     ctx = _context("devops")
 
@@ -234,7 +234,7 @@ def test_1_6_unit_002_vai_l2_khong_che_thua_tru_owner():
 
 def test_owner_khong_bao_gio_khai_trong_bang_ma_van_bi_che():
     """Luật `owner` đến từ AD-9, không từ YAML: bảng không được nhắc tới nó."""
-    bang = oracle.doc_bang_chinh_sach(oracle.POLICY_TOI_GIAN)
+    bang = oracle.doc_bang_chinh_sach(oracle.POLICY_DAY_DU)
     for vai, cau_hinh in bang["roles"].items():
         for slots in (cau_hinh.get("masked_slots") or {}).values():
             assert OWNER_SLOT not in slots, vai
@@ -257,7 +257,7 @@ def test_hai_ly_do_che_phan_biet_duoc_tu_ben_ngoai():
 
 def test_hyperedge_thieu_slot_thi_khong_bia_ra_khoa():
     """HE-04 không có `owner`: che không được thêm khóa vào bản ghi."""
-    bang = oracle.doc_bang_chinh_sach(oracle.POLICY_TOI_GIAN)
+    bang = oracle.doc_bang_chinh_sach(oracle.POLICY_DAY_DU)
     he = du_lieu_dung_tay.THEO_ID["HE-04"]
     assert OWNER_SLOT not in he["slots"], "fixture phải giữ ca biên thiếu owner"
     ctx = _context("devops")
@@ -421,10 +421,10 @@ def test_mot_cua_fail_closed_dung_cho_ca_ba_duong_doc():
 
     # Rồi vẫn quét hai bảng fixture: bất biến đúng trên giấy mà sai trên dữ
     # liệu thật là chuyện đã xảy ra một lần ở story 1.5.
-    bang_toi_gian = oracle.doc_bang_chinh_sach(oracle.POLICY_TOI_GIAN)
+    bang_day_du = oracle.doc_bang_chinh_sach(oracle.POLICY_DAY_DU)
     bang_nhi_phan = oracle.doc_bang_chinh_sach(oracle.POLICY_NHI_PHAN)
     assert MASK_NAMESPACE in oracle.MUC_TOI_THIEU_THEO_NAMESPACE
-    for bang in (bang_toi_gian, bang_nhi_phan):
+    for bang in (bang_day_du, bang_nhi_phan):
         for vai in bang["roles"]:
             duoc_phep = oracle.allowed_keys_ky_vong(bang, vai)
             assert duoc_phep["chunks"] <= duoc_phep[MASK_NAMESPACE], vai
@@ -459,7 +459,7 @@ def test_doi_bang_chinh_sach_la_doi_hanh_vi_che():
     he = du_lieu_dung_tay.THEO_ID["HE-02"]
     goc = dict(he["slots"])
 
-    da_che = mask(goc, _context("tech_support", oracle.POLICY_TOI_GIAN), _khoa(he))
+    da_che = mask(goc, _context("tech_support", oracle.POLICY_DAY_DU), _khoa(he))
     assert da_che["cause"] == dau_che("cause")
 
     with pytest.raises(MaskItemOutOfPermission):
@@ -475,7 +475,7 @@ def test_moi_hyperedge_moi_vai_khop_oracle():
     Hyperedge mà vai không thấy thì không có "kết quả che" nào cả - lời gọi
     phải fail-closed, vì một bản ghi như vậy không được phép rời adapter.
     """
-    bang = oracle.doc_bang_chinh_sach(oracle.POLICY_TOI_GIAN)
+    bang = oracle.doc_bang_chinh_sach(oracle.POLICY_DAY_DU)
     for vai in ("devops", "tech_support"):
         ctx = _context(vai)
         thay_duoc = set(

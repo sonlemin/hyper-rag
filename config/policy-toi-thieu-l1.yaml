@@ -1,0 +1,72 @@
+# Cấu hình 4 của FR-28: **tối thiểu L1** - "không chặn gì, chỉ che" (PRD 5.3).
+#
+# **Phép biến đổi sinh ra file này: `L0 -> L1` trên `config/policy-day-du.yaml`,
+# và mọi ô vừa lên L1 che cả 7 slot khai được.** Ô đang L1 hay L2 giữ nguyên,
+# `scopes` giữ nguyên. Che cả 7 slot chứ không che một tập nhỏ vì luận điểm của
+# cấu hình này là "biết tồn tại nhưng không đọc được gì": một ô mới lên L1 mà
+# còn hở slot nào thì nó không còn là đầu kia của phổ so với cấu hình 2.
+#
+# Ba ô đổi, tất cả ở `tech_support`: `log`, `cmdb`, `bi_mat_ha_tang`. `devops`
+# không có ô L0 nào ở cấu hình 3 nên nó giống hệt cấu hình 3 - đó là hệ quả của
+# phép biến đổi, không phải một chỗ quên.
+#
+# **Vì vậy luận điểm "biết tồn tại nhưng không đọc được gì" chỉ đúng trọn với
+# `tech_support`.** Ở `devops`, ô `bi_mat_ha_tang` giữ nguyên tập che hai slot
+# của cấu hình 3, tức 5 trong 7 slot còn hở - `devops` đọc được `subject`,
+# `symptom`, `cause`, `condition`, `time` của sổ tay hạ tầng ở cả bốn cấu hình.
+# Đọc cột `devops` của file này như "đầu kia của phổ tiết lộ" là đọc sai; đầu
+# kia của phổ đo được ở cột `tech_support`. Lý do `devops` giữ L1 chứ không lên
+# L2 ở ô ấy nằm ở ADR-014, quyết định 1.
+#
+# Cấu hình này là **điểm so sánh, không phải cấu hình vận hành**: nó không pass
+# mô hình đe dọa (với RT-01/04/05 thì biết tồn tại đã là rò rỉ, quy tắc ĐG2), và
+# nó mở đúng kênh RT-06 - một oracle tồn tại phổ quát lan ra toàn kho khi mọi
+# thứ hiện dưới dạng placeholder. Nó chỉ chạy phần recall tất định của Đo 3,
+# không vào Đo 2, để định lượng cái giá của việc giữ L0.
+#
+# `masked_slots` vẫn phải lồng nhau theo hạng (điều kiện (2) của AD-5), và ở đây
+# nó lồng tới tận cùng: [source, remediation] ⊆ [cause, source, remediation]
+# ⊆ [subject, cause, source, remediation] ⊆ cả 7 slot.
+version: 1
+roles:
+  devops:
+    scopes: [noi_bo, khach_hang_a]
+    disclosure:
+      faq: L2                 # hạng 2
+      tai_lieu_san_pham: L2   # 4
+      sop: L2                 # 6
+      troubleshooting: L2     # 8
+      runbook: L2             # 10
+      known_issue: L2         # 12
+      vong_doi_ticket: L2     # 14
+      canh_bao: L2            # 16
+      bao_cao_su_co: L2       # 20
+      postmortem: L2          # 22
+      log: L2                 # 24
+      cmdb: L2                # 26
+      bi_mat_ha_tang: L1      # 30 - đã L1 ở cấu hình 3, không đổi
+    masked_slots:
+      bi_mat_ha_tang: [source, remediation]
+  tech_support:
+    scopes: [noi_bo]
+    disclosure:
+      faq: L2                 # 2
+      tai_lieu_san_pham: L2   # 4
+      sop: L2                 # 6
+      troubleshooting: L2     # 8
+      runbook: L2             # 10
+      known_issue: L2         # 12
+      vong_doi_ticket: L2     # 14
+      canh_bao: L1            # 16
+      bao_cao_su_co: L1       # 20
+      postmortem: L1          # 22
+      log: L1                 # 24 <- L0 ở cấu hình 3
+      cmdb: L1                # 26 <- L0 ở cấu hình 3
+      bi_mat_ha_tang: L1      # 30 <- L0 ở cấu hình 3
+    masked_slots:
+      canh_bao: [source, remediation]
+      bao_cao_su_co: [cause, source, remediation]
+      postmortem: [subject, cause, source, remediation]
+      log: [subject, symptom, cause, condition, remediation, source, time]
+      cmdb: [subject, symptom, cause, condition, remediation, source, time]
+      bi_mat_ha_tang: [subject, symptom, cause, condition, remediation, source, time]

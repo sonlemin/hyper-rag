@@ -21,9 +21,25 @@ loại nội dung mà vai đó đang ở L1. L0 thì hyperedge vắng mặt hẳ
 gì để che; L2 thì chỉ còn luật `owner` áp ở tầng che.
 
 Kiểm tra được làm hết lúc nạp, không để lười: một bảng đã nạp phải là bảng chạy
-được. Validator đơn điệu của AD-5 và file hạng độ nhạy thuộc story 3.2.
+được.
+
+**Validator đơn điệu của AD-5 (story 3.2).** `build_policy` đòi một bảng hạng
+độ nhạy **tiêm vào** (`core/` chỉ stdlib nên nó không đọc file nào) và kiểm ba
+thứ trên bảng đó: mỗi vai khai *đúng* tập loại nội dung có hạng, mức tiết lộ
+không tăng theo hạng, và tập slot bị che không giảm theo hạng trong vùng L1.
+Trần 50 khóa của AD-4 chỉ là một dòng WARNING, không phải một phép từ chối.
+
+**Vì sao đòi khai đủ mọi loại có hạng thay vì để mặc định L0 ngầm.**
+`RolePolicy.level` trả L0 cho loại chưa khai, nên mức *thực tế* của một vai
+luôn phủ đủ bảng hạng. Kiểm đơn điệu chỉ trên loại đã khai thì bỏ sót đúng ca
+validator sinh ra để bắt: một bảng khai `cmdb: L2` mà bỏ `faq` là fail-open và
+đọc như fail-closed. Khai đủ biến mặc định ngầm thành khẳng định tường minh, và
+làm hai vế của AD-5 hết mâu thuẫn. Mặc định L0 của `level()` giữ nguyên làm
+lưới an toàn cho loại nội dung nạp vào *sau* khi bảng được viết, nó không còn là
+cách một file cấu hình phát biểu "loại này L0".
 """
 
+import logging
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Mapping
@@ -49,6 +65,15 @@ NAMESPACE_MIN_LEVEL: Mapping[str, str] = MappingProxyType(
 )
 # Dẫn xuất, không khai tay: hai danh sách rời nhau là chỗ để lệch.
 NAMESPACES: tuple[str, ...] = tuple(NAMESPACE_MIN_LEVEL)
+
+# Trần khóa lọc của một vai ở một namespace (AD-4). **Cảnh báo, không từ chối:**
+# vượt trần buộc đo lại recall/độ trễ trước khi tiến, và đó là một việc của
+# người chạy phép đo chứ không phải một lý do để hệ không khởi động được. Đếm
+# theo từng vai *và* từng namespace vì tập khóa của `chunks` hẹp hơn tập của
+# `hyperedges`, và cái vượt trần là cái đi vào một filter Qdrant cụ thể.
+TRAN_KHOA_MOI_VAI: int = 50
+
+logger = logging.getLogger(__name__)
 
 
 class PolicyInvalid(ValueError):
@@ -223,8 +248,157 @@ def _allowed_keys(vai: str, scopes: tuple[str, ...], disclosure: Mapping[str, st
     return MappingProxyType(theo_namespace)
 
 
-def build_policy(raw, policy_version: str) -> Policy:
-    """Kiểm dict đã parse rồi dựng `Policy`; sai ở đâu là `PolicyInvalid` ở đó."""
+def _kiem_bang_hang(hang) -> None:
+    """Bảng hạng tiêm vào phải là một **thứ tự toàn phần** trên loại nội dung.
+
+    Ba luật, và cả ba là điều kiện để hai phép kiểm đơn điệu dưới đây có nghĩa.
+    Rỗng hay không phải map: validator không chạy được thì bảng chính sách không
+    được nạp. Hạng không phải `int`: phép so hạng là phép so số nguyên, và một
+    chuỗi lọt vào làm `sorted` dội `TypeError` giữa `build_policy`. Hai loại
+    **cùng hạng**: `sorted` của Python ổn định nhưng không có tie-break, nên thứ
+    tự duyệt của hai loại ngang hạng là thứ tự chúng xuất hiện trong `disclosure`
+    - và khi đó cùng một bảng chính sách nạp được hay bị từ chối tùy vào thứ tự
+    hai dòng trong file YAML.
+
+    Luật thứ ba trùng với luật của `adapters/sensitivity_loader`, và đó không
+    phải trùng lặp cần gỡ: loader canh **file** chốt của repo, còn hàm này canh
+    **tham số** mà bất kỳ nơi gọi nào cũng truyền vào được, kể cả một dict dựng
+    tay trong bộ test. Bỏ nó đi là để kết quả của validator phụ thuộc thứ tự
+    dòng YAML ở đúng đường mà file chốt không đi qua.
+
+    `bool` là con của `int` trong Python, và `runbook: True` thành hạng 1 là một
+    bảng chạy được mà không ai định khai như vậy - cùng ca mà loader hạng chặn.
+    """
+    if not isinstance(hang, Mapping) or not hang:
+        raise PolicyInvalid(
+            "thiếu bảng hạng độ nhạy để kiểm đơn điệu (AD-5): validator không"
+            " chạy được thì bảng chính sách không được nạp"
+        )
+    sai_kieu = sorted(
+        str(loai)
+        for loai, so in hang.items()
+        if isinstance(so, bool) or not isinstance(so, int)
+    )
+    if sai_kieu:
+        raise PolicyInvalid(
+            f"bảng hạng độ nhạy có hạng không phải số nguyên ở {sai_kieu}:"
+            " phép kiểm đơn điệu của AD-5 so hạng bằng phép so số nguyên"
+        )
+    trung = sorted(
+        loai for loai, so in hang.items() if list(hang.values()).count(so) > 1
+    )
+    if trung:
+        raise PolicyInvalid(
+            f"bảng hạng độ nhạy có hai loại nội dung cùng hạng: {trung}."
+            " Phép kiểm đơn điệu duyệt theo hạng tăng dần, nên hai loại ngang"
+            " hạng làm kết quả phụ thuộc thứ tự dòng trong file chính sách"
+        )
+
+
+def _kiem_khai_du_hang(vai: str, disclosure: Mapping[str, str], hang: Mapping[str, int]):
+    """Tập loại khai phải **bằng** tập loại có hạng: thiếu hay thừa đều từ chối.
+
+    Hai chiều, hai lỗi khác nhau vì hai cách sửa khác nhau. Thiếu một loại là
+    một khẳng định fail-closed viết bằng cách im lặng, và validator đơn điệu
+    không đọc được sự im lặng đó. Thừa một loại là một dòng chính sách gán cho
+    một loại nội dung mà ingest sẽ từ chối bằng `SensitivityRankUnknown`, tức
+    một dòng không bao giờ có hiệu lực.
+    """
+    thieu = sorted(set(hang) - set(disclosure))
+    if thieu:
+        raise PolicyInvalid(
+            f"vai {vai!r}: `disclosure` thiếu loại nội dung có hạng {thieu}."
+            " Bảng chính sách phải khai tường minh đủ mọi loại của bảng hạng độ"
+            " nhạy; để mặc định L0 ngầm thì validator đơn điệu không phân biệt"
+            " được 'cố ý L0' với 'quên khai'"
+        )
+    la = sorted(set(disclosure) - set(hang))
+    if la:
+        raise PolicyInvalid(
+            f"vai {vai!r}: `disclosure` khai loại nội dung {la} không có hạng độ"
+            " nhạy, nên ingest sẽ từ chối cả lô mang loại đó và dòng chính sách"
+            " này không bao giờ có hiệu lực"
+        )
+
+
+def _kiem_don_dieu_muc(vai: str, disclosure: Mapping[str, str], hang: Mapping[str, int]):
+    """Điều kiện (1) của AD-5: hạng(A) <= hạng(B) kéo theo mức(A) >= mức(B).
+
+    Duyệt theo hạng tăng dần và đòi mức không tăng. Kiểm cặp kề là đủ cho toàn
+    bộ quan hệ vì "không tăng" bắc cầu; và cặp kề cũng là cặp dễ sửa nhất để in
+    ra - hai loại nội dung cạnh nhau trong bảng hạng.
+    """
+    theo_hang = sorted(disclosure, key=lambda loai: hang[loai])
+    for thap, cao in zip(theo_hang, theo_hang[1:]):
+        if LEVEL_ORDER[disclosure[thap]] < LEVEL_ORDER[disclosure[cao]]:
+            raise PolicyInvalid(
+                f"vai {vai!r} đảo chiều điều kiện (1) của AD-5 ở cặp"
+                f" {thap!r} (hạng {hang[thap]}, mức {disclosure[thap]}) và"
+                f" {cao!r} (hạng {hang[cao]}, mức {disclosure[cao]}):"
+                " hạng thấp hơn phải có mức tiết lộ không thấp hơn"
+            )
+
+
+def _kiem_don_dieu_che(
+    vai: str,
+    disclosure: Mapping[str, str],
+    masked_slots: Mapping[str, frozenset[str]],
+    hang: Mapping[str, int],
+):
+    """Điều kiện (2) của AD-5, chỉ trong vùng L1 của vai.
+
+    Che là khái niệm của riêng L1 (`_masked_slots` đã ép điều đó), nên vùng so
+    sánh là đúng những loại nội dung mà vai này đang ở L1. Loại hạng cao hơn
+    phải che *ít nhất* những gì loại hạng thấp hơn che; ngược lại là một bảng
+    trong đó tài liệu nhạy cảm hơn lộ nhiều slot hơn tài liệu thường hơn.
+    """
+    l1 = sorted(
+        (loai for loai, muc in disclosure.items() if muc == "L1"),
+        key=lambda loai: hang[loai],
+    )
+    for thap, cao in zip(l1, l1[1:]):
+        che_thap = masked_slots.get(thap, frozenset())
+        che_cao = masked_slots.get(cao, frozenset())
+        thieu = sorted(che_thap - che_cao)
+        if thieu:
+            raise PolicyInvalid(
+                f"vai {vai!r} đảo chiều điều kiện (2) của AD-5 ở cặp"
+                f" {thap!r} (hạng {hang[thap]}, che {sorted(che_thap)}) và"
+                f" {cao!r} (hạng {hang[cao]}, che {sorted(che_cao)}):"
+                f" loại hạng cao hơn thiếu {thieu}"
+            )
+
+
+def _canh_bao_tran_khoa(vai: str, allowed_keys: Mapping[str, frozenset[str]]) -> None:
+    """Trần 50 khóa của AD-4: một dòng WARNING mỗi (vai, namespace) vượt trần.
+
+    Không từ chối. Vượt trần là tín hiệu phải đo lại recall và độ trễ của filter
+    Qdrant trước khi tiến (spine Deferred "ACORN"), không phải một file cấu hình
+    hỏng - và biến nó thành lỗi nạp là chặn đúng cấu hình 1 của FR-28, thứ mở
+    hết mọi vai lên L2 để lấy trần recall.
+    """
+    for namespace, khoa in allowed_keys.items():
+        if len(khoa) > TRAN_KHOA_MOI_VAI:
+            logger.warning(
+                "vai %r ở namespace %r có %d khóa lọc, vượt trần %d của AD-4:"
+                " đo lại recall và độ trễ filter trước khi tiến",
+                vai,
+                namespace,
+                len(khoa),
+                TRAN_KHOA_MOI_VAI,
+            )
+
+
+def build_policy(raw, policy_version: str, *, hang: Mapping[str, int]) -> Policy:
+    """Kiểm dict đã parse rồi dựng `Policy`; sai ở đâu là `PolicyInvalid` ở đó.
+
+    `hang` là bảng hạng độ nhạy (loại nội dung -> số nguyên), **tiêm vào** và
+    bắt buộc: `core/` không đọc file nào (AD-1), và một mặc định "bỏ qua phép
+    kiểm khi vắng bảng" là một validator tắt được bằng cách quên một tham số.
+    Nơi gọi duy nhất là `adapters/policy_loader.load_policy`, chỗ có đường đọc
+    đĩa và có bảng chốt của repo.
+    """
+    _kiem_bang_hang(hang)
     if raw is None:
         raise PolicyInvalid("bảng chính sách rỗng, từ chối nạp")
     goc = _mapping(raw, "bảng chính sách")
@@ -247,12 +421,21 @@ def build_policy(raw, policy_version: str) -> Policy:
         raw_vai = _mapping(cau_hinh, f"vai {vai!r}")
         disclosure = _disclosure(raw_vai, vai)
         scopes = _scopes(raw_vai, vai)
+        masked_slots = _masked_slots(raw_vai, vai, disclosure)
+        allowed_keys = _allowed_keys(vai, scopes, disclosure)
+        # Lược đồ trước, ngữ nghĩa sau. Một `run:book` viết nhầm vừa hỏng hình
+        # dạng khóa lọc vừa "không có hạng độ nhạy"; báo cái thứ hai là chỉ
+        # người sửa đi thêm một dòng vào bảng hạng cho một loại không tồn tại.
+        _kiem_khai_du_hang(vai, disclosure, hang)
+        _kiem_don_dieu_muc(vai, disclosure, hang)
+        _kiem_don_dieu_che(vai, disclosure, masked_slots, hang)
+        _canh_bao_tran_khoa(vai, allowed_keys)
         roles[vai] = RolePolicy(
             name=vai,
             scopes=scopes,
             disclosure=disclosure,
-            masked_slots=_masked_slots(raw_vai, vai, disclosure),
-            allowed_keys=_allowed_keys(vai, scopes, disclosure),
+            masked_slots=masked_slots,
+            allowed_keys=allowed_keys,
         )
     return Policy(
         version=goc["version"],

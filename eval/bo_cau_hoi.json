@@ -229,9 +229,7 @@
         "cửa sổ 5 phút"
       ],
       "neo_loai": [],
-      "han_che": [
-        "vai_hoi_khong_thay"
-      ]
+      "han_che": []
     },
     {
       "id": "n3-03",
@@ -247,9 +245,7 @@
         "lý do là tốc độ ghi nhật ký ở log01 cao hơn"
       ],
       "neo_loai": [],
-      "han_che": [
-        "vai_hoi_khong_thay"
-      ]
+      "han_che": []
     },
     {
       "id": "n3-04",
@@ -339,9 +335,7 @@
         "ngoại lệ cần phê duyệt của trưởng nhóm Hạ tầng"
       ],
       "neo_loai": [],
-      "han_che": [
-        "vai_hoi_khong_thay"
-      ]
+      "han_che": []
     },
     {
       "id": "n3-10",
@@ -353,9 +347,7 @@
       "dap_an": "",
       "y_chinh": [],
       "neo_loai": [],
-      "han_che": [
-        "vai_hoi_khong_thay"
-      ]
+      "han_che": []
     },
     {
       "id": "n3-11",
@@ -367,9 +359,7 @@
       "dap_an": "",
       "y_chinh": [],
       "neo_loai": [],
-      "han_che": [
-        "vai_hoi_khong_thay"
-      ]
+      "han_che": []
     },
     {
       "id": "n3-12",
@@ -687,9 +677,7 @@
       "neo_loai": [
         "khach_hang_a:cmdb"
       ],
-      "han_che": [
-        "n7_qua_xac_dinh"
-      ]
+      "han_che": []
     },
     {
       "id": "n7-02",
@@ -707,9 +695,7 @@
       "neo_loai": [
         "noi_bo:cmdb"
       ],
-      "han_che": [
-        "n7_qua_xac_dinh"
-      ]
+      "han_che": []
     },
     {
       "id": "n7-03",
@@ -728,9 +714,7 @@
         "khach_hang_a:cmdb",
         "khach_hang_a:tai_lieu_san_pham"
       ],
-      "han_che": [
-        "n7_qua_xac_dinh"
-      ]
+      "han_che": []
     },
     {
       "id": "n7-04",
@@ -766,9 +750,7 @@
       "neo_loai": [
         "noi_bo:cmdb"
       ],
-      "han_che": [
-        "n7_qua_xac_dinh"
-      ]
+      "han_che": []
     },
     {
       "id": "n7-06",

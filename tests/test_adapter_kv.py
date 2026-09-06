@@ -347,7 +347,7 @@ def test_tap_khoa_rong_khong_cham_dia(workspace_dir, khong_gian, tmp_path):
         "      runbook: L1\n",
         encoding="utf-8",
     )
-    policy_l1 = load_policy(bang_l1)
+    policy_l1 = load_policy(bang_l1, hang={"runbook": 10})
     ctx = vai(policy_l1, "khach", khong_gian)
     assert ctx.keys_for(KV_PERMISSION_NAMESPACE) == frozenset()
     assert ctx.keys_for("hyperedges"), "vai này vẫn phải thấy hyperedge"

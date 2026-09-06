@@ -597,7 +597,7 @@ def test_phien_ban_tu_dien_di_vao_audit(monkeypatch, tmp_path):
     from adapters.ingest import nap_thu_muc
     from adapters.policy_loader import load_policy
 
-    policy = load_policy(GOC_REPO / "config" / "policy-toi-gian.yaml")
+    policy = load_policy(GOC_REPO / "config" / "policy-day-du.yaml")
     mt = dung_moi_truong(
         tmp_path / "ws",
         llm_theo_fact({than: [fact]}),
@@ -631,7 +631,7 @@ def test_khong_tu_dien_thi_audit_ghi_none_chu_khong_chuoi_rong(tmp_path):
     than = "App01 trả lỗi 502 vì chỉnh sai giới hạn bộ nhớ."
     thu_muc = tmp_path / "nguon"
     viet_tai_lieu(thu_muc, "a.md", scope="noi_bo", content_type="runbook", than=than)
-    policy = load_policy(GOC_REPO / "config" / "policy-toi-gian.yaml")
+    policy = load_policy(GOC_REPO / "config" / "policy-day-du.yaml")
     mt = dung_moi_truong(
         tmp_path / "ws",
         llm_theo_fact({than: [{"subject": "App01", "symptom": "trả lỗi 502"}]}),

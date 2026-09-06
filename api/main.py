@@ -1,13 +1,13 @@
-"""App FastAPI của tiến trình phục vụ: `/health` và cửa xác thực (story 3.1).
+"""App FastAPI của tiến trình phục vụ: `/health`, xác thực, hoán policy (3.1/3.2).
 
 Story 1.1 để lại đúng 13 dòng và một tuyến `/health`. Story này thêm nửa xác
 thực của FR-17: một lifespan mở bảng `users`, một endpoint phát JWT, và một cửa
 đọc claim cho endpoint đòi quyền demo/admin.
 
-**Lifespan này chỉ mở Postgres.** Engine tri thức, ba kho và audit port thuộc
-story 3.3 - chỗ endpoint đầu tiên thật sự đọc tri thức. Dựng engine ở đây là
-dựng một thứ chưa ai gọi, và nó kéo theo ba kết nối phải khỏe trước khi một
-người đăng nhập được.
+**Lifespan này chỉ mở Postgres** - bảng `users` (3.1) và bảng `audit_log` (3.2).
+Engine tri thức và ba kho thuộc story 3.3, chỗ endpoint đầu tiên thật sự đọc tri
+thức. Dựng engine ở đây là dựng một thứ chưa ai gọi, và nó kéo theo ba kết nối
+phải khỏe trước khi một người đăng nhập được.
 
 **Cửa xác thực mặc định đóng.** Tuyến đăng ký vào `cua_dong`, và router đó
 mang `Depends(_claim)` nên mọi tuyến của nó đi qua cửa bằng cơ chế của
@@ -21,11 +21,19 @@ nó không thể đòi một token có sẵn.
 **Không có endpoint dữ liệu nào ở đây.** `tests/test_api_khong_cham_tang_che.py`
 canh điều đó, và nó là chỗ story 3.3 phải dừng lại để trả lời câu "nội dung ra
 khỏi handler này đã đi qua tầng che chưa".
+
+**Story 3.2 thêm hai tuyến `/admin/policy` và một port audit.** Hoán bảng chính
+sách là thao tác tầng mutation của AD-16 nên nó cần một port audit sống cùng
+tiến trình; đó là Postgres, cùng cơ sở dữ liệu với bảng `users`, không phải một
+trong ba kho tri thức mà Never của spec 3.2 xếp vào story 3.3. Hai tuyến chỉ
+**trỏ sang một file đã có** trong `config/`: màn cấu hình FR-22 và API ghi đè
+*nội dung* file policy không thuộc story này.
 """
 
 import logging
+import os
 from contextlib import asynccontextmanager
-from typing import Annotated
+from typing import Annotated, Mapping
 
 import anyio.to_thread
 from fastapi import APIRouter, Depends, FastAPI, Request
@@ -33,11 +41,14 @@ from fastapi.responses import JSONResponse
 
 from adapters.identity_seed import IdentitySeedInvalid, nap_tai_khoan
 from adapters.nhom_phu_trach import bang_nhom_mac_dinh
+from api.audit_postgres import AuditPostgres
+from api.chinh_sach import BIEN_ID_POLICY, ID_MAC_DINH, KhoChinhSach
 from api.tai_khoan import KhoTaiKhoan
 from api.xac_thuc import (
     ClaimNguoiHoi,
     LoiXacThuc,
     doc_token,
+    doi_admin,
     doi_demo_hoac_admin,
     khoa_ky,
     loi_dang_nhap_sai,
@@ -75,6 +86,39 @@ async def mo_kho_tai_khoan() -> KhoTaiKhoan:
     return kho
 
 
+async def mo_audit() -> AuditPostgres:
+    """Mở port audit của tiến trình; hàm riêng để test thay bằng bản giả.
+
+    Cùng khuôn với `mo_kho_tai_khoan` ngay trên và với `api.man_nap.mo_audit`.
+    Mở **một lần cho cả tiến trình** chứ không một lần mỗi request: hoán policy
+    là thao tác hiếm, nhưng một pool asyncpg dựng rồi vứt ở mỗi lời gọi là một
+    pool không ai đóng khi handler dội lỗi.
+    """
+    audit = await AuditPostgres.mo()
+    try:
+        await audit.khoi_tao()
+    except BaseException:
+        await audit.dong()
+        raise
+    return audit
+
+
+def ma_policy_mac_dinh(moi_truong: Mapping[str, str] | None = None) -> str:
+    """Id bảng chính sách mà tiến trình khởi động với; mặc định `day-du`.
+
+    Đọc từ môi trường chứ không hard-code vì FR-28 đòi chạy được cả bốn cấu
+    hình đo; mặc định là bảng vận hành chứ không phải một cấu hình đo, vì một
+    tiến trình khởi động mà không ai khai id phải chạy thứ an toàn nhất trong
+    bốn thứ, không phải thứ đầu bảng chữ cái.
+    """
+    nguon = os.environ if moi_truong is None else moi_truong
+    gia_tri = nguon.get(BIEN_ID_POLICY)
+    # `strip()` trên một giá trị không phải chuỗi là `AttributeError` giữa
+    # lifespan, xa chỗ gây ra. Một biến môi trường luôn là chuỗi, nhưng hàm này
+    # nhận `moi_truong` từ bộ test nên nó phải chịu được một map bất kỳ.
+    return (gia_tri.strip() if isinstance(gia_tri, str) else "") or ID_MAC_DINH
+
+
 @asynccontextmanager
 async def vong_doi(app: FastAPI):
     """Khởi động: kiểm khóa ký, mở bảng `users`, đổ seed. Tắt: đóng pool.
@@ -94,21 +138,37 @@ async def vong_doi(app: FastAPI):
     # sẽ làm mọi truy hồi nổ giữa chừng thay vì làm tiến trình chết ở giây đầu.
     # Đây là một lời gọi cấu hình, không phải một đường đọc tri thức.
     bang_nhom_mac_dinh()
+    # Nạp policy **trước** khi mở kết nối nào, cùng lý do với hai lời gọi trên:
+    # một `config/policy-*.yaml` hỏng hay một `HYPER_RAG_POLICY_ID` gõ sai là
+    # lỗi cấu hình, và nó phải nổ ở giây đầu chứ không ở request đầu tiên dựng
+    # ngữ cảnh quyền - lúc đó nó trông giống một sự cố kho.
+    app.state.kho_chinh_sach = KhoChinhSach.nap(ma_policy_mac_dinh())
+    logger.info(
+        "bảng chính sách %r, policy_version %s",
+        app.state.kho_chinh_sach.ma,
+        app.state.kho_chinh_sach.hien_tai().policy_version[:12],
+    )
     kho = await mo_kho_tai_khoan()
     app.state.kho_tai_khoan = kho
+    audit = None
     try:
         so = await kho.dong_bo(nap_tai_khoan())
+        audit = await mo_audit()
     except BaseException:
         # `nap_tai_khoan()` và `dong_bo` đều hỏng được (seed sai, DB rớt giữa
         # transaction). Không đóng pool ở đây là rò đúng cái mà `finally` bên
         # dưới lo, chỉ khác là `finally` chưa chạy vì `yield` chưa tới.
         await kho.dong()
         raise
+    app.state.audit = audit
     logger.info("đồng bộ %d tài khoản seed vào bảng users", so)
     try:
         yield
     finally:
-        await kho.dong()
+        try:
+            await audit.dong()
+        finally:
+            await kho.dong()
 
 
 app = FastAPI(title="hyper-rag-copilot", lifespan=vong_doi)
@@ -267,6 +327,57 @@ async def danh_sach_tai_khoan(c: Claim) -> dict:
             for m in cac_muc
         ]
     }
+
+
+@cua_dong.get("/admin/policy")
+async def policy_dang_chay(request: Request, c: Claim) -> dict:
+    """Bảng chính sách đang chạy và danh mục id hoán được - **đòi `admin`**.
+
+    Đọc `kho.ma_va_policy()` **một lần**, không phải `ma` rồi `hien_tai()`: hai
+    phép đọc là một handler có thể báo `policy_version` của bảng này và tên của
+    bảng kia.
+    """
+    doi_admin(c)
+    kho = request.app.state.kho_chinh_sach
+    ma, policy = kho.ma_va_policy()
+    return {
+        "id": ma,
+        "policy_version": policy.policy_version,
+        "danh_muc": kho.danh_muc(),
+    }
+
+
+@cua_dong.post("/admin/policy")
+async def hoan_policy(request: Request, c: Claim) -> dict:
+    """Hoán sang một bảng chính sách khác trong danh mục - **đòi `admin`**.
+
+    Nhận `{"id": "<id trong danh mục>"}`. Không nhận đường dẫn: danh mục là danh
+    mục đóng suy từ glob `config/policy-*.yaml`, và một tham số đường dẫn trên
+    một endpoint admin là một đường đọc file tùy ý.
+
+    Không restart tiến trình và không chạm dữ liệu: mức tiết lộ tính lúc truy
+    vấn chứ không ghi lên kho, nên hoán bảng là hoán một object trong bộ nhớ.
+    Đây **không** phải FR-22: nó chỉ trỏ sang một file đã có, không ghi đè nội
+    dung file nào.
+    """
+    doi_admin(c)
+    try:
+        than = await request.json()
+    except Exception:
+        than = None
+    ma = than.get("id") if isinstance(than, dict) else None
+    kho = request.app.state.kho_chinh_sach
+    # `hoan` trả cả cặp, và handler đọc đúng cặp đó. Đọc lại `kho.ma` ở đây là
+    # đọc trạng thái *sau* một `await`, tức có thể là bảng của một lần hoán
+    # khác vừa chen vào - và khi đó phản hồi khai id của bảng này kèm
+    # `policy_version` của bảng kia.
+    ma_moi, policy = await kho.hoan(
+        ma if isinstance(ma, str) else "",
+        audit=request.app.state.audit,
+        act=c.sub,
+        role=c.role,
+    )
+    return {"id": ma_moi, "policy_version": policy.policy_version}
 
 
 # Đăng ký sau khi mọi tuyến đã khai, một chỗ, để đọc file này là thấy ngay tập

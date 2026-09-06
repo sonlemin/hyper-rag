@@ -190,12 +190,16 @@ def test_ly_do_khai_van_con_that():
 HAM_MAIN_CO_LY_DO: dict[str, str] = {
     "health": "healthcheck của compose; trả một hằng, nằm ngoài mọi cửa",
     "mo_kho_tai_khoan": "điểm nối mở pool Postgres cho bảng users; test thay bằng bản giả",
-    "vong_doi": "lifespan: kiểm khóa ký, mở bảng users, đổ seed; không dựng engine tri thức",
+    "mo_audit": "điểm nối mở pool Postgres cho bảng audit_log; không phải kho tri thức",
+    "ma_policy_mac_dinh": "đọc id policy từ môi trường; hàm thuần trên một map chuỗi",
+    "vong_doi": "lifespan: kiểm khóa ký, nạp policy, mở bảng users và audit_log; không dựng engine tri thức",
     "_loi_xac_thuc": "exception handler, dựng {error:{code,message}} từ hai hằng",
     "_claim": "đọc claim của token trong header; không chạm kho",
     "dang_nhap": "POST /auth/login; đọc bảng users, phát JWT",
     "toi": "GET /auth/toi; đọc lại claim của chính token",
     "danh_sach_tai_khoan": "GET /auth/tai-khoan; liệt kê seed, đòi demo/admin, không có hash",
+    "policy_dang_chay": "GET /admin/policy; trả id + policy_version + danh mục id, không nội dung",
+    "hoan_policy": "POST /admin/policy; trỏ sang một file config đã có, không đọc tri thức",
 }
 
 

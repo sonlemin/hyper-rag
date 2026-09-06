@@ -73,7 +73,7 @@ def test_du_tam_truong(policy):
 
 def test_factory_dung_allowed_keys_theo_oracle(policy):
     """`allowed_keys` của factory khớp oracle tính độc lập, đủ 3 namespace."""
-    bang = oracle.doc_bang_chinh_sach(oracle.POLICY_TOI_GIAN)
+    bang = oracle.doc_bang_chinh_sach(oracle.POLICY_DAY_DU)
     for vai in ("devops", "tech_support"):
         ctx = user_context(
             policy=policy, role=vai, space="synth", real_account="tk_" + vai
@@ -86,7 +86,7 @@ def test_factory_dung_allowed_keys_theo_oracle(policy):
 
 def test_factory_mang_masked_slots_dang_map(policy):
     """`masked_slots` là map loại nội dung -> tập slot, không phải tập phẳng (AD-3)."""
-    bang = oracle.doc_bang_chinh_sach(oracle.POLICY_TOI_GIAN)
+    bang = oracle.doc_bang_chinh_sach(oracle.POLICY_DAY_DU)
     ctx = user_context(
         policy=policy, role="tech_support", space="synth", real_account="ts01"
     )

@@ -28,7 +28,13 @@ import pytest
 from core import facts
 from core.ingest_scan import tach_frontmatter
 from core.slots import SLOT_ROLES, SLOT_ROLE_SET
-from eval.bo_vang import TOI_DA_FEW_SHOT, BoVangKhongHopLe, chuan_so_sanh, doc_bo_vang
+from eval.bo_vang import (
+    TOI_DA_FEW_SHOT,
+    BoVangKhongHopLe,
+    chuan_so_sanh,
+    doc_bo_vang,
+    loai_cua_bang_chinh_sach,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -113,17 +119,105 @@ def test_mau_so_la_tong_slot_da_dien_cua_dung_tam_tai_lieu_cham(bo_vang):
 
 
 def test_phu_du_loai_noi_dung_cua_bang_chinh_sach(bo_vang):
-    """Bộ vàng phải phủ mọi loại nội dung mà bảng chính sách *đang khai*.
+    """Dữ liệu thật của `synth` phải phủ mọi loại mà bảng chính sách khai.
 
-    Từ story 2.8 luật này là một phép **bao hàm**, không phải một đẳng thức với
-    bảng hạng độ nhạy: bảng hạng có 13 loại để 3.2 dựng được bảng đầy đủ, còn
-    loại chưa khai trong bảng chính sách là fail-closed L0 im lặng nên không có
-    ca đo nào để mất.
+    Luật là một phép **bao hàm**, và mẫu đối chiếu đổi ở story 3.2: câu hỏi vẫn
+    là "bảng chính sách có mất ca nào trên dữ liệu thật không", nhưng dữ liệu
+    thật của space `synth` nay là corpus 42 tài liệu cộng 10 tài liệu bộ vàng
+    chứ không còn là riêng bộ vàng. Đối chiếu với riêng bộ vàng thì bảng đầy đủ
+    13 loại đòi gán nhãn tay 10 tài liệu mới và đổi mẫu số 151 slot của cổng R2.
     """
-    from eval.bo_vang import loai_cua_bang_chinh_sach
+    from eval.bo_vang import loai_cua_bang_chinh_sach, loai_cua_corpus
 
     cua_bo = {t.content_type for t in bo_vang.tai_lieu}
-    assert loai_cua_bang_chinh_sach() <= cua_bo
+    assert loai_cua_bang_chinh_sach() <= cua_bo | loai_cua_corpus()
+
+
+def test_luat_phu_quet_ca_bon_bang_chinh_sach():
+    """Luật phủ soi **mọi** `config/policy-*.yaml`, không riêng bảng vận hành.
+
+    Khoản ledger 2.8: `POLICY_MAC_DINH` trỏ đúng một file, nên một cấu hình đo
+    khai một loại nội dung không có ca nào trên dữ liệu thật sẽ đi qua im lặng.
+
+    Khẳng định là một **đẳng thức với bảng hạng**, không phải "mỗi file là tập
+    con của hợp bốn file" - vế sau luôn đúng theo định nghĩa và không canh gì.
+    """
+    from adapters.sensitivity_loader import bang_hang_mac_dinh
+    from eval.bo_vang import cac_bang_chinh_sach, loai_cua_bang_chinh_sach
+
+    cac_bang = cac_bang_chinh_sach()
+    assert len(cac_bang) == 4, [p.name for p in cac_bang]
+    co_hang = set(bang_hang_mac_dinh().hang)
+    assert loai_cua_bang_chinh_sach() == co_hang
+    # Và từng file một, vì validator đòi *mỗi* bảng khai đủ - hợp bốn file bằng
+    # 13 loại vẫn đúng khi một file khai 12 còn file kia khai loại thứ 13.
+    for duong_dan in cac_bang:
+        assert loai_cua_bang_chinh_sach(duong_dan) == co_hang, duong_dan
+
+
+def test_luat_phu_khong_thay_the_mau_so_cua_cong_r2():
+    """Luật phủ nói về hình dạng truy hồi; cổng R2 vẫn đứng trên 3 loại bộ vàng.
+
+    Đọc luật phủ thành "precision đã đo trên 13 loại" là đọc sai, và chỗ dễ đọc
+    sai nhất là chương 4. Ghim khoảng cách đó bằng một con số: bảng chính sách
+    khai 13 loại, bộ vàng có nhãn tay cho **3**.
+    """
+    from eval.bo_vang import doc_bo_vang, loai_cua_bang_chinh_sach
+
+    cua_bo = {t.content_type for t in doc_bo_vang().tai_lieu}
+    assert cua_bo == {"runbook", "bao_cao_su_co", "bi_mat_ha_tang"}
+    assert len(loai_cua_bang_chinh_sach()) == 13
+
+
+def test_moi_hang_policy_mac_dinh_deu_nap_duoc():
+    """Tám hằng `POLICY_MAC_DINH` phải trỏ vào một file nạp được, cả tám.
+
+    Hai trong tám (`api/do_chi_phi.py`, `eval/ct03.py`) **không có gì canh**: đổi
+    chúng thành một tên file không tồn tại thì cả bộ test vẫn xanh, vì hai module
+    ấy chỉ nạp policy trên đường chạy thật (chạm kho, tốn tiền hoặc cần máy chủ).
+    Một cái tên nói dối ở đó là một cấu hình đọc nhầm phát hiện được ở đúng lúc
+    đang chạy trên máy chủ.
+
+    Import chính module chứ không đọc AST: cái phải đúng là giá trị hằng lúc
+    chạy, không phải một chuỗi trong mã nguồn.
+    """
+    from adapters.policy_loader import load_policy
+
+    import api.do_chi_phi
+    import api.man_nap
+    import eval.bo_vang
+    import eval.cau_hoi
+    import eval.chup_do_thi
+    import eval.ct03
+    import eval.do_trich_xuat
+    from tests.fixtures import oracle
+
+    hang = {
+        "api.do_chi_phi": api.do_chi_phi.POLICY_MAC_DINH,
+        "api.man_nap": api.man_nap.POLICY_MAC_DINH,
+        "eval.bo_vang": eval.bo_vang.POLICY_MAC_DINH,
+        "eval.cau_hoi": eval.cau_hoi.POLICY_MAC_DINH,
+        "eval.chup_do_thi": eval.chup_do_thi.POLICY_MAC_DINH,
+        "eval.ct03": eval.ct03.POLICY_MAC_DINH,
+        "eval.do_trich_xuat": eval.do_trich_xuat.POLICY_MAC_DINH,
+        "tests.fixtures.oracle": oracle.POLICY_DAY_DU,
+    }
+    assert len(hang) == 8
+    for ten, duong_dan in hang.items():
+        assert duong_dan.exists(), (ten, duong_dan)
+        load_policy(duong_dan)  # không ném
+    # Cả tám trỏ vào **cùng** một bảng: bảng vận hành. Tám đường nạp policy mà
+    # hai đường đọc hai bảng khác nhau là hai bộ số không so được với nhau.
+    assert len(set(hang.values())) == 1, hang
+
+
+def test_glob_bang_chinh_sach_rong_la_loi_chu_khong_phai_luat_phu_rong(tmp_path):
+    """Guard của chính phép quét: glob hỏng cho danh sách rỗng và luật hết nghĩa."""
+    from eval.bo_vang import cac_bang_chinh_sach
+
+    with pytest.raises(BoVangKhongHopLe) as loi:
+        cac_bang_chinh_sach(tmp_path)
+    assert "phép quét" in str(loi.value)
 
 
 def test_moi_loai_noi_dung_cua_bo_vang_deu_co_hang_do_nhay(bo_vang):
@@ -134,18 +228,22 @@ def test_moi_loai_noi_dung_cua_bo_vang_deu_co_hang_do_nhay(bo_vang):
     assert cua_bo <= set(bang_hang_mac_dinh().hang)
 
 
-def test_bang_hang_rong_hon_bo_vang_khong_lam_bo_vang_do():
-    """Mở bảng hạng lên 13 loại **không** được biến bộ vàng thành không hợp lệ.
+def test_bang_chinh_sach_day_du_khong_lam_bo_vang_do():
+    """Khai đủ 13 loại **không** được biến bộ vàng 10 tài liệu thành không hợp lệ.
 
-    Đây là khoản ledger 2.5 mà story 2.8 đóng: luật cũ đòi bộ vàng phủ *mọi*
-    loại của bảng hạng, nên một dòng thêm vào `config/hang-do-nhay.yaml` là một
-    lượt gán nhãn 10 tài liệu mới.
+    Khoản ledger 2.5 mà story 2.8 đóng một nửa và 3.2 đóng nốt. Luật đời đầu đòi
+    bộ vàng phủ *mọi* loại của bảng hạng, nên một dòng thêm vào
+    `config/hang-do-nhay.yaml` là một lượt gán nhãn 10 tài liệu mới; luật 2.8
+    dời cái bẫy sang bảng chính sách, và story 3.2 đúng là story khai đủ 13 loại
+    ở đó. Mẫu đối chiếu nay là corpus, nên bộ vàng ba loại vẫn hợp lệ.
     """
     from adapters.sensitivity_loader import bang_hang_mac_dinh
     from eval.bo_vang import doc_bo_vang, loai_cua_bang_chinh_sach
 
-    assert len(bang_hang_mac_dinh().hang) > len(loai_cua_bang_chinh_sach())
-    doc_bo_vang()  # không ném
+    bo = doc_bo_vang()  # không ném
+    cua_bo = {t.content_type for t in bo.tai_lieu}
+    assert len(cua_bo) == 3
+    assert len(loai_cua_bang_chinh_sach()) == len(bang_hang_mac_dinh().hang) == 13
 
 
 def test_moi_vai_co_it_nhat_mot_fact_trong_ca_bo(bo_vang):
@@ -579,7 +677,16 @@ def test_vai_vang_mat_ca_bo_bi_tu_choi_kem_ten_vai(kho):
     assert "symptom" in str(loi.value)
 
 
-def test_loai_noi_dung_thieu_bi_tu_choi_kem_ten_loai(kho):
+def test_loai_noi_dung_thieu_bi_tu_choi_kem_ten_loai(kho, monkeypatch):
+    """Loại nội dung mà **cả corpus lẫn bộ vàng** đều không có: từ chối kèm tên.
+
+    Corpus thật phủ 13/13 nên ca này phải dựng: corpus giả thiếu
+    `bi_mat_ha_tang`, và bộ vàng cũng bỏ tài liệu loại đó. Bảng chính sách vẫn
+    là bảng thật, nên cái đang được kiểm là đúng phép trừ của luật phủ.
+    """
+    monkeypatch.setattr(
+        "eval.bo_vang.loai_cua_corpus", lambda *a, **k: {"runbook", "bao_cao_su_co"}
+    )
     data, _ = kho
     (data / "c-ha-tang.txt").unlink()
     bo = _bo_toi_thieu()
@@ -587,6 +694,30 @@ def test_loai_noi_dung_thieu_bi_tu_choi_kem_ten_loai(kho):
     with pytest.raises(BoVangKhongHopLe) as loi:
         _nap(kho, bo)
     assert "bi_mat_ha_tang" in str(loi.value)
+
+
+def test_loai_chi_co_trong_corpus_van_du_de_luat_phu_xanh(kho, monkeypatch):
+    """Đối chứng: một loại chỉ có ở corpus vẫn là một ca có trên dữ liệu thật.
+
+    Đây chính là điều làm cho bảng đầy đủ của 3.2 không kéo theo một lượt gán
+    nhãn tay: `bi_mat_ha_tang` biến khỏi bộ vàng mà luật vẫn xanh vì corpus có.
+    """
+    monkeypatch.setattr(
+        "eval.bo_vang.loai_cua_corpus",
+        lambda *a, **k: set(loai_cua_bang_chinh_sach()),
+    )
+    data, _ = kho
+    (data / "c-ha-tang.txt").unlink()
+    bo = _bo_toi_thieu()
+    bo["tai_lieu"] = [t for t in bo["tai_lieu"] if t["doc_key"] != "c-ha-tang.txt"]
+    for t in bo["tai_lieu"]:
+        t["few_shot"] = False
+    # Bộ nhỏ này vẫn hỏng vì một lý do khác (tài liệu bỏ đi giữ fact `source`
+    # duy nhất), nên assert đúng thứ đang được đo: **không** còn lỗi phủ loại.
+    with pytest.raises(BoVangKhongHopLe) as loi:
+        _nap(kho, bo)
+    assert "bi_mat_ha_tang" not in str(loi.value)
+    assert "bảng chính sách" not in str(loi.value)
 
 
 def test_gom_moi_loi_roi_nem_mot_lan(kho):
@@ -884,6 +1015,9 @@ def test_bang_hang_hong_van_bao_ca_loi_phu_theo_bang_chinh_sach(kho, monkeypatch
         raise SensitivityRanksInvalid("bảng hạng hỏng cố ý")
 
     monkeypatch.setattr("eval.bo_vang.bang_hang_mac_dinh", hong)
+    monkeypatch.setattr(
+        "eval.bo_vang.loai_cua_corpus", lambda *a, **k: {"runbook", "bao_cao_su_co"}
+    )
     bo = _bo_toi_thieu()
     # Bỏ tài liệu `bi_mat_ha_tang` để phép phủ theo bảng chính sách cũng hỏng.
     bo["tai_lieu"] = [t for t in bo["tai_lieu"] if t["content_type"] != "bi_mat_ha_tang"]

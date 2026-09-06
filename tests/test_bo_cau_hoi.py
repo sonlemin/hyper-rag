@@ -61,23 +61,24 @@ from eval.cau_hoi import (
 # Hai bảng, hai câu hỏi khác nhau: `theo_vai` so hai vai trên **mọi** câu,
 # `theo_vai_hoi` chấm mỗi câu bằng **vai hỏi của chính nó** - đó mới là mẫu số
 # mà Đo 3 chạy.
+# Bốn con số của story 2.9 giữ lại cạnh số mới để đọc được chênh: story 3.2 mở
+# bảng chính sách từ 3 lên 13 loại nội dung, và đây là chỗ hiệu lực của nó đo
+# được. Cũ -> mới: `devops` 20/19 -> 34/33 (9 -> 4 câu trần 0), `tech_support`
+# 11/5 -> 18/11 (13 -> 10), và mẫu số thật của Đo 3 (`theo_vai_hoi`) 16/12 ->
+# 29/24, số câu trần 0 từ 10 xuống 5.
 SO_KHOA_TRAN = {
     "so_cap": 41,
     "so_cau_co_nhan": 22,
     "theo_vai": {
-        "devops": {"ton_tai": 20, "tra_loi_duoc": 19, "cau_tran_khong": 9},
-        # `tra_loi_duoc` 4 -> 5 sau đợt nạp lại 05/09 (story 2.12): fact "dịch vụ
-        # phục hồi lúc 10:00" của `05-bao-cao-su-co-inc-1208.txt` nay nằm ở
-        # `symptom`/`time` thay vì `remediation`, và `tech_support` đọc được hai
-        # vai đó ở mức L1 trong khi `remediation` bị che.
-        "tech_support": {"ton_tai": 11, "tra_loi_duoc": 5, "cau_tran_khong": 13},
+        "devops": {"ton_tai": 34, "tra_loi_duoc": 33, "cau_tran_khong": 4},
+        "tech_support": {"ton_tai": 18, "tra_loi_duoc": 11, "cau_tran_khong": 10},
     },
-    "theo_vai_hoi": {"ton_tai": 16, "tra_loi_duoc": 12, "cau_tran_khong": 10},
+    "theo_vai_hoi": {"ton_tai": 29, "tra_loi_duoc": 24, "cau_tran_khong": 5},
 }
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-POLICY = REPO_ROOT / "config" / "policy-toi-gian.yaml"
+POLICY = REPO_ROOT / "config" / "policy-day-du.yaml"
 
 # Ảnh chụp phải khớp một-một với hai thư mục tài liệu nạp vào space `synth`.
 THU_MUC_TAI_LIEU = (REPO_ROOT / "eval" / "corpus", REPO_ROOT / "eval" / "data")
@@ -733,6 +734,74 @@ def test_nhan_rong_hyperedge_bi_tu_choi(tmp_path):
 # --------------------------------------------------------------------------
 
 
+# Số cặp câu-hyperedge nằm ở **mức L1** với vai hỏi của chính câu đó, đếm theo
+# nhóm. Đây là kết luận trung tâm của story 3.2 và là thứ đóng khoản ledger về
+# "N3 sạch bóng L1": trước bảng đầy đủ, N3 có **0** cặp ở L1 nên khoảng cách
+# recall(3) - recall(2) trên N3 bằng 0 vì một lý do của bảng chứ không của cơ
+# chế, và một nửa phát biểu PRD 5.3 không có bằng chứng.
+CAP_O_MUC_L1 = {"N3": 3, "N5": 6}
+
+
+def _dem_cap_theo_muc(bo, nhan, anh, policy, nhom: str) -> dict[str, int]:
+    """Đếm cặp của một nhóm theo mức tiết lộ mà **vai hỏi của chính câu** thấy.
+
+    Đếm ở đây chứ không dùng `TranCau`: trần gộp L1 và L2 vào một con số "tồn
+    tại", mà điều cần ghim là *có cặp nào ở L1 hay không* - hai cấu hình đo 2 và
+    3 chỉ khác nhau ở đúng vùng đó.
+    """
+    theo_id = anh.theo_id
+    dem = {"L0": 0, "L1": 0, "L2": 0, "khong_khoa": 0, "ngoai_scope": 0}
+    for n in nhan.nhan:
+        cau = bo.theo_id[n.cau_id]
+        if cau.nhom != nhom:
+            continue
+        hang = policy.role(cau.vai_hoi)
+        for he in n.hyperedge:
+            moc = theo_id.get(he.id)
+            if moc is None or moc.khoa is None:
+                dem["khong_khoa"] += 1
+            elif moc.scope not in hang.scopes:
+                dem["ngoai_scope"] += 1
+            else:
+                dem[hang.level(moc.content_type or "")] += 1
+    return dem
+
+
+def test_nhom_n3_co_cap_o_muc_l1_sau_bang_chinh_sach_day_du(bo, nhan, anh):
+    """PRD 5.3 phát biểu cho **cả** N3 lẫn N5, nên cả hai phải chạm vùng L1.
+
+    Cấu hình 2 (nhị phân) và cấu hình 3 chỉ khác nhau ở đúng vùng L1. Nhóm N3
+    không có cặp nào ở L1 nghĩa là chạy Đo 3 cho recall(3) = recall(2) trên toàn
+    bộ N3, và khoảng cách bằng 0 đó không nói gì về cơ chế.
+
+    Ba cặp N3 ở L1 đều đến từ `canh_bao` ở L1 với `tech_support` - một **quyết
+    định** của bảng, không phải hệ quả của A4 (ADR-014). Ghim con số ở đây là
+    ghim chính lý do quyết định ấy tồn tại.
+    """
+    policy = load_policy(POLICY)
+    for nhom, cho_doi in CAP_O_MUC_L1.items():
+        dem = _dem_cap_theo_muc(bo, nhan, anh, policy, nhom)
+        assert dem["L1"] == cho_doi, (nhom, dem)
+
+
+def test_duoi_baseline_nhi_phan_ca_hai_nhom_ve_khong_cap_l1(bo, nhan, anh):
+    """Vế đối chứng: cấu hình 2 ép `L1 -> L0` nên vùng L1 rỗng theo định nghĩa.
+
+    Không có ca này thì con số 3 ở trên đọc được thành một hằng của nhãn, chứ
+    không phải một hiệu ứng của bảng chính sách - và đúng cái nó phải chứng minh
+    là "chỉ bảng chính sách đổi".
+    """
+    nhi_phan = load_policy(REPO_ROOT / "config" / "policy-nhi-phan.yaml")
+    for nhom in CAP_O_MUC_L1:
+        dem = _dem_cap_theo_muc(bo, nhan, anh, nhi_phan, nhom)
+        assert dem["L1"] == 0, (nhom, dem)
+        # Và số cặp mất hẳn đúng bằng số cặp từng ở L1: phép biến đổi không
+        # chạm ô L2 nào.
+        assert dem["L0"] == _dem_cap_theo_muc(
+            bo, nhan, anh, load_policy(POLICY), nhom
+        )["L0"] + CAP_O_MUC_L1[nhom], (nhom, dem)
+
+
 def test_tran_theo_vai_tinh_cho_dung_hai_vai_cua_seed(nhan, anh):
     tran = tran_theo_vai(nhan, anh, policy=load_policy(POLICY))
     assert set(tran) == set(HAI_VAI)
@@ -780,14 +849,29 @@ def _bo_ba_tran(tmp_path: Path, he, dau=(HAN_CHE_VAI_HOI_KHONG_THAY,)):
 
 
 def test_tran_bang_khong_la_canh_bao_chu_khong_phai_loi(tmp_path):
-    """Hàng "Trần lý thuyết bằng 0": tính ra 0 và in cảnh báo, không ném."""
-    he = [_he("he-aaa", ["t1.md"], "App01", cause="x", khoa=filter_key("noi_bo", "log"))]
+    """Hàng "Trần lý thuyết bằng 0": tính ra 0 và in cảnh báo, không ném.
+
+    Neo vào **scope** chứ không vào loại nội dung: từ story 3.2 bảng đầy đủ cho
+    `devops` mức từ L1 trở lên ở cả 13 loại, nên không loại nội dung nào một
+    mình còn kéo được trần của cả hai vai về 0. `khach_hang_b` thì không vai nào
+    chạm, và đó là biên cách ly RT-01 - một trạng thái đúng, đúng như trước đây
+    "loại chưa khai" là một trạng thái đúng.
+    """
+    he = [
+        _he(
+            "he-aaa",
+            ["t1.md"],
+            "App01",
+            cause="x",
+            khoa=filter_key("khach_hang_b", "runbook"),
+        )
+    ]
     _, nhan, anh = _bo_ba_tran(tmp_path, he)
     tran = tran_theo_vai(nhan, anh, policy=load_policy(POLICY))
     for vai, t in tran.items():
         assert t.ton_tai == 0, vai
         assert t.canh_bao(), f"{vai}: trần 0 mà không có cảnh báo nào"
-        assert any("loại nội dung" in c or "log" in c for c in t.canh_bao())
+        assert any("scope" in c and "khach_hang_b" in c for c in t.canh_bao())
 
 
 def test_hyperedge_khong_khoa_khong_vao_tran_cua_vai_nao(tmp_path):
@@ -1266,32 +1350,35 @@ def test_dau_han_che_khop_dung_thu_tinh_lai_duoc(bo, nhan, anh):
     from eval.cau_hoi import kiem_danh_dau
 
     kiem_danh_dau(bo, nhan, anh, policy=load_policy(POLICY))
-    assert {c.id for c in bo.cau if HAN_CHE_N7_QUA_XAC_DINH in c.han_che} == {
-        "n7-01",
-        "n7-02",
-        "n7-03",
-        "n7-05",
-    }
+    # **Cả bốn dấu `n7_qua_xac_dinh` gỡ ở story 3.2**, và đó là chỗ mẫu số N7 của
+    # PRD 5.2 lên 6/6. Ba câu (n7-01, n7-03, n7-05) tự lành vì `devops` nay L2
+    # tới `cmdb`; câu thứ tư (n7-02) lành vì commit `e7698dc` đổi vai hỏi của nó
+    # sang `devops` - A4 khai thẳng "CMDB → L0 với người ngoài nhóm hạ tầng" nên
+    # `tech_support` hỏi về `noi_bo:cmdb` là một câu quá xác định vĩnh viễn, và
+    # chỗ sửa là câu hỏi chứ không phải bảng chính sách.
+    assert {c.id for c in bo.cau if HAN_CHE_N7_QUA_XAC_DINH in c.han_che} == set()
+    assert len([c for c in bo.cau if c.nhom == "N7"]) == 6
+    # Năm dấu `vai_hoi_khong_thay` gỡ (n3-02, n3-03, n3-09, n3-10, n3-11 - đều do
+    # `canh_bao` và `sop` chưa khai trước 3.2), năm dấu giữ. Bốn trong năm dấu
+    # giữ là scope `khach_hang_b`, thứ mà không vai nào chạm ở cấu hình 3 và đó
+    # là biên cách ly RT-01 chứ không phải một lỗ; dấu thứ năm (n5-05) là
+    # `bi_mat_ha_tang` ở L0 với `tech_support`.
     assert {c.id for c in bo.cau if HAN_CHE_VAI_HOI_KHONG_THAY in c.han_che} == {
-        "n3-02",
-        "n3-03",
         "n3-07",
         "n3-08",
-        "n3-09",
-        "n3-10",
-        "n3-11",
         "n5-05",
         "n5-06",
         "n5-09",
     }
-    # Bốn câu bộ vàng trong số đó: Đo 2 chấm "đủ ý" ra 0 vì quyền, không vì
-    # chất lượng sinh. Chúng phải mang dấu, không phải nằm im.
+    # Câu bộ vàng trong số đó: Đo 2 chấm "đủ ý" ra 0 vì quyền, không vì chất
+    # lượng sinh. Chúng phải mang dấu, không phải nằm im. Ba câu bộ vàng lành
+    # sau 3.2 (n3-02, n3-03, n3-09), còn n5-05 thì không lành được bằng bảng.
     vang_khong_thay = {
         c.id
         for c in bo.bo_vang()
         if HAN_CHE_VAI_HOI_KHONG_THAY in c.han_che
     }
-    assert vang_khong_thay == {"n3-02", "n3-03", "n3-09", "n5-05"}
+    assert vang_khong_thay == {"n5-05"}
 
 
 def test_dau_han_che_thua_hay_thieu_deu_bi_tu_choi(tmp_path):

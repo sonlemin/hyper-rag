@@ -93,7 +93,7 @@ from eval.cau_hoi import (
 
 _GOC = Path(__file__).resolve().parent
 REPO_ROOT = _GOC.parent
-POLICY_MAC_DINH = REPO_ROOT / "config" / "policy-toi-gian.yaml"
+POLICY_MAC_DINH = REPO_ROOT / "config" / "policy-day-du.yaml"
 THU_MUC_HTML: Path = _GOC / "expr"
 
 

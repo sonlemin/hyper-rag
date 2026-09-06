@@ -33,11 +33,11 @@ from adapters.sensitivity_loader import SensitivityRanksInvalid, tai_hang_do_nha
 from api.nguon_thu_muc import cac_file_nap
 from core.ingest_scan import TaiLieuNguon, quet_cac_file
 from core.keys import filter_key
+from core.policy import TRAN_KHOA_MOI_VAI
 
 GOC_REPO = Path(__file__).resolve().parent.parent
 BANG_THIET_KE = GOC_REPO / "eval" / "corpus_thiet_ke.yaml"
 THU_MUC_CORPUS = GOC_REPO / "eval" / "corpus"
-POLICY_TOI_GIAN = GOC_REPO / "config" / "policy-toi-gian.yaml"
 
 # Ba scope của corpus. `noi_bo` là tri thức nội bộ, hai scope còn lại là hồ sơ
 # hai khách hàng - chiều khách hàng nằm *trong* scope theo AD-4, không phải một
@@ -73,8 +73,9 @@ SO_LOI = 23
 SO_NHIEU = 19
 SO_TAI_LIEU = SO_LOI + SO_NHIEU
 
-# Trần AD-4: một vai vượt 50 khóa lọc buộc đo lại recall/độ trễ trước khi tiến.
-TRAN_KHOA_MOI_VAI = 50
+# Trần AD-4 **nhập từ `core/`**, không chép tay: từ story 3.2 validator đơn điệu
+# đếm và cảnh báo trên chính hằng đó (`core.policy.TRAN_KHOA_MOI_VAI`), nên một
+# bản thứ hai ở đây là chỗ để hạ trần trong `core/` mà test corpus không biết.
 
 KHOA_MUC: frozenset[str] = frozenset(
     {"ten", "scope", "content_type", "kich_ban", "vai_tro", "ghi_chu"}
@@ -356,7 +357,7 @@ def test_ba_scope_va_it_nhat_hai_khach_hang(bang):
     """RT-01 chỉ thử được nếu corpus có tài liệu ở **cả hai** scope khách hàng.
 
     Biên cách ly là `devops` chạm `khach_hang_a` chứ không chạm `khach_hang_b`
-    (`config/policy-toi-gian.yaml`), nên `khach_hang_b` rỗng là kịch bản đỏ ở T3
+    (`config/policy-day-du.yaml`), nên `khach_hang_b` rỗng là kịch bản đỏ ở T3
     không có gì để chạy.
     """
     co = {m["scope"] for m in bang["tai_lieu"]}
@@ -424,29 +425,39 @@ def test_hai_loai_cung_hang_thi_loader_tu_choi_ca_file(tmp_path):
     assert loi.value.code == "SENSITIVITY_RANKS_INVALID"
 
 
-def test_so_khoa_loc_moi_vai_duoi_tran_ad4(bang):
+def test_so_khoa_loc_moi_vai_duoi_tran_ad4():
     """AD-4: vai vượt 50 khóa buộc đo lại recall/độ trễ trước khi tiến.
 
     Khóa lọc là `{scope}:{content_type}`, nên số khóa của một vai là số cặp
     (scope vai đó chạm × loại nội dung có mặt trong scope đó). Đếm trên corpus
     thật cộng bộ vàng, vì hai bộ nằm chung space `synth`.
+
+    Quét **cả bốn** cấu hình đo của FR-28 từ story 3.2, không riêng bảng vận
+    hành: cấu hình 1 mở cả ba scope nên nó là chỗ trần gần bị chạm nhất, và
+    liệt kê tên file thì nó lọt lưới đúng vào lúc nó mới nhất. Con số cao nhất
+    ở đây (31) thấp hơn con số mà validator đếm (39): validator đếm trên tích
+    Descartes đầy đủ của bảng chính sách, còn đây đếm trên cặp *thật sự có tài
+    liệu*. Cả hai đều dưới trần, và cả hai đều phải dưới trần.
     """
-    from eval.bo_vang import doc_bo_vang
+    from eval.bo_vang import cac_bang_chinh_sach, doc_bo_vang
 
     theo_scope: dict[str, set[str]] = {}
-    for m in bang["tai_lieu"]:
+    for m in doc_bang()["tai_lieu"]:
         theo_scope.setdefault(m["scope"], set()).add(m["content_type"])
     for t in doc_bo_vang().tai_lieu:
         theo_scope.setdefault(t.scope, set()).add(t.content_type)
 
-    policy = load_policy(POLICY_TOI_GIAN)
+    cac_bang = cac_bang_chinh_sach()
+    assert len(cac_bang) == 4, [q.name for q in cac_bang]
     dem = {
-        ten: sum(len(theo_scope.get(s, set())) for s in vai.scopes)
-        for ten, vai in policy.roles.items()
+        (duong_dan.name, ten): sum(len(theo_scope.get(s, set())) for s in vai.scopes)
+        for duong_dan in cac_bang
+        for ten, vai in load_policy(duong_dan).roles.items()
     }
     assert dem, "bảng chính sách phải có ít nhất một vai"
     nhieu_nhat = max(dem.values())
     assert nhieu_nhat < TRAN_KHOA_MOI_VAI, dem
+    assert nhieu_nhat == 31, dem
 
 
 def test_so_dinh_hyperedge_demo_ghim_dung_con_so_da_chot(bang):

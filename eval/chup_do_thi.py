@@ -83,7 +83,7 @@ from eval.cau_hoi import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-POLICY_MAC_DINH = REPO_ROOT / "config" / "policy-toi-gian.yaml"
+POLICY_MAC_DINH = REPO_ROOT / "config" / "policy-day-du.yaml"
 
 # Namespace graph của upstream; cùng chuỗi mà `EngineACL` truyền xuống adapter.
 NAMESPACE_GRAPH: str = "chunk_entity_relation"

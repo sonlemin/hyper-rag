@@ -55,6 +55,12 @@ x-api-env: &api_env
   # ky". Secret nen no o `.env` goc repo (da gitignore), khong o
   # `.env.server`/`.env.laptop`; hai file do chi mang tham so moi truong.
   JWT_SECRET: "${JWT_SECRET:?thieu JWT_SECRET trong .env}"
+  # Id bang chinh sach ma tien trinh khoi dong voi (story 3.2, FR-28). KHONG
+  # phai secret nen gia tri o `.env.server`/`.env.laptop`; `:-day-du` chu khong
+  # `:?` vi mot tien trinh khong ai khai id phai chay bang van hanh, khong phai
+  # chet. Danh muc id la danh muc dong suy tu glob `config/policy-*.yaml`, va
+  # mot id go sai lam lifespan chet o giay dau kem ma POLICY_ID_KHONG_CO.
+  HYPER_RAG_POLICY_ID: "${HYPER_RAG_POLICY_ID:-day-du}"
   OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
   DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-}"
   # Chon model cho wrapper LLM/embedding (story 2.2, adapters/llm_wrapper.py):

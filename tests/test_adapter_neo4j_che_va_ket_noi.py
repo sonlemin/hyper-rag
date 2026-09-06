@@ -471,7 +471,7 @@ def test_tap_khoa_rong_khong_cham_neo4j(khong_gian, tmp_path):
         "      runbook: L0\n",
         encoding="utf-8",
     )
-    policy_mu = load_policy(bang_mu)
+    policy_mu = load_policy(bang_mu, hang={"runbook": 10})
 
     async def chay():
         driver, adapter = await graph_da_nap(khong_gian, policy_mu)
