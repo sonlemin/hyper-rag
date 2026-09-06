@@ -28,6 +28,13 @@ Thứ tự của một lời gọi, và vì sao thứ tự đó không đổi đ
 Chi phí là một hàng một lời gọi, không cộng dồn trong tiến trình; Postgres
 cộng bằng SUM (FR-25 đọc lũy kế từ đó). Không cache.
 
+**Ngân sách là tham số của nơi dựng, không phải hằng của module** (story 3.3).
+Cùng hàm `bo_embedding` phục vụ đường nạp và đường truy hồi, nên `ngan_sach`
+đi vào lúc dựng: `NGAN_SACH_NAP` (4 lần thử, trần chờ 60 giây) cho đợt nạp,
+`NGAN_SACH_TRUY_HOI` (2 lần thử, trần chờ 2 giây) cho tiến trình phục vụ.
+`bo_llm` nhận `tran_moi_loi_goi_giay` - một **trần thời gian**, không phải một
+lớp thử lại - vì nơi gọi của nó trên đường truy hồi nằm trong `vendor/kg_query`.
+
 **Retry: đúng một lớp, và nó ở `bo_embedding` chứ không ở `bo_llm`** (story
 2.13). `bo_embedding.func` bọc lời gọi `nha_cung_cap.nhung` bằng
 `adapters/thu_lai.goi_co_thu_lai` - embedding là phần đông lời gọi của một đợt
@@ -61,7 +68,12 @@ from adapters.model_catalog import (
     MucModel,
     danh_muc_mac_dinh,
 )
-from adapters.thu_lai import goi_co_thu_lai
+from adapters.thu_lai import (
+    NGAN_SACH_NAP,
+    NganSachThuLai,
+    goi_co_thu_lai,
+    goi_mot_lan_co_tran,
+)
 from core.audit import (
     EVENT_EMBEDDING_COST,
     EVENT_LLM_COST,
@@ -408,6 +420,12 @@ _DAU = object()
 # `functools.wraps` theo cùng cách. Pipeline ingest (2.3) đọc nó để hỏi
 # `cuc_bo`/`san_sang()` trước khi chạm kho trên space `real`.
 DAU_NHA_CUNG_CAP: str = "_hyper_rag_ncc"
+# Ngân sách thử lại của hàm embedding và trần một lời gọi của hàm LLM, gắn cùng
+# chỗ và sống sót qua cùng chuỗi bọc. AC cuối của story 3.3 đòi "có test đọc
+# thẳng ngân sách của hai engine": không có hai dấu này thì phép so duy nhất là
+# chờ thật cho tới khi một trần nổ, tức một bộ test đo bằng đồng hồ treo tường.
+DAU_NGAN_SACH: str = "_hyper_rag_ngan_sach"
+DAU_TRAN_LOI_GOI: str = "_hyper_rag_tran_loi_goi"
 
 
 def _theo_chuoi_boc(ham):
@@ -442,6 +460,35 @@ def nha_cung_cap_cua(ham):
         if ncc is not None:
             return ncc
     return None
+
+
+def _doc_dau(ham, dau: str, mac_dinh=None):
+    """Giá trị của một dấu, đọc dọc **cả chuỗi bọc**; `mac_dinh` nếu không dấu nào.
+
+    Đi theo đúng chuỗi mà `la_wrapper` đi: upstream bọc `embedding_func` bằng
+    `limit_async_func_call`, nên một phép đọc thuộc tính thẳng trên hàm mà engine
+    cầm sẽ trả `None` cho cả hai bên và một test "hai engine hai ngân sách" xanh
+    vì cả hai đều rỗng.
+
+    Nhận diện bằng `hasattr` chứ không bằng `is not None`, và hai hàm dưới dùng
+    chung nó vì cùng lý do: `None` là một **giá trị hợp lệ** của dấu trần thời
+    gian ("không đặt trần"), nên trộn "chưa gắn dấu" với "gắn dấu bằng None" là
+    hai trạng thái khác nhau đọc ra một kết quả.
+    """
+    for h in _theo_chuoi_boc(ham):
+        if hasattr(h, dau):
+            return getattr(h, dau)
+    return mac_dinh
+
+
+def ngan_sach_cua(ham):
+    """Ngân sách thử lại của một hàm embedding đã bọc, hoặc `None`."""
+    return _doc_dau(ham, DAU_NGAN_SACH)
+
+
+def tran_loi_goi_cua(ham):
+    """Trần thời gian cho một lời gọi của hàm LLM đã bọc, hoặc `None` nếu không đặt."""
+    return _doc_dau(ham, DAU_TRAN_LOI_GOI)
 
 
 # --- Sự kiện chi phí -----------------------------------------------------------
@@ -524,10 +571,20 @@ def bo_llm(
     model: str,
     audit: AuditPort,
     danh_muc: DanhMucModel | None = None,
+    tran_moi_loi_goi_giay: float | None = None,
 ) -> Callable[..., Any]:
     """Hàm LLM cho `llm_model_func` của engine, chữ ký khớp hàm upstream.
 
     Model không có trong danh mục là lỗi ở đây, lúc dựng, không phải lúc gọi.
+
+    `tran_moi_loi_goi_giay` là **trần thời gian cho một lời gọi**, mặc định
+    vắng. Nó không phải một lớp thử lại và sẽ không thành một: luật "đúng một
+    lớp trên mỗi đường gọi" giữ nguyên, và cả hai đường LLM đã có lớp của mình
+    ở trên hàm này (`adapters/trich_xuat._trich_mot_chunk` cho đường nạp,
+    `eval/do_trich_xuat.goi_llm_co_thu_lai` cho đường đo). Đường **truy hồi**
+    thì khác: nơi gọi nằm trong `vendor/kg_query` nên không có chỗ nào để gắn
+    một lớp thử lại, và một trần thời gian là thứ duy nhất đặt được ở đây. Hệ
+    quả phải nói ra: một 429 giữa một câu hỏi là một lỗi ngay, khác đường nạp.
     """
     danh_muc = danh_muc_mac_dinh() if danh_muc is None else danh_muc
     muc = danh_muc.muc(model, loai=LOAI_LLM)
@@ -548,7 +605,13 @@ def bo_llm(
             messages.append({"role": "system", "content": system_prompt})
         messages.extend(history_messages or [])
         messages.append({"role": "user", "content": prompt})
-        ket_qua = await nha_cung_cap.hoan_thanh(muc.ten, messages, **kwargs)
+        ket_qua = await goi_mot_lan_co_tran(
+            nha_cung_cap.hoan_thanh,
+            muc.ten,
+            messages,
+            _tran_giay=tran_moi_loi_goi_giay,
+            **kwargs,
+        )
         await ghi_quan_sat(
             audit,
             su_kien_chi_phi(
@@ -559,6 +622,10 @@ def bo_llm(
 
     setattr(llm, DAU_WRAPPER, _DAU)
     setattr(llm, DAU_NHA_CUNG_CAP, nha_cung_cap)
+    # Trần đọc lại được từ ngoài: AC của story 3.3 đòi một test **đọc thẳng**
+    # ngân sách của hai engine, và một closure không phơi gì ra thì phép so đó
+    # phải suy từ hành vi - tức phải chờ thật.
+    setattr(llm, DAU_TRAN_LOI_GOI, tran_moi_loi_goi_giay)
     return llm
 
 
@@ -568,8 +635,15 @@ def bo_embedding(
     model: str,
     audit: AuditPort,
     danh_muc: DanhMucModel | None = None,
+    ngan_sach: NganSachThuLai = NGAN_SACH_NAP,
 ) -> EmbeddingFunc:
-    """`EmbeddingFunc` cho `embedding_func` của engine; số chiều lấy từ danh mục."""
+    """`EmbeddingFunc` cho `embedding_func` của engine; số chiều lấy từ danh mục.
+
+    `ngan_sach` là tham số của **nơi dựng**, không phải hằng của module: một
+    hàm embedding phục vụ cả đường nạp lẫn đường truy hồi (engine nhận đúng nó
+    qua `embedding_func`), và bốn lần thử với trần chờ 60 giây - đúng cho một
+    đợt nạp - là một request HTTP treo tới ba phút trước khi trả lỗi.
+    """
     danh_muc = danh_muc_mac_dinh() if danh_muc is None else danh_muc
     muc = danh_muc.muc(model, loai=LOAI_EMBEDDING)
     _kiem_khop_provider(muc, nha_cung_cap)
@@ -588,6 +662,7 @@ def bo_embedding(
             nha_cung_cap.nhung,
             muc.ten,
             van_ban,
+            _ngan_sach=ngan_sach,
             _ten=f"embedding {muc.ten}",
             _in_ra=_in_thu_lai,
         )
@@ -605,6 +680,7 @@ def bo_embedding(
     )
     setattr(ham, DAU_WRAPPER, _DAU)
     setattr(ham, DAU_NHA_CUNG_CAP, nha_cung_cap)
+    setattr(ham, DAU_NGAN_SACH, ngan_sach)
     return ham
 
 
@@ -685,8 +761,14 @@ def ham_tu_moi_truong(
     audit: AuditPort,
     danh_muc: DanhMucModel | None = None,
     moi_truong: Mapping[str, str] | None = None,
+    ngan_sach: NganSachThuLai = NGAN_SACH_NAP,
 ) -> HamModel:
-    """Hàm LLM, `EmbeddingFunc` đã bọc và ngữ cảnh LLM, từ `LLM_MODEL`/`EMBEDDING_MODEL`."""
+    """Hàm LLM, `EmbeddingFunc` đã bọc và ngữ cảnh LLM, từ `LLM_MODEL`/`EMBEDDING_MODEL`.
+
+    `ngan_sach` chuyển cả hai nửa xuống: số lần thử cùng hai trần cho hàm
+    embedding, và `tran_llm_giay` cho hàm LLM. Mặc định là đường nạp, nên mọi
+    nơi gọi cũ giữ nguyên hành vi; đường phục vụ truyền `NGAN_SACH_TRUY_HOI`.
+    """
     danh_muc = danh_muc_mac_dinh() if danh_muc is None else danh_muc
     cau_hinh = cau_hinh_model_tu_moi_truong(moi_truong)
     thieu = [b for b in (BIEN_LLM_MODEL, BIEN_EMBEDDING_MODEL) if b not in cau_hinh]
@@ -700,12 +782,14 @@ def ham_tu_moi_truong(
             model=muc_llm.ten,
             audit=audit,
             danh_muc=danh_muc,
+            tran_moi_loi_goi_giay=ngan_sach.tran_llm_giay,
         ),
         embedding=bo_embedding(
             nha_cung_cap=nha_cung_cap_tu_moi_truong(muc_emb, danh_muc, moi_truong),
             model=muc_emb.ten,
             audit=audit,
             danh_muc=danh_muc,
+            ngan_sach=ngan_sach,
         ),
         llm_max_token=muc_llm.max_token,
     )

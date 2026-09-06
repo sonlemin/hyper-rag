@@ -35,6 +35,7 @@ from tests.test_xac_thuc import (
     KHOA_TEST,
     MAT_KHAU,
     AuditGia,
+    EngineGia,
     KhoGia,
     _dong,
 )
@@ -72,8 +73,14 @@ def client(monkeypatch, kho_gia, audit_gia):
     async def _mo_audit():
         return audit_gia
 
+    async def _mo_engine(audit):
+        # Story 3.3 nối engine vào lifespan; bộ này chấm đường hoán policy nên
+        # engine chỉ cần mở và đóng được.
+        return EngineGia()
+
     monkeypatch.setattr(api_main, "mo_kho_tai_khoan", _mo_kho)
     monkeypatch.setattr(api_main, "mo_audit", _mo_audit)
+    monkeypatch.setattr(api_main.hoi_dap, "mo_engine", _mo_engine)
     with TestClient(api_main.app) as c:
         yield c
 
@@ -470,8 +477,12 @@ def test_lifespan_dung_bang_khai_trong_moi_truong(monkeypatch, kho_gia, audit_gi
     async def _mo_audit():
         return audit_gia
 
+    async def _mo_engine(audit):
+        return EngineGia()
+
     monkeypatch.setattr(api_main, "mo_kho_tai_khoan", _mo_kho)
     monkeypatch.setattr(api_main, "mo_audit", _mo_audit)
+    monkeypatch.setattr(api_main.hoi_dap, "mo_engine", _mo_engine)
     with TestClient(api_main.app) as c:
         than = c.get("/admin/policy", headers=_bearer(c, "dev01")).json()
     assert than["id"] == "tat-phan-quyen"

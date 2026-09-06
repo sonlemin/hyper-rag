@@ -123,6 +123,14 @@ services:
       start_period: 20s
     restart: unless-stopped
 
+  # Story 3.3 ra soat lai `depends_on` va healthcheck cua service nay khi tien
+  # trinh bat dau giu hai ket noi kho (engine truy hoi dung trong lifespan):
+  # khong phai sua gi. Dung `EngineACL` **khong mo socket nao** - ca
+  # `AsyncQdrantClient` lan driver Neo4j deu mo pool luoi - nen `/health` van
+  # xanh ngay khi tien trinh len, va `depends_on: condition: service_healthy`
+  # cho ca ba kho van la thu dam bao loi goi dau tien co cho de noi toi.
+  # Lifespan **khong** goi `khoi_tao()` (do la viec cua duong nap), nen no cung
+  # khong them mot vong I/O nao vao thoi gian khoi dong.
   api:
     build: *api_build
     environment: *api_env

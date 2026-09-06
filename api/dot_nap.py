@@ -32,7 +32,7 @@ import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from adapters.engine import EngineACL, cau_hinh_kho_tu_moi_truong
+from adapters.engine import EngineACL, cau_hinh_kho_tu_moi_truong, ket_noi_chua_dong
 from adapters.ingest import MA_KHONG_CO_FACT, KetQuaNap, nap_cac_tai_lieu
 from adapters.llm_wrapper import ham_tu_moi_truong
 from adapters.model_catalog import DanhMucModel, danh_muc_mac_dinh
@@ -178,16 +178,39 @@ async def chay_lan_nap(
 
     Engine dựng ở đây và đóng ở đây, kể cả khi đợt nổ: một engine không đóng là
     một pool Neo4j và một client Qdrant sống mãi trong tiến trình màn.
+
+    **Kể cả khi phép dựng engine nổ giữa chừng** (story 3.3). `api/man_nap.py`
+    là một FastAPI **chạy dài** và `_chay_nen` gọi hàm này mỗi lần có người tải
+    tài liệu lên, nên một cấu hình sai thật - `QDRANT_URL` có mà `NEO4J_URI`
+    thiếu - là mỗi đợt rò thêm một client Qdrant nếu phép dựng nằm ngoài khối
+    phục hồi. `EngineACL.__post_init__` gắn phần đã mở lên chính ngoại lệ và
+    đây là chỗ đọc dấu đó.
     """
     lan = LanNap(space=space) if lan is None else lan
     lan.space, lan.trang_thai, lan.bat_dau = space, TRANG_THAI_DOT_DANG_CHAY, thoi_diem_utc()
-    # Seam tiêm giữ chữ ký cũ `(audit)`; đường thật thêm `space` để tra từ điển
-    # thực thể theo quy ước tên file (story 2.12).
-    engine = (
-        dung_engine_tu_moi_truong(audit, space=space)
-        if tao_engine is None
-        else tao_engine(audit)
-    )
+    try:
+        # Seam tiêm giữ chữ ký cũ `(audit)`; đường thật thêm `space` để tra từ
+        # điển thực thể theo quy ước tên file (story 2.12).
+        engine = (
+            dung_engine_tu_moi_truong(audit, space=space)
+            if tao_engine is None
+            else tao_engine(audit)
+        )
+    except BaseException as loi:
+        con_mo = ket_noi_chua_dong(loi)
+        if con_mo is not None:
+            await con_mo.dong()
+        if isinstance(loi, asyncio.CancelledError):
+            raise
+        # Cùng luật với nhánh dưới: đợt hỏng được **ghi vào `LanNap`** chứ
+        # không ném, vì màn nạp đọc `ma_loi`/`thong_diep_loi` để hiện lên
+        # trang. `ngoai_le` giữ nguyên cho ai muốn dội tiếp (script thì có).
+        lan.trang_thai = TRANG_THAI_DOT_LOI
+        lan.ma_loi = getattr(loi, "code", None) or type(loi).__name__
+        lan.thong_diep_loi = str(loi)
+        lan.ngoai_le = loi if isinstance(loi, Exception) else None
+        lan.ket_thuc = thoi_diem_utc()
+        return lan
     try:
         try:
             await nap_cac_tai_lieu(

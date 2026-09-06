@@ -4,10 +4,16 @@ Story 1.1 để lại đúng 13 dòng và một tuyến `/health`. Story này th
 thực của FR-17: một lifespan mở bảng `users`, một endpoint phát JWT, và một cửa
 đọc claim cho endpoint đòi quyền demo/admin.
 
-**Lifespan này chỉ mở Postgres** - bảng `users` (3.1) và bảng `audit_log` (3.2).
-Engine tri thức và ba kho thuộc story 3.3, chỗ endpoint đầu tiên thật sự đọc tri
-thức. Dựng engine ở đây là dựng một thứ chưa ai gọi, và nó kéo theo ba kết nối
-phải khỏe trước khi một người đăng nhập được.
+**Story 3.3 nối engine tri thức vào lifespan, và nó chỉ đọc.** Lifespan mở bốn
+thứ theo thứ tự: bảng `users` (3.1), bảng `audit_log` (3.2), rồi engine truy
+hồi - engine sau audit vì wrapper LLM cần một `AuditPort` lúc dựng. Nó **không**
+gọi `khoi_tao()`: dựng collection, payload index và ràng buộc graph là việc của
+đường nạp, và cửa duy nhất mở cờ bỏ-filter nằm ở `core/system_context.py` với
+một danh sách trắng import canh giữ. Nhờ bỏ bước đó, phát biểu của NFR-10 mạnh
+hơn một phép kiểm: **tiến trình phục vụ không có đường import nào tới một ngữ
+cảnh hệ thống**. Lo ngại cũ của ledger 1.7 ("ba kết nối phải khỏe trước khi một
+người đăng nhập được") không xảy ra: dựng `EngineACL` không mở socket nào, cả
+`AsyncQdrantClient` lẫn driver Neo4j đều mở pool lười.
 
 **Cửa xác thực mặc định đóng.** Tuyến đăng ký vào `cua_dong`, và router đó
 mang `Depends(_claim)` nên mọi tuyến của nó đi qua cửa bằng cơ chế của
@@ -18,9 +24,14 @@ hai: `/health` là healthcheck của compose (một healthcheck đòi token là 
 container không bao giờ `healthy`), và `/auth/login` chính là chỗ phát token nên
 nó không thể đòi một token có sẵn.
 
-**Không có endpoint dữ liệu nào ở đây.** `tests/test_api_khong_cham_tang_che.py`
-canh điều đó, và nó là chỗ story 3.3 phải dừng lại để trả lời câu "nội dung ra
-khỏi handler này đã đi qua tầng che chưa".
+**Endpoint dữ liệu đầu tiên vào ở story 3.3, và ruột của nó không ở đây.**
+`POST /hoi-dap` là một tuyến gọi thẳng `api.hoi_dap.tra_loi`; model thân yêu
+cầu, danh mục mã lỗi, serializer envelope, engine và phép dựng ngữ cảnh quyền
+đều sống ở `api/hoi_dap.py`. Nhờ vậy `api/main.py` vẫn không import một cái tên
+nào của tầng ngữ cảnh quyền, và
+`tests/test_api_khong_cham_tang_che.py::test_main_khong_dung_ngu_canh_quyen_nao`
+giữ nguyên ý nghĩa thay vì bị xóa - cộng thêm một mệnh đề chặt hơn: **đúng một**
+module `api/` dựng ngữ cảnh quyền, và nó chỉ dựng được ngữ cảnh vai.
 
 **Story 3.2 thêm hai tuyến `/admin/policy` và một port audit.** Hoán bảng chính
 sách là thao tác tầng mutation của AD-16 nên nó cần một port audit sống cùng
@@ -37,10 +48,12 @@ from typing import Annotated, Mapping
 
 import anyio.to_thread
 from fastapi import APIRouter, Depends, FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from adapters.identity_seed import IdentitySeedInvalid, nap_tai_khoan
 from adapters.nhom_phu_trach import bang_nhom_mac_dinh
+from api import hoi_dap
 from api.audit_postgres import AuditPostgres
 from api.chinh_sach import BIEN_ID_POLICY, ID_MAC_DINH, KhoChinhSach
 from api.tai_khoan import KhoTaiKhoan
@@ -64,6 +77,22 @@ logger = logging.getLogger(__name__)
 # vừa hỏng vì file hỏng", và hai chuyện đó xảy ra ở hai thời điểm khác nhau -
 # lifespan đã nạp seed thành công một lần rồi.
 MA_SEED_KHONG_DOC_DUOC: str = "SEED_KHONG_DOC_DUOC"
+
+# Mã của **mọi ngoại lệ chưa ai xếp loại** thoát ra khỏi một handler. Không phải
+# một mã "bịa cho lỗi lạ": chỗ *phân loại* lỗi vẫn ở tầng dưới và vẫn từ chối
+# đoán (`api/hoi_dap.py::_loi_truy_hoi` trả `None` cho thứ nó không biết). Cái
+# mã này nói một chuyện khác và đúng: mọi phản hồi lỗi của tiến trình mang hình
+# dạng `{error: {code, message}}` (AD-8). Không có handler này thì một ngoại lệ
+# lạ - kể cả `TypeError`/`ValueError` của chính serializer envelope - cho một
+# thân `Internal Server Error` trần nằm ngoài envelope, tức đúng thứ mà cả
+# story dựng ra để không xảy ra.
+MA_LOI_KHONG_XAC_DINH: str = "LOI_KHONG_XAC_DINH"
+
+# Thông điệp **chung** của ca thân yêu cầu sai lược đồ. Ở đây chứ không ở
+# `api/hoi_dap.py` vì handler phủ mọi tuyến của app, không riêng `/hoi-dap`.
+THONG_DIEP_THAN_YEU_CAU_LA: str = "thân yêu cầu không đúng lược đồ của endpoint này"
+
+THONG_DIEP_LOI_KHONG_XAC_DINH: str = "lỗi không xác định phía máy chủ"
 
 
 async def mo_kho_tai_khoan() -> KhoTaiKhoan:
@@ -151,24 +180,48 @@ async def vong_doi(app: FastAPI):
     kho = await mo_kho_tai_khoan()
     app.state.kho_tai_khoan = kho
     audit = None
+    engine = None
     try:
         so = await kho.dong_bo(nap_tai_khoan())
         audit = await mo_audit()
+        # Engine mở **sau** audit vì wrapper LLM cần một `AuditPort` lúc dựng
+        # (`bo_llm`/`bo_embedding` ghi sự kiện chi phí), và đóng **trước** audit
+        # ở `finally` bên dưới - thứ tự ngược của thứ tự mở.
+        engine = await hoi_dap.mo_engine(audit)
     except BaseException:
-        # `nap_tai_khoan()` và `dong_bo` đều hỏng được (seed sai, DB rớt giữa
-        # transaction). Không đóng pool ở đây là rò đúng cái mà `finally` bên
-        # dưới lo, chỉ khác là `finally` chưa chạy vì `yield` chưa tới.
-        await kho.dong()
+        # `nap_tai_khoan()`, `dong_bo` và hai bước mở đều hỏng được (seed sai,
+        # DB rớt giữa transaction, thiếu key provider). Không đóng ở đây là rò
+        # đúng cái mà `finally` bên dưới lo, chỉ khác là `finally` chưa chạy vì
+        # `yield` chưa tới.
+        #
+        # Đóng theo thứ tự ngược **và lồng `try/finally`**, đúng khuôn nhánh
+        # `finally` bên dưới: một `audit.dong()` nổ mà không lồng thì
+        # `kho.dong()` không bao giờ chạy và pool asyncpg nằm lại trong một
+        # tiến trình sắp chết - đúng thứ nhánh này tồn tại để tránh. Mỗi bước tự
+        # chịu ca "chưa mở được" bằng một phép kiểm `None`.
+        try:
+            if engine is not None:
+                await engine.dong()
+        finally:
+            try:
+                if audit is not None:
+                    await audit.dong()
+            finally:
+                await kho.dong()
         raise
     app.state.audit = audit
+    app.state.engine = engine
     logger.info("đồng bộ %d tài khoản seed vào bảng users", so)
     try:
         yield
     finally:
         try:
-            await audit.dong()
+            await engine.dong()
         finally:
-            await kho.dong()
+            try:
+                await audit.dong()
+            finally:
+                await kho.dong()
 
 
 app = FastAPI(title="hyper-rag-copilot", lifespan=vong_doi)
@@ -186,6 +239,68 @@ async def _loi_xac_thuc(request: Request, loi: LoiXacThuc) -> JSONResponse:
     return JSONResponse(
         status_code=loi.http,
         content={"error": {"code": loi.ma, "message": loi.thong_diep}},
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def _than_yeu_cau_la(request: Request, loi: RequestValidationError) -> JSONResponse:
+    """Thân yêu cầu sai lược đồ là 400 đúng envelope, không phải 422 thô.
+
+    Mặc định của FastAPI là HTTP 422 với thân `{"detail": [...]}`: không có
+    `code` nào để test assert lên (AD-8, Consistency Conventions), và mỗi mục
+    `detail` còn mang `loc`/`input`, tức nó dội lại nguyên văn thứ người gọi vừa
+    gửi. Ở đây một mã ổn định và một thông điệp cố định.
+
+    Handler đăng ký trên `app` chứ không trên router, nên nó phủ cả tuyến mở lẫn
+    tuyến đóng: một tuyến mới quên nghĩ tới ca này vẫn ra đúng envelope. Vì phủ
+    mọi tuyến nên thông điệp phải **chung**, không mô tả hợp đồng của một tuyến:
+    hôm nay chỉ `/hoi-dap` khai một thân pydantic, nhưng tuyến thứ hai khai một
+    thân như thế sẽ trả lời bằng một câu nói về `cau_hoi` nếu thông điệp mượn
+    của `api/hoi_dap.py`.
+
+    Không lời gọi LLM nào chạy trước nó: lược đồ thân kiểm trong
+    `solve_dependencies`, trước thân handler.
+    """
+    return JSONResponse(
+        status_code=400,
+        content={
+            "error": {
+                "code": hoi_dap.MA_THAN_YEU_CAU_LA,
+                "message": THONG_DIEP_THAN_YEU_CAU_LA,
+            }
+        },
+    )
+
+
+@app.exception_handler(Exception)
+async def _loi_khong_xac_dinh(request: Request, loi: Exception) -> JSONResponse:
+    """Mọi ngoại lệ chưa ai xếp loại vẫn ra `{error: {code, message}}` (AD-8).
+
+    Hai chuyện khác nhau, và handler này chỉ làm chuyện thứ hai. **Không bịa
+    một mã cho một lỗi chưa ai xếp loại** - việc đó vẫn do tầng dưới quyết, và
+    `api/hoi_dap.py::_loi_truy_hoi` cố ý trả `None` cho thứ nó không biết, vì
+    gán một mã sẵn có là làm mất chính thông tin cần để xếp loại nó lần sau.
+    Chuyện thứ hai là **hình dạng**: một thân `Internal Server Error` trần nằm
+    ngoài envelope là một client phải viết hai đường đọc lỗi, và nó là hình
+    dạng duy nhất trong cả tiến trình không mang `code` để test assert lên.
+
+    Nguyên lỗi vào log (`logger.exception`), ra ngoài là một thông điệp cố
+    định: đường dẫn hệ thống, tên container và tên biến môi trường không đi ra
+    theo một lỗi 500.
+
+    Đăng ký trên `app` nên nó là lưới cuối; hai handler hẹp hơn
+    (`LoiXacThuc`, `RequestValidationError`) vẫn được chọn trước theo luật khớp
+    loại của Starlette.
+    """
+    logger.exception("lỗi không xác định khi phục vụ %s", request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": {
+                "code": MA_LOI_KHONG_XAC_DINH,
+                "message": THONG_DIEP_LOI_KHONG_XAC_DINH,
+            }
+        },
     )
 
 
@@ -378,6 +493,33 @@ async def hoan_policy(request: Request, c: Claim) -> dict:
         role=c.role,
     )
     return {"id": ma_moi, "policy_version": policy.policy_version}
+
+
+@cua_dong.post("/hoi-dap")
+async def hoi(request: Request, than: hoi_dap.ThanHoiDap, c: Claim) -> dict:
+    """Endpoint hỏi đáp, envelope AD-8 (FR-13, story 3.3).
+
+    Tuyến ở đây, **ruột ở `api/hoi_dap.py`**: model thân, danh mục mã lỗi,
+    serializer envelope, engine và phép dựng ngữ cảnh quyền đều sống ở module
+    kia. Nhờ vậy `api/main.py` không import một cái tên nào của tầng ngữ cảnh
+    quyền, và bộ test giữ được mệnh đề "đúng một module `api/` dựng ngữ cảnh
+    quyền, và nó chỉ dựng được ngữ cảnh vai".
+
+    Nội dung ra khỏi handler này **đã đi qua tầng che**: nó là chuỗi mà
+    `kg_query` dựng từ kết quả của ba adapter, và cả ba gọi `core.masking.mask`
+    trong đường trả về của mọi method đọc (AD-9). `api/` không che lại và không
+    bỏ che.
+
+    `hien_tai()` đọc **một lần** ở đây rồi truyền object xuống: hai phép đọc
+    quanh một `await` là hai bản chính sách trong cùng một request (AD-3).
+    """
+    return await hoi_dap.tra_loi(
+        than.cau_hoi,
+        claim=c,
+        policy=request.app.state.kho_chinh_sach.hien_tai(),
+        engine=request.app.state.engine,
+        audit=request.app.state.audit,
+    )
 
 
 # Đăng ký sau khi mọi tuyến đã khai, một chỗ, để đọc file này là thấy ngay tập

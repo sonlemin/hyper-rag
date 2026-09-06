@@ -594,3 +594,152 @@ def test_guard_loader_bat_duoc_fixture_hong(monkeypatch, ten):
 def test_guard_loader_im_voi_fixture_that():
     """Đối chứng: bộ fixture đang dùng phải qua được cả bốn luật."""
     kiem_fixture()
+
+
+# --- Story 3.3: rò kết nối khi dựng engine hỏng -------------------------------
+
+
+def test_dung_hong_gan_ket_noi_da_mo_len_chinh_loi(workspace_dir, monkeypatch):
+    """`__post_init__` nổ **sau** khi đã mở kết nối thì lỗi phải mang chúng theo.
+
+    Ràng buộc cấu trúc, không phải chỗ bị quên (khoản ledger 1.7): hàm ấy là
+    hàm **đồng bộ** nên nó không `await close()` được, mà cả hai kết nối phải
+    tồn tại *trước* `super().__post_init__()` vì chính lời gọi đó dựng sáu
+    storage. Không có dấu này thì client Qdrant và driver Neo4j nằm lại trong
+    một object không ai còn cầm tham chiếu.
+
+    Engine ở đây **tự mở** kết nối (không tiêm hàm), nên `tu_mo_*` đều `True` -
+    đúng ca mà phép đóng của `api.hoi_dap.mo_engine` phải chạm tới.
+    """
+    from adapters.engine import ket_noi_chua_dong
+
+    da_dong = []
+
+    class _ClientGia:
+        async def close(self):
+            da_dong.append("qdrant")
+
+    class _DriverGia:
+        async def close(self):
+            da_dong.append("neo4j")
+
+    monkeypatch.setattr(
+        "adapters.qdrant.QdrantVectorDBStorage._dung_client",
+        staticmethod(lambda cau_hinh: _ClientGia()),
+    )
+    monkeypatch.setattr(
+        "adapters.neo4j.Neo4jACLGraphStorage._dung_driver",
+        staticmethod(lambda cau_hinh: _DriverGia()),
+    )
+    # `enable_llm_cache=True` là cách rẻ nhất cho `super().__post_init__()` nổ
+    # **qua registry thật** (`adapters.kv.LLMCacheDisabled`).
+    with pytest.raises(Exception) as loi:
+        dung_engine(
+            workspace_dir,
+            None,
+            None,
+            LLMGia(),
+            qdrant_url="http://khong-co-host-nay:6333",
+            neo4j_uri="bolt://khong-co-host-nay:7687",
+            neo4j_password="x",
+            enable_llm_cache=True,
+        )
+    con_mo = ket_noi_chua_dong(loi.value)
+    assert con_mo is not None, "lỗi dựng engine không mang dấu kết nối còn mở"
+    assert con_mo.tu_mo_qdrant is True and con_mo.tu_mo_neo4j is True
+    assert isinstance(con_mo.client_qdrant, _ClientGia)
+    assert isinstance(con_mo.driver_neo4j, _DriverGia)
+    # Đóng theo **thứ tự ngược** thứ tự mở.
+    asyncio.run(con_mo.dong())
+    assert da_dong == ["neo4j", "qdrant"]
+
+
+def test_dung_hong_o_buoc_mo_neo4j_van_gan_client_qdrant_da_mo(
+    workspace_dir, monkeypatch
+):
+    """Ca mà một khối chỉ bọc `super().__post_init__()` bỏ lọt.
+
+    `_mo_qdrant` mở client xong rồi `_mo_neo4j` nổ (ở đây: hàm tiêm trả `None`).
+    Client kia đã mở thật, và nếu phép mở nằm ngoài khối phục hồi thì lỗi không
+    mang dấu nào - tức không nơi gọi async nào đóng được nó.
+
+    Bản ghi phải mô tả đúng trạng thái **tại thời điểm nổ**: Neo4j còn `None` và
+    `tu_mo_neo4j` còn `False`.
+    """
+    from adapters.engine import ket_noi_chua_dong
+
+    da_dong = []
+
+    class _ClientGia:
+        async def close(self):
+            da_dong.append("qdrant")
+
+    monkeypatch.setattr(
+        "adapters.qdrant.QdrantVectorDBStorage._dung_client",
+        staticmethod(lambda cau_hinh: _ClientGia()),
+    )
+    with pytest.raises(ValueError) as loi:
+        EngineACL(
+            working_dir=str(workspace_dir),
+            embedding_func=embedding_boc(SoAuditBoNho()),
+            llm_model_func=llm_boc(LLMGia(), SoAuditBoNho()),
+            qdrant_url="http://khong-co-host-nay:6333",
+            # Hàm tiêm trả `None` là lỗi của người tiêm (`_bat_buoc_co_ket_noi`),
+            # và nó nổ **sau** khi `_mo_qdrant` đã mở client.
+            tao_neo4j_driver=lambda: None,
+        )
+    con_mo = ket_noi_chua_dong(loi.value)
+    assert con_mo is not None, (
+        "phép mở kết nối phải nằm trong cùng khối phục hồi với"
+        " super().__post_init__(); nếu không, ca này rò một client Qdrant"
+    )
+    assert isinstance(con_mo.client_qdrant, _ClientGia)
+    assert con_mo.tu_mo_qdrant is True
+    assert con_mo.driver_neo4j is None and con_mo.tu_mo_neo4j is False
+    asyncio.run(con_mo.dong())
+    assert da_dong == ["qdrant"]
+
+
+def test_ket_noi_tiem_tu_ngoai_khong_bi_dong_ho(workspace_dir):
+    """Luật sở hữu giữ nguyên ở đường hỏng: kết nối tiêm thuộc về người tiêm.
+
+    Đóng hộ là làm hỏng kết nối của người khác - cùng luật mà
+    `Neo4jACLGraphStorage.close()` và `EngineACL.dong()` đã giữ.
+    """
+    from adapters.engine import ket_noi_chua_dong
+    from tests.gia_lap_neo4j import Neo4jGhiLai
+    from tests.gia_lap_qdrant import QdrantGhiLai
+
+    client, driver = QdrantGhiLai(), Neo4jGhiLai()
+    with pytest.raises(Exception) as loi:
+        dung_engine(workspace_dir, client, driver, LLMGia(), enable_llm_cache=True)
+    con_mo = ket_noi_chua_dong(loi.value)
+    assert con_mo is not None
+    assert con_mo.tu_mo_qdrant is False and con_mo.tu_mo_neo4j is False
+    # `dong()` chạy nhưng không chạm hai kết nối tiêm.
+    asyncio.run(con_mo.dong())
+
+
+def test_ngoai_le_khong_gan_duoc_dau_van_de_lai_mot_dong(workspace_dir, caplog):
+    """Ngoại lệ từ chối thuộc tính mới - im lặng ở đây là đúng ca rò của khoản nợ.
+
+    Hiếm (mọi lớp con của `BaseException` đều có `__dict__`, nên `__slots__`
+    không đủ để dựng ca này - phải là một lớp tự chặn `__setattr__`, hoặc một
+    proxy ngoại lệ của SDK). Nhưng nó có thật, và khi nó xảy ra thì hai kết nối
+    nằm lại **mà không ai biết** nếu nhánh dự phòng nuốt lỗi im lặng.
+    """
+    from adapters.engine import EngineACL
+
+    class _LoiChanSetattr(RuntimeError):
+        def __setattr__(self, ten, gia_tri):
+            raise AttributeError(f"không gắn được {ten!r}")
+
+    engine = EngineACL.__new__(EngineACL)
+    engine._client_qdrant = engine._driver_neo4j = None
+    engine._tu_mo_qdrant = engine._tu_mo_neo4j = False
+    loi = _LoiChanSetattr("không gắn được")
+    with caplog.at_level(logging.ERROR, logger="adapters.engine"):
+        engine._gan_ket_noi_chua_dong(loi)
+    assert any(
+        "không gắn được kết nối" in r.getMessage() for r in caplog.records
+    ), caplog.text

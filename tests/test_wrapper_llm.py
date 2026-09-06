@@ -883,3 +883,232 @@ def test_extra_body_cua_noi_goi_duoc_gop_khong_bi_de():
         )
     )
     assert client.goi[0][1]["extra_body"] == {"top_k": 5, "thinking": {"type": "disabled"}}
+
+
+# --- Story 3.3: ngân sách của nơi dựng, trần cho một lời gọi LLM ----------------
+
+
+def test_bo_embedding_mac_dinh_ngan_sach_nap_va_nhan_ngan_sach_tiem_vao(khong_gian, policy):
+    """Ngân sách là **tham số của nơi dựng**, không hằng của module.
+
+    Cùng một `bo_embedding` phục vụ đường nạp lẫn đường truy hồi (engine nhận
+    đúng nó qua `embedding_func`), nên bốn lần thử với trần chờ 60 giây - đúng
+    cho một đợt nạp - là một request HTTP treo tới ba phút (khoản ledger 2.13).
+
+    Đọc qua `ngan_sach_cua`, thứ đi theo cả chuỗi bọc: upstream bọc
+    `embedding_func` bằng `limit_async_func_call`, nên một phép đọc thuộc tính
+    thẳng trên hàm mà engine cầm sẽ trả `None` cho cả hai bên và ca "hai engine
+    hai ngân sách" xanh vì cả hai đều rỗng.
+    """
+    from adapters.llm_wrapper import ngan_sach_cua
+    from adapters.thu_lai import NGAN_SACH_NAP, NGAN_SACH_TRUY_HOI
+
+    _, mac_dinh = _emb(SoAuditBoNho())
+    assert ngan_sach_cua(mac_dinh) is NGAN_SACH_NAP
+    tiem = bo_embedding(
+        nha_cung_cap=EmbeddingGia(),
+        model=MODEL_EMBEDDING_GIA,
+        audit=SoAuditBoNho(),
+        danh_muc=danh_muc_gia(),
+        ngan_sach=NGAN_SACH_TRUY_HOI,
+    )
+    assert ngan_sach_cua(tiem) is NGAN_SACH_TRUY_HOI
+    assert la_wrapper(tiem), "ngân sách không được làm mất dấu wrapper"
+    assert ngan_sach_cua(limit_async_func_call(max_size=2)(tiem)) is NGAN_SACH_TRUY_HOI
+
+
+def test_bo_embedding_thu_lai_theo_dung_so_lan_cua_ngan_sach(khong_gian, policy):
+    """Ngân sách phải **thật sự** đi xuống lớp thử lại, không chỉ nằm trên một dấu.
+
+    Provider hỏng 429 mãi: đường nạp thử 4 lần, đường truy hồi thử 2. Không có
+    ca này thì `ngan_sach=` có thể được nhận rồi bỏ qua và hai ca đọc dấu ở trên
+    vẫn xanh.
+    """
+    from adapters.thu_lai import NGAN_SACH_NAP, NGAN_SACH_TRUY_HOI
+
+    class _Loi429(Exception):
+        status_code = 429
+
+    async def _khong_ngu(_giay):
+        return None
+
+    def _dem(ngan_sach):
+        ncc = EmbeddingGia(loi=_Loi429("rate limit"))
+        ham = bo_embedding(
+            nha_cung_cap=ncc,
+            model=MODEL_EMBEDDING_GIA,
+            audit=SoAuditBoNho(),
+            danh_muc=danh_muc_gia(),
+            ngan_sach=ngan_sach,
+        )
+
+        async def chay():
+            with use_context(vai(policy, "devops", khong_gian)):
+                await ham.func(["x"])
+
+        # Không ngủ thật: thay `asyncio.sleep` mà tenacity dùng.
+        import adapters.thu_lai as thu_lai
+
+        goc = thu_lai.AsyncRetrying
+        try:
+            thu_lai.AsyncRetrying = lambda **kw: goc(**{**kw, "sleep": _khong_ngu})
+            with pytest.raises(_Loi429):
+                asyncio.run(chay())
+        finally:
+            thu_lai.AsyncRetrying = goc
+        return ncc.so_lan
+
+    assert _dem(NGAN_SACH_NAP) == NGAN_SACH_NAP.so_lan_thu == 4
+    assert _dem(NGAN_SACH_TRUY_HOI) == NGAN_SACH_TRUY_HOI.so_lan_thu == 2
+
+
+def test_bo_llm_nhan_tran_mot_loi_goi_va_khong_thu_lai(khong_gian, policy):
+    """`bo_llm` nhận một **trần thời gian**, không nhận một lớp thử lại.
+
+    Luật "đúng một lớp trên mỗi đường gọi" giữ nguyên: cả hai đường LLM đã có
+    lớp của mình *trên* hàm này. Đường truy hồi thì khác - nơi gọi nằm trong
+    `vendor/kg_query` nên không có chỗ nào gắn một lớp thử lại, và một trần thời
+    gian là thứ duy nhất đặt được ở đây.
+
+    Hai vế. Trần cắt được một provider treo; và một 429 **không** được thử lại
+    lần nào, kể cả khi trần được đặt.
+    """
+    import asyncio as _asyncio
+
+    class _NccTreo(NhaCungCapGia):
+        async def hoan_thanh(self, model, messages, **kwargs):
+            self.loi_goi.append((model, list(messages), dict(kwargs)))
+            await _asyncio.sleep(30)
+
+    ncc = _NccTreo()
+    llm = bo_llm(
+        nha_cung_cap=ncc,
+        model=MODEL_LLM_GIA,
+        audit=SoAuditBoNho(),
+        danh_muc=danh_muc_gia(),
+        tran_moi_loi_goi_giay=0.01,
+    )
+
+    async def chay():
+        with use_context(vai(policy, "devops", khong_gian)):
+            return await llm("hỏi")
+
+    with pytest.raises(TimeoutError):
+        asyncio.run(chay())
+    assert ncc.so_lan == 1, "trần thời gian không được kéo theo một lớp thử lại"
+
+    class _Loi429(Exception):
+        status_code = 429
+
+    ncc2 = NhaCungCapGia(loi=_Loi429("rate limit"))
+    llm2 = bo_llm(
+        nha_cung_cap=ncc2,
+        model=MODEL_LLM_GIA,
+        audit=SoAuditBoNho(),
+        danh_muc=danh_muc_gia(),
+        tran_moi_loi_goi_giay=5.0,
+    )
+
+    async def chay2():
+        with use_context(vai(policy, "devops", khong_gian)):
+            return await llm2("hỏi")
+
+    with pytest.raises(_Loi429):
+        asyncio.run(chay2())
+    assert ncc2.so_lan == 1
+
+
+def test_bo_llm_khong_tran_thi_khong_cat(khong_gian, policy):
+    """Mặc định **vắng**: đường nạp đã có trần ở lớp thử lại của `_trich_mot_chunk`.
+
+    Hai lớp timeout lồng nhau trên cùng một lời gọi là hai chỗ để đọc sai nguyên
+    nhân một lần cắt.
+    """
+    from adapters.llm_wrapper import tran_loi_goi_cua
+
+    _, llm = _llm(SoAuditBoNho())
+    assert tran_loi_goi_cua(llm) is None
+
+    async def chay():
+        with use_context(vai(policy, "devops", khong_gian)):
+            return await llm("hỏi")
+
+    assert asyncio.run(chay())
+
+
+def test_ham_tu_moi_truong_chuyen_ca_hai_nua_cua_ngan_sach_xuong():
+    """`ham_tu_moi_truong(ngan_sach=...)` chuyển ngân sách cho embedding và trần cho LLM.
+
+    Đây là điểm nối mà `api.hoi_dap.mo_engine` và `api.dot_nap.dung_engine_tu_moi_truong`
+    dùng chung; một nửa bị bỏ quên ở đây là một đường sản phẩm chạy dưới ngân
+    sách của đường kia mà không ai thấy.
+    """
+    from adapters.llm_wrapper import ngan_sach_cua, tran_loi_goi_cua
+    from adapters.thu_lai import NGAN_SACH_NAP, NGAN_SACH_TRUY_HOI
+
+    dm = danh_muc_gia()
+    moi_truong = {
+        BIEN_LLM_MODEL: MODEL_LLM_GIA,
+        BIEN_EMBEDDING_MODEL: MODEL_EMBEDDING_GIA,
+        "GIA_API_KEY": "sk-gia",
+    }
+    mac_dinh = ham_tu_moi_truong(
+        audit=SoAuditBoNho(), danh_muc=dm, moi_truong=moi_truong
+    )
+    assert ngan_sach_cua(mac_dinh.embedding) is NGAN_SACH_NAP
+    assert tran_loi_goi_cua(mac_dinh.llm) is None
+
+    truy_hoi = ham_tu_moi_truong(
+        audit=SoAuditBoNho(),
+        danh_muc=dm,
+        moi_truong=moi_truong,
+        ngan_sach=NGAN_SACH_TRUY_HOI,
+    )
+    assert ngan_sach_cua(truy_hoi.embedding) is NGAN_SACH_TRUY_HOI
+    assert tran_loi_goi_cua(truy_hoi.llm) == NGAN_SACH_TRUY_HOI.tran_llm_giay
+
+
+def test_hai_bo_doc_dau_phan_biet_duoc_chua_gan_voi_gan_bang_none():
+    """`None` là một **giá trị hợp lệ** của dấu trần thời gian, không phải "chưa gắn".
+
+    `bo_llm` luôn gắn dấu, kể cả khi trần là `None` ("không đặt trần"). Một bộ
+    đọc dùng `is not None` không phân biệt được hai trạng thái đó, nên nó sẽ
+    duyệt tiếp lên lớp bọc ngoài và trả về dấu của một hàm khác nếu chuỗi bọc có
+    hai. Hai bộ đọc vì thế phải cùng một hình dạng, và đó là `hasattr`.
+    """
+    from adapters.llm_wrapper import (
+        DAU_TRAN_LOI_GOI,
+        ngan_sach_cua,
+        tran_loi_goi_cua,
+    )
+
+    _, khong_tran = _llm(SoAuditBoNho())
+    assert hasattr(khong_tran, DAU_TRAN_LOI_GOI), "bo_llm phải luôn gắn dấu"
+    assert tran_loi_goi_cua(khong_tran) is None
+
+    # Chuỗi bọc hai lớp: lớp trong khai `None` tường minh, lớp ngoài khai 99.
+    # Bộ đọc phải trả lời bằng lớp **gần nhất** trong chuỗi.
+    class _Boc:
+        def __init__(self, trong):
+            self.__wrapped__ = trong
+
+    co_tran = bo_llm(
+        nha_cung_cap=NhaCungCapGia(),
+        model=MODEL_LLM_GIA,
+        audit=SoAuditBoNho(),
+        danh_muc=danh_muc_gia(),
+        tran_moi_loi_goi_giay=99.0,
+    )
+    # Lớp **ngoài** khai `None` tường minh, lớp trong khai 99. Bộ đọc đúng trả
+    # `None` (lớp gần nhất); một bộ đọc `is not None` bỏ qua lớp ngoài và trả
+    # 99, tức nó báo một trần không ai đặt.
+    ngoai = _Boc(co_tran)
+    setattr(ngoai, DAU_TRAN_LOI_GOI, None)
+    assert tran_loi_goi_cua(ngoai) is None, (
+        "đọc bằng `is not None` sẽ bỏ qua dấu None của lớp ngoài và trả 99"
+    )
+    # Chiều còn lại vẫn đi tiếp được khi lớp ngoài **không** mang dấu.
+    assert tran_loi_goi_cua(_Boc(co_tran)) == 99.0
+    # Hai hàm cùng hình dạng: không dấu nào thì `None`.
+    assert ngan_sach_cua(lambda: None) is None
+    assert tran_loi_goi_cua(lambda: None) is None

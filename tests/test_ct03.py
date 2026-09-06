@@ -284,7 +284,10 @@ def test_doc_mo_ta_ngoai_co_he_thong_la_loi_khong_phai_rong(policy):
     with use_context(vai(policy, "devops", "thu")):
         with pytest.raises(IngestOutsideSystemContext) as loi:
             asyncio.run(doc_mo_ta([e], graph))
-    assert "CT-03" in str(loi.value)
+    # Assert trên `code`, không trên chuỗi thông điệp (AD-8, khoản ledger 2.10
+    # trả ở story 3.3): một phép kiểm `"CT-03" in str(...)` vỡ khi ai đó sửa câu
+    # chữ, và nó không phân biệt được hai ngoại lệ cùng nhắc tên thí nghiệm.
+    assert loi.value.code == "INGEST_OUTSIDE_SYSTEM_CONTEXT"
     assert graph.da_hoi == [], "không được chạm kho trước khi kiểm ngữ cảnh"
 
 

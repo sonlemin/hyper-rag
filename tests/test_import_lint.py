@@ -39,7 +39,14 @@ CAM_IMPORT = {
     # và đường ngắn nhất là import thẳng `eval.do_trich_xuat`, kéo cả harness đo
     # cùng bộ vàng vào tiến trình nạp. Luật nay canh bằng máy, và chỗ dùng chung
     # phải hạ xuống `adapters/`.
-    "api": {"eval", "web", "tests"},
+    # `api/` không import `vendor/` (story 3.3). AGENTS.md khai chiều của `api/`
+    # là `core/`, `adapters/`, `redteam/`, và docstring đầu file này khai "không
+    # tầng nào import `vendor` ngoài `adapters`" - nhưng cho tới 3.3 dòng này
+    # không liệt hai gốc vendor, nên một `from hypergraphrag.base import
+    # QueryParam` trong `api/hoi_dap.py` đi lọt qua cả suốt. Luật chia chunk và
+    # `QueryParam` của vendor đi qua `adapters/engine.py`, đó là nhà chung duy
+    # nhất; `EngineACL.aquery` dựng `QueryParam()` khi nơi gọi không truyền.
+    "api": {"eval", "web", "tests", "hypergraphrag", "vendor"},
     "redteam": {"api", "web", "tests"},
     # `eval/` không import `vendor/` (story 2.8, khoản ledger 2.6). Luật chia
     # chunk của vendor đi qua `adapters/chunking.py`, đó là chỗ duy nhất parity

@@ -452,3 +452,109 @@ def test_chay_lan_nap_truyen_space_xuong_ham_dung_engine(monkeypatch):
     _gan_nap(monkeypatch, _mot_tai_lieu_da_nap)
     _chay(_quet("a.md"), AuditGia(), space="khao_sat")
     assert engine.space_da_nhan == ["khao_sat"]
+
+
+# --- Story 3.3: dựng engine hỏng cũng không được rò kết nối -------------------
+
+
+class _KetNoiDemDong:
+    def __init__(self):
+        self.so_lan_dong = 0
+
+    async def close(self):
+        self.so_lan_dong += 1
+
+
+def _loi_mang_ket_noi(client, driver, *, tu_mo_qdrant=True, tu_mo_neo4j=True):
+    from adapters.engine import DAU_KET_NOI_CHUA_DONG, KetNoiChuaDong
+
+    loi = RuntimeError("dựng engine hỏng sau khi đã mở kết nối")
+    setattr(
+        loi,
+        DAU_KET_NOI_CHUA_DONG,
+        KetNoiChuaDong(
+            client_qdrant=client,
+            tu_mo_qdrant=tu_mo_qdrant,
+            driver_neo4j=driver,
+            tu_mo_neo4j=tu_mo_neo4j,
+        ),
+    )
+    return loi
+
+
+def test_dung_engine_hong_thi_dong_ket_noi_da_mo_va_danh_dot_la_loi():
+    """`api/man_nap.py` là một FastAPI **chạy dài**, nên ca này là một ca rò thật.
+
+    `_chay_nen` gọi `chay_lan_nap` mỗi lần có người tải tài liệu lên, nên một
+    cấu hình sai thật - `QDRANT_URL` có mà `NEO4J_URI` thiếu - là **mỗi đợt rò
+    thêm một client Qdrant** nếu phép dựng engine nằm ngoài khối phục hồi. Lời
+    khai cũ "dot_nap chạy một lượt rồi thoát" chỉ đúng với CLI.
+
+    Hai vế: hai kết nối `tu_mo=True` được đóng, và đợt được đánh `loi` chứ
+    không ném - màn nạp đọc `ma_loi`/`thong_diep_loi` để hiện lên trang.
+    """
+    client, driver = _KetNoiDemDong(), _KetNoiDemDong()
+    audit = AuditGia()
+
+    def _tao_engine_no(_audit):
+        raise _loi_mang_ket_noi(client, driver)
+
+    lan = asyncio.run(
+        mod.chay_lan_nap(
+            _quet("a.md"),
+            space="synth",
+            policy_version="pv",
+            audit=audit,
+            tao_engine=_tao_engine_no,
+        )
+    )
+    assert client.so_lan_dong == 1 and driver.so_lan_dong == 1
+    assert lan.trang_thai == mod.TRANG_THAI_DOT_LOI
+    assert lan.ma_loi == "RuntimeError"
+    assert lan.ket_thuc, "đợt hỏng vẫn phải có mốc kết thúc"
+
+
+def test_dung_engine_hong_khong_dong_ket_noi_tiem_tu_ngoai():
+    """Luật sở hữu giữ nguyên: kết nối tiêm thuộc về người tiêm."""
+    client, driver = _KetNoiDemDong(), _KetNoiDemDong()
+
+    def _tao_engine_no(_audit):
+        raise _loi_mang_ket_noi(client, driver, tu_mo_qdrant=False, tu_mo_neo4j=False)
+
+    lan = asyncio.run(
+        mod.chay_lan_nap(
+            _quet("a.md"),
+            space="synth",
+            policy_version="pv",
+            audit=AuditGia(),
+            tao_engine=_tao_engine_no,
+        )
+    )
+    assert (client.so_lan_dong, driver.so_lan_dong) == (0, 0)
+    assert lan.trang_thai == mod.TRANG_THAI_DOT_LOI
+
+
+def test_dung_engine_hong_giu_ma_on_dinh_cua_ngoai_le():
+    """Ngoại lệ có `code` thì đợt mang đúng mã ấy, không mang tên lớp.
+
+    Cùng luật với nhánh pipeline hỏng ngay dưới nó: `api/man_nap.py` hiện
+    `ma_loi` lên trang, và một ô mã rỗng là một ô không tra được.
+    """
+
+    class _LoiCoMa(RuntimeError):
+        code = "PROVIDER_CONFIG_MISSING"
+
+    def _tao_engine_no(_audit):
+        raise _LoiCoMa("thiếu key")
+
+    lan = asyncio.run(
+        mod.chay_lan_nap(
+            _quet("a.md"),
+            space="synth",
+            policy_version="pv",
+            audit=AuditGia(),
+            tao_engine=_tao_engine_no,
+        )
+    )
+    assert lan.ma_loi == "PROVIDER_CONFIG_MISSING"
+    assert isinstance(lan.ngoai_le, _LoiCoMa)

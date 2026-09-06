@@ -152,6 +152,45 @@ def audit_gia():
     return AuditGia()
 
 
+class EngineGia:
+    """Engine giả của lifespan: đủ để mở, đóng và trả lời một câu hỏi.
+
+    Story 3.3 nối engine tri thức vào lifespan, nên mọi fixture chạy lifespan
+    thật phải thay `api.hoi_dap.mo_engine` - bản thật đọc `LLM_MODEL`,
+    `QDRANT_URL` và một API key từ môi trường, ba thứ mà bộ test cố ý không có
+    (`tests/conftest.py::khong_key_provider_trong_moi_truong`).
+
+    `cau_hoi` giữ lại mọi câu đã nhận: đó là cách ca "thân sai thì không có lời
+    gọi nào" chứng minh được mệnh đề của nó.
+    """
+
+    def __init__(self, tra_loi: str = "câu trả lời giả", loi: BaseException | None = None):
+        self.tra_loi = tra_loi
+        self.loi = loi
+        self.cau_hoi: list[str] = []
+        self.ngu_canh: list = []
+        self.da_dong = False
+
+    async def aquery(self, query, param=None):
+        from core.permission import current_context
+
+        self.cau_hoi.append(query)
+        # Đọc ngữ cảnh **bên trong** lời gọi: đó là chỗ duy nhất chứng minh
+        # `use_context` bọc trọn `aquery` thay vì chỉ bọc phần dựng.
+        self.ngu_canh.append(current_context())
+        if self.loi is not None:
+            raise self.loi
+        return self.tra_loi
+
+    async def dong(self):
+        self.da_dong = True
+
+
+@pytest.fixture
+def engine_gia():
+    return EngineGia()
+
+
 def _cam_audit(monkeypatch, audit_gia):
     async def _mo():
         return audit_gia
@@ -159,9 +198,16 @@ def _cam_audit(monkeypatch, audit_gia):
     monkeypatch.setattr(api_main, "mo_audit", _mo)
 
 
+def _cam_engine(monkeypatch, engine_gia):
+    async def _mo(audit):
+        return engine_gia
+
+    monkeypatch.setattr(api_main.hoi_dap, "mo_engine", _mo)
+
+
 @pytest.fixture
-def client(monkeypatch, kho_gia, audit_gia):
-    """`TestClient` chạy lifespan thật, trên một bảng `users` và một audit giả."""
+def client(monkeypatch, kho_gia, audit_gia, engine_gia):
+    """`TestClient` chạy lifespan thật, trên bảng `users`, audit và engine giả."""
     monkeypatch.setenv(BIEN_KHOA_KY, KHOA_TEST)
 
     async def _mo():
@@ -169,6 +215,7 @@ def client(monkeypatch, kho_gia, audit_gia):
 
     monkeypatch.setattr(api_main, "mo_kho_tai_khoan", _mo)
     _cam_audit(monkeypatch, audit_gia)
+    _cam_engine(monkeypatch, engine_gia)
     with TestClient(api_main.app) as c:
         yield c
 
@@ -569,6 +616,8 @@ def test_lifespan_dong_bo_dung_noi_dung_seed_va_dong_pool(monkeypatch, kho_gia, 
 
     monkeypatch.setattr(api_main, "mo_kho_tai_khoan", _mo)
     _cam_audit(monkeypatch, audit_gia)
+    engine_gia = EngineGia()
+    _cam_engine(monkeypatch, engine_gia)
     with TestClient(api_main.app):
         assert kho_gia.da_dong_bo == 1
         da = kho_gia.muc_da_dong_bo
@@ -588,6 +637,10 @@ def test_lifespan_dong_bo_dung_noi_dung_seed_va_dong_pool(monkeypatch, kho_gia, 
         assert khoa(da) == khoa(cho)
     assert kho_gia.da_dong is True
     assert audit_gia.da_dong is True, "port audit đã mở mà không ai đóng"
+    # Engine đóng **trước** audit và trước pool, thứ tự ngược của thứ tự mở:
+    # không đóng nó là một pool Neo4j cộng một client Qdrant sống qua lần tắt
+    # tiến trình, và là phần kho KV chưa flush mất luôn (story 1.7).
+    assert engine_gia.da_dong is True, "engine đã mở mà không ai đóng"
 
 
 def test_lifespan_mo_kho_that_su_chay_ddl(monkeypatch):
@@ -673,16 +726,23 @@ def test_mo_audit_hong_o_ddl_van_dong_pool():
     assert audit.da_dong is True
 
 
-@pytest.mark.parametrize("cho_no", ["khoi_tao", "nap_tai_khoan", "dong_bo", "mo_audit"])
+@pytest.mark.parametrize(
+    "cho_no", ["khoi_tao", "nap_tai_khoan", "dong_bo", "mo_audit", "mo_engine"]
+)
 def test_khoi_dong_hong_o_bat_ky_buoc_nao_cung_dong_pool(
     monkeypatch, kho_gia, audit_gia, cho_no
 ):
     """Pool đã mở phải đóng ở mọi đường thoát của bước khởi động.
 
-    Ba bước hỏng được thật: DDL hỏng, seed hỏng (`IdentitySeedInvalid`), DB rớt
-    giữa transaction đồng bộ. Hai bước sau nằm **ngoài** `try/finally` của
-    `yield`, nên không có `try` riêng thì pool asyncpg treo lại trong một tiến
-    trình sắp chết.
+    Bốn bước hỏng được thật: DDL hỏng, seed hỏng (`IdentitySeedInvalid`), DB
+    rớt giữa transaction đồng bộ, và - từ story 3.3 - dựng engine hỏng (thiếu
+    key provider, `QDRANT_URL` sai, `config/hang-do-nhay.yaml` hỏng). Ba bước
+    sau nằm **ngoài** `try/finally` của `yield`, nên không có `try` riêng thì
+    pool asyncpg treo lại trong một tiến trình sắp chết.
+
+    Bước engine là bước **cuối** trước `yield`, nên nó là bước duy nhất mà cả
+    pool tài khoản lẫn port audit đều đã mở: ca này vì thế chấm cả hai được
+    đóng, không chỉ một.
     """
     monkeypatch.setenv(BIEN_KHOA_KY, KHOA_TEST)
 
@@ -720,12 +780,18 @@ def test_khoi_dong_hong_o_bat_ky_buoc_nao_cung_dong_pool(
         monkeypatch.setattr(api_main, "nap_tai_khoan", _no)
         loi = IdentitySeedInvalid
     elif cho_no == "mo_audit":
-        # Port audit mở **sau** khi pool tài khoản đã mở và seed đã đổ, nên nó
-        # là bước cuối có thể hỏng trước `yield` - và pool tài khoản phải đóng.
+        # Port audit mở **sau** khi pool tài khoản đã mở và seed đã đổ; pool
+        # tài khoản phải đóng, và audit chưa mở nên không có gì để đóng.
         async def _no_audit():
             raise RuntimeError("audit không mở được")
 
         monkeypatch.setattr(api_main, "mo_audit", _no_audit)
+        loi = RuntimeError
+    elif cho_no == "mo_engine":
+        async def _no_engine(audit):
+            raise RuntimeError("engine không dựng được")
+
+        monkeypatch.setattr(api_main.hoi_dap, "mo_engine", _no_engine)
         loi = RuntimeError
     else:
         kho_gia.no_o_dong_bo = RuntimeError("DB rớt giữa transaction")
@@ -735,6 +801,8 @@ def test_khoi_dong_hong_o_bat_ky_buoc_nao_cung_dong_pool(
         with TestClient(api_main.app):
             pass
     assert kho_gia.da_dong is True, "pool đã mở mà không ai đóng"
+    if cho_no == "mo_engine":
+        assert audit_gia.da_dong is True, "port audit đã mở mà không ai đóng"
 
 
 def test_lifespan_nap_bang_nhom_ngay_luc_khoi_dong(monkeypatch, kho_gia):
@@ -843,6 +911,7 @@ def test_tai_khoan_demo_khong_admin_qua_cua_bang_chinh_co_cua_seed_that(
     )
     monkeypatch.setenv(BIEN_KHOA_KY, KHOA_TEST)
     _cam_audit(monkeypatch, AuditGia())
+    _cam_engine(monkeypatch, EngineGia())
 
     async def _mo():
         return kho

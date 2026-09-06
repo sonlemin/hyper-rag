@@ -63,6 +63,20 @@ CHAM_STORAGE_CO_LY_DO: dict[str, str] = {
     "api/do_chi_phi.py": "CLI nạp và xóa space; đọc sổ tài liệu, gọi chay_lan_nap và xoa_space",
     "api/dot_nap.py": "lõi một đợt nạp; dựng EngineACL và chạy ingest tuần tự",
     "api/man_nap.py": "màn nạp web, đi qua đúng chay_lan_nap của CLI; không có đường đọc tri thức",
+    # Dòng thứ tư, và là dòng đầu tiên **không** thuộc đường ingest. Nó là chỗ
+    # câu hỏi của F3 phải được trả lời chứ không hoãn thêm nữa, nên câu trả lời
+    # viết ra ở đây: nội dung ra khỏi module này là chuỗi ngữ cảnh mà `kg_query`
+    # dựng từ kết quả của ba adapter, và cả ba gọi `core.masking.mask` trong
+    # đường trả về của mọi method đọc (AD-9, `tests/test_phan_chieu_che.py`
+    # canh danh sách method). Module này không che lại và không bỏ che: nó
+    # không import một cái tên nào của tầng che (ca `test_api_khong_che_lai`),
+    # và nó không mở ngữ cảnh hệ thống (ca `test_chi_mot_module_api_dung_ngu_canh_quyen`
+    # cộng danh sách trắng `CHO_PHEP_SYSTEM_CONTEXT` của import-lint).
+    "api/hoi_dap.py": (
+        "endpoint hỏi đáp: dựng engine truy hồi và gọi aquery dưới ngữ cảnh vai;"
+        " nội dung ra khỏi nó đã đi qua tầng che của ba adapter (AD-9), api/"
+        " không che lại và không bỏ che"
+    ),
 }
 
 # Tên mở một đường tới kho tri thức: ba lớp storage, engine, và bốn cửa của
@@ -187,12 +201,21 @@ def test_ly_do_khai_van_con_that():
 # thuộc đường **xác thực**: chúng đọc bảng `users` của Postgres và file seed,
 # hai nguồn không có một byte tri thức nào, và không hàm nào chạm ba kho hay
 # dựng một `PermissionContext`.
+#
+# Story 3.3 là lần đầu danh sách có một hàm **trả nội dung tri thức** (`hoi`),
+# và đó đúng là chỗ mệnh đề AC-1.6-1 ngừng đúng một cách rỗng. Lý do của nó vì
+# thế không nói "không chạm kho" nữa mà nói nội dung đã che ở đâu; và ba ca
+# dưới đây thêm một mệnh đề mới thay chỗ: `api/main.py` vẫn không dựng ngữ cảnh
+# quyền, và **đúng một** module `api/` dựng nó.
 HAM_MAIN_CO_LY_DO: dict[str, str] = {
     "health": "healthcheck của compose; trả một hằng, nằm ngoài mọi cửa",
+    "hoi": "POST /hoi-dap; gọi thẳng api.hoi_dap.tra_loi, nội dung đã che ở ba adapter (AD-9)",
+    "_than_yeu_cau_la": "exception handler, đổi 422 thô của FastAPI thành 400 đúng envelope",
+    "_loi_khong_xac_dinh": "exception handler lưới cuối; trả {error:{code,message}} từ hai hằng, nội dung lỗi chỉ vào log",
     "mo_kho_tai_khoan": "điểm nối mở pool Postgres cho bảng users; test thay bằng bản giả",
     "mo_audit": "điểm nối mở pool Postgres cho bảng audit_log; không phải kho tri thức",
     "ma_policy_mac_dinh": "đọc id policy từ môi trường; hàm thuần trên một map chuỗi",
-    "vong_doi": "lifespan: kiểm khóa ký, nạp policy, mở bảng users và audit_log; không dựng engine tri thức",
+    "vong_doi": "lifespan: kiểm khóa ký, nạp policy, mở bảng users, audit_log và engine truy hồi; không gọi khoi_tao()",
     "_loi_xac_thuc": "exception handler, dựng {error:{code,message}} từ hai hằng",
     "_claim": "đọc claim của token trong header; không chạm kho",
     "dang_nhap": "POST /auth/login; đọc bảng users, phát JWT",
@@ -248,15 +271,84 @@ def test_main_khong_dung_ngu_canh_quyen_nao():
     qua `core.identity.ngu_canh_cua`, thứ `tests/test_import_lint.py` đã canh.
     Ca này đỏ nếu `api/main.py` tự dựng ngữ cảnh trước lúc ấy.
     """
-    cham = _ten_duoc_nhap(REPO_ROOT / "api" / "main.py") & {
-        "user_context",
-        "system_context",
-        "PermissionContext",
-        "use_context",
-        "current_context",
-        "ngu_canh_cua",
-    }
+    cham = _ten_duoc_nhap(REPO_ROOT / "api" / "main.py") & (TEN_DUNG_NGU_CANH | TEN_DUNG_NGU_CANH_PHU)
     assert not cham, f"`api/main.py` chạm ngữ cảnh quyền: {sorted(cham)}"
+
+
+# Tên **dựng** một ngữ cảnh quyền. `use_context`/`current_context` không nằm ở
+# đây vì chúng chỉ mở và đọc một ngữ cảnh đã có; `PermissionContext` thì có, vì
+# gọi thẳng lớp ấy là đúng đường vòng mà `tests/test_import_lint.py` cấm.
+TEN_DUNG_NGU_CANH: frozenset[str] = frozenset(
+    {"user_context", "system_context", "PermissionContext", "ngu_canh_cua"}
+)
+# Tên chỉ *dùng* một ngữ cảnh. Tách khỏi tập trên để ca dưới nói được hai mệnh
+# đề khác nhau: ai dựng, và ai chỉ mở.
+TEN_DUNG_NGU_CANH_PHU: frozenset[str] = frozenset({"use_context", "current_context"})
+
+# Module `api/` được phép dựng ngữ cảnh quyền, kèm lý do. **Đúng một dòng**, và
+# đó là mệnh đề: một request người dùng dựng ngữ cảnh của nó ở đúng một chỗ, nên
+# không có chỗ thứ hai để một luật quyền trôi tới.
+DUNG_NGU_CANH_CO_LY_DO: dict[str, str] = {
+    "api/hoi_dap.py": (
+        "endpoint hỏi đáp dựng PermissionContext từ claim JWT, một lần mỗi"
+        " request, qua đúng cửa core.identity.ngu_canh_cua"
+    ),
+}
+
+
+def test_chi_mot_module_api_dung_ngu_canh_quyen():
+    """Đúng một module `api/` dựng ngữ cảnh quyền, và mọi module khác thì không.
+
+    Chặt hơn ca ngay trên: nó nói về `api/main.py`, còn ca này nói về cả gói.
+    Một module `api/` thứ hai dựng ngữ cảnh là hai chỗ quyết định vai của một
+    request, và lần sửa sau chỉ sửa một.
+    """
+    vi_pham = []
+    for py in _module_api():
+        ten = _ten(py)
+        if ten in DUNG_NGU_CANH_CO_LY_DO:
+            continue
+        cham = _ten_duoc_nhap(py) & TEN_DUNG_NGU_CANH
+        if cham:
+            vi_pham.append(f"{ten} dựng ngữ cảnh quyền qua {sorted(cham)}")
+    assert not vi_pham, (
+        "Module `api/` dựng ngữ cảnh quyền mà chưa khai trong"
+        " `DUNG_NGU_CANH_CO_LY_DO` (NFR-10, khoản ledger 1.2).\n  "
+        + "\n  ".join(vi_pham)
+    )
+    for ten, ly_do in sorted(DUNG_NGU_CANH_CO_LY_DO.items()):
+        py = REPO_ROOT / ten
+        assert py.exists(), f"khai trỏ vào file không có: {ten}"
+        assert ly_do.strip(), f"{ten} khai mà không có lý do"
+        assert _ten_duoc_nhap(py) & TEN_DUNG_NGU_CANH, (
+            f"{ten} không còn dựng ngữ cảnh quyền; gỡ nó khỏi `DUNG_NGU_CANH_CO_LY_DO`"
+        )
+
+
+def test_module_dung_ngu_canh_chi_dung_duoc_ngu_canh_vai():
+    """Lớp thứ ba của NFR-10: module ấy dựng được **ngữ cảnh vai** và không hơn.
+
+    Hai lớp đầu là `tests/test_import_lint.py` (danh sách trắng
+    `CHO_PHEP_SYSTEM_CONTEXT` phía module) và `core.permission.use_context`
+    (`SystemContextNested`, ngữ cảnh hệ thống sinh ra *giữa chừng*). Lớp này
+    chặn một ngữ cảnh hệ thống **đến từ ngoài**, đúng chỗ khoản ledger 1.2 chỉ:
+    tầng handler.
+
+    Hai vế. Vế tĩnh: module không nhập `system_context` và cũng không nhập
+    `user_context` - nó đi qua đúng `core.identity.ngu_canh_cua`, cửa duy nhất
+    hợp lệ, thứ đọc bảng chính sách thay vì nhận một `allowed_keys` bịa ra. Vế
+    chạy được nằm ở `tests/test_hoi_dap.py`: một `ngu_canh_cua` bị thay để trả
+    ngữ cảnh hệ thống thì handler từ chối chứ không truy hồi thô.
+    """
+    for ten in sorted(DUNG_NGU_CANH_CO_LY_DO):
+        nhap = _ten_duoc_nhap(REPO_ROOT / ten)
+        assert "system_context" not in nhap, f"{ten} nhập system_context"
+        assert "user_context" not in nhap, (
+            f"{ten} nhập thẳng `user_context`: cửa hợp lệ của `api/` là"
+            " `core.identity.ngu_canh_cua`, thứ đổi `KeyError` của một vai lạ"
+            " thành `RoleUnknown` có `code` (AD-8)"
+        )
+        assert "ngu_canh_cua" in nhap, f"{ten} khai là chỗ dựng ngữ cảnh mà không nhập cửa nào"
 
 
 # Tuyến của `api/main.py` **không** đi qua cửa xác thực, kèm lý do. Hai dòng,

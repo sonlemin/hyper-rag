@@ -819,6 +819,13 @@ def test_tu_dien_hong_dung_ca_dot_truoc_khi_goi_llm(
     Cùng chiều với bảng hạng độ nhạy: một cấu hình hỏng dừng đợt, không rơi về
     một mặc định. Ở đây còn thêm một điều kiện - nó phải dừng **trước** lời gọi
     LLM đầu tiên, vì mỗi lời gọi là tiền thật.
+
+    Điều kiện đó là **trước lời gọi LLM**, không phải "trước khi tiêu tiền"
+    (khoản ledger 2.12, sửa ở story 3.3). `EngineACL.ainsert` gọi
+    `chunks_vdb.upsert` trước `trich_xuat_chunks`, và upsert đó nhúng mọi chunk,
+    nên tiền embedding của tài liệu đã tiêu lúc từ điển hỏng bị phát hiện. Ca
+    này assert đúng thứ nó chấm được - `llm.prompts == []` - và lời khai nay
+    nói đúng thứ đó.
     """
     from adapters.tu_dien_thuc_the import TuDienThucTheInvalid
 
@@ -835,6 +842,7 @@ def test_tu_dien_hong_dung_ca_dot_truoc_khi_goi_llm(
         asyncio.run(_nap(mt, thu_muc, khong_gian, policy))
     assert e.value.code == "TU_DIEN_THUC_THE_INVALID"
     assert "xac_nhan" in str(e.value)
-    # Không lời gọi LLM nào: một từ điển hỏng phải dừng đợt **trước** khi tiêu
-    # tiền, cùng chiều với bảng hạng độ nhạy hỏng (từ chối cả đợt, không đoán).
+    # Không lời gọi LLM nào: một từ điển hỏng phải dừng đợt **trước** lời gọi
+    # LLM đầu tiên, cùng chiều với bảng hạng độ nhạy hỏng (từ chối cả đợt,
+    # không đoán). Tiền embedding của tài liệu thì đã tiêu rồi - xem docstring.
     assert mt.llm.prompts == []

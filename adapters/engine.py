@@ -94,6 +94,12 @@ logger = logging.getLogger(__name__)
 # Tên đăng ký trong registry. Chuỗi này đi vào ba field `kv_storage`,
 # `vector_storage`, `graph_storage` của upstream, nên nó là hợp đồng chứ không
 # phải một cái tên tùy ý; đặt hằng để không có bản viết tay thứ hai.
+# Danh mục `QueryParam.mode` mà engine chạy được. Chép đúng nhánh duy nhất của
+# `vendor/hypergraphrag/hypergraphrag.py:497` (`if param.mode in ["hybrid"]`);
+# đây là một phép **phản chiếu** một dòng vendor, không phải một quyết định
+# riêng của dự án, nên sửa nó là phải đọc lại đúng dòng đó.
+MODE_HO_TRO: frozenset[str] = frozenset({"hybrid"})
+
 TEN_KV: str = JsonACLKVStorage.__name__
 TEN_VECTOR: str = QdrantVectorDBStorage.__name__
 TEN_GRAPH: str = Neo4jACLGraphStorage.__name__
@@ -197,6 +203,84 @@ class LLMNotWrapped(TypeError):
     """
 
     code = "LLM_NOT_WRAPPED"
+
+
+class QueryModeKhongHoTro(ValueError):
+    """`QueryParam.mode` ngoài danh mục engine chạy được.
+
+    `hypergraphrag.py:497-510` chỉ có nhánh `if param.mode in ["hybrid"]` rồi
+    `return response`, nên mọi mode khác rơi vào một biến chưa gán và ra
+    `UnboundLocalError` trần từ `vendor/`. Một `UnboundLocalError` không phải
+    một mã lỗi của dự án: tầng API không đổi được nó thành `{error: {code,
+    message}}` mà test assert lên (AD-8), và thông điệp của nó nói về một biến
+    Python chứ không về tham số người gọi vừa gửi.
+
+    Cửa này đứng **trước** khi chạm `vendor/`, nên nó cũng là chỗ duy nhất
+    không phải sửa `vendor/` mà vẫn nói đúng nguyên nhân (khoản ledger 1.7).
+    """
+
+    code = "QUERY_MODE_KHONG_HO_TRO"
+
+
+# Dấu gắn lên chính ngoại lệ khi `super().__post_init__()` nổ *sau* khi hai kết
+# nối đã mở. Gắn lên lỗi gốc chứ không bọc nó vào một lớp mới, và đó là cả
+# thiết kế: `api/man_nap.py` bắt theo `code`, `tests/test_engine_acl.py` bắt
+# theo *loại* (`LLMCacheDisabled`, `ValueError` của adapter thiếu khóa), nên một
+# lớp bọc thêm đổi cả hai hợp đồng để trả một khoản nợ về vòng đời kết nối - hai
+# việc không liên quan gì nhau. Lỗi dội lên **nguyên vẹn**; thứ thêm vào chỉ là
+# một chỗ để nơi gọi async tìm thấy phần phải đóng.
+DAU_KET_NOI_CHUA_DONG: str = "_hyper_rag_ket_noi_chua_dong"
+
+
+class KetNoiChuaDong:
+    """Hai kết nối đã mở của một engine dựng hỏng, kèm luật sở hữu của chúng.
+
+    `__post_init__` là hàm **đồng bộ** nên nó không `await close()` được, mà cả
+    hai kết nối phải tồn tại *trước* lời gọi `super().__post_init__()` vì chính
+    nó dựng sáu storage. Không có bản ghi này thì client Qdrant và driver Neo4j
+    nằm lại trong một object không ai còn cầm tham chiếu (khoản ledger 1.7).
+
+    `tu_mo_*` giữ nguyên luật sở hữu của `dong()`: kết nối tiêm từ ngoài thuộc
+    về người tiêm, đóng hộ là làm hỏng kết nối của người khác.
+    """
+
+    def __init__(self, *, client_qdrant, tu_mo_qdrant, driver_neo4j, tu_mo_neo4j):
+        self.client_qdrant = client_qdrant
+        self.tu_mo_qdrant = tu_mo_qdrant
+        self.driver_neo4j = driver_neo4j
+        self.tu_mo_neo4j = tu_mo_neo4j
+
+    async def dong(self) -> None:
+        """Đóng đúng phần engine tự mở, theo thứ tự ngược; **không bao giờ ném**.
+
+        Không ném vì nơi gọi đang trên đường dội lỗi gốc lên: một lỗi thứ hai ở
+        đây thay chỗ lỗi gốc, và lỗi gốc mới là thứ nói được vì sao tiến trình
+        không lên.
+        """
+        for co_mo, ket_noi in (
+            (self.tu_mo_neo4j, self.driver_neo4j),
+            (self.tu_mo_qdrant, self.client_qdrant),
+        ):
+            if not co_mo or ket_noi is None:
+                continue
+            try:
+                await ket_noi.close()
+            except Exception:  # noqa: BLE001
+                logger.exception("không đóng được kết nối của một engine dựng hỏng")
+
+
+def ket_noi_chua_dong(loi: BaseException) -> "KetNoiChuaDong | None":
+    """Phần kết nối còn mở của một lỗi dựng engine, hoặc `None`.
+
+    **Hai nơi gọi, và cả hai đều cần.** `api.hoi_dap.mo_engine` là đường phục
+    vụ; `api.dot_nap.chay_lan_nap` là đường nạp, và nó cần *vì `api/man_nap.py`
+    là một FastAPI chạy dài* - `_chay_nen` gọi `chay_lan_nap` mỗi lần có người
+    tải tài liệu lên, nên một cấu hình sai thật (`QDRANT_URL` có mà `NEO4J_URI`
+    thiếu) là mỗi đợt rò thêm một client. Lời khai cũ "dot_nap chạy một lượt
+    rồi thoát" chỉ đúng với CLI `api/do_chi_phi.py`, không đúng với màn nạp.
+    """
+    ban_ghi = getattr(loi, DAU_KET_NOI_CHUA_DONG, None)
+    return ban_ghi if isinstance(ban_ghi, KetNoiChuaDong) else None
 
 
 def cau_hinh_kho_tu_moi_truong(moi_truong=None) -> dict[str, str]:
@@ -317,10 +401,56 @@ class EngineACL(HyperGraphRAG):
         # Kết nối phải có trước `super().__post_init__()`: chính lời gọi đó tra
         # registry và dựng sáu storage.
         cau_hinh = asdict(self)
-        self._client_qdrant, self._tu_mo_qdrant = self._mo_qdrant(cau_hinh)
-        self._driver_neo4j, self._tu_mo_neo4j = self._mo_neo4j(cau_hinh)
+        # Cả **ba** bước nằm trong cùng một khối phục hồi, không chỉ bước cuối.
+        # Ca mà một khối chỉ bọc `super().__post_init__()` bỏ lọt là ca của
+        # chính khoản nợ này: `_mo_qdrant` mở client xong rồi `_mo_neo4j` nổ
+        # (thiếu `neo4j_uri`, hàm tiêm trả `None`) - client kia rò, và lỗi
+        # không mang dấu nào để nơi gọi async đóng nó.
+        self._client_qdrant = self._driver_neo4j = None
+        self._tu_mo_qdrant = self._tu_mo_neo4j = False
         self._da_dong = False
-        super().__post_init__()
+        try:
+            self._client_qdrant, self._tu_mo_qdrant = self._mo_qdrant(cau_hinh)
+            self._driver_neo4j, self._tu_mo_neo4j = self._mo_neo4j(cau_hinh)
+            super().__post_init__()
+        except BaseException as loi:
+            # Object này sắp bị vứt nên không ai còn tham chiếu để đóng phần đã
+            # mở. Gắn nó lên chính lỗi rồi dội **nguyên vẹn** - `raise` trần,
+            # giữ cả loại lẫn traceback (khoản ledger 1.7).
+            #
+            # Đọc thuộc tính chứ không đọc biến cục bộ: ở ca `_mo_neo4j` nổ thì
+            # `self._driver_neo4j` còn là `None` và `self._tu_mo_neo4j` còn là
+            # `False`, tức bản ghi mô tả đúng trạng thái **tại thời điểm nổ**.
+            self._gan_ket_noi_chua_dong(loi)
+            raise
+
+    def _gan_ket_noi_chua_dong(self, loi: BaseException) -> None:
+        """Gắn phần kết nối còn mở lên một lỗi dựng engine; không bao giờ ném.
+
+        Tách thành method để ca "gắn không được" có một chỗ đọc được, và để
+        `tests/test_engine_acl.py` chấm được nó tách khỏi đường dựng.
+        """
+        try:
+            setattr(
+                loi,
+                DAU_KET_NOI_CHUA_DONG,
+                KetNoiChuaDong(
+                    client_qdrant=self._client_qdrant,
+                    tu_mo_qdrant=self._tu_mo_qdrant,
+                    driver_neo4j=self._driver_neo4j,
+                    tu_mo_neo4j=self._tu_mo_neo4j,
+                ),
+            )
+        except Exception:  # noqa: BLE001
+            # Ngoại lệ từ chối thuộc tính mới (một lớp tự chặn `__setattr__`,
+            # một proxy ngoại lệ của SDK). Hiếm - `__slots__` một mình không đủ,
+            # vì mọi lớp con của `BaseException` đều có `__dict__` - nhưng im
+            # lặng ở đây là đúng ca rò mà khoản ledger mô tả, nên nó phải để lại
+            # một dòng.
+            logger.exception(
+                "không gắn được kết nối đã mở lên lỗi dựng engine;"
+                " kết nối có thể nằm lại"
+            )
 
     def _mo_qdrant(self, cau_hinh) -> tuple[AsyncQdrantClient | None, bool]:
         """Client dùng chung cho ba namespace vector, và ai sở hữu nó.
@@ -474,6 +604,15 @@ class EngineACL(HyperGraphRAG):
         nhiều tài liệu che mất ca 0 fact của từng tài liệu.
 
         Chỉ `adapters/ingest.py` được gọi hàm này (import-lint canh).
+
+        **Thứ tự phải đọc đúng, vì một lời khai cũ đọc sai nó** (khoản ledger
+        2.12): `chunks_vdb.upsert(inserting_chunks)` chạy **trước**
+        `trich_xuat_chunks`, và upsert đó nhúng mọi chunk. Nên một cấu hình mà
+        `trich_xuat_chunks` mới kiểm - từ điển thực thể của story 2.12 - dừng
+        đợt trước lời gọi **LLM** đầu tiên, không phải trước đồng tiền đầu tiên:
+        tiền embedding của cả tài liệu đã tiêu. Ở ba đợt đã trả tiền embedding
+        chiếm 1,8-2,3% tổng nên thiệt hại nhỏ, nhưng câu "dừng trước khi tiêu
+        tiền" thì sai và không được viết lại ở đâu nữa.
         """
         update_storage = False
         try:
@@ -539,13 +678,24 @@ class EngineACL(HyperGraphRAG):
     # --- Truy vấn ------------------------------------------------------------
 
     async def aquery(self, query: str, param: QueryParam | None = None):
-        """Một truy vấn, một `QueryParam` riêng của nó.
+        """Một truy vấn, một `QueryParam` riêng của nó, `mode` kiểm trước `vendor/`.
 
         `replace(param)` chứ không phải "dùng lại nếu nơi gọi có truyền": bản
         sao bảo vệ cả instance mặc định dùng chung của upstream lẫn instance
         của nơi gọi, và `_build_query_context` ghi lên `mode` của bất kỳ cái
         nào nó nhận được.
+
+        Cửa `mode` là **một** phép kiểm chứ không phải một luật thứ hai của
+        engine: `MODE_HO_TRO` chép đúng danh sách mà `hypergraphrag.py:497` có
+        nhánh, và mọi giá trị khác ở đó cho `UnboundLocalError` trần. Kiểm ở
+        đây vì từ story 3.3 `mode` đến được từ một request người dùng, và
+        `vendor/` thì không sửa.
         """
-        return await super().aquery(
-            query, QueryParam() if param is None else replace(param)
-        )
+        param = QueryParam() if param is None else replace(param)
+        if param.mode not in MODE_HO_TRO:
+            raise QueryModeKhongHoTro(
+                f"mode {param.mode!r} không chạy được: engine chỉ hỗ trợ"
+                f" {sorted(MODE_HO_TRO)}. Mode khác không phải một nhánh chậm,"
+                " nó là một biến chưa gán trong vendor/hypergraphrag.py:497."
+            )
+        return await super().aquery(query, param)

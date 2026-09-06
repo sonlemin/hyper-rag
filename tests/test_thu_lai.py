@@ -20,8 +20,12 @@ import asyncio
 import pytest
 
 from adapters.thu_lai import (
+    MA_DANG_THU_LAI,
+    NGAN_SACH_NAP,
+    NGAN_SACH_TRUY_HOI,
     SO_LAN_THU,
     ChanNhipQuaLau,
+    NganSachThuLai,
     giay_cho_lai,
     goi_co_thu_lai,
     ma_http_cua,
@@ -85,6 +89,11 @@ def test_core_khong_thay_tenacity():
     "loi, mong_doi",
     [
         (_LoiHttp(429), True),
+        # Hai mã 4xx của story 3.3: 408 là provider tự nói "gửi lại đi", 425 là
+        # một dạng chặn nhịp khác. Trước đó cả hai rơi vào nhánh "4xx khác thì
+        # không" cùng chỗ với 400 và 401 (khoản ledger 2.13).
+        (_LoiHttp(408), True),
+        (_LoiHttp(425), True),
         (_LoiHttp(500), True),
         (_LoiHttp(503), True),
         (_LoiHttp(400), False),
@@ -97,6 +106,13 @@ def test_core_khong_thay_tenacity():
 )
 def test_nen_thu_lai(loi, mong_doi):
     assert nen_thu_lai(loi) is mong_doi
+
+
+def test_ma_dang_thu_lai_la_danh_muc_dong_ba_ma():
+    """Ba mã 4xx đáng thử lại, khai một chỗ; 4xx còn lại thì không."""
+    assert MA_DANG_THU_LAI == {408, 425, 429}
+    for ma in (400, 401, 403, 404, 422):
+        assert nen_thu_lai(_LoiHttp(ma)) is False
 
 
 def test_ma_http_doc_duoc_ca_ba_ten_truong():
@@ -305,7 +321,8 @@ def test_lui_luy_thua_co_jitter():
 
     cho = {thu_lai.cho_bao_lau(_TrangThai()) for _ in range(40)}
     assert len(cho) > 1, "hai lần lùi lũy thừa liên tiếp không được bằng nhau"
-    assert max(cho) <= thu_lai.TRAN_CHO_GIAY + thu_lai.BIEN_DO_JITTER_GIAY
+    # Trần **không cộng** biên độ jitter: jitter nằm trong ngân sách (story 3.3).
+    assert max(cho) <= thu_lai.TRAN_CHO_GIAY
 
 
 def test_retry_after_khong_bi_jitter_lam_lech():
@@ -323,6 +340,70 @@ def test_retry_after_khong_bi_jitter_lam_lech():
         outcome = _KetQua()
 
     assert {thu_lai.cho_bao_lau(_TrangThai()) for _ in range(20)} == {7.0}
+
+
+def test_keyword_dieu_khien_da_bo_bi_tu_choi_chu_khong_nuot():
+    """Một tên điều khiển bị xóa phải **từ chối**, không rơi xuống provider.
+
+    Đây là ca mà chính lần đổi chữ ký của story 3.3 mở ra: `_so_lan_thu` biến
+    mất, nên một nơi gọi cũ truyền nó bị `**tham_so` nuốt rồi đẩy thẳng xuống
+    API của provider - đúng cái mà quy ước tiền tố gạch dưới sinh ra để chặn.
+    """
+    from adapters.thu_lai import TEN_DA_BO
+
+    async def ham(**kw):
+        return "ok"
+
+    for ten in TEN_DA_BO:
+        with pytest.raises(TypeError) as loi:
+            asyncio.run(goi_co_thu_lai(ham, **{ten: 1}))
+        assert ten in str(loi.value) and "_ngan_sach" in str(loi.value)
+
+
+def test_eval_tu_choi_so_lan_thu_tran_cua_rieng_no():
+    """Lớp mỏng của `eval/` bỏ một tên **trần**, và nó có bảng từ chối riêng.
+
+    Phân biệt có nội dung: ở tầng `adapters/`, `so_lan_thu` trần chưa bao giờ là
+    tham số điều khiển và phải đi thẳng xuống provider (ca ngay dưới chứng minh);
+    ở `goi_llm_co_thu_lai` thì nó vừa là một tham số điều khiển bị bỏ.
+    """
+    from eval.do_trich_xuat import TEN_DA_BO_DO, goi_llm_co_thu_lai
+
+    async def llm(prompt, **kw):
+        return "ok"
+
+    assert set(TEN_DA_BO_DO) == {"so_lan_thu"}
+    with pytest.raises(TypeError) as loi:
+        asyncio.run(goi_llm_co_thu_lai(llm, "p", so_lan_thu=2))
+    assert "ngan_sach" in str(loi.value)
+
+
+def test_tran_mot_loi_goi_cung_mang_tien_to_gach_duoi():
+    """`goi_mot_lan_co_tran` nằm trên đúng đường chuyển tiếp mà quy ước bảo vệ.
+
+    Hai tham số điều khiển của nó phải nằm trong không gian tên mà không API
+    provider nào dùng, y hệt bốn tham số của `goi_co_thu_lai`; và trần phải là
+    **keyword-only**, vì một tham số vị trí thứ hai là một tham số vị trí của
+    provider bị ăn mất.
+    """
+    import inspect
+
+    from adapters.thu_lai import goi_mot_lan_co_tran
+
+    tham_so = inspect.signature(goi_mot_lan_co_tran).parameters
+    assert tham_so["_tran_giay"].kind is inspect.Parameter.KEYWORD_ONLY
+    nhan: dict = {}
+
+    async def ham(*a, **kw):
+        nhan["a"], nhan["kw"] = a, dict(kw)
+        return "ok"
+
+    kq = asyncio.run(
+        goi_mot_lan_co_tran(ham, "vi_tri", tran_giay=9, timeout=5, _tran_giay=5.0)
+    )
+    assert kq == "ok"
+    # `tran_giay` trần đi **thẳng xuống provider**, không bị wrapper nuốt.
+    assert nhan == {"a": ("vi_tri",), "kw": {"tran_giay": 9, "timeout": 5}}
 
 
 def test_tham_so_dieu_khien_khong_nuot_kwarg_cua_provider():
@@ -344,3 +425,186 @@ def test_tham_so_dieu_khien_khong_nuot_kwarg_cua_provider():
     )
     assert kq == "ok"
     assert nhan == {"ten": "tên của provider", "sleep": 5, "in_ra": "x", "so_lan_thu": 99}
+
+
+# ---------------------------------------------------------------------------
+# Ngân sách và trần cho một lời gọi (story 3.3)
+# ---------------------------------------------------------------------------
+
+
+def test_hai_ngan_sach_co_ten_va_khac_nhau_ba_so():
+    """Một con số chung cho hai đường là sai theo cả hai chiều.
+
+    Đợt nạp Qwen cục bộ sinh 5,7 token mỗi giây nên một lời gọi *hợp lệ* dài
+    tới vài phút; đường truy hồi thì có người ngồi chờ. Ca này ghim cả hai bộ số
+    bằng giá trị, vì chúng là ngân sách độ trễ mà chương 4 sẽ phát biểu.
+
+    Hai số đầu của đường nạp **không đổi**: sáu đợt nạp đã trả tiền chạy dưới
+    chúng.
+    """
+    assert (NGAN_SACH_NAP.so_lan_thu, NGAN_SACH_NAP.tran_cho_giay) == (4, 60.0)
+    assert NGAN_SACH_NAP.tran_moi_loi_goi_giay == 600.0
+    # Đường nạp **không** đặt trần ở `bo_llm`: nó đã có một trần ở lớp thử lại
+    # của `_trich_mot_chunk`, và hai lớp timeout lồng nhau là hai chỗ để đọc sai
+    # nguyên nhân một lần cắt.
+    assert NGAN_SACH_NAP.tran_llm_giay is None
+    assert (NGAN_SACH_TRUY_HOI.so_lan_thu, NGAN_SACH_TRUY_HOI.tran_cho_giay) == (2, 2.0)
+    assert NGAN_SACH_TRUY_HOI.tran_moi_loi_goi_giay == 20.0
+    assert NGAN_SACH_TRUY_HOI.tran_llm_giay == 60.0
+
+
+def test_moi_lan_cho_deu_nam_trong_tran_cua_ngan_sach():
+    """Trần chờ là một **trần**, kể cả phần jitter.
+
+    Bản đầu của story 3.3 cộng jitter *bên ngoài* ngân sách:
+    `wait_exponential(max=2) + wait_random(0, 3)` ngủ tới 5 giây trong khi
+    `cho_bao_lau` của cùng module dội `ChanNhipQuaLau` khi provider **xin** 3
+    giây vì "quá trần 2 giây". Một module vừa từ chối chờ 3 giây vừa tự ngủ 5
+    giây thì trần nó khai không phải trần nó giữ - và dấu hiệu là chính bộ test
+    phải nới thành `<= tran + BIEN_DO_JITTER_GIAY` mới qua.
+
+    Ca này chấm cả hai ngân sách trên nhiều lần thử: jitter vẫn còn (hai lần
+    chờ liên tiếp không bằng nhau - xem ca dưới), nhưng nó nằm **trong** trần.
+    """
+    from adapters import thu_lai
+
+    class _TrangThai:
+        idle_for = 0.0
+        outcome = None
+
+    for ns in (NGAN_SACH_NAP, NGAN_SACH_TRUY_HOI):
+        bo = thu_lai._lui_luy_thua(ns.tran_cho_giay)
+        for lan in range(1, 10):
+            _TrangThai.attempt_number = lan
+            cho = [bo(_TrangThai()) for _ in range(50)]
+            assert max(cho) <= ns.tran_cho_giay, (ns.ten, lan, max(cho))
+            assert min(cho) >= 0
+
+
+def test_ngan_sach_tu_choi_so_vo_ly():
+    """Ngân sách sai là lỗi lúc dựng, không phải một hành vi lạ lúc chạy."""
+    for kw in (
+        {"so_lan_thu": 0},
+        {"so_lan_thu": 1.5},
+        {"tran_cho_giay": 0},
+        {"tran_cho_giay": -1},
+        {"tran_moi_loi_goi_giay": 0},
+        {"ten": "  "},
+    ):
+        with pytest.raises((ValueError, TypeError)):
+            NganSachThuLai(
+                **{
+                    "ten": "thu",
+                    "so_lan_thu": 2,
+                    "tran_cho_giay": 1.0,
+                    "tran_moi_loi_goi_giay": 5.0,
+                    **kw,
+                }
+            )
+
+
+def test_tran_mot_loi_goi_cat_mot_lan_goi_treo():
+    """Một socket treo (không đứt, chỉ không trả byte nào) phải bị cắt.
+
+    `SO_LAN_THU` và `TRAN_CHO_GIAY` **không** che ca này: chúng đo thời gian
+    *giữa* hai lần thử, không đo một lần thử. Không có trần thì cả đợt đứng vô
+    hạn mà không in dòng nào - triệu chứng khó đọc nhất, vì nó nhìn giống một
+    đợt đang chạy (khoản ledger 2.13).
+
+    Trần đặt rất nhỏ để ca chạy trong mili giây; thứ đang chấm là *có cắt hay
+    không*, không phải giá trị của trần.
+    """
+    lan = {"n": 0}
+
+    async def treo():
+        lan["n"] += 1
+        await asyncio.sleep(30)
+
+    ns = NganSachThuLai(
+        ten="thu", so_lan_thu=2, tran_cho_giay=1.0, tran_moi_loi_goi_giay=0.01
+    )
+    with pytest.raises(TimeoutError):
+        asyncio.run(goi_co_thu_lai(treo, _ngan_sach=ns, _sleep=_ngu))
+    # Quá hạn **là** một lỗi đáng thử lại: một lời gọi treo là ứng viên tốt nhất
+    # cho một lần thử lại, và `TimeoutError` đã nằm trong `LOI_MANG_TAM_THOI`.
+    assert lan["n"] == 2
+
+
+def test_khong_tran_thi_khong_cat():
+    """`tran_moi_loi_goi_giay=None` là không cắt: trần là một quyết định, không mặc định."""
+    ns = NganSachThuLai(ten="thu", so_lan_thu=1, tran_cho_giay=1.0)
+
+    async def cham():
+        await asyncio.sleep(0.02)
+        return "ok"
+
+    assert asyncio.run(goi_co_thu_lai(cham, _ngan_sach=ns, _sleep=_ngu)) == "ok"
+
+
+def test_ngan_sach_truy_hoi_thu_it_lan_hon_va_cho_ngan_hon():
+    """Đường truy hồi hỏng **trong** trần đã phát biểu, không sau ba phút.
+
+    Bốn lần thử với trần chờ 60 giây - đúng cho một đợt nạp - là một request
+    treo tới ba phút trước khi trả lỗi, trong khi người dùng đã bỏ đi từ giây
+    thứ mười (khoản ledger 2.13). Đếm số lần thử thật và tổng thời gian *chờ*
+    mà lớp thử lại yêu cầu, không ngủ thật.
+    """
+    cho = []
+
+    async def _ghi_cho(giay):
+        cho.append(giay)
+
+    lan = {"n": 0}
+
+    async def ham():
+        lan["n"] += 1
+        raise _LoiHttp(429)
+
+    with pytest.raises(_LoiHttp):
+        asyncio.run(goi_co_thu_lai(ham, _ngan_sach=NGAN_SACH_TRUY_HOI, _sleep=_ghi_cho))
+    assert lan["n"] == NGAN_SACH_TRUY_HOI.so_lan_thu == 2
+    # **Không nới** bằng `+ BIEN_DO_JITTER_GIAY`: jitter nằm trong ngân sách,
+    # nên trần đã khai là trần thật.
+    assert cho and max(cho) <= NGAN_SACH_TRUY_HOI.tran_cho_giay
+
+
+def test_retry_after_qua_tran_cua_ngan_sach_truy_hoi_bo_cuoc_som():
+    """Trần chờ đi theo ngân sách, không theo một hằng chung của module.
+
+    `Retry-After: 30` là chấp nhận được với đợt nạp (trần 60) và quá lâu với một
+    câu hỏi (trần 2). Cùng một lỗi, hai kết cục, và đó chính là điều "hai ngân
+    sách" nghĩa là.
+    """
+    from adapters import thu_lai
+
+    class _KetQua:
+        @staticmethod
+        def exception():
+            return _LoiHttp(429, retry_after=30)
+
+    class _TrangThai:
+        attempt_number = 2
+        idle_for = 0.0
+        outcome = _KetQua()
+
+    assert thu_lai.cho_bao_lau(_TrangThai(), NGAN_SACH_NAP) == 30.0
+    with pytest.raises(ChanNhipQuaLau) as loi:
+        thu_lai.cho_bao_lau(_TrangThai(), NGAN_SACH_TRUY_HOI)
+    assert loi.value.code == "CHAN_NHIP_QUA_LAU"
+
+
+def test_tham_so_ngan_sach_van_mang_tien_to_gach_duoi():
+    """`ngan_sach` trần là một tham số của provider bị wrapper nuốt lặng lẽ.
+
+    Cùng luật với bốn tham số điều khiển cũ: mọi keyword khác đi thẳng xuống
+    `ham`, nên tên điều khiển phải nằm trong không gian tên mà không API provider
+    nào dùng.
+    """
+    nhan: dict = {}
+
+    async def ham(**kw):
+        nhan.update(kw)
+        return "ok"
+
+    assert asyncio.run(goi_co_thu_lai(ham, ngan_sach="cua provider")) == "ok"
+    assert nhan == {"ngan_sach": "cua provider"}

@@ -43,13 +43,19 @@ def su_kien(**doi) -> SuKienAudit:
 
 
 def test_danh_muc_su_kien_va_tang_la_hang_trong_core():
-    """Danh mục là hằng trong core/: 2.2 hai sự kiện chi phí, 2.3 ba sự kiện ingest, 2.4 `extract_doc`, 3.2 `policy_swap`."""
+    """Danh mục là hằng trong core/, và ca này là **danh sách đóng**.
+
+    2.2 hai sự kiện chi phí, 2.3 ba sự kiện ingest, 2.4 `extract_doc`, 3.2
+    `policy_swap`, 3.3 `query`. Ba sự kiện còn lại của 3.6 (lọc, từ chối, cửa
+    sổ chế độ đo) chưa có mặt, và ca này là chỗ chúng phải khai khi tới.
+    """
     from core.audit import (
         EVENT_DELETE_DOC,
         EVENT_DELETE_SPACE,
         EVENT_EXTRACT_DOC,
         EVENT_INGEST_DOC,
         EVENT_POLICY_SWAP,
+        EVENT_QUERY,
     )
 
     assert EVENTS == {
@@ -60,10 +66,12 @@ def test_danh_muc_su_kien_va_tang_la_hang_trong_core():
         EVENT_DELETE_SPACE,
         EVENT_EXTRACT_DOC,
         EVENT_POLICY_SWAP,
+        EVENT_QUERY,
     }
     assert (EVENT_INGEST_DOC, EVENT_DELETE_DOC, EVENT_DELETE_SPACE) == ("ingest_doc", "delete_doc", "delete_space")
     assert EVENT_EXTRACT_DOC == "extract_doc"
     assert EVENT_POLICY_SWAP == "policy_swap"
+    assert EVENT_QUERY == "query"
     assert TIERS == {TIER_MUTATION, TIER_OBSERVATION}
 
 

@@ -60,17 +60,21 @@ from adapters.model_catalog import LOAI_LLM, ModelUnknown, danh_muc_mac_dinh
 from adapters.policy_loader import load_policy
 from adapters.thu_lai import (  # noqa: F401 - re-export: hợp đồng của test 2.8
     LOI_MANG_TAM_THOI,
+    MA_DANG_THU_LAI,
     MA_RATE_LIMIT,
+    NGAN_SACH_NAP,
     SO_LAN_THU,
     TEN_TRUONG_MA_HTTP,
     TRAN_CHO_GIAY,
     ChanNhipQuaLau,
+    NganSachThuLai,
     giay_cho_lai,
     goi_co_thu_lai,
     la_loi_mang_tam_thoi,
     ma_http_cua,
     nen_thu_lai,
 )
+from adapters.thu_lai import tu_choi_ten_da_bo
 from adapters.trich_xuat import (
     PROMPT_KHONG_TU_DIEN,
     PROMPT_TRICH_XUAT,
@@ -517,20 +521,41 @@ class GomChiPhi:
 # một test đỏ không nói về hành vi nào.
 
 
+# Tham số điều khiển **trần** mà lớp mỏng này vừa bỏ. Bảng riêng chứ không dùng
+# chung `adapters.thu_lai.TEN_DA_BO`: ở tầng dưới `so_lan_thu` là một keyword
+# của provider và phải đi thẳng xuống, ở đây nó là một tham số điều khiển của
+# chính hàm này - và một nơi gọi cũ truyền nó nay sẽ gửi `so_lan_thu=4` vào API
+# của DeepSeek nếu không có phép từ chối.
+TEN_DA_BO_DO: dict[str, str] = {
+    "so_lan_thu": "ngan_sach (adapters.thu_lai.NganSachThuLai)",
+}
+
+
 async def goi_llm_co_thu_lai(
     llm,
     prompt: str,
     *,
-    so_lan_thu: int = SO_LAN_THU,
+    ngan_sach: NganSachThuLai = NGAN_SACH_NAP,
     sleep=None,
     in_ra=print,
     **tham_so,
 ) -> str:
-    """Gọi LLM, thử lại đúng 429 và 5xx, ném nguyên lỗi cuối cùng."""
+    """Gọi LLM, thử lại đúng 408/425/429 và 5xx, ném nguyên lỗi cuối cùng.
+
+    Ngân sách mặc định là `NGAN_SACH_NAP`, tức **đúng bốn lần thử và trần chờ
+    60 giây** mà ba vòng đo đã trả tiền chạy dưới: story 3.3 đổi hình dạng tham
+    số (một ngân sách có tên thay cho một `so_lan_thu` trần) chứ không đổi con
+    số nào của đường đo.
+
+    `so_lan_thu=` cũ bị **từ chối tường minh**, không nuốt: mọi keyword lạ của
+    hàm này đi thẳng xuống provider, nên nhận im lặng là để một nơi gọi cũ gửi
+    `so_lan_thu=4` vào API của DeepSeek.
+    """
+    tu_choi_ten_da_bo(tham_so, TEN_DA_BO_DO)
     return await goi_co_thu_lai(
         llm,
         prompt,
-        _so_lan_thu=so_lan_thu,
+        _ngan_sach=ngan_sach,
         _sleep=sleep,
         _in_ra=in_ra,
         _ten="LLM",
