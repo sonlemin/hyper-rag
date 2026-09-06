@@ -79,7 +79,7 @@ from adapters.tra_loi import (
     ngu_canh_rong,
 )
 from adapters.do_thi import DoThi, chuan_hoa_ids, dung_do_thi
-from adapters.trich_dan import dung_danh_sach
+from adapters.trich_dan import TrichDan, dung_danh_sach, dung_theo_id
 from adapters.trich_xuat import ThongKeTrichXuat, trich_xuat_chunks
 from adapters.neo4j import (
     HEALTH_DELAY_KEY,
@@ -849,6 +849,28 @@ class EngineACL(HyperGraphRAG):
         if ket_qua.khong_co_dap_an:
             return KetQuaHoiDap(ly_do_tu_choi=LY_DO_CO_NO_ANSWER)
         return KetQuaHoiDap(cau_tra_loi=ket_qua.cau_tra_loi, trich_dan=trich_dan)
+
+    async def trich_dan_theo_id(self, ids: Iterable[str]) -> dict[str, TrichDan]:
+        """`{id: TrichDan}` của những hyperedge mà vai hiện tại còn thấy (story 5.1).
+
+        Cửa engine của `POST /break-glass/yeu-cau`: "vai này thấy hyperedge này
+        ở mức nào" là đúng câu hỏi mà citation của 3.4 đã trả lời, nên đường
+        này đi qua **cùng** cửa quyền (`Neo4jACLGraphStorage.trich_dan_cua`, một
+        câu Cypher dưới contextvar của request) và cùng hàm dựng
+        (`adapters.trich_dan.dung_trich_dan`), không mở method đọc mới. Khác
+        `hoi_dap`: id mà adapter không thấy là **vắng mặt** trong dict, không
+        phải `TrichDanNgoaiQuyen` - ở đây id đến từ người gọi chứ không từ ngữ
+        cảnh truy hồi, nên vắng là câu trả lời chứ không phải một lệch tầng.
+        Không LLM, không embedding, không đọc kho vector hay KV; dict trả về
+        khóa theo id **đã chuẩn hóa** (`chuan_hoa_ids`), cùng dãy adapter nhận.
+        Ngữ cảnh đọc **trước** nhánh rút gọn cho dãy rỗng, để ngữ cảnh hệ
+        thống bị `dung_theo_id` từ chối kể cả khi không có id nào.
+        """
+        context = current_context()
+        cac_id = chuan_hoa_ids(ids)
+        graph = self.chunk_entity_relation_graph
+        tu_adapter = await graph.trich_dan_cua(cac_id) if cac_id else {}
+        return dung_theo_id(context, cac_id, tu_adapter, graph.bang_nhom.nhom_cua)
 
     async def do_thi(self, ids: Iterable[str]) -> DoThi:
         """Đồ thị theo quyền của một danh sách id hyperedge (story 3.7, FR-19).

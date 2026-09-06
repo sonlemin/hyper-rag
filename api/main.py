@@ -52,6 +52,7 @@ from fastapi.responses import JSONResponse
 
 from adapters.identity_seed import IdentitySeedInvalid, nap_tai_khoan
 from adapters.nhom_phu_trach import bang_nhom_mac_dinh
+from api import break_glass
 from api import do_thi as api_do_thi
 from api import hoi_dap
 from api.audit_postgres import AuditPostgres
@@ -134,9 +135,35 @@ async def mo_audit() -> AuditPostgres:
     return audit
 
 
+async def mo_kho_break_glass() -> break_glass.KhoBreakGlass:
+    """Mở hai bảng break-glass (story 5.1); hàm riêng để test thay bằng bản giả.
+
+    Cùng khuôn với hai hàm trên: một điểm nối tên được, mở **một lần cho cả
+    tiến trình**, và `khoi_tao()` hỏng thì pool đã mở phải đóng trước khi dội
+    tiếp - không đóng là một pool asyncpg treo lại trong một tiến trình sắp
+    chết. Mở **sau** audit (đường xin ghi audit mutation bên trong transaction
+    của nó) và **sau** bảng `users` (DDL khóa ngoại về `users(account)`), đóng
+    **trước** audit ở `finally`.
+    """
+    kho = await break_glass.KhoBreakGlass.mo()
+    try:
+        await kho.khoi_tao()
+    except BaseException:
+        await kho.dong()
+        raise
+    return kho
+
+
 @asynccontextmanager
 async def vong_doi(app: FastAPI):
-    """Khởi động: kiểm khóa ký, mở bảng `users`, đổ seed. Tắt: đóng pool.
+    """Khởi động: kiểm cấu hình, rồi mở bốn tài nguyên theo thứ tự. Tắt: đóng ngược.
+
+    Thứ tự mở là nội dung: bảng `users` (3.1, đổ seed ngay sau) -> port audit
+    (3.2, ghi hàng `startup`) -> kho break-glass (5.1, cần audit vì nó ghi
+    mutation trong transaction, cần `users` vì khóa ngoại) -> engine truy hồi
+    (3.3, wrapper LLM cần audit lúc dựng). Đóng theo thứ tự ngược, lồng
+    `try/finally` để một `dong()` nổ không bỏ sót cái sau nó, ở cả nhánh lỗi
+    khởi động lẫn nhánh tắt.
 
     Kiểm khóa ký **trước** khi mở kết nối nào: thiếu `JWT_SECRET` là một lỗi cấu
     hình, và nó phải nổ ở giây đầu tiên chứ không phải ở lần đăng nhập đầu tiên,
@@ -170,6 +197,7 @@ async def vong_doi(app: FastAPI):
     kho = await mo_kho_tai_khoan()
     app.state.kho_tai_khoan = kho
     audit = None
+    kho_bg = None
     engine = None
     try:
         so = await kho.dong_bo(nap_tai_khoan())
@@ -178,6 +206,9 @@ async def vong_doi(app: FastAPI):
         # engine dựng: bảng nào đang chạy, cờ đo thế nào. Ghi hỏng thì tiến
         # trình không lên, đóng ngược ở nhánh dưới.
         await ghi_startup(audit, app.state.kho_chinh_sach, app.state.che_do_do)
+        # Kho break-glass (5.1) mở sau audit: đường xin ghi audit mutation bên
+        # trong transaction của nó, nên port audit phải có trước.
+        kho_bg = await mo_kho_break_glass()
         # Engine mở **sau** audit vì wrapper LLM cần một `AuditPort` lúc dựng
         # (`bo_llm`/`bo_embedding` ghi sự kiện chi phí), và đóng **trước** audit
         # ở `finally` bên dưới - thứ tự ngược của thứ tự mở.
@@ -198,12 +229,17 @@ async def vong_doi(app: FastAPI):
                 await engine.dong()
         finally:
             try:
-                if audit is not None:
-                    await audit.dong()
+                if kho_bg is not None:
+                    await kho_bg.dong()
             finally:
-                await kho.dong()
+                try:
+                    if audit is not None:
+                        await audit.dong()
+                finally:
+                    await kho.dong()
         raise
     app.state.audit = audit
+    app.state.kho_break_glass = kho_bg
     app.state.engine = engine
     logger.info("đồng bộ %d tài khoản seed vào bảng users", so)
     try:
@@ -213,9 +249,12 @@ async def vong_doi(app: FastAPI):
             await engine.dong()
         finally:
             try:
-                await audit.dong()
+                await kho_bg.dong()
             finally:
-                await kho.dong()
+                try:
+                    await audit.dong()
+                finally:
+                    await kho.dong()
 
 
 app = FastAPI(title="hyper-rag-copilot", lifespan=vong_doi)
@@ -546,6 +585,48 @@ async def do_thi(request: Request, than: api_do_thi.ThanDoThi, c: Claim) -> dict
         claim=c,
         policy=request.app.state.kho_chinh_sach.hien_tai(),
         engine=request.app.state.engine,
+    )
+
+
+@cua_dong.post("/break-glass/yeu-cau", status_code=201)
+async def xin_break_glass(request: Request, than: break_glass.ThanXinBreakGlass, c: Claim) -> dict:
+    """Tạo một yêu cầu break-glass cho một hyperedge vai đang thấy ở L1 (FR-20, story 5.1).
+
+    Tuyến ở đây, **ruột ở `api/break_glass.py`** - cùng khuôn với `hoi` và
+    `do_thi`. Không nội dung tri thức nào ra khỏi handler này: thân 201 là hàng
+    yêu cầu (id, khóa quyền tách đôi, nhóm duyệt, lý do người xin vừa gõ), mức
+    tiết lộ hỏi qua đúng cửa quyền của citation. `hien_tai()` đọc **một lần**.
+    """
+    return await break_glass.xin(
+        than.hyperedge_id,
+        than.ly_do,
+        claim=c,
+        policy=request.app.state.kho_chinh_sach.hien_tai(),
+        engine=request.app.state.engine,
+        kho=request.app.state.kho_break_glass,
+        audit=request.app.state.audit,
+    )
+
+
+@cua_dong.post("/break-glass/yeu-cau/{id_yeu_cau}/huy")
+async def huy_break_glass(request: Request, id_yeu_cau: str, c: Claim) -> dict:
+    """Người xin hủy yêu cầu của chính mình khi còn chờ duyệt (story 5.1)."""
+    return await break_glass.huy_yeu_cau(
+        id_yeu_cau,
+        claim=c,
+        policy=request.app.state.kho_chinh_sach.hien_tai(),
+        kho=request.app.state.kho_break_glass,
+        audit=request.app.state.audit,
+    )
+
+
+@cua_dong.get("/break-glass/yeu-cau")
+async def yeu_cau_break_glass_cua_toi(request: Request, c: Claim) -> dict:
+    """Yêu cầu break-glass của chính tài khoản trong token, mới nhất trước (story 5.1)."""
+    return await break_glass.danh_sach(
+        claim=c,
+        policy=request.app.state.kho_chinh_sach.hien_tai(),
+        kho=request.app.state.kho_break_glass,
     )
 
 

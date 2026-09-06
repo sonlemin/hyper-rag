@@ -177,3 +177,29 @@ def khong_key_provider_trong_moi_truong(monkeypatch):
     for ncc in danh_muc_mac_dinh().nha_cung_cap.values():
         if not ncc.cuc_bo:
             monkeypatch.delenv(ncc.bien_api_key, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def kho_break_glass_gia(monkeypatch):
+    """Kho break-glass giả cho mọi lifespan của suite (story 5.1).
+
+    Lifespan `api.main.vong_doi` mở kho thứ tư từ 5.1, và mọi `TestClient`
+    trong suite chạy lifespan thật mà không có Postgres. Mỗi file test đã thay
+    ba điểm nối (`mo_kho_tai_khoan`, `mo_audit`, `mo_engine`) theo cách của
+    riêng nó; thay điểm nối thứ tư ở **một** chỗ thay vì ở mười bốn fixture.
+    Test nào cần đọc hay chèn dữ liệu vào kho thì nhận fixture này theo tên;
+    bản thật có bộ riêng mang marker `postgres`.
+    """
+    from api import main as api_main
+    from tests.ho_tro_break_glass import KhoBreakGlassGia
+
+    kho = KhoBreakGlassGia()
+    # Bản gốc giữ lại cho hai ca chấm chính ruột `mo_kho_break_glass`
+    # (`tests/test_xac_thuc.py`), vì từ đây tên trong module đã là bản giả.
+    kho.mo_goc = api_main.mo_kho_break_glass
+
+    async def _mo():
+        return kho
+
+    monkeypatch.setattr(api_main, "mo_kho_break_glass", _mo)
+    return kho

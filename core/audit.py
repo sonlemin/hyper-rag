@@ -78,6 +78,15 @@ EVENT_STARTUP: str = "startup"
 # (`TRICH_DAN_NGOAI_QUYEN`), là lỗi hệ thống đã thành 500 ở handler; hàng này
 # là dấu vết cho hậu kiểm FR-20 chứ không phải điều kiện để trả lời.
 EVENT_PERMISSION_MISMATCH: str = "permission_mismatch"
+# Tầng **mutation** (story 5.1, FR-20): một yêu cầu break-glass được tạo - ghi
+# bên trong transaction của bảng yêu cầu, audit hỏng là không có hàng yêu cầu
+# nào, vì một yêu cầu xin đọc phần bị che mà không có dấu vết là đúng thứ FR-20
+# sinh ra để thay.
+EVENT_BREAKGLASS_REQUEST: str = "breakglass_request"
+# Tầng **mutation** (story 5.1): người xin hủy yêu cầu còn chờ; cùng luật với
+# hàng tạo - hủy mà không có dấu vết là một yêu cầu biến mất khỏi hàng chờ của
+# owner mà không ai nói được ai rút nó.
+EVENT_BREAKGLASS_CANCEL: str = "breakglass_cancel"
 EVENTS: frozenset[str] = frozenset(
     {
         EVENT_LLM_COST,
@@ -93,6 +102,8 @@ EVENTS: frozenset[str] = frozenset(
         EVENT_AUTH_LOGIN,
         EVENT_STARTUP,
         EVENT_PERMISSION_MISMATCH,
+        EVENT_BREAKGLASS_REQUEST,
+        EVENT_BREAKGLASS_CANCEL,
     }
 )
 

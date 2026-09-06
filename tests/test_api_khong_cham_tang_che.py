@@ -88,6 +88,17 @@ CHAM_STORAGE_CO_LY_DO: dict[str, str] = {
         " mọi tên entity ra khỏi nó đã qua _che của adapter graph, hyperedge"
         " ngoài quyền vắng mặt ở Cypher, api/ chỉ chuyển kiểu"
     ),
+    # Dòng thứ sáu (story 5.1). Module cầm `EngineACL` chỉ để hỏi **mức tiết
+    # lộ** qua `trich_dan_theo_id` - cùng cửa quyền với citation của 3.4
+    # (`trich_dan_cua` + `dung_trich_dan`, không trả giá trị slot hay tên
+    # entity). Thứ ra khỏi nó là hàng yêu cầu break-glass (id, khóa quyền tách
+    # đôi, nhóm duyệt, lý do người xin gõ), không một byte nội dung fact; nó
+    # không nhập `core.masking` và không dựng ngữ cảnh (gọi `ngu_canh_cua_claim`).
+    "api/break_glass.py": (
+        "API xin break-glass: gọi EngineACL.trich_dan_theo_id dưới ngữ cảnh vai"
+        " để biết mức tiết lộ; ra khỏi nó là hàng yêu cầu ở Postgres, không nội"
+        " dung tri thức, id vô hình là một 404 duy nhất"
+    ),
 }
 
 # Tên mở một đường tới kho tri thức: ba lớp storage, engine, và bốn cửa của
@@ -234,6 +245,10 @@ HAM_MAIN_CO_LY_DO: dict[str, str] = {
     "danh_sach_tai_khoan": "GET /auth/tai-khoan; liệt kê seed, đòi demo/admin, không có hash",
     "policy_dang_chay": "GET /admin/policy; trả id + policy_version + danh mục id, không nội dung",
     "hoan_policy": "POST /admin/policy; trỏ sang một file config đã có, không đọc tri thức",
+    "mo_kho_break_glass": "điểm nối mở pool Postgres cho hai bảng breakglass_*; trạng thái ứng dụng, không phải kho tri thức",
+    "xin_break_glass": "POST /break-glass/yeu-cau; gọi thẳng api.break_glass.xin, mức tiết lộ hỏi qua cửa quyền của citation, thân là hàng yêu cầu",
+    "huy_break_glass": "POST /break-glass/yeu-cau/{id}/huy; gọi api.break_glass.huy_yeu_cau, chỉ đổi trạng thái một hàng Postgres",
+    "yeu_cau_break_glass_cua_toi": "GET /break-glass/yeu-cau; gọi api.break_glass.danh_sach, liệt kê hàng của chính tài khoản, không nội dung tri thức",
 }
 
 

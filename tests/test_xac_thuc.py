@@ -178,6 +178,10 @@ class EngineGia:
     `do_thi` (story 3.7) là `adapters.do_thi.DoThi` mà `POST /do-thi` trả;
     mặc định đồ thị rỗng. `ids` giữ lại danh sách id của từng lời gọi, và
     `ngu_canh` ghi ngữ cảnh đọc **bên trong** lời gọi như hai method kia.
+
+    `trich_dan` theo id (story 5.1): `trich_dan_theo_id` trả `trich_dan_tra`,
+    một dict `{id: TrichDan}` điều khiển được (mặc định rỗng, tức mọi id đều
+    vô hình); `ids` và `ngu_canh` ghi lại như `do_thi`.
     """
 
     def __init__(
@@ -187,6 +191,7 @@ class EngineGia:
         ly_do: str | None = None,
         trich_dan: tuple = (),
         do_thi=None,
+        trich_dan_tra: dict | None = None,
     ):
         from adapters.do_thi import DoThi
 
@@ -195,6 +200,7 @@ class EngineGia:
         self.ly_do = ly_do
         self.trich_dan = trich_dan
         self.do_thi_tra = DoThi() if do_thi is None else do_thi
+        self.trich_dan_tra = {} if trich_dan_tra is None else dict(trich_dan_tra)
         self.ids: list = []
         self.cau_hoi: list[str] = []
         self.param: list = []
@@ -234,6 +240,15 @@ class EngineGia:
         if self.loi is not None:
             raise self.loi
         return self.do_thi_tra
+
+    async def trich_dan_theo_id(self, ids):
+        from core.permission import current_context
+
+        self.ids.append(list(ids))
+        self.ngu_canh.append(current_context())
+        if self.loi is not None:
+            raise self.loi
+        return {i: self.trich_dan_tra[i] for i in ids if i in self.trich_dan_tra}
 
     async def dong(self):
         self.da_dong = True
@@ -654,7 +669,7 @@ def test_lifespan_tu_choi_khoi_dong_khi_thieu_khoa_ky(monkeypatch, kho_gia):
     assert da_mo == [], "phải từ chối trước khi mở kết nối nào"
 
 
-def test_lifespan_dong_bo_dung_noi_dung_seed_va_dong_pool(monkeypatch, kho_gia, audit_gia):
+def test_lifespan_dong_bo_dung_noi_dung_seed_va_dong_pool(monkeypatch, kho_gia, audit_gia, kho_break_glass_gia):
     """Khởi động: đổ seed một chiều từ file xuống bảng. Tắt: đóng pool.
 
     Chấm **nội dung** chứ không chỉ đếm số lần gọi. Đột biến `dong_bo(())`
@@ -690,6 +705,7 @@ def test_lifespan_dong_bo_dung_noi_dung_seed_va_dong_pool(monkeypatch, kho_gia, 
         assert khoa(da) == khoa(cho)
     assert kho_gia.da_dong is True
     assert audit_gia.da_dong is True, "port audit đã mở mà không ai đóng"
+    assert kho_break_glass_gia.da_dong is True, "kho break-glass đã mở mà không ai đóng"
     # Engine đóng **trước** audit và trước pool, thứ tự ngược của thứ tự mở:
     # không đóng nó là một pool Neo4j cộng một client Qdrant sống qua lần tắt
     # tiến trình, và là phần kho KV chưa flush mất luôn (story 1.7).
@@ -748,6 +764,56 @@ def test_lifespan_mo_audit_that_su_chay_ddl(monkeypatch):
     assert da_lam == ["khoi_tao"]
 
 
+def test_lifespan_mo_kho_break_glass_that_su_chay_ddl(monkeypatch, kho_break_glass_gia):
+    """`mo_kho_break_glass` phải chạy DDL (story 5.1), cùng lý do với hai ca trên.
+
+    Bỏ `await kho.khoi_tao()` là hai bảng `breakglass_*` không tồn tại ở lần
+    deploy đầu và lần xin đầu tiên nổ giữa một transaction, xa chỗ gây ra.
+    """
+    da_lam = []
+
+    class KhoDoiKhoiTao:
+        async def khoi_tao(self):
+            da_lam.append("khoi_tao")
+
+        async def dong(self):
+            da_lam.append("dong")
+
+    async def _mo(cau_hinh=None):
+        return KhoDoiKhoiTao()
+
+    monkeypatch.setattr(
+        api_main.break_glass.KhoBreakGlass, "mo", classmethod(lambda cls, *a, **k: _mo())
+    )
+    # `mo_goc`: bản thật, vì fixture autouse của conftest đã thay tên trong module.
+    asyncio.run(kho_break_glass_gia.mo_goc())
+    assert da_lam == ["khoi_tao"]
+
+
+def test_mo_kho_break_glass_hong_o_ddl_van_dong_pool(monkeypatch, kho_break_glass_gia):
+    """Pool break-glass đã mở phải đóng khi `khoi_tao()` dội, không treo lại."""
+
+    class KhoNoDDL:
+        def __init__(self):
+            self.da_dong = False
+
+        async def khoi_tao(self):
+            raise RuntimeError("DDL break-glass hỏng")
+
+        async def dong(self):
+            self.da_dong = True
+
+    kho = KhoNoDDL()
+
+    async def _tra(*a, **k):
+        return kho
+
+    monkeypatch.setattr(api_main.break_glass.KhoBreakGlass, "mo", classmethod(lambda cls, *a, **k: _tra()))
+    with pytest.raises(RuntimeError):
+        asyncio.run(kho_break_glass_gia.mo_goc())
+    assert kho.da_dong is True
+
+
 def test_mo_audit_hong_o_ddl_van_dong_pool():
     """Pool audit đã mở phải đóng khi `khoi_tao()` dội, không treo lại."""
 
@@ -780,10 +846,10 @@ def test_mo_audit_hong_o_ddl_van_dong_pool():
 
 
 @pytest.mark.parametrize(
-    "cho_no", ["khoi_tao", "nap_tai_khoan", "dong_bo", "mo_audit", "mo_engine"]
+    "cho_no", ["khoi_tao", "nap_tai_khoan", "dong_bo", "mo_audit", "mo_kho_break_glass", "mo_engine"]
 )
 def test_khoi_dong_hong_o_bat_ky_buoc_nao_cung_dong_pool(
-    monkeypatch, kho_gia, audit_gia, cho_no
+    monkeypatch, kho_gia, audit_gia, kho_break_glass_gia, cho_no
 ):
     """Pool đã mở phải đóng ở mọi đường thoát của bước khởi động.
 
@@ -840,6 +906,14 @@ def test_khoi_dong_hong_o_bat_ky_buoc_nao_cung_dong_pool(
 
         monkeypatch.setattr(api_main, "mo_audit", _no_audit)
         loi = RuntimeError
+    elif cho_no == "mo_kho_break_glass":
+        # Kho thứ tư mở **sau** audit (story 5.1): pool tài khoản và port audit
+        # đều đã mở và phải đóng; kho break-glass chưa mở nên không có gì để đóng.
+        async def _no_bg():
+            raise RuntimeError("kho break-glass không mở được")
+
+        monkeypatch.setattr(api_main, "mo_kho_break_glass", _no_bg)
+        loi = RuntimeError
     elif cho_no == "mo_engine":
         async def _no_engine(audit):
             raise RuntimeError("engine không dựng được")
@@ -854,8 +928,12 @@ def test_khoi_dong_hong_o_bat_ky_buoc_nao_cung_dong_pool(
         with TestClient(api_main.app):
             pass
     assert kho_gia.da_dong is True, "pool đã mở mà không ai đóng"
-    if cho_no == "mo_engine":
+    if cho_no in ("mo_kho_break_glass", "mo_engine"):
         assert audit_gia.da_dong is True, "port audit đã mở mà không ai đóng"
+    if cho_no == "mo_engine":
+        assert kho_break_glass_gia.da_dong is True, "kho break-glass đã mở mà không ai đóng"
+    else:
+        assert kho_break_glass_gia.da_dong is False, "kho break-glass chưa mở mà lại bị đóng"
 
 
 def test_lifespan_nap_bang_nhom_ngay_luc_khoi_dong(monkeypatch, kho_gia):

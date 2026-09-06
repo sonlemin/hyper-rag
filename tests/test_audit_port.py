@@ -48,10 +48,15 @@ def test_danh_muc_su_kien_va_tang_la_hang_trong_core():
     2.2 hai sự kiện chi phí, 2.3 ba sự kiện ingest, 2.4 `extract_doc`, 3.2
     `policy_swap`, 3.3 `query`, 3.5 `refusal`, 3.6 bốn sự kiện để đủ hai tầng:
     `filter`, `auth_login`, `startup`, `permission_mismatch`. Mười ba, và thêm
-    một là phải sửa dòng này kèm lý do (mục Ask First của spec 3.6).
+    một là phải sửa dòng này kèm lý do (mục Ask First của spec 3.6). Story 5.1
+    thêm hai, cả hai tầng mutation và khai trong Always của spec 5.1:
+    `breakglass_request`, `breakglass_cancel` - một yêu cầu xin đọc phần bị che
+    không có dấu vết là đúng thứ FR-20 sinh ra để thay. Mười lăm.
     """
     from core.audit import (
         EVENT_AUTH_LOGIN,
+        EVENT_BREAKGLASS_CANCEL,
+        EVENT_BREAKGLASS_REQUEST,
         EVENT_DELETE_DOC,
         EVENT_DELETE_SPACE,
         EVENT_EXTRACT_DOC,
@@ -78,7 +83,10 @@ def test_danh_muc_su_kien_va_tang_la_hang_trong_core():
         EVENT_AUTH_LOGIN,
         EVENT_STARTUP,
         EVENT_PERMISSION_MISMATCH,
+        EVENT_BREAKGLASS_REQUEST,
+        EVENT_BREAKGLASS_CANCEL,
     }
+    assert (EVENT_BREAKGLASS_REQUEST, EVENT_BREAKGLASS_CANCEL) == ("breakglass_request", "breakglass_cancel")
     assert (EVENT_FILTER, EVENT_AUTH_LOGIN, EVENT_STARTUP, EVENT_PERMISSION_MISMATCH) == (
         "filter", "auth_login", "startup", "permission_mismatch"
     )

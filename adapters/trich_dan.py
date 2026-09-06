@@ -210,8 +210,29 @@ def dung_danh_sach(
             " không dựng citation cho lượt này",
             ids=tuple(thieu),
         )
-    ra = []
+    theo_id = dung_theo_id(context, ids, tu_adapter, nhom_cua)
+    return tuple(theo_id[i] for i in ids)
+
+
+def dung_theo_id(
+    context: PermissionContext,
+    ids: Iterable[str],
+    tu_adapter: Mapping[str, tuple[str, tuple[str, ...]]],
+    nhom_cua: Callable[[str], str | None],
+) -> dict[str, TrichDan]:
+    """`{id: TrichDan}` cho những id **có mặt** trong `tu_adapter`; id vắng thì vắng.
+
+    Phần chung của `dung_danh_sach` (3.4, vắng là lỗi) và
+    `EngineACL.trich_dan_theo_id` (5.1, vắng là câu trả lời): cùng phép tách
+    khóa, cùng phép tra nhóm, cùng `dung_trich_dan`. Ngữ cảnh hệ thống bị từ
+    chối **trước** mọi thứ, kể cả với dãy id rỗng. Khóa không tách được là
+    `TrichDanNgoaiQuyen` giữ nguyên nhân (`from loi`).
+    """
+    _khong_phai_he_thong(context)
+    ra: dict[str, TrichDan] = {}
     for id_he in ids:
+        if id_he not in tu_adapter or id_he in ra:
+            continue
         khoa, cac_vai = tu_adapter[id_he]
         try:
             _, content_type = split_key(khoa)
@@ -220,8 +241,8 @@ def dung_danh_sach(
                 f"khóa quyền của hyperedge {id_he!r} không tách được thành scope"
                 " và loại nội dung: không tra được nhóm phụ trách"
             ) from loi
-        ra.append(dung_trich_dan(context, id_he, khoa, cac_vai, nhom_cua(content_type)))
-    return tuple(ra)
+        ra[id_he] = dung_trich_dan(context, id_he, khoa, cac_vai, nhom_cua(content_type))
+    return ra
 
 
 def _khong_phai_he_thong(context: PermissionContext) -> None:
