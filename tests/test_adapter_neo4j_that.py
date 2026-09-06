@@ -594,6 +594,41 @@ def test_trich_dan_cua_tren_neo4j_that(khong_gian, policy, bang):
         assert thay[he_moi] == (oracle.khoa_ky_vong(he1["scope"], he1["content_type"]), ())
 
 
+def test_hyperedge_ke_can_tren_neo4j_that(khong_gian, policy):
+    """Story 5.2: pha một của vùng cấp chạy được trên Neo4j thật, đúng ngữ nghĩa.
+
+    Pattern hai cạnh `(g)-[r1]-(e)-[r2]-(h)` với năm mệnh đề lọc và
+    `RETURN DISTINCT` phải được server thật chấp nhận. Ba vế: `tech_support` từ
+    HE-02 thấy `(HE-01,)` (chung `subject` App01, HE-01 là runbook L2 nên vẫn
+    **thấy** ở pha một, pha hai mới loại), từ HE-03 (L0 với vai này) là `()`;
+    id vào không có trong kết quả (HE-01 và HE-02 cùng vào thì rỗng); ngữ cảnh
+    hệ thống bị từ chối.
+    """
+    from adapters.do_thi import DoThiNgoaiQuyen
+
+    he1, he2, he3 = (id_hyperedge(THEO_ID[i]) for i in ("HE-01", "HE-02", "HE-03"))
+
+    async def chay():
+        async with kho_that(khong_gian, policy) as (driver, adapter):
+            ra = {}
+            with use_context(vai(policy, "tech_support", khong_gian)):
+                ra["ts_tu_he2"] = await adapter.hyperedge_ke_can([he2])
+                ra["ts_tu_he3"] = await adapter.hyperedge_ke_can([he3])
+                ra["ts_ca_hai"] = await adapter.hyperedge_ke_can([he2, he1])
+            with use_context(vai(policy, "devops", khong_gian)):
+                ra["dev_tu_he1"] = await adapter.hyperedge_ke_can([he1])
+                ra["dev_tu_he3"] = await adapter.hyperedge_ke_can([he3])
+            with use_context(system_context(space=khong_gian, policy_version=policy.policy_version)):
+                with pytest.raises(DoThiNgoaiQuyen):
+                    await adapter.hyperedge_ke_can([he2])
+            return ra
+
+    ra = asyncio.run(chay())
+    assert ra["ts_tu_he2"] == (he1,)
+    assert ra["ts_tu_he3"] == () and ra["ts_ca_hai"] == ()
+    assert ra["dev_tu_he1"] == (he2,) and ra["dev_tu_he3"] == ()
+
+
 def test_do_thi_cua_tren_neo4j_that(khong_gian, policy, bang):
     """Story 3.7: đường đọc đồ thị chạy được trên Neo4j thật, đúng ngữ nghĩa.
 

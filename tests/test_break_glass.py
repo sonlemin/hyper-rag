@@ -152,12 +152,14 @@ def test_ma_yeu_cau_va_than_201_dung_khoa_dong():
     assert ma != ma_yeu_cau()
     yc = _yc()
     than = dict_yeu_cau(yc)
+    # 14 khóa của 5.1 cộng hai khóa cuối mà 5.2 điền; `None` cho tới lúc owner xử lý.
     assert tuple(than) == KHOA_YEU_CAU == (
         "id", "act", "role", "space", "hyperedge_id", "scope", "content_type", "nhom_duyet",
         "trang_thai", "k", "thoi_han_phut", "ly_do", "tao_luc", "cap_nhat",
+        "ly_do_tu_choi", "xu_ly_boi",
     )
     assert than["k"] == 0 and than["thoi_han_phut"] == 60 and than["trang_thai"] == "cho_duyet"
-    assert "ly_do_tu_choi" not in than and "xu_ly_boi" not in than
+    assert than["ly_do_tu_choi"] is None and than["xu_ly_boi"] is None
 
 
 @pytest.mark.parametrize(

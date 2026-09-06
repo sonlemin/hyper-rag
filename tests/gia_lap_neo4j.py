@@ -370,6 +370,9 @@ class Neo4jGhiLai:
         if "AS khoa_do_thi" in cypher:
             # Story 3.7: đường đọc đồ thị theo quyền, dưới ngữ cảnh vai.
             return "doc:do_thi_cua", self._doc_do_thi(cypher, params)
+        if "AS id_ke_can" in cypher:
+            # Story 5.2: một bước hyperedge của vùng cấp break-glass, dưới ngữ cảnh vai.
+            return "doc:hyperedge_ke_can", self._doc_ke_can(cypher, params)
         if "MERGE (n:" in cypher:
             return "ghi:node", self._ghi_node(cypher, params)
         if "MERGE (a)-[" in cypher:
@@ -566,8 +569,16 @@ class Neo4jGhiLai:
             return None
         return node
 
-    def _lan_can(self, cypher: str, params: dict, id_goc: str, bien_lan_can: str):
-        """Bộ ba (cạnh, id lân cận, node lân cận) qua được điều kiện của câu."""
+    def _lan_can(
+        self, cypher: str, params: dict, id_goc: str, bien_lan_can: str, bien_canh: str = "r"
+    ):
+        """Bộ ba (cạnh, id lân cận, node lân cận) qua được điều kiện của câu.
+
+        `bien_canh` là tên biến cạnh trong câu (`r` ở mọi đường một cạnh; `r1`
+        và `r2` ở pattern hai cạnh của story 5.2), để điều kiện của **đúng**
+        biến ấy được đọc từ câu chứ không phải điều kiện của một biến cùng tên
+        tình cờ.
+        """
         ket_qua = []
         for c in self.canh:
             if c.space != params["space"]:
@@ -578,7 +589,7 @@ class Neo4jGhiLai:
                 id_kia = c.src
             else:
                 continue
-            if not self._hop_le(cypher, params, "r", c.props):
+            if not self._hop_le(cypher, params, bien_canh, c.props):
                 continue
             kia = self.nodes.get((params["space"], id_kia))
             if kia is None or not self._hop_le(cypher, params, bien_lan_can, kia.props):
@@ -698,6 +709,30 @@ class Neo4jGhiLai:
                         "id_entity": id_kia,
                     }
                 )
+        return ra
+
+    def _doc_ke_can(self, cypher: str, params: dict) -> list[dict]:
+        """`MATCH (g)-[r1]-(e)-[r2]-(h) WHERE g.id IN $ids ...`: id hyperedge cách một bước (story 5.2).
+
+        Dùng `_lan_can` **hai lần**: gốc -> entity với biến `e`/`r1`, rồi entity
+        -> hyperedge với biến `h`/`r2`; điều kiện của năm biến đều đọc từ câu.
+        Luật duy nhất cạnh trong một pattern của Cypher: `r2` không được là
+        chính `r1`, nhưng `h` **có thể** là `g` qua một cạnh khác (cùng entity ở
+        hai vai), đúng như Neo4j thật - adapter phải tự bỏ gốc. `DISTINCT` giữ
+        lần xuất hiện đầu; thứ tự cố ý đảo, `IN` không hứa thứ tự.
+        """
+        ra: list[dict] = []
+        da_co: set[str] = set()
+        for id_g in reversed(list(params["ids"])):
+            g = self.nodes.get((params["space"], id_g))
+            if g is None or LABEL_HYPEREDGE not in g.nhan or not self._hop_le(cypher, params, "g", g.props):
+                continue
+            for c1, id_e, _ in self._lan_can(cypher, params, id_g, "e", "r1"):
+                for c2, id_h, h in self._lan_can(cypher, params, id_e, "h", "r2"):
+                    if c2 is c1 or LABEL_HYPEREDGE not in h.nhan or id_h in da_co:
+                        continue
+                    da_co.add(id_h)
+                    ra.append({"id_ke_can": id_h})
         return ra
 
     def _doc_khoa(self, cypher: str, params: dict) -> list[dict]:

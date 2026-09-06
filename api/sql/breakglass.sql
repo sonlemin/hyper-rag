@@ -53,18 +53,22 @@ CREATE INDEX IF NOT EXISTS breakglass_requests_nhom_duyet_cho_idx
     ON breakglass_requests (nhom_duyet, tao_luc)
     WHERE trang_thai = 'cho_duyet';
 
--- `breakglass_grants` dựng ở story này để phép kiểm "grant còn hạn" đứng lên
--- và để 5.2 có chỗ ghi; **không có đường ghi nào** ở 5.1 ngoài helper của bộ
--- test. Grant bind cặp (`act`, `role`): ở vai khác nó ngủ (5.3), nên phép kiểm
--- trùng của đường xin so cả `role`. `hyperedge_ids` là mảng vì grant duyệt có
--- thể phủ k hyperedge lân cận (hôm nay k = 0, mảng đúng một phần tử).
--- `request_id` null cho phép grant cấp chủ động không qua yêu cầu (5.2).
--- **Một nguồn giờ cho `expires_at`, và đó là giờ của Postgres** (quyết định
--- chốt ở 5.1, ADR-019): phép kiểm "grant còn hạn" của 5.1 so `expires_at >
--- now()`, nên 5.2 phải ghi `expires_at` bằng chính đồng hồ ấy ngay trong câu
--- INSERT (`now() + make_interval(mins => $n)`), không tính ở tiến trình `api`
--- rồi truyền vào - hai đồng hồ là một grant sống theo máy này mà chết theo máy
--- kia. `tao_luc DEFAULT now()` cùng nguồn.
+-- `breakglass_grants` dựng ở 5.1 để phép kiểm "grant còn hạn" đứng lên; 5.2 ghi
+-- vào đây bằng hai đường sản phẩm - duyệt (`request_id` là yêu cầu) và cấp chủ
+-- động (`request_id` NULL) - cả hai trong một transaction với phép kiểm và
+-- hàng audit (`api/break_glass.py::KhoBreakGlass.duyet`/`cap`). Helper test
+-- `tests/ho_tro_break_glass.py::chen_grant` là đường ghi thứ ba, chỉ để chèn
+-- grant đã hết hạn. Grant bind cặp (`act`, `role`) **trong một space**: ở vai
+-- khác nó ngủ (5.3), nên phép kiểm "còn hạn" so cả `role` lẫn `space`.
+-- `hyperedge_ids` là vùng cấp đã lọc, gốc đứng đầu (hôm nay k = 0, mảng đúng
+-- một phần tử); phép kiểm "còn hạn" chạy trên **mọi** id của vùng.
+-- **Một nguồn giờ cho `expires_at`, và đó là giờ của Postgres** (ADR-019 mục
+-- 4): phép kiểm "grant còn hạn" so `expires_at > now()`, nên `expires_at` ghi
+-- bằng chính đồng hồ ấy ngay trong câu INSERT (`now() + make_interval(mins =>
+-- $n::int)`, `_SQL_GHI_GRANT`), không tính ở tiến trình `api` rồi truyền vào -
+-- hai đồng hồ là một grant sống theo máy này mà chết theo máy kia. `tao_luc
+-- DEFAULT now()` cùng nguồn. Hai đường ghi của một cặp tuần tự hóa bằng
+-- `pg_advisory_xact_lock(hashtext('space|act|role'))` trước phép kiểm.
 CREATE TABLE IF NOT EXISTS breakglass_grants (
     id              text PRIMARY KEY,
     request_id      text REFERENCES breakglass_requests(id),

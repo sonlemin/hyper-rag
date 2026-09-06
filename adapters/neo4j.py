@@ -1373,6 +1373,62 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
             )
         return ra
 
+    async def hyperedge_ke_can(self, ids) -> tuple[str, ...]:
+        """Id hyperedge cách các id vào **một bước hyperedge**, dưới ngữ cảnh vai (story 5.2).
+
+        Pha một của vùng cấp break-glass. Một bước là hai cạnh SLOT qua một
+        entity chung: `(g)-[r1]-(e)-[r2]-(h)`. Năm biến của pattern đều bị ràng
+        `space` và khóa quyền: `g`, `h`, `r1`, `r2` qua mệnh đề **chặt**
+        `_dieu_kien`, `e` qua `_dieu_kien_lan_can` (entity không khóa của AD-5
+        vẫn là cầu nối, vì hai fact chung một entity đã hợp nhất thành không
+        khóa vẫn là hai fact cùng nói về một thứ - nhưng `h` ở đầu kia phải là
+        hyperedge vai **thấy**, nên không kể ra fact nào ngoài quyền). Ngữ cảnh
+        là của **vai xin**, không phải owner: bộ lọc (b) của `core.break_glass`
+        hỏi "vai xin thấy ở L1", nên tập thô phải là tập vai xin thấy.
+
+        Trả **chỉ id**, `DISTINCT`, không khóa, không vai, không tên entity;
+        không có gì để che nên nó ở `XU_LY_RIENG_THEO_ADAPTER` chứ không ở
+        `MASKED_READ_METHODS`. Id vào không có trong kết quả (gốc không phải
+        lân cận của chính nó, và một id vào khác cũng không): lọc ở Python vì
+        Neo4j chỉ cấm trùng **cạnh** trong một pattern, không cấm `h = g` qua
+        hai vai của cùng một entity. Mỗi lời gọi là một bước; `k` bước là `k`
+        lời gọi (`EngineACL.vung_lan_can`), không phải một đường biến độ dài.
+
+        Ngữ cảnh hệ thống bị **từ chối** như `do_thi_cua`: vùng cấp không có
+        nghĩa nào dưới một ngữ cảnh đọc thô.
+        """
+        context = current_context()
+        if context.bypass_filter:
+            raise DoThiNgoaiQuyen(
+                "hyperedge_ke_can không chạy dưới ngữ cảnh hệ thống: vùng cấp"
+                " break-glass tính dưới vai xin, không có nghĩa nào khi đọc thô"
+            )
+        cac_id = chuan_hoa_ids(ids)
+        if not cac_id or not self._co_khoa_de_doc(context):
+            return ()
+        space = self._nhan_space(context)
+        dong = await self._chay(
+            f"MATCH (g:`{space}`:`{LABEL_HYPEREDGE}`)-[r1:{EDGE_TYPE}]-(e:`{space}`)"
+            f"-[r2:{EDGE_TYPE}]-(h:`{space}`:`{LABEL_HYPEREDGE}`)\n"
+            f"WHERE g.{NODE_ID_FIELD} IN $ids AND {self._dieu_kien('g', context)}"
+            f" AND {self._dieu_kien('r1', context)}"
+            f" AND {self._dieu_kien_lan_can('e', context)}"
+            f" AND {self._dieu_kien('r2', context)}"
+            f" AND {self._dieu_kien('h', context)}\n"
+            f"RETURN DISTINCT h.{NODE_ID_FIELD} AS id_ke_can",
+            ids=list(cac_id),
+            vai_entity=ROLE_ENTITY,
+            **self._tham_so_loc(context),
+        )
+        vao = set(cac_id)
+        ra: list[str] = []
+        for d in dong:
+            id_h = d["id_ke_can"]
+            if id_h in vao or id_h in ra:
+                continue
+            ra.append(id_h)
+        return tuple(ra)
+
     @property
     def bang_nhom(self) -> BangNhomPhuTrach:
         """Bảng nhóm phụ trách mà adapter này che bằng; citation tra cùng bảng.

@@ -872,6 +872,33 @@ class EngineACL(HyperGraphRAG):
         tu_adapter = await graph.trich_dan_cua(cac_id) if cac_id else {}
         return dung_theo_id(context, cac_id, tu_adapter, graph.bang_nhom.nhom_cua)
 
+    async def vung_lan_can(self, ids: Iterable[str], k: int) -> dict[str, TrichDan]:
+        """`{id: TrichDan}` của các id vào cộng mọi hyperedge trong `k` bước lân cận (story 5.2).
+
+        Pha một của vùng cấp break-glass, dưới ngữ cảnh **vai xin**: `k` lần
+        `Neo4jACLGraphStorage.hyperedge_ke_can` trên biên hiện tại (mỗi lần một
+        câu Cypher, id đã có không hỏi lại), hợp lại, rồi `trich_dan_theo_id`
+        trên hợp để có mức, scope, loại nội dung và nhóm của từng ứng viên -
+        đúng năm trường mà `core.break_glass.loc_vung_cap` cần. `k = 0` là
+        không câu `hyperedge_ke_can` nào và dict chỉ có các id vào. Biên rỗng
+        dừng sớm: một câu `IN []` là nhờ kho lọc hộ một danh sách rỗng.
+
+        Không LLM, không embedding; ngữ cảnh hệ thống bị từ chối ở cả adapter
+        lẫn `dung_theo_id`. `k` âm là lỗi lập trình, không phải `k = 0`.
+        """
+        if not isinstance(k, int) or isinstance(k, bool) or k < 0:
+            raise ValueError(f"k phải là số nguyên không âm, nhận {k!r}")
+        hop = list(chuan_hoa_ids(ids))
+        bien: tuple[str, ...] = tuple(hop)
+        graph = self.chunk_entity_relation_graph
+        for _ in range(k):
+            if not bien:
+                break
+            moi = await graph.hyperedge_ke_can(bien)
+            bien = tuple(i for i in moi if i not in hop)
+            hop.extend(bien)
+        return await self.trich_dan_theo_id(hop)
+
     async def do_thi(self, ids: Iterable[str]) -> DoThi:
         """Đồ thị theo quyền của một danh sách id hyperedge (story 3.7, FR-19).
 

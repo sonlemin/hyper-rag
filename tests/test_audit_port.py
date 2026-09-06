@@ -55,7 +55,10 @@ def test_danh_muc_su_kien_va_tang_la_hang_trong_core():
     """
     from core.audit import (
         EVENT_AUTH_LOGIN,
+        EVENT_BREAKGLASS_APPROVE,
         EVENT_BREAKGLASS_CANCEL,
+        EVENT_BREAKGLASS_GRANT,
+        EVENT_BREAKGLASS_REJECT,
         EVENT_BREAKGLASS_REQUEST,
         EVENT_DELETE_DOC,
         EVENT_DELETE_SPACE,
@@ -85,8 +88,14 @@ def test_danh_muc_su_kien_va_tang_la_hang_trong_core():
         EVENT_PERMISSION_MISMATCH,
         EVENT_BREAKGLASS_REQUEST,
         EVENT_BREAKGLASS_CANCEL,
+        EVENT_BREAKGLASS_APPROVE,
+        EVENT_BREAKGLASS_REJECT,
+        EVENT_BREAKGLASS_GRANT,
     }
     assert (EVENT_BREAKGLASS_REQUEST, EVENT_BREAKGLASS_CANCEL) == ("breakglass_request", "breakglass_cancel")
+    assert (EVENT_BREAKGLASS_APPROVE, EVENT_BREAKGLASS_REJECT, EVENT_BREAKGLASS_GRANT) == (
+        "breakglass_approve", "breakglass_reject", "breakglass_grant"
+    )
     assert (EVENT_FILTER, EVENT_AUTH_LOGIN, EVENT_STARTUP, EVENT_PERMISSION_MISMATCH) == (
         "filter", "auth_login", "startup", "permission_mismatch"
     )

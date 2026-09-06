@@ -87,6 +87,18 @@ EVENT_BREAKGLASS_REQUEST: str = "breakglass_request"
 # hàng tạo - hủy mà không có dấu vết là một yêu cầu biến mất khỏi hàng chờ của
 # owner mà không ai nói được ai rút nó.
 EVENT_BREAKGLASS_CANCEL: str = "breakglass_cancel"
+# Tầng **mutation** (story 5.2, FR-20): owner duyệt một yêu cầu và grant được
+# ghi trong cùng transaction - một grant mở phần bị che mà không có hàng nói ai
+# duyệt, cho ai, vùng nào, là đúng lỗ mà FR-20 đòi bịt; audit hỏng là không
+# có grant.
+EVENT_BREAKGLASS_APPROVE: str = "breakglass_approve"
+# Tầng **mutation** (story 5.2): owner từ chối; cùng luật với hủy - một yêu cầu
+# rời hàng chờ phải để lại dấu vết ai gạt nó, dù không có grant nào sinh ra.
+EVENT_BREAKGLASS_REJECT: str = "breakglass_reject"
+# Tầng **mutation** (story 5.2): owner cấp chủ động không qua yêu cầu; đây là
+# đường cấp duy nhất không có hàng `breakglass_request` đứng trước, nên hàng
+# này là dấu vết duy nhất của grant ấy.
+EVENT_BREAKGLASS_GRANT: str = "breakglass_grant"
 EVENTS: frozenset[str] = frozenset(
     {
         EVENT_LLM_COST,
@@ -104,6 +116,9 @@ EVENTS: frozenset[str] = frozenset(
         EVENT_PERMISSION_MISMATCH,
         EVENT_BREAKGLASS_REQUEST,
         EVENT_BREAKGLASS_CANCEL,
+        EVENT_BREAKGLASS_APPROVE,
+        EVENT_BREAKGLASS_REJECT,
+        EVENT_BREAKGLASS_GRANT,
     }
 )
 

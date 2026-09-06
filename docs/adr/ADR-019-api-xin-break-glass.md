@@ -34,7 +34,7 @@ Phương án đã loại: *ghi bảng rồi audit sau, ngoài transaction* - m�
 
 Thân 201 và thân của hủy/danh sách là cùng một serializer `dict_yeu_cau`, 14 khóa đóng theo thứ tự: `id` · `act` · `role` · `space` · `hyperedge_id` · `scope` · `content_type` · `nhom_duyet` · `trang_thai` · `k` · `thoi_han_phut` · `ly_do` · `tao_luc` · `cap_nhat`. Không `ly_do_tu_choi`/`xu_ly_boi` (cột có, 5.2 điền và trả). `GET` trả `{"yeu_cau": [...]}` mới nhất trước, chỉ của `act` trong token, tối đa `SO_YEU_CAU_TOI_DA = 100`. Lỗi kho là 503 `KHO_KHONG_SAN_SANG` cho cả Neo4j (qua `api.hoi_dap.loi_truy_hoi`) lẫn Postgres (`api.break_glass.loi_kho`, nhận diện theo gốc module `asyncpg` và lỗi socket), không envelope AD-8 vì đây là tài nguyên chứ không phải lượt hỏi. Bảng nhóm không khai loại nội dung là 500 `NHOM_DUYET_KHONG_CO`, cấu hình hỏng chứ không phải lỗi người gọi.
 
-Ask First còn mở cho story sau: thêm trường vào thân (k, thời hạn, danh sách id), endpoint đọc cho owner hay trạng thái nhẹ (5.2/5.4), đổi lược đồ hai bảng sau khi 5.2 đứng lên.
+Ask First còn mở cho story sau: thêm trường vào thân (k, thời hạn, danh sách id), trạng thái nhẹ và thu hồi grant (5.4), đổi lược đồ hai bảng. **Story 5.2 đã làm** hàng chờ của owner, duyệt, từ chối, cấp chủ động và đường ghi `breakglass_grants` (giờ Postgres đúng quyết định 4); luật ở ADR-020, thân yêu cầu nay 16 khóa (thêm `ly_do_tu_choi` · `xu_ly_boi`).
 
 ## Giới hạn đã biết
 

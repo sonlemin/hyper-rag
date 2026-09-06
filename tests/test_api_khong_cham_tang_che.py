@@ -97,7 +97,9 @@ CHAM_STORAGE_CO_LY_DO: dict[str, str] = {
     "api/break_glass.py": (
         "API xin break-glass: gọi EngineACL.trich_dan_theo_id dưới ngữ cảnh vai"
         " để biết mức tiết lộ; ra khỏi nó là hàng yêu cầu ở Postgres, không nội"
-        " dung tri thức, id vô hình là một 404 duy nhất"
+        " dung tri thức, id vô hình là một 404 duy nhất. Story 5.2 thêm"
+        " EngineACL.vung_lan_can dưới ngữ cảnh người xin: cũng chỉ id, mức và"
+        " khóa quyền tách đôi, ra khỏi nó là hàng grant"
     ),
 }
 
@@ -250,6 +252,10 @@ HAM_MAIN_CO_LY_DO: dict[str, str] = {
     "xin_break_glass": "POST /break-glass/yeu-cau; gọi thẳng api.break_glass.xin, mức tiết lộ hỏi qua cửa quyền của citation, thân là hàng yêu cầu",
     "huy_break_glass": "POST /break-glass/yeu-cau/{id}/huy; gọi api.break_glass.huy_yeu_cau, chỉ đổi trạng thái một hàng Postgres",
     "yeu_cau_break_glass_cua_toi": "GET /break-glass/yeu-cau; gọi api.break_glass.danh_sach, liệt kê hàng của chính tài khoản, không nội dung tri thức",
+    "hang_cho_break_glass": "GET /break-glass/hang-cho; gọi api.break_glass.hang_cho, hàng chờ của nhóm owner kèm dãy id vùng cấp đã qua cửa quyền của citation, không nội dung tri thức",
+    "duyet_break_glass": "POST /break-glass/yeu-cau/{id}/duyet; gọi api.break_glass.duyet, đổi trạng thái một hàng và ghi một hàng grant trong một transaction, thân là hai hàng Postgres",
+    "tu_choi_break_glass": "POST /break-glass/yeu-cau/{id}/tu-choi; gọi api.break_glass.tu_choi, chỉ đổi trạng thái một hàng Postgres",
+    "cap_break_glass": "POST /break-glass/grant; gọi api.break_glass.cap_chu_dong, mức của gốc hỏi qua cửa quyền của citation dưới ngữ cảnh người nhận, thân là hàng grant",
 }
 
 

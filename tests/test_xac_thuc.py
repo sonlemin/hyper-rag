@@ -201,6 +201,10 @@ class EngineGia:
         self.trich_dan = trich_dan
         self.do_thi_tra = DoThi() if do_thi is None else do_thi
         self.trich_dan_tra = {} if trich_dan_tra is None else dict(trich_dan_tra)
+        # Story 5.2: lân cận một bước của từng id (chỉ dùng khi k > 0), và
+        # nhật ký `(ids, k)` của từng lời gọi `vung_lan_can`.
+        self.ke_can_tra: dict = {}
+        self.vung: list = []
         self.ids: list = []
         self.cau_hoi: list[str] = []
         self.param: list = []
@@ -249,6 +253,21 @@ class EngineGia:
         if self.loi is not None:
             raise self.loi
         return {i: self.trich_dan_tra[i] for i in ids if i in self.trich_dan_tra}
+
+    async def vung_lan_can(self, ids, k):
+        """Story 5.2: các id vào cộng `ke_can_tra[id]` khi `k > 0`; ghi lại `(ids, k)` ở `vung`."""
+        from core.permission import current_context
+
+        ids = list(ids)
+        self.vung.append((ids, k))
+        self.ngu_canh.append(current_context())
+        if self.loi is not None:
+            raise self.loi
+        hop = list(ids)
+        if k > 0:
+            for i in ids:
+                hop.extend(x for x in self.ke_can_tra.get(i, ()) if x not in hop)
+        return {i: self.trich_dan_tra[i] for i in hop if i in self.trich_dan_tra}
 
     async def dong(self):
         self.da_dong = True

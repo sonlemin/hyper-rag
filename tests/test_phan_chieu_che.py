@@ -95,6 +95,17 @@ XU_LY_RIENG_THEO_ADAPTER = {
             " nội dung; lọc bằng đúng ba mệnh đề của get_node_edges, mục ngoài"
             " quyền vắng mặt"
         ),
+        # Pha một của vùng cấp break-glass (5.2): trả **chỉ id** của hyperedge
+        # cách một bước hyperedge (hai cạnh SLOT qua một entity chung), không
+        # khóa, không vai, không tên entity nên không có gì để che; năm biến
+        # của pattern qua ba mệnh đề lọc của `get_node_edges` dưới ngữ cảnh
+        # **vai xin**, ngữ cảnh hệ thống bị từ chối, `tests/test_break_glass_duyet.py`
+        # chấm Cypher bằng `canh_moi_bien_deu_bi_loc`.
+        "hyperedge_ke_can": (
+            "chỉ trả id hyperedge cách một bước qua entity chung, không nội dung;"
+            " năm biến của pattern lọc bằng ba mệnh đề của get_node_edges dưới vai"
+            " xin, dùng cho vùng cấp break-glass"
+        ),
         # Số đếm là tín hiệu xếp hạng đi thẳng vào ngữ cảnh trả về; nó co theo
         # quyền bằng WHERE trên chính biến lân cận, không bằng che.
         "node_degree": "đếm sau filter, số đếm co theo quyền",
@@ -156,6 +167,7 @@ NGOAI_UPSTREAM = frozenset(
         "slot_cua_hyperedge",
         "trich_dan_cua",
         "do_thi_cua",
+        "hyperedge_ke_can",
         "xa_loc",
         "bo_so_loc",
         "xoa",

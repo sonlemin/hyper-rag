@@ -6,6 +6,12 @@ một phần bắt ca race (INSERT thẳng hàng thứ hai, không qua phép ki�
 và hủy có điều kiện (`UPDATE ... WHERE trang_thai = 'cho_duyet'`). Cộng bất
 biến audit-trong-transaction: `ghi_audit` hỏng thì không hàng nào ở bảng.
 
+Story 5.2 thêm phần chỉ Postgres thật trả lời được: hai owner duyệt chen nhau
+thì đúng **một** grant; `expires_at` do `now() + make_interval` của Postgres
+tính (câu INSERT không nhận tham số datetime nào, và `expires_at - tao_luc`
+đúng bằng thời hạn); grant còn hạn làm rollback cả UPDATE nên yêu cầu vẫn chờ;
+từ chối, cấp chủ động và hàng chờ cũ nhất trước trên bảng thật.
+
 Chạy trên máy chủ::
 
     POSTGRES_REQUIRED=1 POSTGRES_HOST=<ip-container> POSTGRES_USER=hyperrag \\
@@ -19,6 +25,7 @@ và dọn trong **một** `asyncio.run`: pool asyncpg gắn với event loop m�
 import asyncio
 import os
 from contextlib import asynccontextmanager
+from datetime import timedelta
 
 import asyncpg
 import pytest
@@ -27,17 +34,26 @@ from api.audit_postgres import PostgresConfigMissing, cau_hinh_postgres_tu_moi_t
 from api import break_glass as bg
 from api.break_glass import (
     MA_GRANT_CON_HAN,
+    MA_VUNG_CAP_RONG,
     MA_YEU_CAU_DANG_CHO,
     MA_YEU_CAU_KHONG_CO,
     MA_YEU_CAU_KHONG_CON_CHO,
+    Grant,
     KhoBreakGlass,
     YeuCauBreakGlass,
     ma_yeu_cau,
 )
 from api.hoi_dap import LoiHoiDap
 from api.tai_khoan import KhoTaiKhoan
-from core.audit import thoi_diem_utc
-from core.break_glass import K_MAC_DINH, THOI_HAN_PHUT, TRANG_THAI_CHO_DUYET, TRANG_THAI_DA_HUY
+from core.audit import kiem_thoi_diem, thoi_diem_utc
+from core.break_glass import (
+    K_MAC_DINH,
+    THOI_HAN_PHUT,
+    TRANG_THAI_CHO_DUYET,
+    TRANG_THAI_DA_DUYET,
+    TRANG_THAI_DA_HUY,
+    TRANG_THAI_TU_CHOI,
+)
 from tests.ho_tro_break_glass import chen_grant
 
 pytestmark = pytest.mark.postgres
@@ -220,14 +236,18 @@ def test_grant_con_han_theo_cap_act_role(cau_hinh_pg, session_prefix):
 
     async def chay():
         async with kho_bg(cau_hinh_pg, act) as kho:
-            assert await kho.co_grant_con_han(act, "tech_support", "HE-02") is False
+            assert await kho.co_grant_con_han(act, "tech_support", "HE-02", "synth") is False
             await chen_grant(kho, act=act, role="tech_support", hyperedge_ids=["HE-02", "HE-09"], con_han_phut=10)
-            assert await kho.co_grant_con_han(act, "tech_support", "HE-02") is True
-            assert await kho.co_grant_con_han(act, "tech_support", "HE-09") is True
-            assert await kho.co_grant_con_han(act, "devops", "HE-02") is False, "grant ở vai khác ngủ"
-            assert await kho.co_grant_con_han(act, "tech_support", "HE-01") is False
+            assert await kho.co_grant_con_han(act, "tech_support", "HE-02", "synth") is True
+            assert await kho.co_grant_con_han(act, "tech_support", "HE-09", "synth") is True
+            assert await kho.co_grant_con_han(act, "devops", "HE-02", "synth") is False, "grant ở vai khác ngủ"
+            assert await kho.co_grant_con_han(act, "tech_support", "HE-01", "synth") is False
             await chen_grant(kho, act=act, role="devops", hyperedge_ids=["HE-01"], con_han_phut=-1)
-            assert await kho.co_grant_con_han(act, "devops", "HE-01") is False, "grant hết hạn không chặn"
+            assert await kho.co_grant_con_han(act, "devops", "HE-01", "synth") is False, "grant hết hạn không chặn"
+            # Grant ở space khác không chặn cặp ở `synth`.
+            await chen_grant(kho, act=act, role="tech_support", hyperedge_ids=["HE-05"], con_han_phut=10, space="khac")
+            assert await kho.co_grant_con_han(act, "tech_support", "HE-05", "khac") is True
+            assert await kho.co_grant_con_han(act, "tech_support", "HE-05", "synth") is False
 
     asyncio.run(chay())
 
@@ -291,5 +311,245 @@ def test_grant_con_han_chan_tao_ben_trong_transaction(cau_hinh_pg, session_prefi
             # Vai khác không bị grant ấy chặn; grant hết hạn cũng không.
             await kho.tao(_yc(act, role="devops"), _SoAudit())
             assert await _dem(kho, act) == 1
+
+    asyncio.run(chay())
+
+
+# --- Story 5.2: duyệt, từ chối, cấp chủ động, hàng chờ trên Postgres thật ---------------
+
+
+class _SoAuditDuyet:
+    """Callable hai tham số `(yc, grant)` của ba đường 5.2; `no` để chấm rollback."""
+
+    def __init__(self, no: BaseException | None = None):
+        self.da_ghi = []
+        self.no = no
+
+    async def __call__(self, yc, grant):
+        if self.no is not None:
+            raise self.no
+        self.da_ghi.append((yc, grant))
+
+
+async def _grants(kho: KhoBreakGlass, act: str) -> list:
+    async with kho._pool.acquire() as conn:
+        return await conn.fetch(
+            "SELECT id, request_id, act, role, space, hyperedge_ids, expires_at, cap_boi, tao_luc"
+            " FROM breakglass_grants WHERE act = $1 ORDER BY tao_luc", act
+        )
+
+
+def test_duyet_ghi_grant_cung_transaction_gio_postgres_va_make_interval(cau_hinh_pg, session_prefix):
+    """Duyệt: hàng đổi `da_duyet`, một grant với `expires_at - tao_luc` = thời hạn, cả hai mốc từ Postgres."""
+    act, owner = f"{session_prefix}_ts01", f"{session_prefix}_demo01"
+
+    async def chay():
+        async with kho_bg(cau_hinh_pg, act, owner) as kho:
+            yc = await kho.tao(_yc(act), _SoAudit())
+            so = _SoAuditDuyet()
+            moi, grant = await kho.duyet(yc.id, xu_ly_boi=owner, vung=("HE-02",), ghi_audit=so)
+            assert (moi.trang_thai, moi.xu_ly_boi, moi.ly_do_tu_choi) == (TRANG_THAI_DA_DUYET, owner, None)
+            assert moi.cap_nhat >= yc.cap_nhat and so.da_ghi == [(moi, grant)]
+            assert isinstance(grant, Grant) and grant.request_id == yc.id
+            assert (grant.act, grant.role, grant.space, grant.hyperedge_ids, grant.cap_boi) == (act, "tech_support", "synth", ("HE-02",), owner)
+            het, tao = kiem_thoi_diem(grant.expires_at), kiem_thoi_diem(grant.tao_luc)
+            assert (het - tao).total_seconds() == THOI_HAN_PHUT * 60, "một `now()` của Postgres cho cả hai mốc"
+            (dong,) = await _grants(kho, act)
+            assert dong["id"] == grant.id and dong["request_id"] == yc.id and list(dong["hyperedge_ids"]) == ["HE-02"]
+            assert dong["expires_at"] - dong["tao_luc"] == timedelta(minutes=THOI_HAN_PHUT)
+            # Đường đọc của 5.1 thấy grant này; hàng đọc lại mang hai cột mới.
+            assert await kho.co_grant_con_han(act, "tech_support", "HE-02", "synth") is True
+            (doc,) = await kho.cua_toi(act)
+            assert doc == moi
+            assert await kho.tra_mot(yc.id) == moi and await kho.tra_mot("bg-000000000000") is None
+
+    asyncio.run(chay())
+
+
+def test_cau_insert_grant_khong_nhan_tham_so_datetime():
+    """Câu INSERT grant: `now() + make_interval` ngay trong SQL, tham số là số phút, không mốc giờ nào từ Python."""
+    assert "make_interval" in bg._SQL_GHI_GRANT and "now()" in bg._SQL_GHI_GRANT
+    assert "RETURNING expires_at, tao_luc" in bg._SQL_GHI_GRANT
+    assert bg._SQL_GHI_GRANT.count("$") == 8, "8 tham số: id, request_id, act, role, space, ids, số phút, cap_boi"
+    assert "datetime" not in bg._SQL_GHI_GRANT
+
+
+def test_hai_owner_duyet_chen_nhau_dung_mot_grant(cau_hinh_pg, session_prefix):
+    """Hàng "Hai owner cùng duyệt": hai task song song trên hai kết nối, một 200 một 409, một grant."""
+    act, o1, o2 = f"{session_prefix}_ts01", f"{session_prefix}_o1", f"{session_prefix}_o2"
+
+    async def chay():
+        async with kho_bg(cau_hinh_pg, act, o1, o2) as kho:
+            yc = await kho.tao(_yc(act), _SoAudit())
+            khoa = asyncio.Event()
+
+            async def _ghi_cham(y, g):
+                # Giữ transaction thứ nhất mở (hàng đã UPDATE, đang khóa) tới khi
+                # task hai đã gửi UPDATE của nó và đang chờ khóa hàng.
+                await khoa.wait()
+
+            async def mot():
+                return await kho.duyet(yc.id, xu_ly_boi=o1, vung=("HE-02",), ghi_audit=_ghi_cham)
+
+            async def hai():
+                await asyncio.sleep(0.2)
+                return await kho.duyet(yc.id, xu_ly_boi=o2, vung=("HE-02",), ghi_audit=_SoAuditDuyet())
+
+            async def mo_khoa():
+                # Task hai đã gửi UPDATE và bị khóa hàng chặn: mở cho task một COMMIT.
+                await asyncio.sleep(0.6)
+                khoa.set()
+
+            ket_qua = (await asyncio.gather(mot(), hai(), mo_khoa(), return_exceptions=True))[:2]
+            loi = [k for k in ket_qua if isinstance(k, BaseException)]
+            xong = [k for k in ket_qua if not isinstance(k, BaseException)]
+            assert len(xong) == 1 and len(loi) == 1, ket_qua
+            assert isinstance(loi[0], LoiHoiDap) and loi[0].ma == MA_YEU_CAU_KHONG_CON_CHO
+            assert len(await _grants(kho, act)) == 1
+            (doc,) = await kho.cua_toi(act)
+            assert doc.trang_thai == TRANG_THAI_DA_DUYET and doc.xu_ly_boi == o1
+
+    asyncio.run(chay())
+
+
+def test_duyet_grant_con_han_rollback_yeu_cau_van_cho(cau_hinh_pg, session_prefix):
+    act, owner = f"{session_prefix}_ts01", f"{session_prefix}_demo01"
+
+    async def chay():
+        async with kho_bg(cau_hinh_pg, act, owner) as kho:
+            yc = await kho.tao(_yc(act), _SoAudit())
+            await chen_grant(kho, act=act, role="tech_support", hyperedge_ids=["HE-02"], con_han_phut=10)
+            so = _SoAuditDuyet()
+            with pytest.raises(LoiHoiDap) as loi:
+                await kho.duyet(yc.id, xu_ly_boi=owner, vung=("HE-02",), ghi_audit=so)
+            assert loi.value.ma == MA_GRANT_CON_HAN and so.da_ghi == []
+            (doc,) = await kho.cua_toi(act)
+            assert doc.trang_thai == TRANG_THAI_CHO_DUYET and doc.xu_ly_boi is None, "UPDATE đã rollback"
+            assert len(await _grants(kho, act)) == 1
+            # Vùng rỗng dừng trước transaction: không đổi gì.
+            with pytest.raises(LoiHoiDap) as loi:
+                await kho.duyet(yc.id, xu_ly_boi=owner, vung=(), ghi_audit=so)
+            assert loi.value.ma == MA_VUNG_CAP_RONG
+            (doc,) = await kho.cua_toi(act)
+            assert doc.trang_thai == TRANG_THAI_CHO_DUYET
+
+    asyncio.run(chay())
+
+
+def test_audit_hong_rollback_duyet_tu_choi_cap(cau_hinh_pg, session_prefix):
+    act, owner = f"{session_prefix}_ts01", f"{session_prefix}_demo01"
+
+    async def chay():
+        async with kho_bg(cau_hinh_pg, act, owner) as kho:
+            yc = await kho.tao(_yc(act), _SoAudit())
+            hong = _SoAuditDuyet(no=RuntimeError("audit chết"))
+            with pytest.raises(RuntimeError):
+                await kho.duyet(yc.id, xu_ly_boi=owner, vung=("HE-02",), ghi_audit=hong)
+            with pytest.raises(RuntimeError):
+                await kho.tu_choi(yc.id, xu_ly_boi=owner, ly_do="x", ghi_audit=hong)
+            with pytest.raises(RuntimeError):
+                await kho.cap(act=act, role="tech_support", space="synth", hyperedge_ids=("HE-02",), thoi_han_phut=60, cap_boi=owner, ghi_audit=hong)
+            (doc,) = await kho.cua_toi(act)
+            assert doc.trang_thai == TRANG_THAI_CHO_DUYET and await _grants(kho, act) == []
+            # Đã hủy/đã duyệt: UPDATE 0 hàng -> 409; id lạ -> 404; không grant, không audit.
+            await kho.huy(yc.id, act, "synth", _SoAudit())
+            so = _SoAuditDuyet()
+            for goi in (
+                lambda: kho.duyet(yc.id, xu_ly_boi=owner, vung=("HE-02",), ghi_audit=so),
+                lambda: kho.tu_choi(yc.id, xu_ly_boi=owner, ly_do="x", ghi_audit=so),
+            ):
+                with pytest.raises(LoiHoiDap) as loi:
+                    await goi()
+                assert loi.value.ma == MA_YEU_CAU_KHONG_CON_CHO
+            with pytest.raises(LoiHoiDap) as loi:
+                await kho.duyet("bg-000000000000", xu_ly_boi=owner, vung=("HE-02",), ghi_audit=so)
+            assert loi.value.ma == MA_YEU_CAU_KHONG_CO
+            assert so.da_ghi == [] and await _grants(kho, act) == []
+
+    asyncio.run(chay())
+
+
+def test_tu_choi_va_cap_chu_dong_va_hang_cho_cu_nhat_truoc(cau_hinh_pg, session_prefix):
+    act, khac, owner = f"{session_prefix}_ts01", f"{session_prefix}_dev01", f"{session_prefix}_demo01"
+
+    async def chay():
+        async with kho_bg(cau_hinh_pg, act, khac, owner) as kho:
+            a = await kho.tao(_yc(act, "HE-A", tao_luc="2026-01-01T00:00:00+00:00", cap_nhat="2026-01-01T00:00:00+00:00"), _SoAudit())
+            b = await kho.tao(_yc(act, "HE-B"), _SoAudit())
+            c = await kho.tao(_yc(khac, "HE-C", nhom_duyet="DevOps"), _SoAudit())
+            d = await kho.tao(_yc(khac, "HE-D", space="khac"), _SoAudit())
+            # Hàng chờ: cùng nhóm, cùng space, cũ nhất trước, giới hạn. Bảng là bảng
+            # **dùng chung** với tiến trình đang phục vụ trên máy chủ (yêu cầu thật của
+            # `ts01` cũng là Tech Support/synth/cho_duyet), nên chỉ so phần của phiên này.
+            cua_phien = lambda cac: [y.id for y in cac if y.act in (act, khac)]
+            assert cua_phien(await kho.hang_cho("Tech Support", "synth")) == [a.id, b.id]
+            # Giới hạn: đúng một mục, và mục ấy không mới hơn `a` (bảng dùng chung có
+            # thể còn hàng cũ hơn của phiên khác, nên không đòi nó là chính `a`).
+            (dau,) = await kho.hang_cho("Tech Support", "synth", 1)
+            assert dau.tao_luc <= a.tao_luc
+            assert cua_phien(await kho.hang_cho("DevOps", "synth")) == [c.id]
+            assert cua_phien(await kho.hang_cho("Tech Support", "khac")) == [d.id], "space là một trục của hàng chờ"
+            assert await kho.hang_cho("Không Ai", "synth") == ()
+            # Từ chối: hai cột điền, không grant, audit nhận (yc, None).
+            so = _SoAuditDuyet()
+            moi = await kho.tu_choi(a.id, xu_ly_boi=owner, ly_do="không đúng ticket", ghi_audit=so)
+            assert (moi.trang_thai, moi.ly_do_tu_choi, moi.xu_ly_boi) == (TRANG_THAI_TU_CHOI, "không đúng ticket", owner)
+            assert so.da_ghi == [(moi, None)] and await _grants(kho, act) == []
+            assert cua_phien(await kho.hang_cho("Tech Support", "synth")) == [b.id]
+            # Sau từ chối xin lại được (index chỉ phủ hàng đang chờ).
+            await kho.tao(_yc(act, "HE-A"), _SoAudit())
+            # Cấp chủ động: `request_id` NULL, grant còn hạn chặn lần hai.
+            so2 = _SoAuditDuyet()
+            g = await kho.cap(act=act, role="tech_support", space="synth", hyperedge_ids=("HE-B", "HE-X"), thoi_han_phut=THOI_HAN_PHUT, cap_boi=owner, ghi_audit=so2)
+            assert g.request_id is None and g.hyperedge_ids == ("HE-B", "HE-X") and so2.da_ghi == [(None, g)]
+            (dong,) = await _grants(kho, act)
+            assert dong["request_id"] is None and dong["expires_at"] - dong["tao_luc"] == timedelta(minutes=THOI_HAN_PHUT)
+            with pytest.raises(LoiHoiDap) as loi:
+                await kho.cap(act=act, role="tech_support", space="synth", hyperedge_ids=("HE-B",), thoi_han_phut=60, cap_boi=owner, ghi_audit=so2)
+            assert loi.value.ma == MA_GRANT_CON_HAN
+            # Và duyệt yêu cầu HE-B của cùng cặp cũng bị chặn, yêu cầu vẫn chờ.
+            with pytest.raises(LoiHoiDap) as loi:
+                await kho.duyet(b.id, xu_ly_boi=owner, vung=("HE-B",), ghi_audit=so2)
+            assert loi.value.ma == MA_GRANT_CON_HAN
+            assert (await kho.tra_mot(b.id)).trang_thai == TRANG_THAI_CHO_DUYET
+            assert len(so2.da_ghi) == 1 and len(await _grants(kho, act)) == 1
+
+    asyncio.run(chay())
+
+
+def test_hai_owner_cap_chu_dong_chen_nhau_dung_mot_grant(cau_hinh_pg, session_prefix):
+    """Review 5.2: `cap` là kiểm-rồi-ghi; khóa tư vấn theo cặp tuần tự hóa hai owner cấp cùng lúc.
+
+    Task một giữ transaction (đã qua khóa và phép kiểm) mở cho tới khi task hai
+    đã gọi `cap` và đang chờ khóa; mở ra thì task hai đọc thấy grant vừa COMMIT
+    và ra 409 `GRANT_CON_HAN`. Bảng có đúng một grant.
+    """
+    act, o1, o2 = f"{session_prefix}_ts01", f"{session_prefix}_o1", f"{session_prefix}_o2"
+
+    async def chay():
+        async with kho_bg(cau_hinh_pg, act, o1, o2) as kho:
+            khoa = asyncio.Event()
+
+            async def _ghi_cham(y, g):
+                await khoa.wait()
+
+            def cap(owner, ghi):
+                return kho.cap(act=act, role="tech_support", space="synth", hyperedge_ids=("HE-02",), thoi_han_phut=60, cap_boi=owner, ghi_audit=ghi)
+
+            async def hai():
+                await asyncio.sleep(0.2)
+                return await cap(o2, _SoAuditDuyet())
+
+            async def mo_khoa():
+                await asyncio.sleep(0.6)
+                khoa.set()
+
+            ket_qua = (await asyncio.gather(cap(o1, _ghi_cham), hai(), mo_khoa(), return_exceptions=True))[:2]
+            loi = [k for k in ket_qua if isinstance(k, BaseException)]
+            xong = [k for k in ket_qua if not isinstance(k, BaseException)]
+            assert len(xong) == 1 and len(loi) == 1, ket_qua
+            assert isinstance(loi[0], LoiHoiDap) and loi[0].ma == MA_GRANT_CON_HAN
+            (dong,) = await _grants(kho, act)
+            assert dong["cap_boi"] == o1 and dong["id"] == xong[0].id
 
     asyncio.run(chay())

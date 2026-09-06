@@ -655,6 +655,78 @@ async def yeu_cau_break_glass_cua_toi(request: Request, c: Claim) -> dict:
     )
 
 
+@cua_dong.get("/break-glass/hang-cho")
+async def hang_cho_break_glass(request: Request, c: Claim) -> dict:
+    """Hàng chờ của owner: yêu cầu còn chờ của nhóm mình, cũ nhất trước, kèm `vung_cap` (story 5.2).
+
+    Ruột ở `api/break_glass.py::hang_cho`. Nhóm của owner đọc từ bảng `users`
+    (không từ thân, không từ token), vùng cấp tính dưới ngữ cảnh **người xin**
+    và chỉ là dãy id đã qua cửa quyền của citation; không nội dung tri thức.
+    """
+    return await break_glass.hang_cho(
+        claim=c,
+        policy=request.app.state.kho_chinh_sach.hien_tai(),
+        engine=request.app.state.engine,
+        kho=request.app.state.kho_break_glass,
+        kho_tai_khoan=request.app.state.kho_tai_khoan,
+    )
+
+
+@cua_dong.post("/break-glass/yeu-cau/{id_yeu_cau}/duyet")
+async def duyet_break_glass(request: Request, id_yeu_cau: str, c: Claim) -> dict:
+    """Owner duyệt một yêu cầu: grant ghi cùng transaction với phép chuyển trạng thái (story 5.2).
+
+    Ruột ở `api/break_glass.py::duyet`. Không thân request: vùng cấp và thời
+    hạn là quyết định của server, không nhận từ client. Thân trả về là hàng
+    yêu cầu và hàng grant (id, cặp nhận, dãy id, hai mốc giờ của Postgres).
+    """
+    return await break_glass.duyet(
+        id_yeu_cau,
+        claim=c,
+        policy=request.app.state.kho_chinh_sach.hien_tai(),
+        engine=request.app.state.engine,
+        kho=request.app.state.kho_break_glass,
+        kho_tai_khoan=request.app.state.kho_tai_khoan,
+        audit=request.app.state.audit,
+    )
+
+
+@cua_dong.post("/break-glass/yeu-cau/{id_yeu_cau}/tu-choi")
+async def tu_choi_break_glass(
+    request: Request, id_yeu_cau: str, than: break_glass.ThanTuChoi, c: Claim
+) -> dict:
+    """Owner từ chối một yêu cầu với lý do bắt buộc (story 5.2). Ruột ở `api/break_glass.py::tu_choi`."""
+    return await break_glass.tu_choi(
+        id_yeu_cau,
+        than.ly_do,
+        claim=c,
+        policy=request.app.state.kho_chinh_sach.hien_tai(),
+        kho=request.app.state.kho_break_glass,
+        kho_tai_khoan=request.app.state.kho_tai_khoan,
+        audit=request.app.state.audit,
+    )
+
+
+@cua_dong.post("/break-glass/grant", status_code=201)
+async def cap_break_glass(request: Request, than: break_glass.ThanCapChuDong, c: Claim) -> dict:
+    """Owner cấp chủ động cho một cặp `(act, role)` một gốc L1, không qua yêu cầu (story 5.2).
+
+    Ruột ở `api/break_glass.py::cap_chu_dong`. Mức của gốc hỏi dưới ngữ cảnh
+    **người nhận** qua cửa quyền của citation; owner từ bảng `users`.
+    """
+    return await break_glass.cap_chu_dong(
+        than.act,
+        than.role,
+        than.hyperedge_id,
+        claim=c,
+        policy=request.app.state.kho_chinh_sach.hien_tai(),
+        engine=request.app.state.engine,
+        kho=request.app.state.kho_break_glass,
+        kho_tai_khoan=request.app.state.kho_tai_khoan,
+        audit=request.app.state.audit,
+    )
+
+
 # Đăng ký sau khi mọi tuyến đã khai, một chỗ, để đọc file này là thấy ngay tập
 # tuyến mở và tập tuyến đóng.
 app.include_router(cua_mo)
