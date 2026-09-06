@@ -582,9 +582,18 @@ def bo_llm(
     lớp trên mỗi đường gọi" giữ nguyên, và cả hai đường LLM đã có lớp của mình
     ở trên hàm này (`adapters/trich_xuat._trich_mot_chunk` cho đường nạp,
     `eval/do_trich_xuat.goi_llm_co_thu_lai` cho đường đo). Đường **truy hồi**
-    thì khác: nơi gọi nằm trong `vendor/kg_query` nên không có chỗ nào để gắn
-    một lớp thử lại, và một trần thời gian là thứ duy nhất đặt được ở đây. Hệ
-    quả phải nói ra: một 429 giữa một câu hỏi là một lỗi ngay, khác đường nạp.
+    thì khác: nó không có lớp thử lại, và một trần thời gian là thứ duy nhất đặt
+    được ở đây. Hệ quả phải nói ra: một 429 giữa một câu hỏi là một lỗi ngay,
+    khác đường nạp.
+
+    Từ story 3.5 câu trên là một **lựa chọn**, không còn là một chỗ không gắn
+    được, và chỗ này phải nói đúng. Lý do cũ - "nơi gọi nằm trong
+    `vendor/kg_query`" - chỉ còn đúng với lời gọi trích từ khóa. Lời gọi thứ hai
+    của một lượt hỏi nay nằm ở `adapters/engine.py::EngineACL.hoi_dap`, tức
+    trong mã dự án, tức gắn được. Không gắn vì hai lý do đã đóng băng ở 3.3: một
+    429 giữa một câu hỏi phải là 502 ngay, và một lớp thử lại nhân trần độ trễ
+    của một request lên trong khi trần 204 giây suy từ số lời gọi *không* thử
+    lại.
     """
     danh_muc = danh_muc_mac_dinh() if danh_muc is None else danh_muc
     muc = danh_muc.muc(model, loai=LOAI_LLM)

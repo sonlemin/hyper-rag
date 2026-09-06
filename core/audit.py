@@ -44,10 +44,13 @@ TIERS: frozenset[str] = frozenset({TIER_MUTATION, TIER_OBSERVATION})
 # một khoảng thời gian không ai nói được hệ đang chạy bảng nào - ghi hỏng là
 # thao tác hỏng); story 3.3 thêm `query` (tầng **observation**: thời gian của
 # một truy vấn là số liệu NFR-08, và một Postgres chết không được làm câu hỏi
-# của người dùng chết theo). Hai sự kiện lọc / từ chối của adapter cùng cửa sổ
-# chế độ đo vẫn vào ở story 3.6 - `query` tách ra sớm vì AC cuối của 3.3 đòi
-# thời gian truy vấn ghi qua audit, và một endpoint không đo được là một endpoint
-# không có số cho chương 4.
+# của người dùng chết theo); story 3.5 thêm `refusal` (tầng **observation**: một
+# lượt từ chối là một hàng của hai cột mà Đo 2 đếm, và lý do từ chối chỉ được
+# phép đi vào đây chứ không vào response - AD-8, FR-16). Sự kiện **lọc** của
+# adapter cùng cửa sổ chế độ đo vẫn vào ở story 3.6; `query` và `refusal` tách ra
+# sớm vì AC cuối của 3.3 đòi thời gian truy vấn ghi qua audit và FR-16 đòi lý do
+# từ chối ghi được ở đâu đó, mà một endpoint không đo được là một endpoint không
+# có số cho chương 4.
 EVENT_LLM_COST: str = "llm_cost"
 EVENT_EMBEDDING_COST: str = "embedding_cost"
 EVENT_INGEST_DOC: str = "ingest_doc"
@@ -56,6 +59,7 @@ EVENT_DELETE_SPACE: str = "delete_space"
 EVENT_EXTRACT_DOC: str = "extract_doc"
 EVENT_POLICY_SWAP: str = "policy_swap"
 EVENT_QUERY: str = "query"
+EVENT_REFUSAL: str = "refusal"
 EVENTS: frozenset[str] = frozenset(
     {
         EVENT_LLM_COST,
@@ -66,6 +70,7 @@ EVENTS: frozenset[str] = frozenset(
         EVENT_EXTRACT_DOC,
         EVENT_POLICY_SWAP,
         EVENT_QUERY,
+        EVENT_REFUSAL,
     }
 )
 

@@ -76,7 +76,7 @@ Microcopy chuẩn:
 | Placeholder L1 trong trích dẫn | "còn một phần bị hạn chế, liên hệ [nhóm chịu trách nhiệm]" (luôn mức vai/nhóm, không tên cá nhân) |
 | Slab bôi đen trong câu | "[nguyên nhân: che]", "[hành động khắc phục: che]", dạng chung "[tên slot: che]" |
 | Dòng hạn chế L1 | "Còn n phần bị hạn chế (tên các slot) - liên hệ nhóm X" + nút "Xin truy cập khẩn cấp" |
-| Template từ chối duy nhất (FR-16) | "Tôi không tìm thấy thông tin phù hợp để trả lời câu hỏi này." [ASSUMPTION wording chưa chốt] - dùng chung cho ca không có đáp án và ca L0, không kèm trích dẫn, không placeholder, không gợi ý break-glass |
+| Template từ chối duy nhất (FR-16) | "Tôi không tìm thấy thông tin phù hợp để trả lời câu hỏi này." (chốt ở story 3.5, `docs/adr/ADR-015-wording-template-tu-choi-fr-16.md`; hằng `api.hoi_dap.TEMPLATE_TU_CHOI`) - dùng chung cho ca không có đáp án và ca L0, không kèm trích dẫn, không placeholder, không gợi ý break-glass |
 | Đang truy vấn | "Đang truy vấn..." kèm chỉ báo ba chấm trong bong bóng trả lời |
 | Empty-state drawer đồ thị | "Chưa có dữ liệu đồ thị cho lượt trả lời này" (một chuỗi duy nhất cho mọi lý do trống) |
 | Hàng chờ owner trống | "Không có yêu cầu nào đang chờ" |
@@ -216,7 +216,7 @@ Phần MUST giữ đến cùng là hover trích dẫn làm sáng hyperedge. Ph�
 ## Open Questions
 
 1. Số đỉnh hyperedge demo (5 hay 6): treo đến khi dựng corpus T2; mockup vẽ 6 hiện + 1 ẩn là giả định.
-2. Câu chữ template từ chối FR-16: ràng buộc đã rõ (một template cố định, không phân biệt được với ca L0), wording trong spine là đề xuất.
+2. ~~Câu chữ template từ chối FR-16~~ **đã chốt** ở story 3.5 (`docs/adr/ADR-015-wording-template-tu-choi-fr-16.md`): giữ nguyên câu đề xuất của spine, và ADR ghi ba biến thể đã bị loại. Wording sống ở đúng một hằng `api.hoi_dap.TEMPLATE_TU_CHOI`, có test canh bản chép thứ hai.
 3. Tên sản phẩm và visual identity: "Copilot IT" là tên tạm, chưa có logo.
 4. Ai được bật toggle live/offline: đề xuất dùng cờ demo/admin của FR-18, chưa được duyệt.
 5. Tên và biến thể kịch bản red-team RT-01..RT-05: chốt ở bước test design; RT-02, RT-05 trong mockup là biến thể tự đặt.

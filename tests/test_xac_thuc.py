@@ -162,25 +162,55 @@ class EngineGia:
 
     `cau_hoi` giữ lại mọi câu đã nhận: đó là cách ca "thân sai thì không có lời
     gọi nào" chứng minh được mệnh đề của nó.
+
+    Story 3.5 làm engine mọc `hoi_dap`, cửa mà handler gọi từ nay, và bản giả
+    phải điều khiển được **ba nhánh**: `ly_do=None` cho một lượt trả lời,
+    `ly_do` mang một trong ba giá trị của `adapters.tra_loi` cho một lượt từ
+    chối, và `loi` cho mọi ca hỏng (gồm cả `DauRaTraLoiKhongDoc`). `aquery` giữ
+    nguyên vì `tests/ho_tro_m1.py::hoi` và `eval/` vẫn đi đường đó.
+
+    `param` giữ lại tham số của từng lời gọi: đó là cách ca "handler không tự
+    dựng `QueryParam`" đọc được vế của nó mà không phải thay method.
     """
 
-    def __init__(self, tra_loi: str = "câu trả lời giả", loi: BaseException | None = None):
+    def __init__(
+        self,
+        tra_loi: str = "câu trả lời giả",
+        loi: BaseException | None = None,
+        ly_do: str | None = None,
+    ):
         self.tra_loi = tra_loi
         self.loi = loi
+        self.ly_do = ly_do
         self.cau_hoi: list[str] = []
+        self.param: list = []
         self.ngu_canh: list = []
         self.da_dong = False
 
-    async def aquery(self, query, param=None):
+    def _ghi_lai(self, query, param) -> None:
         from core.permission import current_context
 
         self.cau_hoi.append(query)
+        self.param.append(param)
         # Đọc ngữ cảnh **bên trong** lời gọi: đó là chỗ duy nhất chứng minh
-        # `use_context` bọc trọn `aquery` thay vì chỉ bọc phần dựng.
+        # `use_context` bọc trọn lời gọi thay vì chỉ bọc phần dựng.
         self.ngu_canh.append(current_context())
+
+    async def aquery(self, query, param=None):
+        self._ghi_lai(query, param)
         if self.loi is not None:
             raise self.loi
         return self.tra_loi
+
+    async def hoi_dap(self, cau_hoi, param=None):
+        from adapters.tra_loi import KetQuaHoiDap
+
+        self._ghi_lai(cau_hoi, param)
+        if self.loi is not None:
+            raise self.loi
+        if self.ly_do is not None:
+            return KetQuaHoiDap(ly_do_tu_choi=self.ly_do)
+        return KetQuaHoiDap(cau_tra_loi=self.tra_loi)
 
     async def dong(self):
         self.da_dong = True

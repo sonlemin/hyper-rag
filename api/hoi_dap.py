@@ -25,7 +25,7 @@ nó.
 
 **Ngữ cảnh quyền dựng đúng một lần mỗi request**, qua `core.identity.ngu_canh_cua`
 (cửa duy nhất hợp lệ, `tests/test_import_lint.py` canh), rồi `use_context(...)`
-bọc **trọn** lời gọi `aquery`. Bảng chính sách đọc một lần ở đầu request và
+bọc **trọn** lời gọi `hoi_dap`. Bảng chính sách đọc một lần ở đầu request và
 truyền xuống dưới dạng object: đọc lại giữa chừng là hai adapter thấy hai bản
 chính sách trong cùng một request, đúng thứ AD-3 sinh ra để chặn.
 
@@ -43,9 +43,14 @@ không trả lời được gì.
 
 `citations` rỗng và `graph` rỗng ở story này là **hình dạng đã chốt**, không
 phải nội dung còn thiếu: nội dung citation là story 3.4, nội dung graph là 3.7.
-`refused` luôn `False` trên đường trả lời: nhánh từ chối byte-identical của
-FR-16 là story 3.5, và một nhánh từ chối nửa vời ở đây là hai serializer cho
-cùng một envelope.
+
+**Nhánh từ chối byte-identical của FR-16 vào ở story 3.5.** Ba lý do -
+`ngu_canh_rong`, `co_no_answer`, `tu_khoa_rong` - đi ra qua **đúng một** lời gọi
+`dung_envelope`, cùng lời gọi mà đường trả lời dùng, nên thân response của ba
+lượt từ chối bằng nhau từng byte khi vai và bảng chính sách giữ nguyên. Lý do
+chỉ vào audit (`refusal`, tầng observation), không vào response: một trường đổi
+theo lý do là đúng kênh dò mà FR-16 dựng ra để bịt. Đầu ra LLM không đọc được
+thì **không** phải một lý do thứ tư - nó là 502 mang mã ổn định.
 """
 
 import logging
@@ -68,9 +73,16 @@ from adapters.thu_lai import (
     la_loi_mang_tam_thoi,
     ma_http_cua,
 )
+from adapters.tra_loi import (
+    LY_DO_CO_NO_ANSWER,
+    LY_DO_NGU_CANH_RONG,
+    LY_DO_TU_KHOA_RONG,
+    DauRaTraLoiKhongDoc,
+)
 from api.xac_thuc import ClaimNguoiHoi, LoiXacThuc
 from core.audit import (
     EVENT_QUERY,
+    EVENT_REFUSAL,
     TIER_OBSERVATION,
     AuditPort,
     SuKienAudit,
@@ -114,9 +126,43 @@ def graph_rong() -> dict:
     return {"nodes": [], "edges": []}
 
 
+# --- Từ chối (FR-16, story 3.5) ------------------------------------------------
+
+# Wording template từ chối, **chốt ở story 3.5 kèm `docs/adr/ADR-015`**, và là
+# hằng duy nhất mang câu này trong repo. Nó đóng câu hỏi mở 2 của
+# `ux-designs/.../EXPERIENCE.md:79` (chỗ wording còn mang dấu `[ASSUMPTION]`) và
+# action item Epic 3 của sonlm.
+#
+# Vì sao nó **không** đi vào `answer`: envelope của một lượt từ chối khai
+# `answer: null` (AD-8), tức máy đọc cờ `refused` chứ không đọc một câu tiếng
+# Việt. Câu này là hợp đồng của tầng **render** - màn chat của Epic 4 hiện đúng
+# nó, không tự soạn lại - và nó sống ở đây vì `api/` là tầng cuối cùng còn thấy
+# cả hình dạng envelope lẫn ý nghĩa của `refused`.
+#
+# Không ghép gì đổi theo lý do vào nó: không vai, không nhóm phụ trách, không
+# tên scope, không số đếm. Một chữ đổi theo lý do là đúng kênh dò mà FR-16 dựng
+# ra để bịt, và người dò không cần đọc `answer` mới thấy - độ dài chuỗi là đủ.
+TEMPLATE_TU_CHOI: str = "Tôi không tìm thấy thông tin phù hợp để trả lời câu hỏi này."
+
+# Ba lý do từ chối (`LY_DO_NGU_CANH_RONG`, `LY_DO_CO_NO_ANSWER`,
+# `LY_DO_TU_KHOA_RONG`) **nhập từ `adapters/tra_loi.py` chứ không chép lại**:
+# nơi *quyết* lý do là `EngineACL.hoi_dap`, và một bản viết tay thứ hai ở đây là
+# một chuỗi lệch một chữ mà không phép so nào bắt được - hàng audit vẫn ghi, chỉ
+# là ghi một giá trị không ai truy vấn tới. Hai giá trị đầu là hai cột mà Đo 2
+# (PRD 5.2) và story 7.4 đếm tách; giá trị thứ ba đứng riêng để một lỗi nội bộ
+# của bước trích từ khóa không bơm vào cột nào. Chúng nằm trong `__all__` của
+# module này để nơi đọc audit không phải biết cả hai tầng.
+DANH_MUC_LY_DO: tuple[str, ...] = (
+    LY_DO_NGU_CANH_RONG,
+    LY_DO_CO_NO_ANSWER,
+    LY_DO_TU_KHOA_RONG,
+)
+
+
 # --- Mã lỗi --------------------------------------------------------------------
 
-# Sáu mã của module này. Ba mã còn lại trên đường hỏi đáp đến từ tầng dưới và
+# Bảy mã của module này: sáu từ story 3.3, cộng `DAU_RA_LLM_KHONG_DOC_DUOC` của
+# 3.5 khai ngay dưới. Ba mã còn lại trên đường hỏi đáp đến từ tầng dưới và
 # giữ nguyên `code` của chúng, đúng luật "test assert trên `code`":
 # `TOKEN_KHONG_HOP_LE` (`api/xac_thuc.py`), `ROLE_UNKNOWN` (`core/identity.py`)
 # và `PERMISSION_CONTEXT_MISSING` (`core/permission.py`).
@@ -126,6 +172,14 @@ MA_THAN_YEU_CAU_LA: str = "THAN_YEU_CAU_LA"
 MA_LLM_LOI: str = "LLM_LOI"
 MA_LLM_QUA_HAN: str = "LLM_QUA_HAN"
 MA_KHO_KHONG_SAN_SANG: str = "KHO_KHONG_SAN_SANG"
+
+# Mã thứ bảy, vào ở story 3.5. Nó là **lỗi hệ thống**, không phải một lý do từ
+# chối: đầu ra LLM không đọc được theo lược đồ hai khóa của `adapters/tra_loi.py`
+# ra 502 mang mã này, và không bao giờ suy diễn thành một envelope từ chối. 502
+# chứ không 500 vì nguồn hỏng là provider, cùng họ với `LLM_LOI`; suy diễn nó
+# thành từ chối là dựng nhánh từ chối thứ tư và là hệ nói dối về trạng thái của
+# chính nó, đúng thứ làm hai cột của Đo 2 (PRD 5.2) đếm nhầm.
+MA_DAU_RA_LLM_KHONG_DOC_DUOC: str = "DAU_RA_LLM_KHONG_DOC_DUOC"
 
 # Mã của lớp thứ ba NFR-10 (khoản ledger 1.2). Hai lớp đầu là
 # `tests/test_import_lint.py` (phía module) và `core.permission.use_context`
@@ -144,6 +198,7 @@ THONG_DIEP_THAN_LA: str = (
 THONG_DIEP_LLM_LOI: str = "không gọi được mô hình ngôn ngữ"
 THONG_DIEP_LLM_QUA_HAN: str = "mô hình ngôn ngữ không trả lời trong thời hạn"
 THONG_DIEP_KHO: str = "kho tri thức chưa sẵn sàng"
+THONG_DIEP_DAU_RA_LLM: str = "mô hình ngôn ngữ trả về đầu ra không đọc được"
 THONG_DIEP_NGU_CANH_SAI: str = "ngữ cảnh quyền của request không phải ngữ cảnh vai"
 
 # Độ dài tối đa của câu hỏi, tính bằng ký tự. Hằng có tên chứ không phải một số
@@ -159,8 +214,14 @@ DAI_CAU_HOI_TOI_DA: int = 4000
 # của một lời gọi, và bản đầu của story 3.3 đoán sai con số thứ hai (nó đếm một
 # lời gọi embedding mỗi request và ra 162 giây).
 #
-# LLM: `vendor/hypergraphrag/operate.py::kg_query` gọi `use_model_func` hai lần -
-# trích từ khóa (`:541`) và sinh câu trả lời (`:606`).
+# LLM: hai lời gọi, và từ story 3.5 chúng đến từ **hai chỗ** chứ không còn cùng
+# một hàm vendor. Một, trích từ khóa trong `vendor/.../operate.py::kg_query:541`.
+# Hai, sinh câu trả lời bằng prompt của dự án ở `EngineACL.hoi_dap` - lời gọi
+# `:606` của vendor không còn chạy, vì `hoi_dap` lấy ngữ cảnh bằng
+# `only_need_context=True` và `:596-597` thoát *trước* nó. Con số vì thế không
+# đổi (2), nhưng lý do của nó đổi, và một bản upstream mới bỏ lời gọi `:606` đi
+# cũng sẽ không đổi con số này nữa. Lượt từ chối vì ngữ cảnh rỗng chỉ tốn **1**;
+# đây là trần, nên nó đứng ở 2.
 # Embedding: `_build_query_context` đi vào cả hai nhánh của mode `hybrid`, nên
 # `entities_vdb.query` (`operate.py:743`) và `hyperedges_vdb.query` (`:938`) đều
 # chạy, và mỗi `query` của `adapters/qdrant.py` nhúng đúng một chuỗi
@@ -200,6 +261,10 @@ def tran_mot_truy_van_giay(ngan_sach=NGAN_SACH_TRUY_HOI) -> float:
 # Tên trường của `chi_tiet` trong sự kiện audit. Hằng vì `eval/` và báo cáo
 # NFR-08 sẽ đọc đúng tên này bằng SQL trên cột jsonb.
 CT_MILI_GIAY: str = "mili_giay"
+# Lý do từ chối, và **chỉ** ở đây. AD-8: nó không có mặt trong response, nên
+# đây là chỗ duy nhất Đo 2 đọc được hai cột "từ chối qua cờ LLM" và "từ chối qua
+# nhánh ngữ cảnh rỗng" tách nhau.
+CT_LY_DO: str = "ly_do"
 
 
 class LoiHoiDap(LoiXacThuc):
@@ -505,6 +570,40 @@ async def _ghi_audit_truy_van(
     )
 
 
+async def _ghi_audit_tu_choi(
+    audit: AuditPort, ngu_canh: PermissionContext, ly_do: str
+) -> None:
+    """Sự kiện `refusal`, tầng **observation**, mang lý do trong `chi_tiet`.
+
+    Đây là **chỗ duy nhất** lý do từ chối được ghi ra. Response của cả ba nhánh
+    giống nhau từng byte (FR-16), nên nếu không có hàng này thì không ai phân
+    biệt được một lượt từ chối vì cờ LLM với một lượt từ chối vì ngữ cảnh rỗng -
+    và PRD 5.2 đòi Đo 2 báo cáo **tách hai cột**, "không đếm gộp để khỏi bơm độ
+    chính xác của cờ".
+
+    Observation chứ không mutation, cùng luật với `query`: một Postgres chết
+    không được biến một lượt từ chối thành một 500. `ghi_quan_sat` nuốt lỗi của
+    port thành một dòng WARNING, nên envelope đi ra không đổi một byte nào - và
+    đó là hàng "Audit hỏng ở lượt từ chối" của I/O Matrix.
+
+    Sự kiện này đứng **cạnh** `query`, không thay nó: một lượt từ chối vẫn là một
+    lượt hỏi có độ trễ, và NFR-08 đo trên mọi lượt chứ không riêng lượt trả lời.
+    """
+    await ghi_quan_sat(
+        audit,
+        SuKienAudit(
+            tier=TIER_OBSERVATION,
+            event=EVENT_REFUSAL,
+            space=ngu_canh.space,
+            policy_version=ngu_canh.policy_version,
+            thoi_diem=thoi_diem_utc(),
+            act=ngu_canh.real_account,
+            role=ngu_canh.role,
+            chi_tiet={CT_LY_DO: ly_do},
+        ),
+    )
+
+
 async def tra_loi(
     cau_hoi: str,
     *,
@@ -518,7 +617,7 @@ async def tra_loi(
     Thứ tự cố định và không đổi được: kiểm đầu vào **trước** khi dựng ngữ cảnh
     (một câu hỏi rỗng không đáng một phép tra bảng chính sách), dựng ngữ cảnh
     **trước** khi chạm engine (một vai lạ là 403 mà không chạm kho), và
-    `use_context` bọc **trọn** `aquery` - kể cả phần `vendor/` gọi lại wrapper
+    `use_context` bọc **trọn** `hoi_dap` - kể cả phần `vendor/` gọi lại wrapper
     LLM, thứ đọc `current_context()` để kiểm space.
 
     `policy` là object đã đọc, không phải kho chính sách: nơi gọi đọc
@@ -526,10 +625,19 @@ async def tra_loi(
     là mở đường cho một lời gọi `hien_tai()` thứ hai sau một `await`, tức hai
     bản chính sách trong cùng một request.
 
-    Audit ghi ở nhánh **thành công**: sự kiện của lượt từ chối và lượt lọc là
-    story 3.6, và một `query` ghi kèm cho mọi ca lỗi ở đây sẽ trộn thời gian
-    của một lượt trả lời thật với thời gian của một lần chạm 502 - đúng thứ
-    làm mẫu số NFR-08 vô nghĩa.
+    Audit ghi ở nhánh **thành công**, và từ story 3.5 "thành công" gồm cả một
+    lượt từ chối: `query` ghi cho cả hai loại lượt (một lượt từ chối vẫn có độ
+    trễ mà NFR-08 đo), cộng một `refusal` mang lý do khi có từ chối. Ca **lỗi**
+    thì vẫn không ghi gì - một `query` ghi kèm cho mỗi lần chạm 502 trộn thời
+    gian của một lượt trả lời thật với thời gian của một lần hỏng, đúng thứ làm
+    mẫu số NFR-08 vô nghĩa. Sự kiện lọc của adapter vẫn là story 3.6.
+
+    **Một chỗ dựng envelope cho cả ba nhánh từ chối lẫn nhánh trả lời.** Kết quả
+    của engine là một `KetQuaHoiDap` mang đúng một trong hai trường (bất biến
+    kiểm lúc dựng), nên `refused` suy ra bằng một phép so `None` và `answer` đi
+    thẳng vào serializer. Hai đường ghép thân response là hai cơ hội để một
+    trường lạc vào một trong hai, và khi đó phép so byte của FR-16 hỏng ở đúng
+    chỗ không ai đọc.
     """
     # Bấm giờ **từ đầu lượt**, trước cả phép kiểm đầu vào: `mili_giay` là số
     # NFR-08 đọc, và NFR-08 nói về độ trễ mà người hỏi chịu - bấm sau phép dựng
@@ -539,7 +647,7 @@ async def tra_loi(
     ngu_canh = ngu_canh_cua_claim(claim, policy)
     try:
         with use_context(ngu_canh):
-            # Gọi **không** truyền `param`: `EngineACL.aquery` dựng một
+            # Gọi **không** truyền `param`: `EngineACL.hoi_dap` dựng một
             # `QueryParam()` mới của chính nó khi `param is None` (một bản sao
             # mỗi lời gọi, vì `_build_query_context` ghi lên `mode` của bất kỳ
             # instance nào nó nhận). Nhờ vậy `api/` không phải import
@@ -548,10 +656,16 @@ async def tra_loi(
             #
             # Ba tham số mà người gọi **không** đặt được, và cả ba là quyết
             # định của server: `mode` (`EngineACL.aquery` từ chối mọi giá trị
-            # ngoài danh mục trước khi chạm `vendor/`), `only_need_context`, và
-            # `stream` - giữ `False` vì wrapper chưa đếm được token trên stream
-            # (khoản ledger 2.2, UX-DR4).
-            answer = await engine.aquery(sach)
+            # ngoài danh mục trước khi chạm `vendor/`, và `hoi_dap` đi qua đúng
+            # cửa đó), `only_need_context` (`hoi_dap` luôn bật), và `stream` -
+            # giữ `False` vì wrapper chưa đếm được token trên stream, nay do
+            # chính `hoi_dap` từ chối tường minh (khoản ledger 2.2, UX-DR4).
+            #
+            # `hoi_dap` chứ không `aquery` (story 3.5): nó lấy ngữ cảnh bằng
+            # `only_need_context=True` rồi tự sinh câu trả lời bằng prompt của dự
+            # án, và trả về một kết quả **có cấu trúc** thay vì một chuỗi. Đường
+            # `aquery` giữ nguyên cho `eval/` và `tests/ho_tro_m1.py::hoi`.
+            ket_qua = await engine.hoi_dap(sach)
     except PermissionContextMissing:
         # Fail-closed của AD-8: 500 với đúng `code` của `core/`, không bọc lại.
         # Nó nghĩa là contextvar quyền đứt giữa `use_context` và adapter, tức
@@ -563,6 +677,17 @@ async def tra_loi(
         raise LoiHoiDap(
             500, QueryModeKhongHoTro.code, "chế độ truy vấn không được hỗ trợ"
         ) from None
+    except DauRaTraLoiKhongDoc as loi:
+        # **Lỗi hệ thống, không phải một lý do từ chối.** Bắt trước nhánh chung
+        # bên dưới vì `_loi_truy_hoi` trả `None` cho nó (nó không mang mã HTTP
+        # nào và không đến từ SDK kho), tức nó sẽ dội lên thành một 500 không
+        # tên. Nguyên văn đầu ra hỏng chỉ vào log: nó là văn bản do LLM sinh ra
+        # từ ngữ cảnh đã lọc, và một thân lỗi mang nó là một đường rò đi vòng
+        # qua cả tầng che lẫn cả envelope.
+        logger.warning("đầu ra LLM không đọc được: %s", loi)
+        raise LoiHoiDap(
+            502, MA_DAU_RA_LLM_KHONG_DOC_DUOC, THONG_DIEP_DAU_RA_LLM
+        ) from None
     except Exception as loi:
         da_biet = _loi_truy_hoi(loi)
         if da_biet is None:
@@ -573,12 +698,19 @@ async def tra_loi(
         raise da_biet from None
     mili_giay = (time.perf_counter() - bat_dau) * 1000.0
     await _ghi_audit_truy_van(audit, ngu_canh, mili_giay)
+    tu_choi = ket_qua.ly_do_tu_choi is not None
+    if tu_choi:
+        await _ghi_audit_tu_choi(audit, ngu_canh, ket_qua.ly_do_tu_choi)
     return dung_envelope(
-        answer=answer,
-        # Luôn `False` trên đường trả lời. Nhánh từ chối byte-identical của
-        # FR-16 là story 3.5, và một nhánh nửa vời ở đây là hai serializer cho
-        # cùng một envelope.
-        refused=False,
+        # `None` ở lượt từ chối, và đó là hợp đồng chứ không một chỗ chưa điền:
+        # câu người dùng đọc là `TEMPLATE_TU_CHOI`, do tầng render dựng từ cờ
+        # `refused`. Ghép câu ấy vào `answer` ở đây là đặt một chuỗi tiếng Việt
+        # vào chỗ mà máy đọc cờ, và là một chỗ thứ hai để wording trôi.
+        answer=ket_qua.cau_tra_loi,
+        # Suy từ **một** trường, không từ hai. `KetQuaHoiDap` đã cấm ca "có cả
+        # câu trả lời lẫn lý do" ngay lúc dựng, nên không có ca `answer` khác
+        # `None` mà `refused` là `True`.
+        refused=tu_choi,
         citations=[],
         graph=graph_rong(),
         meta=dung_meta(ngu_canh),
@@ -586,21 +718,27 @@ async def tra_loi(
 
 
 __all__ = [
+    "CT_LY_DO",
     "CT_MILI_GIAY",
     "DAI_CAU_HOI_TOI_DA",
+    "DANH_MUC_LY_DO",
     "KHOA_ENVELOPE",
     "KHOA_GRAPH",
-    "SO_LOI_GOI_EMBEDDING_MOI_TRUY_VAN",
-    "SO_LOI_GOI_LLM_MOI_TRUY_VAN",
-    "tran_mot_truy_van_giay",
     "KHOA_META",
+    "LY_DO_CO_NO_ANSWER",
+    "LY_DO_NGU_CANH_RONG",
+    "LY_DO_TU_KHOA_RONG",
     "MA_CAU_HOI_QUA_DAI",
     "MA_CAU_HOI_RONG",
+    "MA_DAU_RA_LLM_KHONG_DOC_DUOC",
     "MA_KHO_KHONG_SAN_SANG",
     "MA_LLM_LOI",
     "MA_LLM_QUA_HAN",
     "MA_NGU_CANH_KHONG_PHAI_VAI",
     "MA_THAN_YEU_CAU_LA",
+    "SO_LOI_GOI_EMBEDDING_MOI_TRUY_VAN",
+    "SO_LOI_GOI_LLM_MOI_TRUY_VAN",
+    "TEMPLATE_TU_CHOI",
     "LoiHoiDap",
     "ThanHoiDap",
     "dung_envelope",
@@ -610,4 +748,5 @@ __all__ = [
     "mo_engine",
     "ngu_canh_cua_claim",
     "tra_loi",
+    "tran_mot_truy_van_giay",
 ]

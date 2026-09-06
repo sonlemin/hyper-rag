@@ -46,8 +46,9 @@ def test_danh_muc_su_kien_va_tang_la_hang_trong_core():
     """Danh mục là hằng trong core/, và ca này là **danh sách đóng**.
 
     2.2 hai sự kiện chi phí, 2.3 ba sự kiện ingest, 2.4 `extract_doc`, 3.2
-    `policy_swap`, 3.3 `query`. Ba sự kiện còn lại của 3.6 (lọc, từ chối, cửa
-    sổ chế độ đo) chưa có mặt, và ca này là chỗ chúng phải khai khi tới.
+    `policy_swap`, 3.3 `query`, 3.5 `refusal`. Hai sự kiện còn lại của 3.6 (lọc
+    của adapter, cửa sổ chế độ đo) chưa có mặt, và ca này là chỗ chúng phải khai
+    khi tới.
     """
     from core.audit import (
         EVENT_DELETE_DOC,
@@ -56,6 +57,7 @@ def test_danh_muc_su_kien_va_tang_la_hang_trong_core():
         EVENT_INGEST_DOC,
         EVENT_POLICY_SWAP,
         EVENT_QUERY,
+        EVENT_REFUSAL,
     )
 
     assert EVENTS == {
@@ -67,6 +69,7 @@ def test_danh_muc_su_kien_va_tang_la_hang_trong_core():
         EVENT_EXTRACT_DOC,
         EVENT_POLICY_SWAP,
         EVENT_QUERY,
+        EVENT_REFUSAL,
     }
     assert (EVENT_INGEST_DOC, EVENT_DELETE_DOC, EVENT_DELETE_SPACE) == ("ingest_doc", "delete_doc", "delete_space")
     assert EVENT_EXTRACT_DOC == "extract_doc"

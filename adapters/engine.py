@@ -64,7 +64,19 @@ from neo4j import AsyncDriver
 from qdrant_client import AsyncQdrantClient
 
 from adapters.kv import ENABLE_LLM_CACHE, WORKING_DIR_KEY, JsonACLKVStorage
-from adapters.llm_wrapper import la_wrapper
+from adapters.llm_wrapper import LLMStreamNotSupported, la_wrapper
+from adapters.tra_loi import (
+    CAU_HONG_UPSTREAM,
+    LY_DO_CO_NO_ANSWER,
+    LY_DO_NGU_CANH_RONG,
+    LY_DO_TU_KHOA_RONG,
+    THAM_SO_LLM as THAM_SO_LLM_TRA_LOI,
+    KetQuaHoiDap,
+    NguCanhTruyHoiLa,
+    doc_dau_ra,
+    dung_prompt as dung_prompt_tra_loi,
+    ngu_canh_rong,
+)
 from adapters.trich_xuat import ThongKeTrichXuat, trich_xuat_chunks
 from adapters.neo4j import (
     HEALTH_DELAY_KEY,
@@ -699,3 +711,94 @@ class EngineACL(HyperGraphRAG):
                 " nó là một biến chưa gán trong vendor/hypergraphrag.py:497."
             )
         return await super().aquery(query, param)
+
+    async def hoi_dap(self, cau_hoi: str, param: QueryParam | None = None) -> KetQuaHoiDap:
+        """Một lượt hỏi đáp đầy đủ: ngữ cảnh của vendor, câu trả lời của dự án (story 3.5).
+
+        **Method mới chứ không phải một nhánh trong `aquery`.** `eval/` và
+        `tests/ho_tro_m1.py::hoi` gọi `aquery(..., only_need_context=True)` để
+        lấy nguyên chuỗi ngữ cảnh, và toàn bộ bộ Đo 1 assert trên chuỗi đó (chốt
+        brief §6: assert trên ngữ cảnh truy hồi, không trên câu trả lời LLM).
+        Nhét nhánh từ chối vào `aquery` là đổi kiểu trả về của đường ấy; tách ra
+        thì đường ngữ cảnh thô chạy y nguyên và ca "chỉ tốn một lời gọi LLM khi
+        ngữ cảnh rỗng" vẫn đo được.
+
+        Ba nhánh, và **thứ tự là nội dung**:
+
+        1. Chuỗi trả về bằng đúng `CAU_HONG_UPSTREAM` -> `tu_khoa_rong`. Phải
+           hỏi trước, vì `kg_query` trả câu ấy *thay cho* cả cái khung ngữ cảnh
+           (`operate.py:573,576,581`) nên `ngu_canh_rong` sẽ đọc nó thành "không
+           có khối csv nào" và cho `False`, tức một lỗi nội bộ đi thẳng vào một
+           lời gọi LLM trả tiền.
+        2. Ba khối csv của khung đều rỗng -> `ngu_canh_rong`, và **không có lời
+           gọi LLM thứ hai**. Đây là chỗ ca L0 chặn sạch đi ra, và là nhánh tất
+           định mà FR-16 đòi ("ngữ cảnh truy hồi rỗng thì render template không
+           gọi LLM").
+        3. Còn lại -> prompt của dự án, rồi `doc_dau_ra`. Cờ bật thì
+           `co_no_answer`; không thì một câu trả lời.
+
+        Đầu ra không đọc được **dội lên nguyên** dưới dạng `DauRaTraLoiKhongDoc`:
+        nó là lỗi hệ thống, và nuốt nó thành một lý do từ chối thứ tư là trộn
+        lỗi nội bộ vào hai cột mà Đo 2 (PRD 5.2) đếm. Cùng luật cho một `aquery`
+        trả về thứ **không phải chuỗi**: `ngu_canh_rong` cho `True` với mọi giá
+        trị không phải `str`, nên không có phép kiểm kiểu tường minh thì một lỗi
+        nội bộ của đường truy hồi lặng lẽ thành một lượt từ chối được đo
+        (`NguCanhTruyHoiLa`, cùng mã lỗi vì cùng mệnh đề).
+
+        **`stream=True` bị từ chối tường minh**, và cửa này phải có vì đường mới
+        làm mất một cửa cũ. Trước story 3.5 `kg_query:606` truyền
+        `stream=query_param.stream` xuống wrapper và `bo_llm` dội
+        `LLMStreamNotSupported`; đường này thoát ở `:596-597` nên lời gọi ấy
+        không chạy nữa, và bỏ qua `param.stream` im lặng là biến một tham số vô
+        hiệu thành một tham số trông như có tác dụng (khoản ledger 2.2, UX-DR4).
+        Handler không truyền `param` nên nó không tới được từ HTTP; cửa này canh
+        nơi gọi trong mã dự án.
+
+        `self.llm_model_func` là field của `HyperGraphRAG` đã bọc qua
+        `limit_async_func_call` và `partial(hashing_kv=...)`
+        (`hypergraphrag.py:242-248`), tức đúng hàm mà `kg_query` gọi. Dùng lại nó
+        chứ không dựng một hàm mới: một hàm thứ hai là một đường LLM thứ hai
+        không đi qua wrapper đếm token của story 2.2, và khi đó `llm_cost` của
+        một lượt hỏi thiếu mất một nửa.
+
+        **Không có lớp thử lại, và từ story này đó là một lựa chọn chứ không một
+        chỗ không gắn được.** Lý lẽ cũ - "nơi gọi nằm trong `vendor/kg_query` nên
+        không có chỗ nào gắn một lớp thử lại" (`adapters/llm_wrapper.bo_llm`,
+        AGENTS.md) - hết đúng ở đây: lời gọi thứ hai nay nằm trong mã dự án, tức
+        chỗ gắn đã có. Vẫn không gắn, vì hai lý do đã đóng băng ở story 3.3: một
+        429 giữa một câu hỏi là 502 ngay (khác hẳn đường nạp, và đó là câu chương
+        4 phải nói), và một lớp thử lại ở đây nhân trần độ trễ của một request
+        lên - trần 204 giây suy từ số lời gọi *không* thử lại. Trần thời gian cho
+        một lời gọi thì vẫn có, ở `bo_llm`.
+
+        Không đi qua cache LLM của upstream, và không được bật nó lại:
+        `compute_args_hash` (`operate.py:493-500,622-634`) chỉ băm `(mode,
+        query)`, không mang space, vai hay `policy_version`, nên một lượt trả lời
+        được cache đi xuyên ranh giới quyền (AD-18).
+        """
+        param = QueryParam() if param is None else replace(param)
+        if param.stream:
+            raise LLMStreamNotSupported(
+                "hoi_dap không chạy stream: wrapper chưa đếm được token trên"
+                " stream, và đường này không còn đi qua lời gọi của vendor - nơi"
+                " phép kiểm ấy từng nằm"
+            )
+        ngu_canh = await self.aquery(cau_hoi, replace(param, only_need_context=True))
+        if not isinstance(ngu_canh, str):
+            raise NguCanhTruyHoiLa(
+                "đường truy hồi trả về"
+                f" {type(ngu_canh).__name__} thay vì chuỗi ngữ cảnh: đó là một"
+                " lỗi nội bộ, không phải một lượt từ chối"
+            )
+        if ngu_canh == CAU_HONG_UPSTREAM:
+            logger.warning("hoi_dap: kg_query không trích được từ khóa, từ chối")
+            return KetQuaHoiDap(ly_do_tu_choi=LY_DO_TU_KHOA_RONG)
+        if ngu_canh_rong(ngu_canh):
+            return KetQuaHoiDap(ly_do_tu_choi=LY_DO_NGU_CANH_RONG)
+        tho = await self.llm_model_func(
+            dung_prompt_tra_loi(cau_hoi, ngu_canh), **THAM_SO_LLM_TRA_LOI
+        )
+        ket_qua = doc_dau_ra(tho)
+        if ket_qua.khong_co_dap_an:
+            return KetQuaHoiDap(ly_do_tu_choi=LY_DO_CO_NO_ANSWER)
+        return KetQuaHoiDap(cau_tra_loi=ket_qua.cau_tra_loi)

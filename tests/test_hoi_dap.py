@@ -175,11 +175,11 @@ def test_hai_vai_hai_ngu_canh_cung_hinh_dang_envelope(client, engine_gia):
     """Cổng M1 nói lại bằng HTTP: cùng câu hỏi, hai token, hai ngữ cảnh quyền.
 
     Chấm cả hai đầu. Đầu ngoài: `meta.role` khác nhau trên cùng năm khóa. Đầu
-    trong: hai `PermissionContext` mà engine đọc được **bên trong** `aquery`
+    trong: hai `PermissionContext` mà engine đọc được **bên trong** `hoi_dap`
     khác nhau ở vai, ở `allowed_keys`, và cả hai đều là ngữ cảnh vai.
 
-    Đọc ngữ cảnh trong `EngineGia.aquery` chứ không sau lời gọi là chỗ duy nhất
-    chứng minh `use_context` bọc **trọn** `aquery` - contextvar đã được reset
+    Đọc ngữ cảnh trong `EngineGia.hoi_dap` chứ không sau lời gọi là chỗ duy nhất
+    chứng minh `use_context` bọc **trọn** `hoi_dap` - contextvar đã được reset
     khi handler trả về.
     """
     vai = []
@@ -644,36 +644,56 @@ def test_graph_rong_la_object_moi_moi_lan():
     assert graph_rong() == {"nodes": [], "edges": []}
 
 
-def test_envelope_khong_stream(client, monkeypatch, workspace_dir):
+def test_envelope_khong_stream(client, monkeypatch, workspace_dir, khong_gian, policy):
     """`QueryParam.stream` giữ `False` (khoản ledger 2.2, UX-DR4).
 
     Wrapper chưa có đường đếm token trên stream, nên nó dội
     `LLMStreamNotSupported`; và bật stream ở đây là bật nó cho một endpoint đo
     chi phí.
 
-    Hai vế, vì quyết định nằm ở hai chỗ sau khi `api/` thôi import `vendor/`.
-    Vế handler: nó gọi `aquery(cau_hoi)` **không truyền `param`**, tức không có
-    chỗ nào cho một `stream=True` đi vào từ ngoài. Vế engine: `EngineACL.aquery`
-    dựng `QueryParam()` của chính nó khi `param is None`, và ba trường của bản
-    ấy là `stream=False`, `mode="hybrid"`, `only_need_context=False`.
+    Ba vế, vì quyết định nằm ở ba chỗ sau khi `api/` thôi import `vendor/` và
+    story 3.5 tách một cửa engine thứ hai.
+
+    Vế handler: nó gọi `hoi_dap(cau_hoi)` **không truyền `param`**, tức không có
+    chỗ nào cho một `stream=True` đi vào từ ngoài.
+
+    Vế `aquery`: `EngineACL.aquery` dựng `QueryParam()` của chính nó khi
+    `param is None`, và ba trường của bản ấy là `stream=False`, `mode="hybrid"`,
+    `only_need_context=False`. Đó là đường mà `eval/` và cổng M1 đi.
+
+    Vế `hoi_dap`: nó cũng dựng bản mặc định ấy nhưng **bật** `only_need_context`
+    trước khi vào `aquery` - đó là toàn bộ cách nó thoát trước lời gọi
+    `rag_response` của vendor (`operate.py:596-597`) - và không đụng tới `stream`.
     """
-    from tests.gia_lap_llm import LLMGia
+    from hypergraphrag.base import QueryParam
+
+    from core.permission import use_context
+
+    from tests.gia_lap_llm import LLMGia, phan_hoi_hai_luot
     from tests.gia_lap_neo4j import Neo4jGhiLai
     from tests.gia_lap_qdrant import QdrantGhiLai
     from tests.ho_tro_m1 import dung_engine
+    from tests.ngu_canh import vai
 
     ban_ghi = []
 
-    async def _aquery(query, param=None):
-        ban_ghi.append((query, param))
-        return "ok"
+    async def _hoi_dap(cau_hoi, param=None):
+        from adapters.tra_loi import KetQuaHoiDap
 
-    monkeypatch.setattr(api_main.app.state.engine, "aquery", _aquery)
+        ban_ghi.append((cau_hoi, param))
+        return KetQuaHoiDap(cau_tra_loi="ok")
+
+    monkeypatch.setattr(api_main.app.state.engine, "hoi_dap", _hoi_dap)
     assert _hoi(client, "ts01").status_code == 200
     assert ban_ghi == [(CAU_HOI, None)], "handler không được tự dựng QueryParam"
 
     # Vế engine: bản mà `EngineACL.aquery` dựng khi nơi gọi không truyền gì.
-    engine = dung_engine(workspace_dir, QdrantGhiLai(), Neo4jGhiLai(), LLMGia())
+    engine = dung_engine(
+        workspace_dir,
+        QdrantGhiLai(),
+        Neo4jGhiLai(),
+        LLMGia(theo_prompt=phan_hoi_hai_luot()),
+    )
     tham_so = []
 
     async def _cha(self, query, param):
@@ -688,6 +708,32 @@ def test_envelope_khong_stream(client, monkeypatch, workspace_dir):
     assert tham_so[0].stream is False
     assert tham_so[0].mode == "hybrid"
     assert tham_so[0].only_need_context is False
+
+    # Vế `hoi_dap`: cùng ba trường, chỉ `only_need_context` bật lên. Bản giả của
+    # `aquery` trả một chuỗi không phải khung ngữ cảnh nên `ngu_canh_rong` cho
+    # `False` và lượt sinh câu trả lời chạy - đó là lý do LLM giả phải biết trả
+    # JSON hai khóa ở đây.
+    tham_so.clear()
+
+    async def _chay_hoi_dap(param=None):
+        # Lời gọi sinh câu trả lời đi qua wrapper LLM thật, và wrapper đọc
+        # `current_context()` để kiểm space - nên nó phải chạy dưới một ngữ cảnh
+        # vai, đúng như handler làm.
+        with use_context(vai(policy, "devops", khong_gian)):
+            return await engine.hoi_dap("hỏi", param)
+
+    ket_qua = asyncio.run(_chay_hoi_dap())
+    assert len(tham_so) == 1
+    assert tham_so[0].stream is False
+    assert tham_so[0].mode == "hybrid"
+    assert tham_so[0].only_need_context is True
+    assert ket_qua.cau_tra_loi and ket_qua.ly_do_tu_choi is None
+    # Và nó **không** ghi lên instance mà nơi gọi đưa vào: `_build_query_context`
+    # mutate `query_param.mode`, nên một `replace` thiếu ở đây là hai truy vấn
+    # song song chia nhau một mảnh trạng thái.
+    cua_toi = QueryParam()
+    asyncio.run(_chay_hoi_dap(cua_toi))
+    assert cua_toi.only_need_context is False
 
 
 # --- Ngân sách: hai engine, hai bộ số -----------------------------------------
@@ -997,10 +1043,16 @@ def test_e2e_qua_ba_adapter_that_hai_vai_hai_ngu_canh_truy_hoi(
     """
     from dataclasses import replace as _replace
 
+    from tests.gia_lap_llm import phan_hoi_hai_luot
     from tests.gia_lap_neo4j import canh_moi_bien_deu_bi_loc
     from tests.ho_tro_m1 import cong_m1, khoa_theo_collection
 
-    engine, qdrant, neo4j, _llm = asyncio.run(cong_m1(workspace_dir, khong_gian, policy))
+    engine, qdrant, neo4j, llm = asyncio.run(cong_m1(workspace_dir, khong_gian, policy))
+    # Từ story 3.5 một lượt `hoi_dap` là **hai** lời gọi LLM: trích từ khóa
+    # (định dạng tuple của vendor) rồi sinh câu trả lời (JSON hai khóa của dự
+    # án). LLM giả phải trả đúng định dạng cho từng lượt, nếu không lượt hai
+    # thành `DAU_RA_LLM_KHONG_DOC_DUOC` và ca này đo nhầm thứ.
+    llm.theo_prompt = phan_hoi_hai_luot()
 
     # Hai tài khoản seed, chuyển sang không gian cách ly của phiên test - đúng
     # cách `tests/test_cong_m1.py` làm, và là chỗ duy nhất `khong_gian` được đổi.
@@ -1037,7 +1089,11 @@ def test_e2e_qua_ba_adapter_that_hai_vai_hai_ngu_canh_truy_hoi(
             than = kq.json()
             assert tuple(than) == KHOA_ENVELOPE
             assert isinstance(than["answer"], str) and than["answer"]
+            assert than["refused"] is False
             assert than["meta"]["space"] == khong_gian
+            # Đường `rag_response` của vendor không còn được đi: câu trả lời đến
+            # từ prompt của dự án, và nó không truyền `system_prompt`.
+            assert llm.prompts_sinh_cau_tra_loi == []
             theo_collection = khoa_theo_collection(qdrant)
             assert theo_collection, "không request Qdrant nào rời khỏi handler"
             khoa_theo_vai[tk] = theo_collection

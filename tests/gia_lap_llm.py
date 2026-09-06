@@ -31,13 +31,26 @@ khóa quyết định được kết quả thì test bảo mật đang đo nhầ
 lời (`operate.py:596` trả thẳng chuỗi ngữ cảnh, bỏ `:606`). Đó là cách bộ test
 chứng minh mình assert trên ngữ cảnh truy hồi chứ không trên câu trả lời LLM
 (chốt brief §6).
+
+Story 3.5 thêm một lượt thứ hai **của dự án**: `EngineACL.hoi_dap` lấy ngữ cảnh
+bằng `only_need_context=True` rồi tự gọi LLM bằng prompt tiếng Việt của
+`adapters/tra_loi.py`. Nó đi qua đúng `llm_model_func` này nên `so_lan` vẫn đếm
+đủ, nhưng nó **không** truyền `system_prompt` - `prompts_sinh_cau_tra_loi` vì
+thế chỉ còn đếm lời gọi `rag_response` của vendor, đường mà dự án không đi nữa.
+`phan_hoi_hai_luot` dựng một `theo_prompt` trả đúng định dạng cho từng lượt.
 """
 
+import json
 from pathlib import Path
 from typing import Callable
 
 from adapters.llm_wrapper import KetQuaEmbedding, KetQuaLLM
 from adapters.model_catalog import DanhMucModel, tai_danh_muc_model
+from adapters.tra_loi import (
+    DAU_PROMPT_TRA_LOI,
+    KHOA_CAU_TRA_LOI,
+    KHOA_KHONG_CO_DAP_AN,
+)
 from core.audit import SuKienAudit
 from hypergraphrag.prompt import PROMPTS
 from tests.gia_lap_qdrant import vector_tu_chuoi
@@ -71,6 +84,41 @@ def phan_hoi_tu_khoa(
     )
 
 
+def phan_hoi_tra_loi(cau_tra_loi: str, khong_co_dap_an: bool = False) -> str:
+    """Đầu ra hợp lệ của lượt sinh câu trả lời (story 3.5)."""
+    return json.dumps(
+        {KHOA_KHONG_CO_DAP_AN: khong_co_dap_an, KHOA_CAU_TRA_LOI: cau_tra_loi},
+        ensure_ascii=False,
+    )
+
+
+def phan_hoi_hai_luot(
+    cau_tra_loi: str = "câu trả lời giả từ ngữ cảnh",
+    *,
+    khong_co_dap_an: bool = False,
+    entity: str = TU_KHOA_ENTITY,
+    hyperedge: str = TU_KHOA_HYPEREDGE,
+) -> Callable[[str], str]:
+    """`theo_prompt` cho một lượt `hoi_dap`: lượt một trả từ khóa, lượt hai trả JSON.
+
+    Nhận diện lượt hai bằng `DAU_PROMPT_TRA_LOI`, dòng đầu cố định của prompt
+    trả lời, nhập thẳng từ `adapters/tra_loi.py`. Bản đầu dò tên khóa
+    `khong_co_dap_an`, và đó là **một chuỗi người hỏi gõ được**: cả hai lượt đều
+    nhét nguyên văn câu hỏi vào prompt, nên một câu hỏi chứa tên khóa ấy làm lượt
+    *trích từ khóa* bị nhận thành lượt trả lời - và ca test khi đó đo nhầm nhánh
+    mà vẫn xanh. `DAU_PROMPT_TRA_LOI` chỉ có trong prompt của dự án; nó cũng lọt
+    được vào một câu hỏi, nhưng nó không phải một chuỗi ai gõ tình cờ, và nếu
+    prompt mất dòng đó thì ca test đỏ ở chỗ nói đúng nguyên nhân.
+    """
+
+    def _theo(prompt: str) -> str:
+        if prompt.startswith(DAU_PROMPT_TRA_LOI):
+            return phan_hoi_tra_loi(cau_tra_loi, khong_co_dap_an=khong_co_dap_an)
+        return phan_hoi_tu_khoa(entity, hyperedge)
+
+    return _theo
+
+
 class LLMGia:
     """Hàm LLM giả có ghi nhật ký prompt, gọi được như `llm_model_func`.
 
@@ -93,9 +141,12 @@ class LLMGia:
         # `None` là hành vi cũ, một phản hồi cho mọi lời gọi.
         self.theo_prompt = theo_prompt
         self.prompts: list[str] = []
-        # Lời gọi có `system_prompt` là lời gọi *sinh câu trả lời*. Đếm riêng,
-        # vì một lời gọi như vậy trong bộ Đo 1 nghĩa là test đang đi qua đường
-        # câu trả lời LLM chứ không dừng ở ngữ cảnh truy hồi.
+        # Lời gọi có `system_prompt` là lời gọi sinh câu trả lời **của vendor**
+        # (`rag_response`). Đếm riêng, vì một lời gọi như vậy trong bộ Đo 1 nghĩa
+        # là test đang đi qua đường câu trả lời của upstream chứ không dừng ở ngữ
+        # cảnh truy hồi. Từ story 3.5 đường của dự án (`EngineACL.hoi_dap`) không
+        # truyền `system_prompt`, nên danh sách này rỗng ở mọi lượt `hoi_dap` -
+        # đó là phép kiểm "dự án không còn gọi `rag_response`".
         self.prompts_sinh_cau_tra_loi: list[str] = []
         # Kwargs của từng lời gọi, giữ nguyên. `HyperGraphRAG.__post_init__`
         # bind `hashing_kv=self.llm_response_cache` bằng `partial`
