@@ -39,7 +39,9 @@ qua API ghi đè nên nó không mở một đường vòng quyền admin cho t�
 """
 
 import asyncio
+import os
 from pathlib import Path
+from typing import Mapping
 
 from adapters.policy_loader import (
     THU_MUC_CAU_HINH,
@@ -50,6 +52,7 @@ from adapters.policy_loader import (
 from api.xac_thuc import LoiXacThuc
 from core.audit import (
     EVENT_POLICY_SWAP,
+    SPACE_TIEN_TRINH,
     TIER_MUTATION,
     AuditPort,
     SuKienAudit,
@@ -77,9 +80,40 @@ MA_DANH_MUC_RONG: str = "POLICY_DANH_MUC_RONG"
 
 # Space của sự kiện hoán policy. Bảng chính sách là cấu hình của **cả** tiến
 # trình chứ không của một không gian tri thức, mà `SuKienAudit` đòi `space`
-# không rỗng - nên một dấu sao, khai ra ở đây, thay vì mượn tên một space thật
-# và làm mọi truy vấn audit của space đó đếm nhầm một hàng.
-SPACE_TOAN_HE: str = "*"
+# không rỗng. Từ story 3.6 hằng và luật của nó sống ở `core/audit.py`
+# (`SPACE_TIEN_TRINH`: hàng thuộc tiến trình, mọi tổng theo space không trả nó,
+# cửa đọc là `AuditPostgres.su_kien_tien_trinh`); tên cũ giữ lại làm re-export.
+SPACE_TOAN_HE: str = SPACE_TIEN_TRINH
+
+
+def ma_policy_mac_dinh(moi_truong: Mapping[str, str] | None = None) -> str:
+    """Id bảng chính sách mà tiến trình khởi động với; mặc định `day-du`.
+
+    Đọc từ môi trường chứ không hard-code vì FR-28 đòi chạy được cả bốn cấu
+    hình đo; mặc định là bảng vận hành chứ không phải một cấu hình đo, vì một
+    tiến trình khởi động mà không ai khai id phải chạy thứ an toàn nhất trong
+    bốn thứ, không phải thứ đầu bảng chữ cái.
+
+    Ở đây chứ không ở `api/main.py` (story 3.6): đường nạp (`api/do_chi_phi.py`,
+    `api/man_nap.py`) cũng phải đọc đúng cửa này để `policy_version` của các
+    hàng audit ingest là bảng mà tiến trình đang chạy, không phải một hằng
+    đường dẫn - `main.py` chỉ import lại.
+    """
+    nguon = os.environ if moi_truong is None else moi_truong
+    gia_tri = nguon.get(BIEN_ID_POLICY)
+    # `strip()` trên một giá trị không phải chuỗi là `AttributeError` giữa
+    # lifespan, xa chỗ gây ra. Một biến môi trường luôn là chuỗi, nhưng hàm này
+    # nhận `moi_truong` từ bộ test nên nó phải chịu được một map bất kỳ.
+    return (gia_tri.strip() if isinstance(gia_tri, str) else "") or ID_MAC_DINH
+
+
+def duong_dan_policy_mac_dinh(moi_truong: Mapping[str, str] | None = None) -> Path:
+    """Đường dẫn của bảng mà tiến trình này chạy: `duong_dan_cua(ma_policy_mac_dinh())`.
+
+    Cửa duy nhất mà đường nạp lấy bảng mặc định; không module nào giữ một hằng
+    đường dẫn policy riêng nữa.
+    """
+    return duong_dan_cua(ma_policy_mac_dinh(moi_truong))
 
 
 class LoiChinhSach(LoiXacThuc):

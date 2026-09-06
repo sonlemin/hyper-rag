@@ -78,6 +78,13 @@ class TrichDanNgoaiQuyen(RuntimeError):
 
     code = "TRICH_DAN_NGOAI_QUYEN"
 
+    def __init__(self, thong_diep: str, *, ids: tuple[str, ...] = ()):
+        super().__init__(thong_diep)
+        # Các id mà cửa quyền không xác nhận (story 3.6): handler ghi chúng vào
+        # `hyperedge_ids` của hàng `permission_mismatch`, còn thân lỗi thì
+        # không - id là khóa tra, không phải thứ đi ra theo một 500.
+        self.ids = tuple(ids)
+
 
 @dataclass(frozen=True)
 class TrichDan:
@@ -200,7 +207,8 @@ def dung_danh_sach(
         raise TrichDanNgoaiQuyen(
             f"ngữ cảnh mang {len(thieu)} id hyperedge mà adapter graph không"
             f" thấy dưới vai {context.role!r}: tầng lọc và cửa quyền lệch nhau,"
-            " không dựng citation cho lượt này"
+            " không dựng citation cho lượt này",
+            ids=tuple(thieu),
         )
     ra = []
     for id_he in ids:

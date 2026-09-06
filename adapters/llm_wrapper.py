@@ -75,6 +75,7 @@ from adapters.thu_lai import (
     goi_mot_lan_co_tran,
 )
 from core.audit import (
+    CT_REQUEST_ID,
     EVENT_EMBEDDING_COST,
     EVENT_LLM_COST,
     TIER_OBSERVATION,
@@ -503,6 +504,17 @@ CT_CHI_PHI_USD: str = "chi_phi_usd"
 CT_DANH_MUC_VERSION: str = "danh_muc_version"
 
 
+def _chi_tiet_luot(ngu_canh: PermissionContext) -> dict:
+    """Phần `chi_tiet` nối hàng này với lượt hỏi của nó (story 3.6).
+
+    Chỉ thêm `request_id` khi ngữ cảnh mang một id: đường nạp chạy dưới ngữ
+    cảnh hệ thống không có lượt, và sáu đợt nạp đã trả tiền ghi `chi_tiet` sáu
+    khóa - một khóa `null` thêm vào mọi hàng cũ không nối được gì mà đổi hình
+    dạng của cái mà `eval/ngoai_suy.py` đọc.
+    """
+    return {} if ngu_canh.request_id is None else {CT_REQUEST_ID: ngu_canh.request_id}
+
+
 def su_kien_chi_phi(
     event: str,
     ngu_canh: PermissionContext,
@@ -528,6 +540,7 @@ def su_kien_chi_phi(
             CT_TOKEN_RA: token_ra,
             CT_CHI_PHI_USD: muc.chi_phi_usd(token_vao, token_ra),
             CT_DANH_MUC_VERSION: danh_muc.version,
+            **_chi_tiet_luot(ngu_canh),
         },
     )
 

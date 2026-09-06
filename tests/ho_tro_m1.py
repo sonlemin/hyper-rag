@@ -75,9 +75,12 @@ def dung_engine(
     """Engine cổng M1: ba adapter thật, ba kết nối giả, LLM giả đã bọc.
 
     Sổ audit gắn lên engine dưới tên `so_audit` - thuộc tính thường, không phải
-    field, nên `asdict(self)` không chạm tới nó.
+    field, nên `asdict(self)` không chạm tới nó. Cùng sổ đó bind vào adapter KV
+    qua khe `lay_audit` (story 3.6) để hàng `filter` của một lượt nằm cạnh
+    `llm_cost`/`embedding_cost` của nó.
     """
     so_audit = SoAuditBoNho() if so_audit is None else so_audit
+    them.setdefault("lay_audit", lambda: so_audit)
     engine = EngineACL(
         working_dir=str(workspace_dir),
         embedding_func=embedding_boc(so_audit, ncc_embedding, model_embedding),

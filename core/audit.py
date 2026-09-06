@@ -46,11 +46,14 @@ TIERS: frozenset[str] = frozenset({TIER_MUTATION, TIER_OBSERVATION})
 # một truy vấn là số liệu NFR-08, và một Postgres chết không được làm câu hỏi
 # của người dùng chết theo); story 3.5 thêm `refusal` (tầng **observation**: một
 # lượt từ chối là một hàng của hai cột mà Đo 2 đếm, và lý do từ chối chỉ được
-# phép đi vào đây chứ không vào response - AD-8, FR-16). Sự kiện **lọc** của
-# adapter cùng cửa sổ chế độ đo vẫn vào ở story 3.6; `query` và `refusal` tách ra
-# sớm vì AC cuối của 3.3 đòi thời gian truy vấn ghi qua audit và FR-16 đòi lý do
-# từ chối ghi được ở đâu đó, mà một endpoint không đo được là một endpoint không
-# có số cho chương 4.
+# phép đi vào đây chứ không vào response - AD-8, FR-16); `query` và `refusal`
+# tách ra sớm vì AC cuối của 3.3 đòi thời gian truy vấn ghi qua audit và FR-16
+# đòi lý do từ chối ghi được ở đâu đó. Story 3.6 mở nốt bốn sự kiện để cả hai
+# tầng đủ (AD-16), tầng của từng sự kiện ghi ngay cạnh hằng của nó ở dưới.
+# Riêng `refusal` thì **tầng khai tại nơi gọi theo cờ chế độ đo**
+# (`HYPER_RAG_CHE_DO_DO`, ADR-017): tắt thì observation như 3.5, bật thì mutation
+# - một hàng `refusal` trong cửa sổ đo mà được phép mất là một mẫu số Đo 2
+# không ai tin được.
 EVENT_LLM_COST: str = "llm_cost"
 EVENT_EMBEDDING_COST: str = "embedding_cost"
 EVENT_INGEST_DOC: str = "ingest_doc"
@@ -60,6 +63,21 @@ EVENT_EXTRACT_DOC: str = "extract_doc"
 EVENT_POLICY_SWAP: str = "policy_swap"
 EVENT_QUERY: str = "query"
 EVENT_REFUSAL: str = "refusal"
+# Tầng observation: adapter KV lọc bớt mục sau khi đọc (tầng post-filter duy
+# nhất, brief §6), chỉ số đếm theo mức, không id, không nội dung; mất một hàng
+# là mất một số liệu của Đo 3, không được làm câu hỏi hỏng.
+EVENT_FILTER: str = "filter"
+# Tầng observation: một lần đăng nhập, cả hai chiều, để cửa đếm của 3-8 đứng
+# lên; audit chết không được làm đăng nhập chết theo.
+EVENT_AUTH_LOGIN: str = "auth_login"
+# Tầng **mutation**: tiến trình khởi động với bảng chính sách nào và chế độ đo
+# nào - không có hàng này thì cửa sổ đo không có mốc, nên ghi hỏng là tiến trình
+# không lên.
+EVENT_STARTUP: str = "startup"
+# Tầng observation: tầng lọc và cửa quyền của adapter lệch nhau
+# (`TRICH_DAN_NGOAI_QUYEN`), là lỗi hệ thống đã thành 500 ở handler; hàng này
+# là dấu vết cho hậu kiểm FR-20 chứ không phải điều kiện để trả lời.
+EVENT_PERMISSION_MISMATCH: str = "permission_mismatch"
 EVENTS: frozenset[str] = frozenset(
     {
         EVENT_LLM_COST,
@@ -71,8 +89,27 @@ EVENTS: frozenset[str] = frozenset(
         EVENT_POLICY_SWAP,
         EVENT_QUERY,
         EVENT_REFUSAL,
+        EVENT_FILTER,
+        EVENT_AUTH_LOGIN,
+        EVENT_STARTUP,
+        EVENT_PERMISSION_MISMATCH,
     }
 )
+
+# Space của sự kiện **thuộc tiến trình** (`startup`, `policy_swap`, `auth_login`):
+# bảng chính sách hay một lần đăng nhập không thuộc không gian tri thức nào, mà
+# `SuKienAudit` đòi `space` không rỗng. Luật: hàng mang giá trị này thuộc tiến
+# trình, không thuộc space nào; mọi tổng theo space (`tong_chi_phi`,
+# `dem_su_kien`) lọc bằng `=` nên không bao giờ trả nó, và cửa đọc riêng của nó
+# là `AuditPostgres.su_kien_tien_trinh`. `core.ids.validate_space` từ chối chuỗi
+# này, nên nó không thể lặng lẽ thành một tên space thật.
+SPACE_TIEN_TRINH: str = "*"
+
+# Khóa `chi_tiet` mang id của một lượt hỏi (story 3.6). `PermissionContext`
+# chở nó xuống wrapper LLM, nên `query`, `refusal`, `filter`, `llm_cost`,
+# `embedding_cost` và `permission_mismatch` của cùng một lượt nối được với nhau
+# bằng một phép so chuỗi; ingest không có lượt nên để `None`.
+CT_REQUEST_ID: str = "request_id"
 
 # Thời hạn (giây) cho một lần ghi ở tầng observation. Một Postgres treo giữ
 # kết nối mở mà không trả lời sẽ giữ lời gọi LLM treo theo nếu không có hạn;
@@ -128,8 +165,13 @@ class SuKienAudit:
       upstream sinh từ tên fact) - đó là id mà đường nạp cầm trong tay;
     - sự kiện `query` (3.4) ghi id **node** hyperedge, cùng id với trường `id`
       của từng citation trong response, để hậu kiểm đối chiếu được response
-      với audit bằng một phép so chuỗi. Lượt từ chối ghi tuple rỗng. Sự kiện
-      lọc của adapter (3.6) theo quy ước của `query`.
+      với audit bằng một phép so chuỗi. Lượt từ chối ghi tuple rỗng;
+      `permission_mismatch` (3.6) ghi các id node mà cửa quyền không xác nhận.
+      Sự kiện `filter` (3.6) ghi tuple rỗng: nó chỉ mang số đếm theo mức.
+
+    Ánh xạ giữa hai dạng có tên: `adapters.trich_xuat.id_vector_cua(he_id)` cho
+    id vector từ id node, một chiều (băm), nên hậu kiểm nối `query` với hàng
+    ingest bằng cách băm id của citation chứ không dò ngược.
     """
 
     tier: str

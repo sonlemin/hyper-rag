@@ -224,7 +224,8 @@ def test_xuat_json_ghi_file_co_lenh_va_khoa_bat_buoc(monkeypatch, tmp_path, caps
 
     so_do = json.loads(dich.read_text(encoding="utf-8"))
     assert so_do["version"] == 1 and so_do["space"] == "synth" and so_do["so_tai_lieu"] == 1
-    assert so_do["lenh"].startswith(mod.TIEN_TO_LENH) and "--xuat-json" in so_do["lenh"]
+    # `--policy` vắng nên dòng lệnh mang tiền tố `HYPER_RAG_POLICY_ID=<id>` (story 3.6).
+    assert so_do["lenh"].startswith(f"HYPER_RAG_POLICY_ID=day-du {mod.TIEN_TO_LENH}") and "--xuat-json" in so_do["lenh"]
     assert {d["model"]: d["loai"] for d in so_do["theo_model"]} == {
         "deepseek-v4-flash": "llm",
         "text-embedding-3-small": "embedding",
@@ -791,3 +792,41 @@ def test_dong_embedding_co_tran_so_dot_neu_ten(tmp_path):
     ).dong_in()
     assert dong.count(".json)") == mod.SO_DOT_NEU_TEN_EMBEDDING
     assert "2 đợt cũ hơn trong khoảng" in dong
+
+
+# --- Story 3.6: bảng mặc định của đường nạp đọc cùng cửa với tiến trình phục vụ ---
+
+
+def test_policy_mac_dinh_doc_tu_bien_moi_truong_nhu_tien_trinh_phuc_vu(monkeypatch, tmp_path):
+    """`HYPER_RAG_POLICY_ID=nhi-phan` và `--policy` vắng: `load_policy` nhận đúng file `policy-nhi-phan.yaml`."""
+    _gia_lap(monkeypatch)
+    nhan: list = []
+    monkeypatch.setattr(mod, "load_policy", lambda p: (nhan.append(Path(p)), type("P", (), {"policy_version": "pv"})())[1])
+    monkeypatch.setenv("HYPER_RAG_POLICY_ID", "nhi-phan")
+    mod.main([str(_corpus(tmp_path, "a.md") / "a.md")])
+    assert [p.name for p in nhan] == ["policy-nhi-phan.yaml"]
+
+
+def test_lenh_trong_file_so_do_mang_id_policy_khi_policy_vang(monkeypatch, tmp_path):
+    """Dòng `lenh` dựng lại được đúng bảng: `HYPER_RAG_POLICY_ID=<id>` đứng trước lệnh khi `--policy` vắng."""
+    _gia_lap(monkeypatch)
+    monkeypatch.setenv("HYPER_RAG_POLICY_ID", "nhi-phan")
+    dich = tmp_path / "so_do" / "nap.json"
+    a = _corpus(tmp_path, "a.md") / "a.md"
+    mod.main([str(a), "--xuat-json", str(dich)])
+    lenh = json.loads(dich.read_text(encoding="utf-8"))["lenh"]
+    assert lenh.startswith(f"HYPER_RAG_POLICY_ID=nhi-phan {mod.TIEN_TO_LENH} ")
+    # Có `--policy` tường minh thì lệnh đã tự đủ, không thêm tiền tố.
+    dich2 = tmp_path / "so_do" / "nap2.json"
+    mod.main([str(a), "--policy", "config/policy-day-du.yaml", "--xuat-json", str(dich2)])
+    assert json.loads(dich2.read_text(encoding="utf-8"))["lenh"].startswith(mod.TIEN_TO_LENH)
+
+
+def test_id_policy_go_sai_in_ma_ra_stderr_va_thoat_2(monkeypatch, tmp_path, capsys):
+    _gia_lap(monkeypatch)
+    monkeypatch.setenv("HYPER_RAG_POLICY_ID", "khong-co-bang-nay")
+    with pytest.raises(SystemExit) as thoat:
+        mod.main([str(_corpus(tmp_path, "a.md") / "a.md")])
+    assert thoat.value.code == 2
+    err = capsys.readouterr().err
+    assert err.startswith("POLICY_ID_KHONG_CO:") and "Traceback" not in err

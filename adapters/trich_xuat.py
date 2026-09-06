@@ -210,6 +210,21 @@ def dung_prompt(van_ban: str, tu_dien: str = "") -> str:
     )
 
 
+# Tiền tố id **vector** của hyperedge, quy ước của upstream (`operate.py:461-479`).
+TIEN_TO_ID_VECTOR: str = "rel-"
+
+
+def id_vector_cua(he_id: str) -> str:
+    """Id vector (`rel-<md5>`) của một hyperedge từ id node (`he-…`) của nó.
+
+    Một chỗ có tên cho ánh xạ hai quy ước id của cột `hyperedge_ids` trong
+    `audit_log` (story 3.6, khoản ledger 3.4): sự kiện ingest ghi id vector,
+    sự kiện `query` ghi id node bằng với `citations[].id`. Phép băm md5 của
+    upstream, một chiều: hậu kiểm nối hai loại hàng bằng cách băm id node.
+    """
+    return compute_mdhash_id(he_id, prefix=TIEN_TO_ID_VECTOR)
+
+
 @dataclass
 class ThongKeTrichXuat:
     """Kết quả trích xuất một tài liệu, đếm được (FR-02).
@@ -224,9 +239,15 @@ class ThongKeTrichXuat:
     so_fact_tho: int = 0
     so_hop_le: int = 0
     so_loai: int = 0
-    # Bản ghi hợp lệ trùng `id_fact` với một bản ghi khác *trong cùng chunk*:
-    # vẫn đếm vào `so_hop_le` (LLM đã trả nó) nhưng chỉ góp weight một lần.
-    so_trung_trong_chunk: int = 0
+    # Hai số đếm trùng *trong cùng chunk*, tách nhau (story 3.6, khoản ledger
+    # 2.12): bản ghi hợp lệ vẫn đếm vào `so_hop_le` (LLM đã trả nó) nhưng chỉ
+    # góp weight một lần. `so_trung_do_llm` là LLM lặp nguyên văn một fact
+    # (cùng `id_fact` **trước** `ap_bi_danh`); `so_gop_do_bi_danh` là hai fact
+    # khác nhau mà phép áp bí danh gộp về cùng một `id_fact` (chỉ trùng **sau**
+    # `ap_bi_danh`) - phép đo trực tiếp của FR-32. Trước 3.6 cả hai là một số
+    # `so_trung_trong_chunk` đếm sau phép áp, tức trộn hai chuyện.
+    so_trung_do_llm: int = 0
+    so_gop_do_bi_danh: int = 0
     loai_theo_ma: dict[str, int] = field(default_factory=dict)
 
     @property
@@ -241,7 +262,8 @@ class ThongKeTrichXuat:
             "so_fact_tho": self.so_fact_tho,
             "so_hop_le": self.so_hop_le,
             "so_loai": self.so_loai,
-            "so_trung_trong_chunk": self.so_trung_trong_chunk,
+            "so_trung_do_llm": self.so_trung_do_llm,
+            "so_gop_do_bi_danh": self.so_gop_do_bi_danh,
             "loai_theo_ma": dict(sorted(self.loai_theo_ma.items())),
             "ty_le_loai": self.ty_le_loai,
         }
@@ -352,7 +374,13 @@ async def trich_xuat_chunks(
     for chunk_key, kq in ket_qua:
         thong_ke._cong(kq)
         da_thay_trong_chunk: set[str] = set()
+        da_thay_truoc_ap: set[str] = set()
         for slots in kq.facts:
+            # Đếm trùng **trước** phép áp: id của bản LLM thật sự trả về. Cùng
+            # id ở đây là LLM lặp chính nó, không phải từ điển gộp.
+            id_truoc_ap = id_fact(slots)
+            lap_nguyen_van = id_truoc_ap in da_thay_truoc_ap
+            da_thay_truoc_ap.add(id_truoc_ap)
             # Chuẩn hóa bí danh **sau** `kiem_fact`, **trước** `id_fact` (story
             # 2.12, FR-32): id hyperedge và id entity phải cùng thấy tên chuẩn,
             # còn phần đếm loại của FR-02 thì chấm bản LLM thật sự trả về.
@@ -361,8 +389,12 @@ async def trich_xuat_chunks(
             slot_cua_he.setdefault(he_id, slots)
             # Cùng fact lặp trong một chunk góp weight đúng một lần (một lần
             # xuất hiện trong chunk đó); lặp qua *hai* chunk thì mỗi chunk một.
+            # Trùng sau phép áp mà không lặp nguyên văn là do bí danh gộp.
             if he_id in da_thay_trong_chunk:
-                thong_ke.so_trung_trong_chunk += 1
+                if lap_nguyen_van:
+                    thong_ke.so_trung_do_llm += 1
+                else:
+                    thong_ke.so_gop_do_bi_danh += 1
             else:
                 da_thay_trong_chunk.add(he_id)
                 ban_ghi_he[he_id].append({"weight": 1.0, "source_id": chunk_key})
@@ -398,7 +430,7 @@ async def trich_xuat_chunks(
     # Vector: cùng hình dạng `operate.py:461-479`, chỉ khác nội dung nhúng.
     await hyperedge_vdb.upsert(
         {
-            compute_mdhash_id(he_id, prefix="rel-"): {
+            id_vector_cua(he_id): {
                 "content": cau_fact(slot_cua_he[he_id]),
                 "hyperedge_name": he_id,
             }

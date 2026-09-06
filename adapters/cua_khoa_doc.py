@@ -34,6 +34,14 @@ cạnh nó.
 **Không đổi hành vi.** Ba adapter giữ nguyên method của mình làm lớp mỏng gọi
 xuống đây, nên mọi test cũ chạy không sửa. Cái đổi là chỗ *luật* sống.
 
+**Mức của một mục bị loại** (story 3.6) cũng sống ở đây, vì nó là mặt sau của
+cùng một câu hỏi: adapter KV so khóa từng bản ghi sau khi đọc, nên nó là tầng
+duy nhất biết một mục *bị loại* (Qdrant và Neo4j pre-filter, chúng không bao giờ
+thấy mục bị loại - chốt brief §6). "Theo mức" là mức mà vai hiện tại có với mục
+ấy: khóa nằm trong tập khóa của namespace hyperedge thì vai thấy hyperedge ở L1
+và chunk bị chặn bởi luật chunk-chỉ-L2 (NFR-06), đếm `L1`; ngược lại đếm `L0`.
+Hai số này là đúng thứ vòng "có/không chặn chunk" của PRD 5.3 đối chiếu.
+
 Chỉ stdlib cộng `core/`. Không biết gì về kho, đúng chiều import của AD-1.
 """
 
@@ -41,6 +49,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Protocol
+
+from core.masking import MASK_NAMESPACE
+
+# Hai mức mà một mục bị loại được đếm vào (ADR-017). Không có `L2`: một mục vai
+# đạt L2 thì không bị loại.
+MUC_BI_LOAI_L1: str = "L1"
+MUC_BI_LOAI_L0: str = "L0"
 
 
 class NguCanhDoc(Protocol):
@@ -99,3 +114,17 @@ def khoa_doc(context: NguCanhDoc, namespace: str) -> KhoaDoc:
     if context.bypass_filter:
         return KhoaDoc(doc_tho=True, khoa=frozenset())
     return KhoaDoc(doc_tho=False, khoa=context.keys_for(namespace))
+
+
+def muc_bi_loai(context: NguCanhDoc, khoa: str | None) -> str:
+    """Mức của vai hiện tại với một mục vừa bị loại, `L1` hay `L0`.
+
+    `khoa` là khóa quyền của chính mục đó (`{scope}:{content_type}`), hoặc `None`
+    với bản ghi "không khóa" (hợp nhất khác scope, story 2.1) - `None` không nằm
+    trong tập khóa nào nên nó đếm `L0`. Chỉ gọi dưới ngữ cảnh vai: ngữ cảnh hệ
+    thống không loại gì, và hỏi `keys_for` trên nó là lỗi lập trình mà
+    `core.permission` dội ra đúng như thế.
+    """
+    if khoa is not None and khoa in context.keys_for(MASK_NAMESPACE):
+        return MUC_BI_LOAI_L1
+    return MUC_BI_LOAI_L0

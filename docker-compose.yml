@@ -61,6 +61,11 @@ x-api-env: &api_env
   # chet. Danh muc id la danh muc dong suy tu glob `config/policy-*.yaml`, va
   # mot id go sai lam lifespan chet o giay dau kem ma POLICY_ID_KHONG_CO.
   HYPER_RAG_POLICY_ID: "${HYPER_RAG_POLICY_ID:-day-du}"
+  # Co che do do (story 3.6, ADR-017). Chi nhan 0/1, mac dinh 0: tien trinh
+  # khong ai khai co phai chay nhu 3.5, khong phai nhu mot cua so do. Bat thi
+  # hang `refusal` ghi tang mutation (ghi hong la 500 AUDIT_GHI_HONG); trang
+  # thai co ghi vao hang `startup` cua audit_log. Khong co endpoint bat/tat.
+  HYPER_RAG_CHE_DO_DO: "${HYPER_RAG_CHE_DO_DO:-0}"
   OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
   DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-}"
   # Chon model cho wrapper LLM/embedding (story 2.2, adapters/llm_wrapper.py):

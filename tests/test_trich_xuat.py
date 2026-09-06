@@ -592,7 +592,12 @@ def test_ainsert_chi_nhan_dung_mot_tai_lieu(workspace_dir, khong_gian, policy):
 
 
 def test_fact_trung_trong_cung_chunk_gop_weight_mot_lan(workspace_dir, khong_gian, policy, tmp_path):
-    """Cùng fact lặp hai lần trong một chunk: hyperedge weight 1.0, `so_hop_le` 3, `so_trung_trong_chunk` 1."""
+    """Cùng fact lặp hai lần trong một chunk: hyperedge weight 1.0, `so_hop_le` 3, `so_trung_do_llm` 1.
+
+    Từ story 3.6 số trùng tách đôi: LLM lặp nguyên văn đếm vào `so_trung_do_llm`,
+    hai fact khác nhau mà từ điển gộp về một id đếm vào `so_gop_do_bi_danh`
+    (ca ở `tests/test_audit_hai_tang.py`). Ở đây không có từ điển nên số sau là 0.
+    """
     thu_muc = tmp_path / "corpus"
     viet_tai_lieu(thu_muc, "b.md", scope="noi_bo", content_type="bao_cao_su_co", than=THAN_SU_CO)
     mt = dung_moi_truong(workspace_dir, llm_theo_fact({THAN_SU_CO: [FACT_TRUNG, dict(FACT_TRUNG), FACT_VPN]}))
@@ -601,7 +606,8 @@ def test_fact_trung_trong_cung_chunk_gop_weight_mot_lan(workspace_dir, khong_gia
     props = mt.node(khong_gian, ten_hyperedge(FACT_TRUNG)).props
     assert props["weight"] == 1.0 and props["source_id"] == id_chunk(THAN_SU_CO)
     ct = _extract_doc(mt, "b.md").chi_tiet
-    assert (ct["so_hop_le"], ct["so_trung_trong_chunk"], ct["so_loai"]) == (3, 1, 0)
+    assert (ct["so_hop_le"], ct["so_trung_do_llm"], ct["so_gop_do_bi_danh"], ct["so_loai"]) == (3, 1, 0, 0)
+    assert "so_trung_trong_chunk" not in ct
 
 
 class _LLMMotChunkNo:

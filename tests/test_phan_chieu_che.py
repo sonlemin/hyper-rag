@@ -110,6 +110,11 @@ XU_LY_RIENG_THEO_ADAPTER = {
         "all_keys": "chỉ kể id mà vai đạt L2, mục ngoài quyền vắng mặt",
         "filter_keys": "mục ngoài quyền tính là chưa tồn tại",
         "khoa_hien_co": _LY_DO_KHOA_HIEN_CO,
+        # Hai cửa của sổ lọc theo lượt (story 3.6): không đọc kho, không trả gì.
+        # `xa_loc` phát một hàng audit `filter` chỉ mang số đếm theo mức của
+        # chính ngữ cảnh đang mở; `bo_so_loc` xóa sổ của một lượt hỏng.
+        "xa_loc": "phát hàng audit số đếm bị loại của lượt, không trả nội dung",
+        "bo_so_loc": "bỏ sổ đếm của lượt hỏng, không đọc kho, không trả gì",
     },
 }
 
@@ -150,6 +155,8 @@ NGOAI_UPSTREAM = frozenset(
         "khoa_lan_can_hyperedge",
         "slot_cua_hyperedge",
         "trich_dan_cua",
+        "xa_loc",
+        "bo_so_loc",
         "xoa",
         "xoa_tat_ca",
         "ghi_thang",

@@ -51,6 +51,7 @@ from adapters.ingest import (
 )
 from adapters.policy_loader import load_policy
 from api.audit_postgres import AuditPostgres
+from api.chinh_sach import duong_dan_policy_mac_dinh
 from api.dot_nap import (
     MA_DOT_BI_HUY,
     TRANG_THAI_DOT_DANG_CHAY,
@@ -67,7 +68,6 @@ from core.ingest_scan import KICH_THUOC_TOI_DA, quet_cac_file
 logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-POLICY_MAC_DINH = REPO_ROOT / "config" / "policy-day-du.yaml"
 
 SPACE_MAC_DINH: str = "synth"
 
@@ -401,7 +401,9 @@ async def nap(
             # `quet_cac_file` đọc trọn thân tài liệu vào `TaiLieuNguon`, nên thư
             # mục tạm không cần sống qua đợt và được dọn ngay tại đây.
             quet = quet_cac_file(duong_dan)
-        policy = load_policy(POLICY_MAC_DINH)
+        # Cùng cửa với tiến trình phục vụ (story 3.6): màn nạp trong cùng
+        # compose đọc cùng `HYPER_RAG_POLICY_ID`.
+        policy = load_policy(duong_dan_policy_mac_dinh())
     except Exception as loi:
         # Chỗ đã giữ phải được trả lại, nếu không màn kẹt ở "đang chạy" mãi. Và
         # câu trả lời phải theo hợp đồng `{error: {code, message}}`: một 500

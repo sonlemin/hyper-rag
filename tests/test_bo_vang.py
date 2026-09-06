@@ -170,13 +170,18 @@ def test_luat_phu_khong_thay_the_mau_so_cua_cong_r2():
 
 
 def test_moi_hang_policy_mac_dinh_deu_nap_duoc():
-    """Tám hằng `POLICY_MAC_DINH` phải trỏ vào một file nạp được, cả tám.
+    """Sáu hằng `POLICY_MAC_DINH` của `eval/` và oracle trỏ vào một file nạp được, cả sáu.
 
-    Hai trong tám (`api/do_chi_phi.py`, `eval/ct03.py`) **không có gì canh**: đổi
-    chúng thành một tên file không tồn tại thì cả bộ test vẫn xanh, vì hai module
-    ấy chỉ nạp policy trên đường chạy thật (chạm kho, tốn tiền hoặc cần máy chủ).
-    Một cái tên nói dối ở đó là một cấu hình đọc nhầm phát hiện được ở đúng lúc
-    đang chạy trên máy chủ.
+    `eval/ct03.py` **không có gì canh**: đổi nó thành một tên file không tồn tại
+    thì cả bộ test vẫn xanh, vì module ấy chỉ nạp policy trên đường chạy thật
+    (chạm kho, cần máy chủ). Một cái tên nói dối ở đó là một cấu hình đọc nhầm
+    phát hiện được ở đúng lúc đang chạy trên máy chủ.
+
+    Hai module `api/` (`do_chi_phi`, `man_nap`) **không còn hằng** từ story 3.6
+    (khoản ledger 3.2): đường nạp lấy bảng qua cùng cửa với tiến trình phục vụ,
+    `api.chinh_sach.duong_dan_policy_mac_dinh()` đọc `HYPER_RAG_POLICY_ID`. Ca
+    này ghim cả hai điều: hằng đã biến mất, và cửa ấy với môi trường trống trỏ
+    đúng bảng vận hành mà sáu hằng kia trỏ.
 
     Import chính module chứ không đọc AST: cái phải đúng là giá trị hằng lúc
     chạy, không phải một chuỗi trong mã nguồn.
@@ -190,11 +195,10 @@ def test_moi_hang_policy_mac_dinh_deu_nap_duoc():
     import eval.chup_do_thi
     import eval.ct03
     import eval.do_trich_xuat
+    from api.chinh_sach import duong_dan_policy_mac_dinh
     from tests.fixtures import oracle
 
     hang = {
-        "api.do_chi_phi": api.do_chi_phi.POLICY_MAC_DINH,
-        "api.man_nap": api.man_nap.POLICY_MAC_DINH,
         "eval.bo_vang": eval.bo_vang.POLICY_MAC_DINH,
         "eval.cau_hoi": eval.cau_hoi.POLICY_MAC_DINH,
         "eval.chup_do_thi": eval.chup_do_thi.POLICY_MAC_DINH,
@@ -202,13 +206,16 @@ def test_moi_hang_policy_mac_dinh_deu_nap_duoc():
         "eval.do_trich_xuat": eval.do_trich_xuat.POLICY_MAC_DINH,
         "tests.fixtures.oracle": oracle.POLICY_DAY_DU,
     }
-    assert len(hang) == 8
+    assert len(hang) == 6
     for ten, duong_dan in hang.items():
         assert duong_dan.exists(), (ten, duong_dan)
         load_policy(duong_dan)  # không ném
-    # Cả tám trỏ vào **cùng** một bảng: bảng vận hành. Tám đường nạp policy mà
+    # Cả sáu trỏ vào **cùng** một bảng: bảng vận hành. Sáu đường nạp policy mà
     # hai đường đọc hai bảng khác nhau là hai bộ số không so được với nhau.
     assert len(set(hang.values())) == 1, hang
+    for module in (api.do_chi_phi, api.man_nap):
+        assert not hasattr(module, "POLICY_MAC_DINH"), module.__name__
+    assert duong_dan_policy_mac_dinh({}).resolve() == next(iter(hang.values())).resolve()
 
 
 def test_glob_bang_chinh_sach_rong_la_loi_chu_khong_phai_luat_phu_rong(tmp_path):

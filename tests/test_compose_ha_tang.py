@@ -301,3 +301,30 @@ def test_hai_service_python_deu_thay_khoa_ky(compose, dv):
     biến ở đây là mở đường cho hai khối biến trôi dạt.
     """
     assert "JWT_SECRET" in compose["services"][dv]["environment"]
+
+
+def test_compose_khai_co_che_do_do_mac_dinh_tat_va_hai_file_tham_so_deu_co():
+    """`HYPER_RAG_CHE_DO_DO` là tham số môi trường (story 3.6, ADR-017), mặc định `0`.
+
+    `:-0` chứ không `:?`: một tiến trình không ai khai cờ phải chạy như 3.5,
+    không phải chết và không phải một cửa sổ đo. Hai file tham số khai tường
+    minh một giá trị mà `doc_che_do_do` nhận, để đọc một file là biết môi
+    trường đó có đang là cửa sổ đo hay không.
+    """
+    from api.che_do_do import BIEN_CHE_DO_DO, GIA_TRI_TAT, doc_che_do_do
+
+    goc = Path(__file__).resolve().parent.parent
+    tho = (goc / "docker-compose.yml").read_text(encoding="utf-8")
+    assert "${" + BIEN_CHE_DO_DO + ":-" + GIA_TRI_TAT + "}" in tho
+    assert "${" + BIEN_CHE_DO_DO + ":?" not in tho
+    for ten_file in (".env.server", ".env.laptop"):
+        env = doc_env(ten_file)
+        assert BIEN_CHE_DO_DO in env, ten_file
+        doc_che_do_do(env)  # không ném: giá trị là 0 hoặc 1
+
+
+@pytest.mark.parametrize("dv", SERVICE_PYTHON)
+def test_hai_service_python_deu_thay_co_che_do_do(compose, dv):
+    from api.che_do_do import BIEN_CHE_DO_DO
+
+    assert BIEN_CHE_DO_DO in compose["services"][dv]["environment"]

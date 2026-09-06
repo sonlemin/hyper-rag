@@ -42,9 +42,8 @@ trong ba kho tri thức mà Never của spec 3.2 xếp vào story 3.3. Hai tuy�
 """
 
 import logging
-import os
 from contextlib import asynccontextmanager
-from typing import Annotated, Mapping
+from typing import Annotated
 
 import anyio.to_thread
 from fastapi import APIRouter, Depends, FastAPI, Request
@@ -55,7 +54,8 @@ from adapters.identity_seed import IdentitySeedInvalid, nap_tai_khoan
 from adapters.nhom_phu_trach import bang_nhom_mac_dinh
 from api import hoi_dap
 from api.audit_postgres import AuditPostgres
-from api.chinh_sach import BIEN_ID_POLICY, ID_MAC_DINH, KhoChinhSach
+from api.che_do_do import doc_che_do_do, ghi_startup
+from api.chinh_sach import KhoChinhSach, ma_policy_mac_dinh
 from api.tai_khoan import KhoTaiKhoan
 from api.xac_thuc import (
     ClaimNguoiHoi,
@@ -63,6 +63,7 @@ from api.xac_thuc import (
     doc_token,
     doi_admin,
     doi_demo_hoac_admin,
+    ghi_dang_nhap,
     khoa_ky,
     loi_dang_nhap_sai,
     phat_token,
@@ -132,22 +133,6 @@ async def mo_audit() -> AuditPostgres:
     return audit
 
 
-def ma_policy_mac_dinh(moi_truong: Mapping[str, str] | None = None) -> str:
-    """Id bảng chính sách mà tiến trình khởi động với; mặc định `day-du`.
-
-    Đọc từ môi trường chứ không hard-code vì FR-28 đòi chạy được cả bốn cấu
-    hình đo; mặc định là bảng vận hành chứ không phải một cấu hình đo, vì một
-    tiến trình khởi động mà không ai khai id phải chạy thứ an toàn nhất trong
-    bốn thứ, không phải thứ đầu bảng chữ cái.
-    """
-    nguon = os.environ if moi_truong is None else moi_truong
-    gia_tri = nguon.get(BIEN_ID_POLICY)
-    # `strip()` trên một giá trị không phải chuỗi là `AttributeError` giữa
-    # lifespan, xa chỗ gây ra. Một biến môi trường luôn là chuỗi, nhưng hàm này
-    # nhận `moi_truong` từ bộ test nên nó phải chịu được một map bất kỳ.
-    return (gia_tri.strip() if isinstance(gia_tri, str) else "") or ID_MAC_DINH
-
-
 @asynccontextmanager
 async def vong_doi(app: FastAPI):
     """Khởi động: kiểm khóa ký, mở bảng `users`, đổ seed. Tắt: đóng pool.
@@ -177,6 +162,10 @@ async def vong_doi(app: FastAPI):
         app.state.kho_chinh_sach.ma,
         app.state.kho_chinh_sach.hien_tai().policy_version[:12],
     )
+    # Cờ chế độ đo (story 3.6, ADR-017): đọc **đúng một lần**, ở đây, trước mọi
+    # kết nối - một giá trị lạ là lỗi cấu hình và chết cùng nhịp với một id
+    # policy gõ sai. Không có endpoint bật/tắt.
+    app.state.che_do_do = doc_che_do_do()
     kho = await mo_kho_tai_khoan()
     app.state.kho_tai_khoan = kho
     audit = None
@@ -184,6 +173,10 @@ async def vong_doi(app: FastAPI):
     try:
         so = await kho.dong_bo(nap_tai_khoan())
         audit = await mo_audit()
+        # Hàng `startup` tầng mutation, **sau** khi audit mở và **trước** khi
+        # engine dựng: bảng nào đang chạy, cờ đo thế nào. Ghi hỏng thì tiến
+        # trình không lên, đóng ngược ở nhánh dưới.
+        await ghi_startup(audit, app.state.kho_chinh_sach, app.state.che_do_do)
         # Engine mở **sau** audit vì wrapper LLM cần một `AuditPort` lúc dựng
         # (`bo_llm`/`bo_embedding` ghi sự kiện chi phí), và đóng **trước** audit
         # ở `finally` bên dưới - thứ tự ngược của thứ tự mở.
@@ -348,16 +341,27 @@ async def dang_nhap(request: Request) -> dict:
 
     Tài khoản không tồn tại vẫn đi qua đúng một phép bcrypt (`so_mat_khau` với
     hash `None`), nên thời gian đáp ứng của hai nhánh bằng nhau.
+
+    Mọi nhánh, đúng lẫn sai, ghi một hàng `auth_login` best-effort (story 3.6):
+    `act` là tên gõ vào (`None` khi thân hỏng), `chi_tiet.ket_qua` là kết cục,
+    không trường nào nói vì sao sai. Audit hỏng là WARNING, đăng nhập vẫn chạy
+    và thân response không đổi một byte.
     """
+    audit = request.app.state.audit
+    policy_version = request.app.state.kho_chinh_sach.hien_tai().policy_version
     try:
         than = await request.json()
     except Exception:
-        raise loi_dang_nhap_sai() from None
-    if not isinstance(than, dict):
-        raise loi_dang_nhap_sai()
-    ten = than.get("tai_khoan")
-    mat_khau = than.get("mat_khau")
+        than = None
+    ten = than.get("tai_khoan") if isinstance(than, dict) else None
+    mat_khau = than.get("mat_khau") if isinstance(than, dict) else None
     if not isinstance(ten, str) or not isinstance(mat_khau, str):
+        await ghi_dang_nhap(
+            audit,
+            ten=ten if isinstance(ten, str) else None,
+            thanh_cong=False,
+            policy_version=policy_version,
+        )
         raise loi_dang_nhap_sai()
 
     dong = await request.app.state.kho_tai_khoan.tra(ten)
@@ -370,6 +374,7 @@ async def dang_nhap(request: Request) -> dict:
     khop = await anyio.to_thread.run_sync(
         so_mat_khau, mat_khau, dong.mat_khau_hash if dong else None
     )
+    await ghi_dang_nhap(audit, ten=ten, thanh_cong=bool(khop), policy_version=policy_version)
     if not khop:
         raise loi_dang_nhap_sai()
 
@@ -519,6 +524,7 @@ async def hoi(request: Request, than: hoi_dap.ThanHoiDap, c: Claim) -> dict:
         policy=request.app.state.kho_chinh_sach.hien_tai(),
         engine=request.app.state.engine,
         audit=request.app.state.audit,
+        che_do_do=request.app.state.che_do_do,
     )
 
 

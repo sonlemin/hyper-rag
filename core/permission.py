@@ -109,8 +109,17 @@ class PermissionContext:
     masked_slots: Mapping[str, frozenset[str]]
     grant_ids: tuple[str, ...]
     policy_version: str
+    # Id của lượt hỏi (story 3.6), chỉ để nối các hàng audit của cùng một lượt;
+    # không phải một trục quyền, không adapter nào đọc nó để lọc. Đi theo kênh
+    # đã có thay vì một contextvar thứ hai cạnh contextvar quyền. Ingest để
+    # `None`: pipeline nạp không có lượt.
+    request_id: str | None = None
 
     def __post_init__(self):
+        if self.request_id is not None and not isinstance(self.request_id, str):
+            raise TypeError(f"request_id phải là chuỗi hoặc None, nhận được {_ten(self.request_id)}")
+        if self.request_id == "":
+            raise ValueError("request_id rỗng: không có lượt thì để None")
         if self.kind not in KINDS:
             raise ValueError(
                 f"kind {self.kind!r} không hợp lệ, chỉ có {'/'.join(sorted(KINDS))}"
@@ -200,6 +209,7 @@ def user_context(
     space: str,
     real_account: str,
     grant_ids: tuple[str, ...] = (),
+    request_id: str | None = None,
 ) -> PermissionContext:
     """Factory duy nhất dựng ngữ cảnh quyền của người dùng.
 
@@ -226,4 +236,5 @@ def user_context(
         masked_slots=hang.masked_slots,
         grant_ids=tuple(grant_ids),
         policy_version=policy.policy_version,
+        request_id=request_id,
     )

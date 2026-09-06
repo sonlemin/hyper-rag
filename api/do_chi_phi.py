@@ -59,6 +59,7 @@ from adapters.policy_loader import load_policy
 from adapters.trich_xuat import dung_prompt, khoi_tu_dien
 from adapters.tu_dien_thuc_the import TuDienThucTheInvalid, tai_tu_dien_thuc_the
 from api.audit_postgres import AuditPostgres, TongChiPhi
+from api.chinh_sach import BIEN_ID_POLICY, LoiChinhSach, duong_dan_policy_mac_dinh, ma_policy_mac_dinh
 from api.dot_nap import (
     duong_dan_tu_dien,
     TRANG_THAI_DOT_XONG,
@@ -81,7 +82,6 @@ from core.audit import thoi_diem_utc
 from core.ingest_scan import KetQuaQuet, quet_cac_file
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-POLICY_MAC_DINH = REPO_ROOT / "config" / "policy-day-du.yaml"
 
 # Tiền tố của dòng `lenh` ghi vào file số đo: người đọc chương 4 phải dựng lại
 # được đúng lệnh đã sinh ra con số, không chỉ biết "một lần nạp nào đó".
@@ -112,7 +112,13 @@ def _tham_so(argv: list[str]) -> argparse.Namespace:
     )
     p.add_argument("--xoa-space", action="store_true", help="xóa sạch space rồi thoát, không nạp gì")
     p.add_argument("--ep-ghi-de", action="store_true", help="re-ingest cả tài liệu không đổi (cùng sha256 và nhãn)")
-    p.add_argument("--policy", type=Path, default=POLICY_MAC_DINH, help="bảng chính sách lấy policy_version")
+    p.add_argument(
+        "--policy",
+        type=Path,
+        default=None,
+        help=f"bảng chính sách lấy policy_version; mặc định là bảng của {BIEN_ID_POLICY}"
+        " (cùng cửa với tiến trình phục vụ, story 3.6)",
+    )
     p.add_argument(
         "--xuat-json",
         type=Path,
@@ -539,7 +545,7 @@ def _xuat_json(ts: argparse.Namespace, lan: LanNap, argv: list[str]) -> None:
             flush=True,
         )
         return
-    so_do = so_do_nap(lan, lenh=f"{TIEN_TO_LENH} {' '.join(argv)}")
+    so_do = so_do_nap(lan, lenh=dong_lenh(ts, argv))
     # Một đợt *chạy trọn* vẫn ra file vô nghĩa được: LLM trả `{"facts": []}` cho
     # mọi tài liệu thì mỗi tài liệu mang `KHONG_CO_FACT`, đợt vẫn `xong`, mà
     # `so_tai_lieu` là 0 - và `eval/ngoai_suy.py` chia cho nó. Cửa này chặn ở
@@ -613,8 +619,25 @@ def in_uoc_tinh(ts: argparse.Namespace) -> int:
     return 0
 
 
+def dong_lenh(ts: argparse.Namespace, argv: list[str]) -> str:
+    """Dòng `lenh` của file số đo: dựng lại được đúng đợt, kể cả bảng chính sách.
+
+    `--policy` vắng thì bảng đến từ `HYPER_RAG_POLICY_ID` của môi trường, tức
+    một thứ không có trong `argv`; ghi nó ra phía trước lệnh, để người đọc
+    chương 4 chạy lại được đúng lệnh với đúng bảng thay vì bảng của môi trường
+    lúc họ chạy.
+    """
+    lenh = f"{TIEN_TO_LENH} {' '.join(argv)}"
+    if ts.policy is None:
+        return f"{BIEN_ID_POLICY}={ma_policy_mac_dinh()} {lenh}"
+    return lenh
+
+
 async def chay(ts: argparse.Namespace, argv: list[str] | None = None) -> TongChiPhi:
-    policy = load_policy(ts.policy)
+    # Cùng cửa với `api/main.py` (story 3.6, khoản ledger 3.2): một tiến trình
+    # chạy cấu hình đo khác `day-du` thì hàng audit ingest cũng mang
+    # `policy_version` của đúng bảng đó, không của một hằng đường dẫn.
+    policy = load_policy(ts.policy if ts.policy is not None else duong_dan_policy_mac_dinh())
     audit = await AuditPostgres.mo()
     try:
         await audit.khoi_tao()
@@ -703,7 +726,13 @@ def main(argv: list[str] | None = None) -> None:
         # kho, không gọi LLM. Rào `.space` vẫn chạy trước nó - xem trước một đợt
         # với cờ `--space` sai là in một con số cho một space khác.
         raise SystemExit(in_uoc_tinh(ts))
-    asyncio.run(chay(ts, argv))
+    try:
+        asyncio.run(chay(ts, argv))
+    except LoiChinhSach as loi:
+        # `HYPER_RAG_POLICY_ID` gõ sai hay `config/` trống: một mã ra stderr và
+        # mã thoát 2 (cấu hình), không phải một traceback cho người chạy đọc.
+        print(f"{loi.ma}: {loi.thong_diep}", file=sys.stderr)
+        raise SystemExit(2) from None
 
 
 if __name__ == "__main__":

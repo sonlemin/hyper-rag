@@ -443,9 +443,13 @@ def test_than_khong_phai_json_cung_ra_dung_ma_do(client):
 
 def test_id_policy_mac_dinh_doc_tu_moi_truong():
     """Biến môi trường trỏ id; vắng hay rỗng thì rơi về bảng vận hành."""
-    assert api_main.ma_policy_mac_dinh({}) == ID_MAC_DINH
-    assert api_main.ma_policy_mac_dinh({"HYPER_RAG_POLICY_ID": "  "}) == ID_MAC_DINH
-    assert api_main.ma_policy_mac_dinh({"HYPER_RAG_POLICY_ID": "nhi-phan"}) == "nhi-phan"
+    from api.chinh_sach import ma_policy_mac_dinh
+
+    assert ma_policy_mac_dinh({}) == ID_MAC_DINH
+    assert ma_policy_mac_dinh({"HYPER_RAG_POLICY_ID": "  "}) == ID_MAC_DINH
+    assert ma_policy_mac_dinh({"HYPER_RAG_POLICY_ID": "nhi-phan"}) == "nhi-phan"
+    # `api/main.py` chỉ import lại (story 3.6): đường nạp đọc cùng cửa.
+    assert api_main.ma_policy_mac_dinh is ma_policy_mac_dinh
 
 
 def test_lifespan_nap_policy_truoc_khi_mo_ket_noi_nao(monkeypatch, kho_gia):

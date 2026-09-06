@@ -28,7 +28,9 @@ from core.policy import NAMESPACES
 from core.system_context import system_context
 from tests.fixtures import oracle
 
-# Tám trường của AD-3, đúng thứ tự khai trong spine.
+# Tám trường của AD-3, đúng thứ tự khai trong spine, cộng `request_id` của
+# story 3.6 ở cuối - id nối các hàng audit của một lượt, không phải một trục
+# quyền (không adapter nào đọc nó để lọc).
 TAM_TRUONG = (
     "kind",
     "space",
@@ -38,6 +40,7 @@ TAM_TRUONG = (
     "masked_slots",
     "grant_ids",
     "policy_version",
+    "request_id",
 )
 
 
@@ -67,7 +70,11 @@ def test_context_frozen(policy):
 
 
 def test_du_tam_truong(policy):
-    """Đúng 8 trường của AD-3, gồm cả `real_account`."""
+    """Đúng 9 trường: 8 của AD-3 (gồm `real_account`) cộng `request_id` của 3.6.
+
+    `request_id` chỉ nối các hàng audit của một lượt; nó **không phải một trục
+    quyền** - không adapter nào đọc nó để lọc hay che.
+    """
     assert tuple(f.name for f in dataclasses.fields(PermissionContext)) == TAM_TRUONG
 
 

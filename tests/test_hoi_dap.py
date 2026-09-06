@@ -215,9 +215,9 @@ def test_ngu_canh_dung_dung_mot_lan_moi_request_va_kind_luon_la_user(
     goc = hoi_dap.ngu_canh_cua
     dem = []
 
-    def _dem(danh_tinh, policy):
+    def _dem(danh_tinh, policy, **them):
         dem.append(danh_tinh)
-        return goc(danh_tinh, policy)
+        return goc(danh_tinh, policy, **them)
 
     monkeypatch.setattr(hoi_dap, "ngu_canh_cua", _dem)
     assert _hoi(client, "ts01").status_code == 200
@@ -576,7 +576,7 @@ def test_ngu_canh_he_thong_den_tu_ngoai_bi_handler_tu_choi(
     monkeypatch.setattr(
         hoi_dap,
         "ngu_canh_cua",
-        lambda danh_tinh, policy: system_context(
+        lambda danh_tinh, policy, **_: system_context(
             space=danh_tinh.khong_gian, policy_version=policy.policy_version
         ),
     )
@@ -855,6 +855,9 @@ def test_hai_duong_hai_ngan_sach_doc_thang_tu_hai_engine(monkeypatch, tmp_path):
         # Đường phục vụ **không** nạp từ điển thực thể: nó đổi id entity của thứ
         # được *ghi*, nên trên đường đọc nó là một cấu hình không có tác dụng.
         assert phuc_vu.entity_dictionary_path is None
+        # Port audit vào adapter KV (story 3.6): đường phục vụ có, đường nạp không.
+        assert phuc_vu.text_chunks.audit is so and phuc_vu.full_docs.audit is so
+        assert nap.text_chunks.audit is None and nap.full_docs.audit is None
         # **Dựng engine không mở socket nào**, và đây là chỗ khẳng định nó thay
         # vì nói suông. Cả hai engine trỏ vào một host không phân giải được;
         # nếu `__post_init__` mở kết nối thật thì hai dòng trên đã phải chờ DNS

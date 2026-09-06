@@ -10,6 +10,20 @@ chối / truy vấn của adapter và màn tình trạng (3.6, FR-25) đứng l�
 này mà không đổi lược đồ, vì phần riêng của mỗi sự kiện là jsonb. Không có
 đường xóa: audit là sổ chỉ ghi thêm, dọn dữ liệu test là việc của bộ test.
 
+Story 3.6 thêm **đúng hai** cửa đọc, cả hai tham số hóa hoàn toàn (f-string chỉ
+ghép hằng tên trường, mọi đầu vào đi qua `$n`):
+
+- `dem_su_kien(event, *, space, tu, den, theo)` gom số hàng của một sự kiện
+  theo một khóa `chi_tiet` (hai cột của Đo 2 là `theo="ly_do"` trên `refusal`;
+  `tu_khoa_rong` ra thành hàng thứ ba, không cộng vào cột nào - ADR-017), và
+  trả kèm `so_khong_dong_bo`: số hàng **không** mang tầng mutation trong cửa
+  sổ. Cửa đếm phải nói được cửa sổ có hàng nào không được bảo đảm, vì `refusal`
+  ghi observation khi cờ chế độ đo tắt và một hàng như thế được phép mất.
+- `su_kien_tien_trinh(tu, den)` là cửa đọc "hệ chạy bảng nào, từ lúc nào": mọi
+  hàng mang `space = SPACE_TIEN_TRINH` (`startup`, `policy_swap`, `auth_login`)
+  theo thời gian. `tong_chi_phi` và `dem_su_kien` lọc `space = $1` nên không
+  bao giờ thấy chúng - đó là luật của hằng ấy ở `core/audit.py`.
+
 Async toàn tuyến bằng `asyncpg` (spine Stack 0.31); pool nhỏ vì chỉ có một tiến
 trình phục vụ và một script đo.
 """
@@ -17,7 +31,7 @@ trình phục vụ và một script đo.
 import json
 import os
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Mapping
@@ -31,7 +45,20 @@ from adapters.llm_wrapper import (
     CT_TOKEN_RA,
     CT_TOKEN_VAO,
 )
-from core.audit import EVENT_EMBEDDING_COST, EVENT_LLM_COST, SuKienAudit, kiem_thoi_diem
+from core.audit import (
+    EVENT_EMBEDDING_COST,
+    EVENT_LLM_COST,
+    EVENTS,
+    SPACE_TIEN_TRINH,
+    TIER_MUTATION,
+    SuKienAudit,
+    kiem_thoi_diem,
+)
+from core.ids import validate_space
+
+# Trần số hàng mà `su_kien_tien_trinh` trả trong một lần đọc: sổ chỉ ghi thêm
+# và một tiến trình khởi động lại nhiều tháng thì dãy này không có trần tự nhiên.
+GIOI_HAN_TIEN_TRINH: int = 1000
 
 DUONG_DAN_DDL: Path = Path(__file__).resolve().parent / "sql" / "audit_log.sql"
 
@@ -124,6 +151,49 @@ _SQL_TONG_CHI_PHI = f"""
 """
 
 
+@dataclass(frozen=True)
+class DemSuKien:
+    """Kết quả của `dem_su_kien`.
+
+    `so_theo` là số hàng theo giá trị của `chi_tiet->>theo` (khóa `None` là hàng
+    không có trường đó); `theo=None` là không gom, khi đó `so_theo` rỗng và chỉ
+    `tong` có nghĩa. `tong` là tổng; và
+    `so_khong_dong_bo` là số hàng trong cửa sổ **không** mang tầng mutation -
+    những hàng được phép mất theo AD-16, nên một cửa sổ đo mà số này khác 0 là
+    một mẫu số phải đọc kèm dấu hỏi.
+    """
+
+    so_theo: dict
+    tong: int
+    so_khong_dong_bo: int
+
+
+# Đếm theo một khóa `chi_tiet`. `chi_tiet->>$5` nhận tên khóa qua tham số nên
+# không có tên trường nào ghép vào câu; `$5` là NULL thì gom về một hàng.
+_SQL_DEM_SU_KIEN = f"""
+    SELECT chi_tiet->>$5::text AS khoa,
+           count(*) AS so_hang,
+           count(*) FILTER (WHERE tier <> '{TIER_MUTATION}') AS khong_dong_bo
+    FROM audit_log
+    WHERE space = $1
+      AND event = $2
+      AND ($3::timestamptz IS NULL OR thoi_diem >= $3)
+      AND ($4::timestamptz IS NULL OR thoi_diem < $4)
+    GROUP BY 1
+    ORDER BY 1
+"""
+
+_SQL_SU_KIEN_TIEN_TRINH = """
+    SELECT thoi_diem, tier, event, act, role, space, policy_version, hyperedge_ids, chi_tiet
+    FROM audit_log
+    WHERE space = $1
+      AND ($2::timestamptz IS NULL OR thoi_diem >= $2)
+      AND ($3::timestamptz IS NULL OR thoi_diem < $3)
+    ORDER BY thoi_diem, id
+    LIMIT $4
+"""
+
+
 class AuditPostgres:
     """`AuditPort` trên bảng `audit_log`; sở hữu pool nó mở."""
 
@@ -196,5 +266,82 @@ class AuditPostgres:
             theo_model=theo_model,
         )
 
+    async def dem_su_kien(
+        self,
+        event: str,
+        *,
+        space: str,
+        tu: str | None = None,
+        den: str | None = None,
+        theo: str | None = None,
+    ) -> DemSuKien:
+        """Số hàng của một sự kiện trong một space và cửa sổ, gom theo một khóa `chi_tiet`.
+
+        `event` phải nằm trong danh mục của `core/audit.py`: một tên gõ sai đếm
+        ra 0 là một con số trông như thật. `space` phải là một space thật
+        (`validate_space`): `"*"` không phải space và có cửa đọc riêng. `tu`/`den`
+        nửa mở `[tu, den)`, cùng luật với `tong_chi_phi`, và `tu >= den` là một
+        cửa sổ rỗng gõ nhầm chứ không phải một số 0. `theo=None` là không gom,
+        `so_theo` rỗng; `theo=""` là tên khóa gõ thiếu.
+        """
+        if event not in EVENTS:
+            raise ValueError(f"event {event!r} không có trong danh mục {sorted(EVENTS)}")
+        if space == SPACE_TIEN_TRINH:
+            raise ValueError(
+                f"space {SPACE_TIEN_TRINH!r} là sự kiện tiến trình, đọc bằng su_kien_tien_trinh"
+            )
+        validate_space(space)
+        if theo is not None and not isinstance(theo, str):
+            raise TypeError(f"theo phải là chuỗi hoặc None, nhận được {type(theo).__name__}")
+        if theo == "":
+            raise ValueError("theo rỗng: tên khóa chi_tiet gõ thiếu")
+        moc = kiem_thoi_diem(tu) if tu else None
+        moc_ket = kiem_thoi_diem(den) if den else None
+        if moc is not None and moc_ket is not None and moc >= moc_ket:
+            raise ValueError(f"cửa sổ rỗng: tu={tu!r} không nhỏ hơn den={den!r}")
+        async with self._pool.acquire() as conn:
+            hang = await conn.fetch(_SQL_DEM_SU_KIEN, space, event, moc, moc_ket, theo)
+        tong = sum(int(h["so_hang"]) for h in hang)
+        return DemSuKien(
+            so_theo={} if theo is None else {h["khoa"]: int(h["so_hang"]) for h in hang},
+            tong=tong,
+            so_khong_dong_bo=sum(int(h["khong_dong_bo"]) for h in hang),
+        )
+
+    async def su_kien_tien_trinh(
+        self, *, tu: str | None = None, den: str | None = None, gioi_han: int = GIOI_HAN_TIEN_TRINH
+    ) -> tuple[SuKienAudit, ...]:
+        """Hàng thuộc tiến trình (`space = SPACE_TIEN_TRINH`) theo thời gian, tối đa `gioi_han`.
+
+        Dựng lại thành `SuKienAudit` qua đúng bộ kiểm lúc ghi, nên một hàng mà
+        ai đó chèn tay với `event` lạ nổ ở đây chứ không đi tiếp thành dữ liệu.
+        """
+        if not isinstance(gioi_han, int) or gioi_han < 1:
+            raise ValueError(f"gioi_han phải là số nguyên dương, nhận được {gioi_han!r}")
+        moc = kiem_thoi_diem(tu) if tu else None
+        moc_ket = kiem_thoi_diem(den) if den else None
+        if moc is not None and moc_ket is not None and moc >= moc_ket:
+            raise ValueError(f"cửa sổ rỗng: tu={tu!r} không nhỏ hơn den={den!r}")
+        async with self._pool.acquire() as conn:
+            hang = await conn.fetch(_SQL_SU_KIEN_TIEN_TRINH, SPACE_TIEN_TRINH, moc, moc_ket, gioi_han)
+        return tuple(_su_kien_tu_hang(h) for h in hang)
+
     async def dong(self) -> None:
         await self._pool.close()
+
+
+def _su_kien_tu_hang(h) -> SuKienAudit:
+    chi_tiet = h["chi_tiet"]
+    if isinstance(chi_tiet, str):
+        chi_tiet = json.loads(chi_tiet)
+    return SuKienAudit(
+        tier=h["tier"],
+        event=h["event"],
+        space=h["space"],
+        policy_version=h["policy_version"],
+        thoi_diem=h["thoi_diem"].astimezone(timezone.utc).isoformat(),
+        act=h["act"],
+        role=h["role"],
+        hyperedge_ids=tuple(h["hyperedge_ids"] or ()),
+        chi_tiet=chi_tiet or {},
+    )

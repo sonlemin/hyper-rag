@@ -594,7 +594,12 @@ async def _don_dot_khong_fact(engine, so: SoTaiLieu, doc_key: str, doc_id: str, 
 
 
 def _su_kien(event: str, *, space: str, policy_version: str, hyperedge_ids=(), **chi_tiet) -> SuKienAudit:
-    """`hyperedge_ids` là id **vector** (`rel-<md5>`), mờ, không mang nội dung fact."""
+    """`hyperedge_ids` là id **vector** (`rel-<md5>`), mờ, không mang nội dung fact.
+
+    Id vector là `adapters.trich_xuat.id_vector_cua(id node)`; sự kiện `query`
+    của đường phục vụ ghi id node (quy ước ở `core/audit.py`), và ánh xạ có tên
+    ấy là chỗ hậu kiểm nối hai loại hàng.
+    """
     return SuKienAudit(
         tier=TIER_MUTATION,
         event=event,

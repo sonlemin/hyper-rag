@@ -169,7 +169,9 @@ class TaiKhoan:
         return self.danh_tinh.tai_khoan
 
 
-def ngu_canh_cua(danh_tinh: DanhTinh, policy: Policy) -> PermissionContext:
+def ngu_canh_cua(
+    danh_tinh: DanhTinh, policy: Policy, *, request_id: str | None = None
+) -> PermissionContext:
     """Ngữ cảnh quyền của một danh tính, tính từ bảng chính sách đang hiệu lực.
 
     Hàm thuần: một phép tra bảng, không đọc kho, không đọc file. Đi qua đúng
@@ -181,6 +183,9 @@ def ngu_canh_cua(danh_tinh: DanhTinh, policy: Policy) -> PermissionContext:
     Vai không có trong bảng là `RoleUnknown`: một tài khoản seed trỏ tới vai
     không tồn tại phải hỏng ở đây, chứ không thành một ngữ cảnh không thấy gì
     mà cũng không ai biết vì sao.
+
+    `request_id` (story 3.6) đi thẳng xuống factory: handler phát một id cho mỗi
+    lượt để các hàng audit của lượt đó nối được với nhau.
     """
     if not isinstance(danh_tinh, DanhTinh):
         raise TypeError(
@@ -193,6 +198,7 @@ def ngu_canh_cua(danh_tinh: DanhTinh, policy: Policy) -> PermissionContext:
             role=danh_tinh.vai,
             space=danh_tinh.khong_gian,
             real_account=danh_tinh.tai_khoan,
+            request_id=request_id,
         )
     except KeyError:
         raise RoleUnknown(

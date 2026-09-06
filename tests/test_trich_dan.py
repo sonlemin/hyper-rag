@@ -282,6 +282,7 @@ def test_dung_danh_sach_giu_thu_tu_ngu_canh_va_doi_thieu_thanh_loi(policy, khong
         dung_danh_sach(ctx, ("a", "he-x"), tu_adapter, lambda ct: None)
     assert loi.value.code == "TRICH_DAN_NGOAI_QUYEN" == MA_TRICH_DAN_NGOAI_QUYEN
     assert "he-x" not in str(loi.value), "thông điệp lỗi không kể id ngữ cảnh ra"
+    assert loi.value.ids == ("he-x",), "id thiếu đi theo ngoại lệ cho hàng permission_mismatch (3.6)"
 
 
 

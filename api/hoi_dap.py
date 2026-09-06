@@ -58,8 +58,10 @@ theo lý do là đúng kênh dò mà FR-16 dựng ra để bịt. Đầu ra LLM 
 thì **không** phải một lý do thứ tư - nó là 502 mang mã ổn định.
 """
 
+import asyncio
 import logging
 import time
+import uuid
 from dataclasses import asdict
 
 from pydantic import BaseModel, ConfigDict
@@ -88,11 +90,15 @@ from adapters.tra_loi import (
 )
 from api.xac_thuc import ClaimNguoiHoi, LoiXacThuc
 from core.audit import (
+    AuditPort,
+    CT_REQUEST_ID,
+    EVENT_PERMISSION_MISMATCH,
     EVENT_QUERY,
     EVENT_REFUSAL,
-    TIER_OBSERVATION,
-    AuditPort,
     SuKienAudit,
+    TIER_MUTATION,
+    TIER_OBSERVATION,
+    ghi_bien_doi,
     ghi_quan_sat,
     thoi_diem_utc,
 )
@@ -194,6 +200,19 @@ MA_DAU_RA_LLM_KHONG_DOC_DUOC: str = "DAU_RA_LLM_KHONG_DOC_DUOC"
 # tầng lọc và cửa quyền của chính hệ, không phải lỗi của provider hay của kho.
 MA_TRICH_DAN_NGOAI_QUYEN: str = TrichDanNgoaiQuyen.code
 
+# Mã thứ chín, vào ở story 3.6: hàng `refusal` ở tầng **mutation** (cờ chế độ đo
+# bật, `api/che_do_do.py`) không ghi được. 500 chứ không 200 kèm WARNING: trong
+# cửa sổ đo, một lượt từ chối không có bản ghi là một hàng của Đo 2 biến mất
+# lặng lẽ, và hệ phải nói ra điều đó thay vì trả một envelope trông như đã đếm.
+MA_AUDIT_GHI_HONG: str = "AUDIT_GHI_HONG"
+
+# Trần chờ (giây) cho một lần ghi `refusal` ở tầng mutation. `ghi_bien_doi` của
+# `core/` không có hạn (đúng nghĩa "ghi hỏng là thao tác hỏng"), nhưng một
+# Postgres treo giữ kết nối mở mà không trả lời sẽ giữ request treo theo; quá
+# hạn cũng là 500 `AUDIT_GHI_HONG`. Rộng hơn `THOI_HAN_QUAN_SAT` vì đây là hàng
+# phải có chứ không phải hàng được phép mất.
+THOI_HAN_BIEN_DOI: float = 10.0
+
 # Mã của lớp thứ ba NFR-10 (khoản ledger 1.2). Hai lớp đầu là
 # `tests/test_import_lint.py` (phía module) và `core.permission.use_context`
 # (`SystemContextNested`, ngữ cảnh hệ thống sinh ra giữa chừng); lớp này chặn
@@ -214,6 +233,7 @@ THONG_DIEP_KHO: str = "kho tri thức chưa sẵn sàng"
 THONG_DIEP_DAU_RA_LLM: str = "mô hình ngôn ngữ trả về đầu ra không đọc được"
 THONG_DIEP_NGU_CANH_SAI: str = "ngữ cảnh quyền của request không phải ngữ cảnh vai"
 THONG_DIEP_TRICH_DAN: str = "không dựng được trích dẫn theo quyền cho lượt này"
+THONG_DIEP_AUDIT_HONG: str = "không ghi được sổ audit cho lượt này"
 
 # Độ dài tối đa của câu hỏi, tính bằng ký tự. Hằng có tên chứ không phải một số
 # nằm trong một lời gọi: nó là một ngân sách (mỗi ký tự đi vào prompt trích từ
@@ -279,6 +299,10 @@ CT_MILI_GIAY: str = "mili_giay"
 # đây là chỗ duy nhất Đo 2 đọc được hai cột "từ chối qua cờ LLM" và "từ chối qua
 # nhánh ngữ cảnh rỗng" tách nhau.
 CT_LY_DO: str = "ly_do"
+# Mã lỗi của hàng `permission_mismatch` (story 3.6); hôm nay chỉ một giá trị,
+# `TRICH_DAN_NGOAI_QUYEN`, nhưng khóa có tên để lệch quyền thứ hai (Epic 5) ghi
+# cùng hàng.
+CT_MA: str = "ma"
 
 
 class LoiHoiDap(LoiXacThuc):
@@ -461,6 +485,9 @@ async def mo_engine(audit: AuditPort) -> EngineACL:
             llm_model_func=ham.llm,
             embedding_func=ham.embedding,
             llm_model_max_token_size=ham.llm_max_token,
+            # Port cho sự kiện `filter` của adapter KV (story 3.6): một hàm
+            # trả port chứ không phải port, vì `asdict(self)` deepcopy field.
+            lay_audit=lambda: audit,
         )
     except BaseException as loi:
         con_mo = ket_noi_chua_dong(loi)
@@ -496,7 +523,9 @@ def kiem_cau_hoi(cau_hoi: str) -> str:
     return sach
 
 
-def ngu_canh_cua_claim(claim: ClaimNguoiHoi, policy: Policy) -> PermissionContext:
+def ngu_canh_cua_claim(
+    claim: ClaimNguoiHoi, policy: Policy, request_id: str | None = None
+) -> PermissionContext:
     """Ngữ cảnh quyền của một request, dựng **đúng một lần**, từ token và bảng.
 
     Ba trường của `DanhTinh` lấy trọn từ claim đã ký: không đọc lại seed (một
@@ -513,7 +542,7 @@ def ngu_canh_cua_claim(claim: ClaimNguoiHoi, policy: Policy) -> PermissionContex
         danh_tinh = DanhTinh(
             tai_khoan=claim.sub, vai=claim.role, khong_gian=claim.space
         )
-        ngu_canh = ngu_canh_cua(danh_tinh, policy)
+        ngu_canh = ngu_canh_cua(danh_tinh, policy, request_id=request_id)
     except RoleUnknown as loi:
         # 403 chứ không 500: token hợp lệ, nhưng vai nó khai không có trong bảng
         # đang chạy. Thông điệp **không** ghép tên vai hay tên tài khoản vào -
@@ -615,10 +644,12 @@ async def _ghi_audit_truy_van(
     `hyperedge_ids` (story 3.4) là dãy `id` của các citation, đúng thứ tự - id
     **node** hyperedge, cùng id mà response mang, để hậu kiểm đối chiếu được
     response với audit bằng một phép so chuỗi (quy ước ở `core/audit.py`).
-    Lượt từ chối ghi tuple rỗng. Không đếm số mục bị lọc: sự kiện lọc là 3.6.
+    Lượt từ chối ghi tuple rỗng. Không đếm số mục bị lọc: đó là hàng `filter`
+    của adapter KV (3.6), đứng cạnh hàng này và nối bằng `request_id`.
 
-    `chi_tiet` mang mili giây, thứ NFR-08 đọc. Nó vào audit chứ không vào `meta`
-    vì `meta` phải byte-identical giữa mọi lý do từ chối (AD-8).
+    `chi_tiet` mang mili giây, thứ NFR-08 đọc, cộng `request_id` để nối với
+    `llm_cost`/`embedding_cost`/`filter` của cùng lượt. Cả hai vào audit chứ
+    không vào `meta`, vì `meta` phải byte-identical giữa mọi lý do từ chối (AD-8).
     """
     await ghi_quan_sat(
         audit,
@@ -631,15 +662,41 @@ async def _ghi_audit_truy_van(
             act=ngu_canh.real_account,
             role=ngu_canh.role,
             hyperedge_ids=hyperedge_ids,
-            chi_tiet={CT_MILI_GIAY: round(mili_giay, 3)},
+            chi_tiet={CT_MILI_GIAY: round(mili_giay, 3), CT_REQUEST_ID: ngu_canh.request_id},
+        ),
+    )
+
+
+async def _ghi_audit_lech_quyen(
+    audit: AuditPort, ngu_canh: PermissionContext, loi: TrichDanNgoaiQuyen
+) -> None:
+    """Sự kiện `permission_mismatch` (story 3.6), tầng observation, best-effort.
+
+    Lượt hỏng vẫn **không** ghi `query` (mẫu số NFR-08 không trộn thời gian của
+    một lần hỏng) và không ghi `refusal`; hàng này là dấu vết riêng cho hậu kiểm
+    FR-20 của ca lệch giữa tầng lọc và cửa quyền. `hyperedge_ids` là các id
+    thiếu - id node, cùng quy ước với `query`; thân lỗi thì không mang chúng.
+    """
+    await ghi_quan_sat(
+        audit,
+        SuKienAudit(
+            tier=TIER_OBSERVATION,
+            event=EVENT_PERMISSION_MISMATCH,
+            space=ngu_canh.space,
+            policy_version=ngu_canh.policy_version,
+            thoi_diem=thoi_diem_utc(),
+            act=ngu_canh.real_account,
+            role=ngu_canh.role,
+            hyperedge_ids=tuple(loi.ids),
+            chi_tiet={CT_MA: MA_TRICH_DAN_NGOAI_QUYEN, CT_REQUEST_ID: ngu_canh.request_id},
         ),
     )
 
 
 async def _ghi_audit_tu_choi(
-    audit: AuditPort, ngu_canh: PermissionContext, ly_do: str
+    audit: AuditPort, ngu_canh: PermissionContext, ly_do: str, che_do_do: bool
 ) -> None:
-    """Sự kiện `refusal`, tầng **observation**, mang lý do trong `chi_tiet`.
+    """Sự kiện `refusal`, tầng **theo cờ chế độ đo**, mang lý do trong `chi_tiet`.
 
     Đây là **chỗ duy nhất** lý do từ chối được ghi ra. Response của cả ba nhánh
     giống nhau từng byte (FR-16), nên nếu không có hàng này thì không ai phân
@@ -647,27 +704,35 @@ async def _ghi_audit_tu_choi(
     và PRD 5.2 đòi Đo 2 báo cáo **tách hai cột**, "không đếm gộp để khỏi bơm độ
     chính xác của cờ".
 
-    Observation chứ không mutation, cùng luật với `query`: một Postgres chết
-    không được biến một lượt từ chối thành một 500. `ghi_quan_sat` nuốt lỗi của
-    port thành một dòng WARNING, nên envelope đi ra không đổi một byte nào - và
-    đó là hàng "Audit hỏng ở lượt từ chối" của I/O Matrix.
+    Cờ tắt (3.5): observation, cùng luật với `query` - một Postgres chết không
+    được biến một lượt từ chối thành một 500, `ghi_quan_sat` nuốt lỗi của port
+    thành một dòng WARNING và envelope không đổi một byte. Cờ bật (3.6, ADR-017):
+    **mutation** qua `ghi_bien_doi`, ghi hỏng là 500 `AUDIT_GHI_HONG` - trong
+    cửa sổ đo, hàng này là chính mẫu số của hai cột Đo 2, và một hàng được phép
+    mất là một hàng harness không tin được. Thân 200 của hai chế độ giống nhau
+    từng byte; chỉ `tier` của hàng đổi.
 
     Sự kiện này đứng **cạnh** `query`, không thay nó: một lượt từ chối vẫn là một
     lượt hỏi có độ trễ, và NFR-08 đo trên mọi lượt chứ không riêng lượt trả lời.
     """
-    await ghi_quan_sat(
-        audit,
-        SuKienAudit(
-            tier=TIER_OBSERVATION,
-            event=EVENT_REFUSAL,
-            space=ngu_canh.space,
-            policy_version=ngu_canh.policy_version,
-            thoi_diem=thoi_diem_utc(),
-            act=ngu_canh.real_account,
-            role=ngu_canh.role,
-            chi_tiet={CT_LY_DO: ly_do},
-        ),
+    su_kien = SuKienAudit(
+        tier=TIER_MUTATION if che_do_do else TIER_OBSERVATION,
+        event=EVENT_REFUSAL,
+        space=ngu_canh.space,
+        policy_version=ngu_canh.policy_version,
+        thoi_diem=thoi_diem_utc(),
+        act=ngu_canh.real_account,
+        role=ngu_canh.role,
+        chi_tiet={CT_LY_DO: ly_do, CT_REQUEST_ID: ngu_canh.request_id},
     )
+    if not che_do_do:
+        await ghi_quan_sat(audit, su_kien)
+        return
+    try:
+        await asyncio.wait_for(ghi_bien_doi(audit, su_kien), timeout=THOI_HAN_BIEN_DOI)
+    except Exception as loi:
+        logger.error("audit mutation refusal không ghi được (%s: %s)", type(loi).__name__, loi)
+        raise LoiHoiDap(500, MA_AUDIT_GHI_HONG, THONG_DIEP_AUDIT_HONG) from None
 
 
 async def tra_loi(
@@ -677,6 +742,7 @@ async def tra_loi(
     policy: Policy,
     engine: EngineACL,
     audit: AuditPort,
+    che_do_do: bool,
 ) -> dict:
     """Một lượt hỏi: kiểm đầu vào, dựng ngữ cảnh một lần, truy hồi, trả envelope.
 
@@ -696,7 +762,10 @@ async def tra_loi(
     trễ mà NFR-08 đo), cộng một `refusal` mang lý do khi có từ chối. Ca **lỗi**
     thì vẫn không ghi gì - một `query` ghi kèm cho mỗi lần chạm 502 trộn thời
     gian của một lượt trả lời thật với thời gian của một lần hỏng, đúng thứ làm
-    mẫu số NFR-08 vô nghĩa. Sự kiện lọc của adapter vẫn là story 3.6.
+    mẫu số NFR-08 vô nghĩa. Ngoại lệ duy nhất (3.6): lệch quyền hai tầng ghi
+    một hàng `permission_mismatch` observation - dấu vết, không phải mẫu số.
+    Sự kiện lọc của adapter KV (3.6) không ghi ở đây: nó phát từ chính adapter
+    qua port `lay_audit`, và nối với hàng `query` bằng `request_id`.
 
     **Một chỗ dựng envelope cho cả ba nhánh từ chối lẫn nhánh trả lời.** Kết quả
     của engine là một `KetQuaHoiDap` mang đúng một trong hai trường (bất biến
@@ -710,7 +779,11 @@ async def tra_loi(
     # ngữ cảnh là báo một con số nhỏ hơn thời gian thật của chính lượt đó.
     bat_dau = time.perf_counter()
     sach = kiem_cau_hoi(cau_hoi)
-    ngu_canh = ngu_canh_cua_claim(claim, policy)
+    # Một id cho mỗi lượt (story 3.6), đi trong `PermissionContext` xuống tận
+    # wrapper LLM và adapter KV: `query`, `refusal`, `filter`, `llm_cost`,
+    # `embedding_cost`, `permission_mismatch` của lượt này nối được với nhau.
+    # Không vào response (AD-8).
+    ngu_canh = ngu_canh_cua_claim(claim, policy, request_id=uuid.uuid4().hex)
     try:
         with use_context(ngu_canh):
             # Gọi **không** truyền `param`: `EngineACL.hoi_dap` dựng một
@@ -750,6 +823,7 @@ async def tra_loi(
         # không hàng `refusal`. Số id thiếu chỉ vào log: thân lỗi không được kể
         # ra ngữ cảnh có bao nhiêu mục.
         logger.warning("citation ngoài quyền: %s", loi)
+        await _ghi_audit_lech_quyen(audit, ngu_canh, loi)
         raise LoiHoiDap(500, MA_TRICH_DAN_NGOAI_QUYEN, THONG_DIEP_TRICH_DAN) from None
     except DauRaTraLoiKhongDoc as loi:
         # **Lỗi hệ thống, không phải một lý do từ chối.** Bắt trước nhánh chung
@@ -774,12 +848,16 @@ async def tra_loi(
     # `KetQuaHoiDap` đã cấm "từ chối mà có citation" lúc dựng, nên dãy id này
     # tự rỗng ở lượt từ chối mà không cần một nhánh `if` thứ hai ở đây.
     citations = [dict_trich_dan(td) for td in ket_qua.trich_dan]
+    tu_choi = ket_qua.ly_do_tu_choi is not None
+    # `refusal` **trước** `query`: khi cờ chế độ đo bật và hàng `refusal` không
+    # ghi được, lượt này là một lượt hỏng (500) và luật "ca lỗi không ghi
+    # `query`" của NFR-08 phải giữ - ghi `query` trước là để lại một hàng thời
+    # gian cho một lượt không trả lời được.
+    if tu_choi:
+        await _ghi_audit_tu_choi(audit, ngu_canh, ket_qua.ly_do_tu_choi, che_do_do)
     await _ghi_audit_truy_van(
         audit, ngu_canh, mili_giay, tuple(td.id for td in ket_qua.trich_dan)
     )
-    tu_choi = ket_qua.ly_do_tu_choi is not None
-    if tu_choi:
-        await _ghi_audit_tu_choi(audit, ngu_canh, ket_qua.ly_do_tu_choi)
     return dung_envelope(
         # `None` ở lượt từ chối, và đó là hợp đồng chứ không một chỗ chưa điền:
         # câu người dùng đọc là `TEMPLATE_TU_CHOI`, do tầng render dựng từ cờ
@@ -798,7 +876,10 @@ async def tra_loi(
 
 __all__ = [
     "CT_LY_DO",
+    "CT_MA",
     "CT_MILI_GIAY",
+    "MA_AUDIT_GHI_HONG",
+    "THOI_HAN_BIEN_DOI",
     "DAI_CAU_HOI_TOI_DA",
     "DANH_MUC_LY_DO",
     "KHOA_ENVELOPE",

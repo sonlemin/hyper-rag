@@ -260,3 +260,145 @@ def test_tong_chi_phi_theo_doan_tu_den_cung_cua_so_o_dong_model(cau_hinh_pg, kho
     assert len(doan.theo_model) == 1
     assert (doan.theo_model[0].so_lan, doan.theo_model[0].token_vao) == (1, 5), "dòng theo model cùng cửa sổ với dòng tổng"
     assert (truoc_moc.so_lan, truoc_moc.token_vao) == (1, 10)
+
+
+# --- Story 3.6: năm sự kiện mới qua INSERT thật và hai cửa đọc ------------------
+
+
+def _hang_3_6(space: str, event: str, tier: str, chi_tiet: dict, *, act=None, role=None, policy_version="v-3-6", hyperedge_ids=()):
+    return SuKienAudit(
+        tier=tier,
+        event=event,
+        space=space,
+        policy_version=policy_version,
+        thoi_diem=thoi_diem_utc(),
+        act=act,
+        role=role,
+        hyperedge_ids=tuple(hyperedge_ids),
+        chi_tiet=chi_tiet,
+    )
+
+
+@pytest.mark.postgres
+def test_dem_su_kien_hai_cot_tu_choi_va_so_khong_dong_bo(cau_hinh_pg, khong_gian):
+    """Hàng "Đếm hai cột": ba lý do tách nhau, `tu_khoa_rong` là hàng riêng, `so_khong_dong_bo` đếm hàng observation."""
+    from adapters.tra_loi import LY_DO_CO_NO_ANSWER, LY_DO_NGU_CANH_RONG, LY_DO_TU_KHOA_RONG
+    from api.hoi_dap import CT_LY_DO
+    from core.audit import CT_REQUEST_ID, EVENT_REFUSAL, TIER_MUTATION
+
+    async def chay():
+        async with kho_audit(cau_hinh_pg, khong_gian) as audit:
+            for ly_do, tier in (
+                (LY_DO_NGU_CANH_RONG, TIER_MUTATION),
+                (LY_DO_NGU_CANH_RONG, TIER_MUTATION),
+                (LY_DO_CO_NO_ANSWER, TIER_MUTATION),
+                (LY_DO_TU_KHOA_RONG, TIER_MUTATION),
+                (LY_DO_CO_NO_ANSWER, TIER_OBSERVATION),
+            ):
+                await audit.ghi(
+                    _hang_3_6(khong_gian, EVENT_REFUSAL, tier, {CT_LY_DO: ly_do, CT_REQUEST_ID: "r-1"}, act="ts01", role="tech_support")
+                )
+            moc = thoi_diem_utc()
+            await audit.ghi(_hang_3_6(khong_gian, EVENT_REFUSAL, TIER_OBSERVATION, {CT_LY_DO: LY_DO_NGU_CANH_RONG}))
+            return (
+                await audit.dem_su_kien(EVENT_REFUSAL, space=khong_gian, theo=CT_LY_DO, den=moc),
+                await audit.dem_su_kien(EVENT_REFUSAL, space=khong_gian),
+                await audit.dem_su_kien(EVENT_REFUSAL, space=f"{khong_gian}_khac", theo=CT_LY_DO),
+            )
+
+    theo_ly_do, gop, rong = asyncio.run(chay())
+    assert theo_ly_do.so_theo == {LY_DO_NGU_CANH_RONG: 2, LY_DO_CO_NO_ANSWER: 2, LY_DO_TU_KHOA_RONG: 1}
+    assert (theo_ly_do.tong, theo_ly_do.so_khong_dong_bo) == (5, 1)
+    assert gop.so_theo == {} and (gop.tong, gop.so_khong_dong_bo) == (6, 2)
+    assert rong.so_theo == {} and (rong.tong, rong.so_khong_dong_bo) == (0, 0)
+
+
+@pytest.mark.postgres
+def test_nam_su_kien_moi_qua_postgres_that_va_su_kien_tien_trinh(cau_hinh_pg, khong_gian):
+    """`policy_swap` qua `KhoChinhSach.hoan` thật, `startup`, `auth_login`, `filter`, `refusal` mutation: INSERT rồi đọc lại.
+
+    CI chạy trên **cùng** Postgres `hyperrag` với tiến trình thật, nên mọi hàng
+    `space="*"` của test mang một dấu phiên duy nhất (`act` cho `hoan` và
+    `auth_login`, `policy_version` cho `startup`), dọn và lọc assert theo dấu đó
+    - không đụng hàng `startup`/`policy_swap`/`auth_login` thật của máy chủ, và
+    hàng thật chen vào cửa sổ không làm ca thứ tự đỏ. `su_kien_tien_trinh` trả
+    đúng ba hàng của phiên theo thứ tự thời gian; `tong_chi_phi(space)` và
+    `dem_su_kien(space)` không bao giờ thấy chúng.
+    """
+    import uuid
+
+    from adapters.kv import CT_BI_LOAI, CT_NAMESPACE
+    from api.che_do_do import CT_CHE_DO_DO, CT_POLICY_ID, CT_POLICY_VERSION
+    from api.chinh_sach import ID_MAC_DINH, KhoChinhSach
+    from api.hoi_dap import CT_LY_DO
+    from api.xac_thuc import CT_KET_QUA, KET_QUA_THAT_BAI, su_kien_dang_nhap
+    from core.audit import (
+        CT_REQUEST_ID,
+        EVENT_AUTH_LOGIN,
+        EVENT_FILTER,
+        EVENT_POLICY_SWAP,
+        EVENT_REFUSAL,
+        EVENT_STARTUP,
+        SPACE_TIEN_TRINH,
+        TIER_MUTATION,
+    )
+
+    dau = f"pytest-{uuid.uuid4().hex}"
+    kho = KhoChinhSach.nap(ID_MAC_DINH)
+
+    async def don(audit):
+        async with audit._pool.acquire() as conn:
+            await conn.execute(
+                "DELETE FROM audit_log WHERE space = $1 AND (act = $2 OR policy_version = $2)",
+                SPACE_TIEN_TRINH, dau,
+            )
+
+    async def chay():
+        async with kho_audit(cau_hinh_pg, khong_gian) as audit:
+            await don(audit)
+            try:
+                tu = thoi_diem_utc()
+                startup = SuKienAudit(
+                    tier=TIER_MUTATION, event=EVENT_STARTUP, space=SPACE_TIEN_TRINH, policy_version=dau,
+                    thoi_diem=thoi_diem_utc(),
+                    chi_tiet={CT_POLICY_ID: ID_MAC_DINH, CT_POLICY_VERSION: dau, CT_CHE_DO_DO: True},
+                )
+                await audit.ghi(startup)
+                _, moi = await kho.hoan("nhi-phan", audit=audit, act=dau, role="devops")
+                await audit.ghi(su_kien_dang_nhap(dau, False, "v-3-6"))
+                await audit.ghi(
+                    _hang_3_6(
+                        khong_gian, EVENT_FILTER, TIER_OBSERVATION,
+                        {CT_NAMESPACE: "text_chunks", CT_BI_LOAI: {"L1": 1, "L0": 2}, CT_REQUEST_ID: "r-1"},
+                        act="ts01", role="tech_support",
+                    )
+                )
+                await audit.ghi(_hang_3_6(khong_gian, EVENT_REFUSAL, TIER_MUTATION, {CT_LY_DO: "ngu_canh_rong", CT_REQUEST_ID: "r-1"}))
+                den = thoi_diem_utc()
+                tien_trinh = await audit.su_kien_tien_trinh(tu=tu, den=den)
+                async with audit._pool.acquire() as conn:
+                    hang_loc = await conn.fetchrow(
+                        "SELECT chi_tiet FROM audit_log WHERE space = $1 AND event = $2", khong_gian, EVENT_FILTER
+                    )
+                return (
+                    moi.policy_version,
+                    tien_trinh,
+                    await audit.tong_chi_phi(khong_gian),
+                    await audit.dem_su_kien(EVENT_REFUSAL, space=khong_gian),
+                    hang_loc["chi_tiet"],
+                )
+            finally:
+                await don(audit)
+
+    pv_moi, tien_trinh, tong, dem, chi_tiet_loc = asyncio.run(chay())
+    cua_phien = [sk for sk in tien_trinh if dau in (sk.act, sk.policy_version)]
+    assert [sk.event for sk in cua_phien] == [EVENT_STARTUP, EVENT_POLICY_SWAP, EVENT_AUTH_LOGIN]
+    assert all(sk.space == SPACE_TIEN_TRINH for sk in cua_phien)
+    st, swap, login = cua_phien
+    assert st.tier == TIER_MUTATION and dict(st.chi_tiet) == {CT_POLICY_ID: ID_MAC_DINH, CT_POLICY_VERSION: dau, CT_CHE_DO_DO: True}
+    assert swap.tier == TIER_MUTATION and swap.chi_tiet["policy_id_moi"] == "nhi-phan"
+    assert swap.chi_tiet["policy_version_moi"] == pv_moi and (swap.act, swap.role) == (dau, "devops")
+    assert login.act == dau[:64] and dict(login.chi_tiet) == {CT_KET_QUA: KET_QUA_THAT_BAI}
+    assert tong.so_lan == 0, "hàng tiến trình không vào tổng theo space"
+    assert (dem.tong, dem.so_khong_dong_bo, dem.so_theo) == (1, 0, {})
+    assert json.loads(chi_tiet_loc) == {CT_NAMESPACE: "text_chunks", CT_BI_LOAI: {"L0": 2, "L1": 1}, CT_REQUEST_ID: "r-1"}

@@ -102,7 +102,8 @@ from adapters.qdrant import (
 from adapters.nhom_phu_trach import NHOM_PHU_TRACH_KEY
 from adapters.sensitivity_loader import SENSITIVITY_RANKS_KEY
 from adapters.tu_dien_thuc_the import ENTITY_DICTIONARY_KEY
-from core.permission import current_context
+from core.audit import AuditPort
+from core.permission import PermissionContextMissing, current_context
 
 logger = logging.getLogger(__name__)
 
@@ -401,6 +402,11 @@ class EngineACL(HyperGraphRAG):
     tao_neo4j_driver: Callable[[], AsyncDriver] | None = field(
         default=None, repr=False
     )
+    # Port audit cho sự kiện `filter` của adapter KV (story 3.6). Cùng khuôn với
+    # hai khe trên và cùng lý do: `asdict(self)` deepcopy mọi field, một hàm đi
+    # qua nguyên vẹn còn một port ôm pool asyncpg thì không. `None` là adapter
+    # không phát sự kiện lọc (đường nạp, bộ test adapter lẻ).
+    lay_audit: Callable[[], AuditPort] | None = field(default=None, repr=False)
 
     def __post_init__(self):
         # Cửa từ chối hàm chưa bọc đứng trước mọi thứ khác (story 2.2): mặc
@@ -517,8 +523,14 @@ class EngineACL(HyperGraphRAG):
         (`hypergraphrag.py:208-240`), và nó vốn đã chấp nhận entry không phải
         class (`lazy_external_import` trả closure).
         """
+        # Khe trả `None` là "không port", cùng nghĩa với khe vắng.
+        audit_kv = self.lay_audit() if self.lay_audit is not None else None
         return {
-            TEN_KV: JsonACLKVStorage,
+            TEN_KV: (
+                JsonACLKVStorage
+                if audit_kv is None
+                else partial(JsonACLKVStorage, audit=audit_kv)
+            ),
             TEN_VECTOR: (
                 QdrantVectorDBStorage
                 if self._client_qdrant is None
@@ -793,7 +805,24 @@ class EngineACL(HyperGraphRAG):
                 " stream, và đường này không còn đi qua lời gọi của vendor - nơi"
                 " phép kiểm ấy từng nằm"
             )
-        ngu_canh = await self.aquery(cau_hoi, replace(param, only_need_context=True))
+        # Sổ lọc của lượt (story 3.6): adapter KV cộng dồn theo `request_id`
+        # trong lúc `aquery` chạy; phát đúng một hàng mỗi namespace ngay sau
+        # khi có ngữ cảnh, vẫn dưới ngữ cảnh vai; lượt hỏng thì bỏ sổ.
+        # Thiếu ngữ cảnh thì để `aquery` dội đúng lỗi của nó như trước 3.6,
+        # không đổi chỗ nổ; sổ lọc chỉ có nghĩa khi có lượt.
+        try:
+            request_id = current_context().request_id
+        except PermissionContextMissing:
+            request_id = None
+        try:
+            ngu_canh = await self.aquery(cau_hoi, replace(param, only_need_context=True))
+            if request_id is not None:
+                await self.text_chunks.xa_loc(request_id)
+                await self.full_docs.xa_loc(request_id)
+        finally:
+            if request_id is not None:
+                self.text_chunks.bo_so_loc(request_id)
+                self.full_docs.bo_so_loc(request_id)
         if not isinstance(ngu_canh, str):
             raise NguCanhTruyHoiLa(
                 "đường truy hồi trả về"

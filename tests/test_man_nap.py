@@ -659,3 +659,26 @@ def test_man_khong_co_endpoint_hoi_dap_hay_xoa(client):
         ("/api/dot/moi-nhat", ("GET",)),
         ("/api/dot/{dot_id}", ("GET",)),
     }
+
+
+# --- Story 3.6: màn nạp đọc bảng mặc định qua cùng cửa với tiến trình phục vụ ---
+
+
+def test_man_nap_doc_policy_theo_bien_moi_truong(client, monkeypatch):
+    """`HYPER_RAG_POLICY_ID=nhi-phan`: `policy_version` truyền xuống `chay_lan_nap` là của `policy-nhi-phan.yaml`."""
+    from adapters.policy_loader import load_policy as load_that
+
+    ky_vong = load_that(mod.REPO_ROOT / "config" / "policy-nhi-phan.yaml").policy_version
+    nhan: list[str] = []
+
+    async def chay_lan_nap(quet, *, space, policy_version, audit, lan, ep_ghi_de=False):
+        nhan.append(policy_version)
+        _xong(lan, quet)
+        return lan
+
+    monkeypatch.setattr(mod, "chay_lan_nap", chay_lan_nap)
+    monkeypatch.setenv("HYPER_RAG_POLICY_ID", "nhi-phan")
+    r = client.post("/api/nap", files=[_file("a.md")])
+    assert r.status_code == 201, r.text
+    _cho_xong(client, r.json()["dot_id"])
+    assert nhan == [ky_vong]

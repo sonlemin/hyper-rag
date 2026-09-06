@@ -28,6 +28,16 @@ from datetime import datetime, timedelta, timezone
 import bcrypt
 import jwt
 
+from core.audit import (
+    EVENT_AUTH_LOGIN,
+    SPACE_TIEN_TRINH,
+    TIER_OBSERVATION,
+    AuditPort,
+    SuKienAudit,
+    ghi_quan_sat,
+    thoi_diem_utc,
+)
+
 # Biến môi trường giữ khóa ký. Secret nên nó sống ở `.env` gốc repo (đã
 # gitignore), không ở `.env.server`/`.env.laptop` - hai file đó chỉ mang tham số
 # môi trường (Consistency Conventions "Cấu hình").
@@ -267,3 +277,45 @@ def doi_admin(claim: ClaimNguoiHoi) -> ClaimNguoiHoi:
 def loi_dang_nhap_sai() -> LoiXacThuc:
     """Lỗi duy nhất của mọi ca đăng nhập sai; một chỗ dựng, nên không lệch byte."""
     return LoiXacThuc(401, MA_DANG_NHAP_SAI, THONG_DIEP_DANG_NHAP_SAI)
+
+
+# --- Sự kiện đăng nhập (story 3.6) ---------------------------------------------
+
+# Khóa và hai giá trị của `chi_tiet.ket_qua`. Chỉ hai giá trị và **không** trường
+# nào khác: hàng thất bại không ghi "vì sao sai" (tài khoản lạ hay mật khẩu sai),
+# vì đó chính là thứ mà thân response cố ý không phân biệt.
+CT_KET_QUA: str = "ket_qua"
+KET_QUA_THANH_CONG: str = "thanh_cong"
+KET_QUA_THAT_BAI: str = "that_bai"
+
+# Trần độ dài của `act` trong hàng `auth_login`. Tên gõ vào là đầu vào tự do
+# của người lạ: một chuỗi vài megabyte không đáng một hàng audit dài ngần ấy,
+# và một mật khẩu gõ nhầm ô thì cắt ngắn không cứu được (ADR-017 nói thẳng rủi
+# ro đó), nhưng ít nhất sổ không ôm cả thân request.
+DAI_ACT_TOI_DA: int = 64
+
+
+def su_kien_dang_nhap(ten: str | None, thanh_cong: bool, policy_version: str) -> SuKienAudit:
+    """Hàng `auth_login` tầng observation; `act` là tên gõ vào (cắt về `DAI_ACT_TOI_DA`), `None` khi thân hỏng hay rỗng."""
+    return SuKienAudit(
+        tier=TIER_OBSERVATION,
+        event=EVENT_AUTH_LOGIN,
+        space=SPACE_TIEN_TRINH,
+        policy_version=policy_version,
+        thoi_diem=thoi_diem_utc(),
+        act=(ten[:DAI_ACT_TOI_DA] if ten else None),
+        chi_tiet={CT_KET_QUA: KET_QUA_THANH_CONG if thanh_cong else KET_QUA_THAT_BAI},
+    )
+
+
+async def ghi_dang_nhap(
+    audit: AuditPort, *, ten: str | None, thanh_cong: bool, policy_version: str
+) -> None:
+    """Ghi một lần đăng nhập, cả hai chiều, best-effort.
+
+    Observation vì audit chết không được làm đăng nhập chết theo, và vì thân
+    response của mọi ca sai phải giữ byte-identical: một 500 ở đúng nhánh sai là
+    một cách phân biệt "sai mật khẩu lúc Postgres khỏe" với "sai mật khẩu lúc
+    Postgres chết". Chặn nhịp theo số lần là việc của 3-8, đứng trên chính hàng này.
+    """
+    await ghi_quan_sat(audit, su_kien_dang_nhap(ten, thanh_cong, policy_version))
