@@ -155,6 +155,7 @@ NGOAI_UPSTREAM = frozenset(
         "khoa_lan_can_hyperedge",
         "slot_cua_hyperedge",
         "trich_dan_cua",
+        "do_thi_cua",
         "xa_loc",
         "bo_so_loc",
         "xoa",

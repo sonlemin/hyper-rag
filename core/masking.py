@@ -74,6 +74,9 @@ from core.slots import OWNER_SLOT, SLOT_ROLE_SET, SLOT_ROLES
 # thay vì che.
 MASKED_READ_METHODS: frozenset[str] = frozenset(
     {"query", "get_node", "get_edge", "get_node_edges", "get_by_id", "get_by_ids"}
+    # `do_thi_cua` (story 3.7): đường đọc đồ thị theo quyền của `POST /do-thi`,
+    # trả tên entity theo vai slot nên nó phải qua `mask` như `get_node_edges`.
+    | {"do_thi_cua"}
 )
 
 # Namespace mà cửa fail-closed hỏi. `allowed_keys["chunks"]` và

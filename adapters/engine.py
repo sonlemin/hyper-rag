@@ -54,7 +54,7 @@ import logging
 import os
 from dataclasses import asdict, dataclass, field, replace
 from functools import partial
-from typing import Callable
+from typing import Callable, Iterable
 
 from hypergraphrag import HyperGraphRAG
 from hypergraphrag.base import QueryParam
@@ -78,6 +78,7 @@ from adapters.tra_loi import (
     id_hyperedge_trong,
     ngu_canh_rong,
 )
+from adapters.do_thi import DoThi, chuan_hoa_ids, dung_do_thi
 from adapters.trich_dan import dung_danh_sach
 from adapters.trich_xuat import ThongKeTrichXuat, trich_xuat_chunks
 from adapters.neo4j import (
@@ -848,3 +849,25 @@ class EngineACL(HyperGraphRAG):
         if ket_qua.khong_co_dap_an:
             return KetQuaHoiDap(ly_do_tu_choi=LY_DO_CO_NO_ANSWER)
         return KetQuaHoiDap(cau_tra_loi=ket_qua.cau_tra_loi, trich_dan=trich_dan)
+
+    async def do_thi(self, ids: Iterable[str]) -> DoThi:
+        """Đồ thị theo quyền của một danh sách id hyperedge (story 3.7, FR-19).
+
+        Cửa engine của `POST /do-thi`, và nó **không chạm LLM hay embedding**:
+        một lời gọi kho (`Neo4jACLGraphStorage.do_thi_cua`, dưới đúng contextvar
+        của request) rồi một hàm thuần (`adapters.do_thi.dung_do_thi`). Không
+        đi qua `aquery`, không dựng `QueryParam`, không đọc kho vector hay KV.
+
+        Engine chuẩn hóa và khử trùng id (`chuan_hoa_ids`) **dù adapter cũng
+        làm đúng việc đó**, và đây không phải một bước thừa: adapter cần dãy
+        chuẩn để gửi `IN $ids`, còn `dung_do_thi` cần **cùng dãy ấy** để xếp
+        hyperedge theo thứ tự id vào - `IN` không hứa thứ tự, và dòng adapter
+        trả về mang id đã chuẩn hóa nên một dãy id thô ở đây sẽ không khớp
+        được với chúng. Một hàm, gọi hai chỗ, cho một dãy. Danh sách rỗng là
+        đồ thị rỗng hợp lệ mà không chạm kho; ngữ cảnh hệ thống bị từ chối ở
+        cả adapter lẫn hàm lắp.
+        """
+        cac_id = chuan_hoa_ids(ids)
+        graph = self.chunk_entity_relation_graph
+        tu_adapter = await graph.do_thi_cua(cac_id) if cac_id else []
+        return dung_do_thi(current_context(), cac_id, tu_adapter)

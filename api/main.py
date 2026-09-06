@@ -52,6 +52,7 @@ from fastapi.responses import JSONResponse
 
 from adapters.identity_seed import IdentitySeedInvalid, nap_tai_khoan
 from adapters.nhom_phu_trach import bang_nhom_mac_dinh
+from api import do_thi as api_do_thi
 from api import hoi_dap
 from api.audit_postgres import AuditPostgres
 from api.che_do_do import doc_che_do_do, ghi_startup
@@ -81,7 +82,7 @@ MA_SEED_KHONG_DOC_DUOC: str = "SEED_KHONG_DOC_DUOC"
 
 # Mã của **mọi ngoại lệ chưa ai xếp loại** thoát ra khỏi một handler. Không phải
 # một mã "bịa cho lỗi lạ": chỗ *phân loại* lỗi vẫn ở tầng dưới và vẫn từ chối
-# đoán (`api/hoi_dap.py::_loi_truy_hoi` trả `None` cho thứ nó không biết). Cái
+# đoán (`api/hoi_dap.py::loi_truy_hoi` trả `None` cho thứ nó không biết). Cái
 # mã này nói một chuyện khác và đúng: mọi phản hồi lỗi của tiến trình mang hình
 # dạng `{error: {code, message}}` (AD-8). Không có handler này thì một ngoại lệ
 # lạ - kể cả `TypeError`/`ValueError` của chính serializer envelope - cho một
@@ -271,7 +272,7 @@ async def _loi_khong_xac_dinh(request: Request, loi: Exception) -> JSONResponse:
 
     Hai chuyện khác nhau, và handler này chỉ làm chuyện thứ hai. **Không bịa
     một mã cho một lỗi chưa ai xếp loại** - việc đó vẫn do tầng dưới quyết, và
-    `api/hoi_dap.py::_loi_truy_hoi` cố ý trả `None` cho thứ nó không biết, vì
+    `api/hoi_dap.py::loi_truy_hoi` cố ý trả `None` cho thứ nó không biết, vì
     gán một mã sẵn có là làm mất chính thông tin cần để xếp loại nó lần sau.
     Chuyện thứ hai là **hình dạng**: một thân `Internal Server Error` trần nằm
     ngoài envelope là một client phải viết hai đường đọc lỗi, và nó là hình
@@ -525,6 +526,26 @@ async def hoi(request: Request, than: hoi_dap.ThanHoiDap, c: Claim) -> dict:
         engine=request.app.state.engine,
         audit=request.app.state.audit,
         che_do_do=request.app.state.che_do_do,
+    )
+
+
+@cua_dong.post("/do-thi")
+async def do_thi(request: Request, than: api_do_thi.ThanDoThi, c: Claim) -> dict:
+    """Endpoint đồ thị theo quyền, cùng envelope AD-8 (FR-19, story 3.7).
+
+    Tuyến ở đây, **ruột ở `api/do_thi.py`** - cùng khuôn với `hoi`. Nội dung ra
+    khỏi handler này đã đi qua tầng che: mỗi dòng của
+    `Neo4jACLGraphStorage.do_thi_cua` qua `_che` trước khi rời adapter, và
+    hyperedge ngoài quyền vắng mặt ngay trong câu Cypher. `api/` không che lại
+    và không bỏ che; không lời gọi LLM nào trên đường này.
+
+    `hien_tai()` đọc **một lần** rồi truyền object xuống, như `hoi`.
+    """
+    return await api_do_thi.lay_do_thi(
+        than.hyperedge_ids,
+        claim=c,
+        policy=request.app.state.kho_chinh_sach.hien_tai(),
+        engine=request.app.state.engine,
     )
 
 

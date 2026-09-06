@@ -981,7 +981,7 @@ def test_loi_chua_xep_loai_van_ra_dung_envelope_loi(client, engine_gia):
     """Ngoại lệ chưa ai xếp loại vẫn ra `{error: {code, message}}` (AD-8).
 
     Hai chuyện tách nhau, và ca này chấm chuyện thứ hai. Chuyện thứ nhất -
-    **không bịa một mã** cho một lỗi chưa ai xếp loại - do `_loi_truy_hoi` giữ
+    **không bịa một mã** cho một lỗi chưa ai xếp loại - do `loi_truy_hoi` giữ
     (nó trả `None`), và `::test_loi_la_khong_bi_bia_ma` chấm nó ở tầng hàm.
     Chuyện thứ hai là hình dạng: không có handler chung thì một `ValueError`
     lạ, và cả `TypeError`/`ValueError` của chính serializer envelope, cho một

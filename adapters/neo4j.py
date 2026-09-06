@@ -45,6 +45,7 @@ from neo4j.exceptions import (
 )
 
 from adapters.cua_khoa_doc import khoa_doc
+from adapters.do_thi import DoThiNgoaiQuyen, chuan_hoa_ids
 from adapters.doi_chieu import KHO_GRAPH, ghi_vao_so, ten_kho_vector
 from adapters.ingest_labels import (
     bat_buoc_ngu_canh_he_thong,
@@ -66,6 +67,8 @@ from core.keys import CHUA_GHI, FILTER_KEY_FIELD, split_key
 from core.masking import (
     MASK_NAMESPACE,
     MASK_REASON_L2_ONLY,
+    MaskItemOutOfPermission,
+    SlotRoleUnknown,
     NEIGHBOR_FIELD,
     NEIGHBOR_NO_KEY_FIELD,
     OWNER_GROUP_FIELD,
@@ -1279,6 +1282,95 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
                 continue
             vai = tuple(sorted(v for v in d["cac_vai"] if v is not None))
             ra[d["id_hyperedge"]] = (d["khoa_trich_dan"], vai)
+        return ra
+
+    async def do_thi_cua(self, ids) -> list[dict]:
+        """Các dòng (hyperedge, vai, tên entity **đã che**) dưới ngữ cảnh vai (story 3.7).
+
+        Đường đọc của `POST /do-thi`. Một câu Cypher `IN $ids`, **`MATCH`** chứ
+        không `OPTIONAL MATCH`, và cả ba biến - hyperedge `h`, cạnh `r`, entity
+        `e` - đi qua mệnh đề **chặt** `_dieu_kien` cộng `e.role = entity`. Khác
+        `get_node_edges` và `trich_dan_cua` đúng một chỗ: entity không khóa
+        (AD-5) **không** đi qua. AD-8 định nghĩa "ngoài quyền" của đồ thị bằng
+        ba ca tường minh và không khóa là một trong ba; ngữ cảnh gửi LLM cần
+        biết "có một fact ở đây" (FR-12), đồ thị vẽ lên màn thì không (ADR-018).
+        Hệ quả là một hyperedge mà mọi đỉnh đều ngoài quyền không về dòng nào,
+        tức vắng mặt như một id không tồn tại - đúng điều spec đòi.
+
+        Mỗi dòng đi qua `_che` với bản ghi **cùng hình dạng `get_node_edges`**
+        (`node_id`, `NEIGHBOR_FIELD`, `SLOT_FIELD`, `NEIGHBOR_NO_KEY_FIELD=False`)
+        và khóa của hyperedge, nên luật che là một chỗ và bảng nhóm là bảng của
+        chính adapter. `bi_che` là phép so tên trước và sau che, không parse dấu
+        che. Cạnh không mang `slot` (dữ liệu trước 2.4) bị bỏ **trước** khi tới
+        tầng che: một cạnh không vai không tra được luật che nào, và đưa nó ra
+        là để tên đi ra nguyên văn. Cạnh mang `slot` **lạ** (không phải chuỗi
+        hay ngoài danh mục 8 vai) là dữ liệu kho hỏng: `DoThiNgoaiQuyen` mang
+        mã ổn định, không để `SlotRoleUnknown` của `core/` lên HTTP thành một
+        500 không tên; cùng cách với `MaskItemOutOfPermission` từ `_che`.
+
+        Ngữ cảnh hệ thống bị **từ chối** chứ không đọc thô: `_che` trả bản ghi
+        nguyên trạng ở đó, và đường này không có nơi gọi hợp lệ nào dưới cờ
+        ingest. Cùng mã với citation (`DoThiNgoaiQuyen`).
+        """
+        context = current_context()
+        if context.bypass_filter:
+            raise DoThiNgoaiQuyen(
+                "do_thi_cua không chạy dưới ngữ cảnh hệ thống: tầng che trả tên"
+                " thô ở đó, và đồ thị theo quyền không có nghĩa nào để nói"
+            )
+        cac_id = chuan_hoa_ids(ids)
+        if not cac_id or not self._co_khoa_de_doc(context):
+            return []
+        space = self._nhan_space(context)
+        dong = await self._chay(
+            f"MATCH (h:`{space}`:`{LABEL_HYPEREDGE}`)-[r:{EDGE_TYPE}]-(e:`{space}`)\n"
+            f"WHERE h.{NODE_ID_FIELD} IN $ids AND {self._dieu_kien('h', context)}"
+            f" AND {self._dieu_kien('r', context)}"
+            f" AND {self._dieu_kien('e', context)}"
+            f" AND e.{ROLE_FIELD} = $vai_entity\n"
+            f"RETURN h.{NODE_ID_FIELD} AS id_hyperedge,"
+            f" h.{FILTER_KEY_FIELD} AS khoa_do_thi,"
+            f" r.{SLOT_FIELD} AS slot, e.{NODE_ID_FIELD} AS id_entity",
+            ids=list(cac_id),
+            vai_entity=ROLE_ENTITY,
+            **self._tham_so_loc(context),
+        )
+        ra: list[dict] = []
+        for d in dong:
+            if d["slot"] is None:
+                continue
+            if not isinstance(d["slot"], str) or d["slot"] not in SLOT_ROLE_SET:
+                raise DoThiNgoaiQuyen(
+                    f"hyperedge {d['id_hyperedge']!r} có cạnh mang vai"
+                    f" {d['slot']!r} ngoài danh mục 8 vai: dữ liệu kho hỏng,"
+                    " không dựng đồ thị"
+                )
+            khoa = self._khoa_hyperedge((ROLE_HYPEREDGE, d["khoa_do_thi"]), (ROLE_ENTITY, None))
+            try:
+                ban_ghi = self._che(
+                    {
+                        "node_id": d["id_hyperedge"],
+                        NEIGHBOR_FIELD: d["id_entity"],
+                        SLOT_FIELD: d["slot"],
+                        NEIGHBOR_NO_KEY_FIELD: False,
+                    },
+                    context,
+                    khoa,
+                )
+            except (MaskItemOutOfPermission, SlotRoleUnknown) as loi:
+                raise DoThiNgoaiQuyen(
+                    f"không che được cạnh của hyperedge {d['id_hyperedge']!r}"
+                    f" ({type(loi).__name__}): tầng lọc và tầng che lệch nhau"
+                ) from loi
+            ra.append(
+                {
+                    "id_hyperedge": d["id_hyperedge"],
+                    "khoa": khoa,
+                    "slot": d["slot"],
+                    "ten_da_che": ban_ghi[NEIGHBOR_FIELD],
+                    "bi_che": ban_ghi[NEIGHBOR_FIELD] != d["id_entity"],
+                }
+            )
         return ra
 
     @property

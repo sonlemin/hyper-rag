@@ -77,6 +77,17 @@ CHAM_STORAGE_CO_LY_DO: dict[str, str] = {
         " nội dung ra khỏi nó đã đi qua tầng che của ba adapter (AD-9), api/"
         " không che lại và không bỏ che"
     ),
+    # Dòng thứ năm (story 3.7), cùng câu trả lời với dòng trên: nội dung ra
+    # khỏi module này là đồ thị mà `EngineACL.do_thi` lắp từ các dòng của
+    # `Neo4jACLGraphStorage.do_thi_cua`, mỗi dòng qua `_che` (method nằm trong
+    # `MASKED_READ_METHODS`) và hyperedge ngoài quyền vắng ngay trong Cypher.
+    # Module không nhập `core.masking`, không dựng ngữ cảnh (gọi
+    # `api.hoi_dap.ngu_canh_cua_claim`), không dựng đồ thị từ `citations`.
+    "api/do_thi.py": (
+        "endpoint đồ thị theo quyền: gọi EngineACL.do_thi dưới ngữ cảnh vai;"
+        " mọi tên entity ra khỏi nó đã qua _che của adapter graph, hyperedge"
+        " ngoài quyền vắng mặt ở Cypher, api/ chỉ chuyển kiểu"
+    ),
 }
 
 # Tên mở một đường tới kho tri thức: ba lớp storage, engine, và bốn cửa của
@@ -210,6 +221,7 @@ def test_ly_do_khai_van_con_that():
 HAM_MAIN_CO_LY_DO: dict[str, str] = {
     "health": "healthcheck của compose; trả một hằng, nằm ngoài mọi cửa",
     "hoi": "POST /hoi-dap; gọi thẳng api.hoi_dap.tra_loi, nội dung đã che ở ba adapter (AD-9)",
+    "do_thi": "POST /do-thi; gọi thẳng api.do_thi.lay_do_thi, tên entity đã che ở adapter graph (AD-9), không LLM",
     "_than_yeu_cau_la": "exception handler, đổi 422 thô của FastAPI thành 400 đúng envelope",
     "_loi_khong_xac_dinh": "exception handler lưới cuối; trả {error:{code,message}} từ hai hằng, nội dung lỗi chỉ vào log",
     "mo_kho_tai_khoan": "điểm nối mở pool Postgres cho bảng users; test thay bằng bản giả",

@@ -71,9 +71,10 @@ def test_chu_ky_ba_tham_so():
 def test_danh_sach_dong_doc_duoc_o_runtime():
     """Danh sách đóng các method phải che, đọc được để adapter phản chiếu.
 
-    Sáu tên, một cho mỗi đường dữ liệu ra khỏi kho: `query` của đường vector,
-    ba method của đường graph, và hai method đọc chunk của đường KV mà story
-    1.5 thêm vào (`get_by_id`, `get_by_ids`).
+    Bảy tên, một cho mỗi đường dữ liệu ra khỏi kho: `query` của đường vector,
+    ba method của đường graph, hai method đọc chunk của đường KV mà story
+    1.5 thêm vào (`get_by_id`, `get_by_ids`), và `do_thi_cua` của đường đồ thị
+    theo quyền (story 3.7) - method riêng của dự án, trả tên entity theo vai.
     """
     assert MASKED_READ_METHODS == frozenset(
         {
@@ -83,16 +84,28 @@ def test_danh_sach_dong_doc_duoc_o_runtime():
             "get_node_edges",
             "get_by_id",
             "get_by_ids",
+            "do_thi_cua",
         }
     )
     assert isinstance(MASKED_READ_METHODS, frozenset)
 
 
 def test_moi_method_trong_danh_sach_ton_tai_o_upstream():
-    """Neo danh sách đóng vào interface thật của fork, không để trôi dạt."""
+    """Neo danh sách đóng vào interface thật của fork, không để trôi dạt.
+
+    `do_thi_cua` (story 3.7) là method riêng của dự án, không có ở upstream;
+    nó neo vào chính adapter graph thay vì vào interface, và tập miễn trừ đó là
+    tường minh để một tên upstream không lọt vào đây mà thoát phép neo.
+    """
+    from adapters.neo4j import Neo4jACLGraphStorage
+
+    rieng_du_an = {"do_thi_cua"}
     interface = (BaseVectorStorage, BaseGraphStorage, BaseKVStorage)
-    for ten in MASKED_READ_METHODS:
+    for ten in MASKED_READ_METHODS - rieng_du_an:
         assert any(hasattr(lop, ten) for lop in interface), ten
+    for ten in rieng_du_an:
+        assert hasattr(Neo4jACLGraphStorage, ten), ten
+        assert not any(hasattr(lop, ten) for lop in interface), ten
 
 
 def test_tam_vai_slot_dung_mot_noi():

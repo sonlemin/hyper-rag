@@ -41,8 +41,10 @@ nạp trước truy vấn đầu tiên, và nếu chưa thì collection vắng c
 `KHO_KHONG_SAN_SANG` chứ không tự tạo - cái giá đó vốn đã có, vì một kho rỗng
 không trả lời được gì.
 
-`graph` rỗng ở story này là **hình dạng đã chốt**, không phải nội dung còn
-thiếu: nội dung graph là 3.7. `citations` có nội dung từ story 3.4: mỗi mục là
+`graph` rỗng trên đường `/hoi-dap` là **hình dạng đã chốt**; nội dung graph đi
+ra qua `POST /do-thi` (story 3.7, `api/do_thi.py`) bằng cùng serializer, và
+`dung_envelope` kiểm từng node/edge như nó kiểm citation. `citations` có nội
+dung từ story 3.4: mỗi mục là
 một dict **sáu khóa đóng** (`adapters.trich_dan.KHOA_TRICH_DAN`), dựng ở engine
 từ ngữ cảnh truy hồi cộng cửa quyền của adapter graph, và `dung_envelope` kiểm
 từng mục như nó kiểm `meta`. Handler chỉ chuyển `TrichDan` sang dict; nó không
@@ -66,6 +68,14 @@ from dataclasses import asdict
 
 from pydantic import BaseModel, ConfigDict
 
+from adapters.do_thi import (
+    KHOA_CANH,
+    KHOA_NODE_ENTITY,
+    KHOA_NODE_HYPEREDGE,
+    DoThi,
+    NodeHyperedge,
+    do_thi_tu_dict,
+)
 from adapters.trich_dan import KHOA_TRICH_DAN, MUC_TRICH_DAN, TrichDan, TrichDanNgoaiQuyen
 from adapters.engine import (
     EngineACL,
@@ -206,6 +216,19 @@ MA_TRICH_DAN_NGOAI_QUYEN: str = TrichDanNgoaiQuyen.code
 # lặng lẽ, và hệ phải nói ra điều đó thay vì trả một envelope trông như đã đếm.
 MA_AUDIT_GHI_HONG: str = "AUDIT_GHI_HONG"
 
+# Mã thứ mười, vào ở story 3.7: `POST /do-thi` nhận nhiều id hơn `SO_ID_TOI_DA`.
+# 400 trước khi chạm kho, cùng họ với `CAU_HOI_QUA_DAI` - một ngân sách có tên
+# chứ không phải một con số trong lời gọi.
+MA_DANH_SACH_ID_QUA_DAI: str = "DANH_SACH_ID_QUA_DAI"
+
+# Số id hyperedge tối đa của một lượt lấy đồ thị. Đo trên máy chủ 06/09 (story
+# 3.4): một lượt `devops` trên `synth` mang 97 citation, tức toàn bộ hyperedge
+# trong ngữ cảnh (top_k 60 x hai nhánh hybrid, cắt theo 4000 token). 200 rộng
+# gấp đôi con số đó nên nó chặn ca dán một danh sách id tùy ý chứ không chặn
+# một lượt thật; kiểm trên danh sách **chưa khử trùng**, vì đó là thứ đi qua
+# đường mạng.
+SO_ID_TOI_DA: int = 200
+
 # Trần chờ (giây) cho một lần ghi `refusal` ở tầng mutation. `ghi_bien_doi` của
 # `core/` không có hạn (đúng nghĩa "ghi hỏng là thao tác hỏng"), nhưng một
 # Postgres treo giữ kết nối mở mà không trả lời sẽ giữ request treo theo; quá
@@ -234,6 +257,10 @@ THONG_DIEP_DAU_RA_LLM: str = "mô hình ngôn ngữ trả về đầu ra không 
 THONG_DIEP_NGU_CANH_SAI: str = "ngữ cảnh quyền của request không phải ngữ cảnh vai"
 THONG_DIEP_TRICH_DAN: str = "không dựng được trích dẫn theo quyền cho lượt này"
 THONG_DIEP_AUDIT_HONG: str = "không ghi được sổ audit cho lượt này"
+# Thông điệp của `POST /do-thi` khi một mục trong `hyperedge_ids` rỗng hay toàn
+# khoảng trắng - nhánh duy nhất mà `api/do_thi.py` tự phát 400 `THAN_YEU_CAU_LA`
+# (mục không phải chuỗi và trường thừa đã bị pydantic chặn qua handler chung).
+THONG_DIEP_THAN_DO_THI: str = "`hyperedge_ids` phải là danh sách chuỗi không rỗng"
 
 # Độ dài tối đa của câu hỏi, tính bằng ký tự. Hằng có tên chứ không phải một số
 # nằm trong một lời gọi: nó là một ngân sách (mỗi ký tự đi vào prompt trích từ
@@ -365,6 +392,11 @@ def dung_envelope(*, answer, refused: bool, citations: list, graph: dict, meta: 
     chuỗi, `owner_group` là chuỗi hoặc `None`. Sai hình là `ValueError` ngay
     tại đây, fail-closed: một citation thừa một khóa là một kênh nữa để nội
     dung rò ra ngoài tầng che.
+
+    Từng node và edge của `graph` kiểm cùng cách (story 3.7): node theo `kind`
+    đúng tập khóa đóng của loại đó, id node không trùng, mọi edge nối một node
+    hyperedge có mặt tới một node entity có mặt - kiểm bằng cách **dựng lại**
+    `adapters.do_thi.DoThi`, không viết bộ kiểm thứ hai.
     """
     if answer is not None and not isinstance(answer, str):
         raise TypeError(f"answer phải là chuỗi hoặc None, nhận được {type(answer).__name__}")
@@ -383,6 +415,7 @@ def dung_envelope(*, answer, refused: bool, citations: list, graph: dict, meta: 
             f"graph là tập trường đóng {list(KHOA_GRAPH)}, nhận được"
             f" {sorted(graph) if isinstance(graph, dict) else type(graph).__name__}"
         )
+    _kiem_do_thi(graph)
     thieu = [k for k in KHOA_META if k not in meta]
     thua = [k for k in meta if k not in KHOA_META]
     if thieu or thua:
@@ -445,6 +478,35 @@ def dict_trich_dan(td: TrichDan) -> dict:
     """
     tho = asdict(td)
     return {k: (list(tho[k]) if k == "masked_slots" else tho[k]) for k in KHOA_TRICH_DAN}
+
+
+def _kiem_do_thi(graph: dict) -> None:
+    """`graph` phải dựng lại được thành `adapters.do_thi.DoThi`, không hơn không kém.
+
+    Cùng thủ pháp với `_kiem_trich_dan`: một bộ kiểm ở `adapters/`
+    (`do_thi_tu_dict`), serializer gọi lại nó và bộ test đọc thân response bằng
+    đúng hàm ấy. Mọi lệch là `ValueError` ngay tại đây, fail-closed - một node
+    thừa một khóa là một kênh nữa ra ngoài tầng che.
+    """
+    do_thi_tu_dict(graph)
+
+
+def dict_do_thi(do_thi: DoThi) -> dict:
+    """`DoThi` -> dict hai khóa `KHOA_GRAPH`, node và edge đúng thứ tự khóa đóng.
+
+    Toàn bộ việc `api/` làm với đồ thị: chuyển kiểu. Không lọc, không thêm,
+    không đọc lại quyền. Node đi ra theo tập khóa của loại nó, `kind` ở vị trí
+    thứ hai như spec khai.
+    """
+    nodes = []
+    for n in do_thi.nodes:
+        tho = asdict(n)
+        khoa = KHOA_NODE_HYPEREDGE if isinstance(n, NodeHyperedge) else KHOA_NODE_ENTITY
+        nodes.append({k: tho[k] for k in khoa})
+    return {
+        "nodes": nodes,
+        "edges": [{k: getattr(c, k) for k in KHOA_CANH} for c in do_thi.edges],
+    }
 
 
 # --- Engine của tiến trình phục vụ ---------------------------------------------
@@ -563,7 +625,7 @@ def ngu_canh_cua_claim(
     return ngu_canh
 
 
-def _loi_truy_hoi(loi: BaseException) -> "LoiHoiDap | None":
+def loi_truy_hoi(loi: BaseException) -> "LoiHoiDap | None":
     """Ngoại lệ của đường truy hồi -> một mã lỗi ổn định của dự án, hoặc `None`.
 
     Bốn nhánh, và **thứ tự là nội dung**: nhận diện lỗi *kho* cạn kiệt trước
@@ -606,6 +668,8 @@ def _loi_truy_hoi(loi: BaseException) -> "LoiHoiDap | None":
     if la_loi_mang_tam_thoi(loi):
         return LoiHoiDap(503, MA_KHO_KHONG_SAN_SANG, THONG_DIEP_KHO)
     return None
+
+
 
 
 # Gốc module của hai SDK kho cộng lớp truyền tải của chúng. Đọc theo **tên
@@ -827,7 +891,7 @@ async def tra_loi(
         raise LoiHoiDap(500, MA_TRICH_DAN_NGOAI_QUYEN, THONG_DIEP_TRICH_DAN) from None
     except DauRaTraLoiKhongDoc as loi:
         # **Lỗi hệ thống, không phải một lý do từ chối.** Bắt trước nhánh chung
-        # bên dưới vì `_loi_truy_hoi` trả `None` cho nó (nó không mang mã HTTP
+        # bên dưới vì `loi_truy_hoi` trả `None` cho nó (nó không mang mã HTTP
         # nào và không đến từ SDK kho), tức nó sẽ dội lên thành một 500 không
         # tên. Nguyên văn đầu ra hỏng chỉ vào log: nó là văn bản do LLM sinh ra
         # từ ngữ cảnh đã lọc, và một thân lỗi mang nó là một đường rò đi vòng
@@ -837,7 +901,7 @@ async def tra_loi(
             502, MA_DAU_RA_LLM_KHONG_DOC_DUOC, THONG_DIEP_DAU_RA_LLM
         ) from None
     except Exception as loi:
-        da_biet = _loi_truy_hoi(loi)
+        da_biet = loi_truy_hoi(loi)
         if da_biet is None:
             raise
         # Log nguyên lỗi, trả một thông điệp cố định: người vận hành cần biết
@@ -879,6 +943,9 @@ __all__ = [
     "CT_MA",
     "CT_MILI_GIAY",
     "MA_AUDIT_GHI_HONG",
+    "MA_DANH_SACH_ID_QUA_DAI",
+    "SO_ID_TOI_DA",
+    "THONG_DIEP_THAN_DO_THI",
     "THOI_HAN_BIEN_DOI",
     "DAI_CAU_HOI_TOI_DA",
     "DANH_MUC_LY_DO",
@@ -902,11 +969,13 @@ __all__ = [
     "TEMPLATE_TU_CHOI",
     "LoiHoiDap",
     "ThanHoiDap",
+    "dict_do_thi",
     "dict_trich_dan",
     "dung_envelope",
     "dung_meta",
     "graph_rong",
     "kiem_cau_hoi",
+    "loi_truy_hoi",
     "mo_engine",
     "ngu_canh_cua_claim",
     "tra_loi",

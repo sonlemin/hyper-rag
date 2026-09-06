@@ -174,6 +174,10 @@ class EngineGia:
 
     `trich_dan` (story 3.4) là tuple `TrichDan` mà lượt trả lời mang; mặc định
     rỗng để mọi ca của 3.3/3.5 giữ nguyên kỳ vọng `citations: []`.
+
+    `do_thi` (story 3.7) là `adapters.do_thi.DoThi` mà `POST /do-thi` trả;
+    mặc định đồ thị rỗng. `ids` giữ lại danh sách id của từng lời gọi, và
+    `ngu_canh` ghi ngữ cảnh đọc **bên trong** lời gọi như hai method kia.
     """
 
     def __init__(
@@ -182,11 +186,16 @@ class EngineGia:
         loi: BaseException | None = None,
         ly_do: str | None = None,
         trich_dan: tuple = (),
+        do_thi=None,
     ):
+        from adapters.do_thi import DoThi
+
         self.tra_loi = tra_loi
         self.loi = loi
         self.ly_do = ly_do
         self.trich_dan = trich_dan
+        self.do_thi_tra = DoThi() if do_thi is None else do_thi
+        self.ids: list = []
         self.cau_hoi: list[str] = []
         self.param: list = []
         self.ngu_canh: list = []
@@ -216,6 +225,15 @@ class EngineGia:
         if self.ly_do is not None:
             return KetQuaHoiDap(ly_do_tu_choi=self.ly_do)
         return KetQuaHoiDap(cau_tra_loi=self.tra_loi, trich_dan=self.trich_dan)
+
+    async def do_thi(self, ids):
+        from core.permission import current_context
+
+        self.ids.append(list(ids))
+        self.ngu_canh.append(current_context())
+        if self.loi is not None:
+            raise self.loi
+        return self.do_thi_tra
 
     async def dong(self):
         self.da_dong = True

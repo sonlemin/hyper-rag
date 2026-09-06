@@ -367,6 +367,9 @@ class Neo4jGhiLai:
         if "AS khoa_trich_dan" in cypher:
             # Story 3.4: cửa quyền của citation, đường đọc dưới ngữ cảnh vai.
             return "doc:trich_dan_cua", self._doc_trich_dan(cypher, params)
+        if "AS khoa_do_thi" in cypher:
+            # Story 3.7: đường đọc đồ thị theo quyền, dưới ngữ cảnh vai.
+            return "doc:do_thi_cua", self._doc_do_thi(cypher, params)
         if "MERGE (n:" in cypher:
             return "ghi:node", self._ghi_node(cypher, params)
         if "MERGE (a)-[" in cypher:
@@ -662,6 +665,39 @@ class Neo4jGhiLai:
                     "cac_vai": vai,
                 }
             )
+        return ra
+
+    def _doc_do_thi(self, cypher: str, params: dict) -> list[dict]:
+        """`MATCH (h)-[r]-(e) WHERE h.id IN $ids ...`: một dòng mỗi cạnh qua lọc (story 3.7).
+
+        `MATCH` chứ không `OPTIONAL MATCH`: hyperedge không có cạnh nào qua điều
+        kiện của `r`/`e` **không** về dòng nào. Điều kiện của cả ba biến đọc
+        thẳng từ câu Cypher như mọi đường khác; riêng `e.role = $vai_entity` là
+        mệnh đề thêm của đường này và cũng đọc từ câu. Thứ tự trả về cố ý
+        **đảo** so với `$ids` và đảo trong từng hyperedge: `IN` không hứa thứ tự
+        và adapter không được dựa vào nó.
+        """
+        doi_vai_entity = f"e.{ROLE_FIELD} = $vai_entity" in cypher
+        ra = []
+        for id_h in reversed(list(params["ids"])):
+            node = self.nodes.get((params["space"], id_h))
+            if (
+                node is None
+                or LABEL_HYPEREDGE not in node.nhan
+                or not self._hop_le(cypher, params, "h", node.props)
+            ):
+                continue
+            for canh, id_kia, kia in reversed(self._lan_can(cypher, params, id_h, "e")):
+                if doi_vai_entity and kia.props.get(ROLE_FIELD) != params["vai_entity"]:
+                    continue
+                ra.append(
+                    {
+                        "id_hyperedge": id_h,
+                        "khoa_do_thi": node.props.get(FILTER_KEY_FIELD),
+                        "slot": canh.props.get(SLOT_FIELD),
+                        "id_entity": id_kia,
+                    }
+                )
         return ra
 
     def _doc_khoa(self, cypher: str, params: dict) -> list[dict]:
