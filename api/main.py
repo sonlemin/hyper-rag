@@ -590,6 +590,7 @@ async def hoi(request: Request, than: hoi_dap.ThanHoiDap, c: Claim) -> dict:
         engine=request.app.state.engine,
         audit=request.app.state.audit,
         che_do_do=request.app.state.che_do_do,
+        kho=request.app.state.kho_break_glass,
     )
 
 
@@ -610,6 +611,7 @@ async def do_thi(request: Request, than: api_do_thi.ThanDoThi, c: Claim) -> dict
         claim=c,
         policy=request.app.state.kho_chinh_sach.hien_tai(),
         engine=request.app.state.engine,
+        kho=request.app.state.kho_break_glass,
     )
 
 

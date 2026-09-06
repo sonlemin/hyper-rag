@@ -12,8 +12,9 @@ entity hay câu fact.
 văn bản `answer`.** Id đọc được trong chuỗi ngữ cảnh chỉ là **khóa tra**; khóa
 quyền, các vai có mặt và nhóm phụ trách đến từ adapter dưới ngữ cảnh vai hiện
 tại, còn mức và tập vai bị che tính bằng **hai hàm thuần của `core/masking.py`**
-(`muc_tiet_lo`, `vai_phai_che`) - chính hàm mà `mask` dùng, nên citation và dấu
-che không trôi khỏi nhau. Hai hàm ấy gọi **qua module** (`masking.vai_phai_che`)
+(`muc_hieu_luc`, `vai_phai_che_hieu_luc` - bản đã tính grant break-glass của
+`muc_tiet_lo`/`vai_phai_che`, story 5.3) - chính hàm mà `mask` dùng, nên citation
+và dấu che không trôi khỏi nhau. Hai hàm ấy gọi **qua module** (`masking.vai_phai_che_hieu_luc`)
 chứ không nhập theo tên: luật phân giải lúc gọi, nên ca đột biến của
 `tests/test_trich_dan.py` thay luật ở một chỗ là cả dấu che lẫn citation đổi
 theo - đó là cơ chế của câu "một luật một chỗ", không phải một quy ước.
@@ -139,11 +140,13 @@ def dung_trich_dan(
 ) -> TrichDan:
     """Một citation từ id, khóa quyền, các vai có mặt và nhóm phụ trách.
 
-    `masked_slots = vai_phai_che(context, content_type) ∩ cac_vai`, đúng luật
-    của `mask`, và **chỉ** giao với vai có mặt trên hyperedge: một hyperedge
-    không có vai `owner` (HE-04 của fixture, 229/281 của `synth`) không mang
-    `owner` trong `masked_slots`, dù `owner_group` vẫn điền theo loại nội dung.
-    `level` suy từ `allowed_keys` qua `muc_tiet_lo`, không tra lại bảng.
+    `masked_slots = vai_phai_che_hieu_luc(context, content_type, id) ∩ cac_vai`,
+    đúng luật của `mask`, và **chỉ** giao với vai có mặt trên hyperedge: một
+    hyperedge không có vai `owner` (HE-04 của fixture, 229/281 của `synth`) không
+    mang `owner` trong `masked_slots`, dù `owner_group` vẫn điền theo loại nội
+    dung. `level` suy từ `allowed_keys` qua `muc_hieu_luc`, không tra lại bảng;
+    hyperedge nằm trong `context.grant_ids` (story 5.3) cho `L2` và chỉ còn
+    `owner` bị che - đúng mức mà `mask` vừa áp lên ngữ cảnh.
 
     Khóa ngoài quyền dội `MaskItemOutOfPermission` từ `core/` nguyên vẹn: nơi
     gọi đã lọc bằng cửa quyền của adapter, nên tới đây mà còn ngoài quyền là
@@ -160,14 +163,14 @@ def dung_trich_dan(
             f"khóa quyền của hyperedge {id_hyperedge!r} không tách được thành"
             " scope và loại nội dung: không suy được mức hay tập che"
         ) from loi
-    muc = masking.muc_tiet_lo(context, khoa)
+    muc = masking.muc_hieu_luc(context, khoa, id_hyperedge)
     co_mat = set(cac_vai)
     la = sorted(v for v in co_mat if not isinstance(v, str) or v not in SLOT_ROLE_SET)
     if la:
         raise TrichDanNgoaiQuyen(
             f"hyperedge {id_hyperedge!r} mang vai ngoài danh mục 8 vai: {la}"
         )
-    che = masking.vai_phai_che(context, content_type) & co_mat
+    che = masking.vai_phai_che_hieu_luc(context, content_type, id_hyperedge) & co_mat
     return TrichDan(
         id=id_hyperedge,
         level=muc,

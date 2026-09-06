@@ -330,6 +330,12 @@ CT_LY_DO: str = "ly_do"
 # `TRICH_DAN_NGOAI_QUYEN`, nhưng khóa có tên để lệch quyền thứ hai (Epic 5) ghi
 # cùng hàng.
 CT_MA: str = "ma"
+# Dãy id hyperedge của grant break-glass mà lượt này chạy dưới (story 5.3),
+# **chỉ có mặt khi ngữ cảnh mang grant**, ở cả ba hàng `query`, `refusal`,
+# `permission_mismatch` (`_kem_grant`): hàng của mọi lượt không grant giữ
+# nguyên hình dạng cũ, và hậu kiểm FR-20 đọc được lượt nào đã dùng quyền nâng.
+# Không vào response (AD-8).
+CT_GRANT_IDS: str = "grant_ids"
 
 
 class LoiHoiDap(LoiXacThuc):
@@ -586,13 +592,20 @@ def kiem_cau_hoi(cau_hoi: str) -> str:
 
 
 def ngu_canh_cua_claim(
-    claim: ClaimNguoiHoi, policy: Policy, request_id: str | None = None
+    claim: ClaimNguoiHoi,
+    policy: Policy,
+    request_id: str | None = None,
+    grant_ids: tuple[str, ...] = (),
 ) -> PermissionContext:
     """Ngữ cảnh quyền của một request, dựng **đúng một lần**, từ token và bảng.
 
     Ba trường của `DanhTinh` lấy trọn từ claim đã ký: không đọc lại seed (một
     phép đọc thứ hai là một chỗ để hai nguồn lệch nhau giữa lúc token còn sống)
-    và không đọc gì từ thân request.
+    và không đọc gì từ thân request. `grant_ids` (story 5.3) là dãy id hyperedge
+    mà `doc_grant_ids` vừa đọc từ kho grant cho đúng cặp `(sub, role)` của
+    claim trong space của claim - **không** bao giờ từ thân hay từ claim
+    (`ThanHoiDap` cấm trường ấy từ 3.3). Mặc định rỗng: ba tuyến break-glass
+    dựng ngữ cảnh người xin qua đây và cố ý không đọc grant.
 
     Cửa cuối cùng là lớp thứ ba của NFR-10: kết quả phải là ngữ cảnh **vai**.
     Hôm nay `ngu_canh_cua` không có nhánh nào trả về ngữ cảnh hệ thống, nên cửa
@@ -604,7 +617,7 @@ def ngu_canh_cua_claim(
         danh_tinh = DanhTinh(
             tai_khoan=claim.sub, vai=claim.role, khong_gian=claim.space
         )
-        ngu_canh = ngu_canh_cua(danh_tinh, policy, request_id=request_id)
+        ngu_canh = ngu_canh_cua(danh_tinh, policy, request_id=request_id, grant_ids=grant_ids)
     except RoleUnknown as loi:
         # 403 chứ không 500: token hợp lệ, nhưng vai nó khai không có trong bảng
         # đang chạy. Thông điệp **không** ghép tên vai hay tên tài khoản vào -
@@ -623,6 +636,32 @@ def ngu_canh_cua_claim(
     if ngu_canh.kind != KIND_USER:
         raise LoiHoiDap(500, MA_NGU_CANH_KHONG_PHAI_VAI, THONG_DIEP_NGU_CANH_SAI)
     return ngu_canh
+
+
+async def doc_grant_ids(kho, claim: ClaimNguoiHoi) -> tuple[str, ...]:
+    """Dãy id hyperedge của grant break-glass còn hạn của người hỏi (story 5.3).
+
+    Đọc từ `KhoBreakGlass.grant_hieu_luc` cho cặp `(claim.sub, claim.role)`
+    trong `claim.space` - đúng ba trường mà grant bind, nên grant ở vai khác
+    ngủ. Gọi **trước** khi dựng ngữ cảnh, để `grant_ids` là một thành phần của
+    ngữ cảnh đóng băng của lượt: grant hết hạn giữa lượt thì lượt vẫn chạy trọn
+    với ngữ cảnh đã dựng, lượt kế không.
+
+    Kho hỏng là 503 `KHO_KHONG_SAN_SANG` qua `api.break_glass.loi_kho`, **không**
+    lặng lẽ hạ về `()`: một lượt chạy không grant vì kho rớt trông y như một
+    lượt bình thường, và người vừa được duyệt sẽ tin rằng grant không có tác
+    dụng. Import tại chỗ vì `api.break_glass` nhập module này ở đầu file.
+    """
+    from api.break_glass import loi_kho
+
+    try:
+        return tuple(await kho.grant_hieu_luc(claim.sub, claim.role, claim.space))
+    except Exception as loi:
+        da_biet = loi_kho(loi)
+        if da_biet is None:
+            raise
+        logger.warning("kho grant break-glass hỏng (%s): %s", type(loi).__name__, loi)
+        raise da_biet from None
 
 
 def loi_truy_hoi(loi: BaseException) -> "LoiHoiDap | None":
@@ -697,6 +736,19 @@ def _tu_sdk_kho(loi: BaseException) -> bool:
     return False
 
 
+def _kem_grant(chi_tiet: dict, ngu_canh: PermissionContext) -> dict:
+    """`chi_tiet` cộng `grant_ids` **chỉ khi** ngữ cảnh mang grant (story 5.3).
+
+    Một luật cho cả ba hàng của một lượt - `query`, `refusal`,
+    `permission_mismatch`: hậu kiểm FR-20 đọc được lượt nào chạy dưới quyền
+    nâng dù lượt ấy trả lời, từ chối hay hỏng ở cửa quyền; hàng của lượt không
+    grant giữ nguyên hình dạng cũ.
+    """
+    if ngu_canh.grant_ids:
+        return {**chi_tiet, CT_GRANT_IDS: list(ngu_canh.grant_ids)}
+    return chi_tiet
+
+
 async def _ghi_audit_truy_van(
     audit: AuditPort,
     ngu_canh: PermissionContext,
@@ -714,7 +766,11 @@ async def _ghi_audit_truy_van(
     `chi_tiet` mang mili giây, thứ NFR-08 đọc, cộng `request_id` để nối với
     `llm_cost`/`embedding_cost`/`filter` của cùng lượt. Cả hai vào audit chứ
     không vào `meta`, vì `meta` phải byte-identical giữa mọi lý do từ chối (AD-8).
+    Khóa thứ ba `grant_ids` (story 5.3) **chỉ khi** ngữ cảnh mang grant: hàng
+    của lượt không grant giữ nguyên hình dạng, hàng của lượt có grant nói lượt
+    ấy chạy dưới những id nào; `hyperedge_ids` vẫn là dãy id citation.
     """
+    chi_tiet = _kem_grant({CT_MILI_GIAY: round(mili_giay, 3), CT_REQUEST_ID: ngu_canh.request_id}, ngu_canh)
     await ghi_quan_sat(
         audit,
         SuKienAudit(
@@ -726,7 +782,7 @@ async def _ghi_audit_truy_van(
             act=ngu_canh.real_account,
             role=ngu_canh.role,
             hyperedge_ids=hyperedge_ids,
-            chi_tiet={CT_MILI_GIAY: round(mili_giay, 3), CT_REQUEST_ID: ngu_canh.request_id},
+            chi_tiet=chi_tiet,
         ),
     )
 
@@ -752,7 +808,7 @@ async def _ghi_audit_lech_quyen(
             act=ngu_canh.real_account,
             role=ngu_canh.role,
             hyperedge_ids=tuple(loi.ids),
-            chi_tiet={CT_MA: MA_TRICH_DAN_NGOAI_QUYEN, CT_REQUEST_ID: ngu_canh.request_id},
+            chi_tiet=_kem_grant({CT_MA: MA_TRICH_DAN_NGOAI_QUYEN, CT_REQUEST_ID: ngu_canh.request_id}, ngu_canh),
         ),
     )
 
@@ -787,7 +843,7 @@ async def _ghi_audit_tu_choi(
         thoi_diem=thoi_diem_utc(),
         act=ngu_canh.real_account,
         role=ngu_canh.role,
-        chi_tiet={CT_LY_DO: ly_do, CT_REQUEST_ID: ngu_canh.request_id},
+        chi_tiet=_kem_grant({CT_LY_DO: ly_do, CT_REQUEST_ID: ngu_canh.request_id}, ngu_canh),
     )
     if not che_do_do:
         await ghi_quan_sat(audit, su_kien)
@@ -807,14 +863,17 @@ async def tra_loi(
     engine: EngineACL,
     audit: AuditPort,
     che_do_do: bool,
+    kho,
 ) -> dict:
-    """Một lượt hỏi: kiểm đầu vào, dựng ngữ cảnh một lần, truy hồi, trả envelope.
+    """Một lượt hỏi: kiểm đầu vào, đọc grant, dựng ngữ cảnh một lần, truy hồi, trả envelope.
 
     Thứ tự cố định và không đổi được: kiểm đầu vào **trước** khi dựng ngữ cảnh
-    (một câu hỏi rỗng không đáng một phép tra bảng chính sách), dựng ngữ cảnh
-    **trước** khi chạm engine (một vai lạ là 403 mà không chạm kho), và
-    `use_context` bọc **trọn** `hoi_dap` - kể cả phần `vendor/` gọi lại wrapper
-    LLM, thứ đọc `current_context()` để kiểm space.
+    (một câu hỏi rỗng không đáng một phép tra bảng chính sách), đọc grant
+    break-glass (story 5.3, `kho` là `KhoBreakGlass`) **trước** khi dựng ngữ
+    cảnh để `grant_ids` đóng băng cùng lượt, dựng ngữ cảnh **trước** khi chạm
+    engine (một vai lạ là 403 mà không chạm kho), và `use_context` bọc **trọn**
+    `hoi_dap` - kể cả phần `vendor/` gọi lại wrapper LLM, thứ đọc
+    `current_context()` để kiểm space.
 
     `policy` là object đã đọc, không phải kho chính sách: nơi gọi đọc
     `hien_tai()` **một lần** ở đầu request rồi truyền xuống. Nhận một kho ở đây
@@ -843,11 +902,15 @@ async def tra_loi(
     # ngữ cảnh là báo một con số nhỏ hơn thời gian thật của chính lượt đó.
     bat_dau = time.perf_counter()
     sach = kiem_cau_hoi(cau_hoi)
+    # Grant break-glass còn hạn của cặp `(sub, role)` trong space (story 5.3):
+    # đọc một lần, trước khi dựng ngữ cảnh, kho hỏng là 503 chứ không phải
+    # một lượt không grant.
+    grant_ids = await doc_grant_ids(kho, claim)
     # Một id cho mỗi lượt (story 3.6), đi trong `PermissionContext` xuống tận
     # wrapper LLM và adapter KV: `query`, `refusal`, `filter`, `llm_cost`,
     # `embedding_cost`, `permission_mismatch` của lượt này nối được với nhau.
     # Không vào response (AD-8).
-    ngu_canh = ngu_canh_cua_claim(claim, policy, request_id=uuid.uuid4().hex)
+    ngu_canh = ngu_canh_cua_claim(claim, policy, request_id=uuid.uuid4().hex, grant_ids=grant_ids)
     try:
         with use_context(ngu_canh):
             # Gọi **không** truyền `param`: `EngineACL.hoi_dap` dựng một
@@ -939,6 +1002,7 @@ async def tra_loi(
 
 
 __all__ = [
+    "CT_GRANT_IDS",
     "CT_LY_DO",
     "CT_MA",
     "CT_MILI_GIAY",
@@ -971,6 +1035,7 @@ __all__ = [
     "ThanHoiDap",
     "dict_do_thi",
     "dict_trich_dan",
+    "doc_grant_ids",
     "dung_envelope",
     "dung_meta",
     "graph_rong",

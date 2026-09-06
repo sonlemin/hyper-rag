@@ -553,3 +553,26 @@ def test_hai_owner_cap_chu_dong_chen_nhau_dung_mot_grant(cau_hinh_pg, session_pr
             assert dong["cap_boi"] == o1 and dong["id"] == xong[0].id
 
     asyncio.run(chay())
+
+
+def test_grant_hieu_luc_hop_khu_trung_sap_xep_bo_het_han_khac_vai_khac_space(cau_hinh_pg, session_prefix):
+    """Hàng "Postgres thật" của 5.3: `grant_hieu_luc` trả hợp của grant còn hạn cùng cặp cùng space, so với `now()` của Postgres."""
+    act = f"{session_prefix}_ts01"
+
+    async def chay():
+        async with kho_bg(cau_hinh_pg, act) as kho:
+            assert await kho.grant_hieu_luc(act, "tech_support", "synth") == ()
+            await chen_grant(kho, act=act, role="tech_support", hyperedge_ids=["HE-09", "HE-02"], con_han_phut=10)
+            await chen_grant(kho, act=act, role="tech_support", hyperedge_ids=["HE-02", "HE-01"], con_han_phut=10)
+            await chen_grant(kho, act=act, role="tech_support", hyperedge_ids=["HE-05"], con_han_phut=-1)
+            await chen_grant(kho, act=act, role="devops", hyperedge_ids=["HE-03"], con_han_phut=10)
+            await chen_grant(kho, act=act, role="tech_support", hyperedge_ids=["HE-07"], con_han_phut=10, space="khac")
+            assert await kho.grant_hieu_luc(act, "tech_support", "synth") == ("HE-01", "HE-02", "HE-09")
+            assert await kho.grant_hieu_luc(act, "devops", "synth") == ("HE-03",)
+            assert await kho.grant_hieu_luc(act, "tech_support", "khac") == ("HE-07",)
+            # Hết hạn bằng đồng hồ Postgres: đặt `expires_at = now()` thì lượt kế không còn.
+            async with kho._pool.acquire() as conn:
+                await conn.execute("UPDATE breakglass_grants SET expires_at = now() WHERE act = $1", act)
+            assert await kho.grant_hieu_luc(act, "tech_support", "synth") == ()
+
+    asyncio.run(chay())

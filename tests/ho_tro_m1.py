@@ -118,6 +118,17 @@ async def hoi(engine, ngu_canh, cau_hoi: str = CAU_HOI) -> str:
         return await engine.aquery(cau_hoi, QueryParam(only_need_context=True))
 
 
+async def hoi_co_grant(engine, ngu_canh, cau_hoi: str = CAU_HOI) -> str:
+    """Ngữ cảnh mà `hoi_dap` sẽ đưa cho LLM: đường chính cộng đường phụ theo grant (story 5.3).
+
+    Khác `hoi` đúng một chỗ: đi qua `EngineACL.ngu_canh_hoi_dap`, nên với ngữ
+    cảnh quyền mang `grant_ids` thì hyperedge được cấp có mặt và đủ giá trị.
+    Không grant thì hai hàm cho cùng chuỗi, và có test canh điều đó.
+    """
+    with use_context(ngu_canh):
+        return await engine.ngu_canh_hoi_dap(cau_hoi)
+
+
 def ten_hyperedge_trong(ngu_canh_truy_hoi: str) -> set[str]:
     """Tên các hyperedge xuất hiện trong chuỗi ngữ cảnh.
 

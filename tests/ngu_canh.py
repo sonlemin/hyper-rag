@@ -14,14 +14,18 @@ from core.permission import PermissionContext, user_context
 from core.system_context import system_context
 
 
-def vai(policy, ten_vai: str, khong_gian: str) -> PermissionContext:
+def vai(policy, ten_vai: str, khong_gian: str, grant_ids: tuple[str, ...] = ()) -> PermissionContext:
     """Ngữ cảnh quyền của một vai; đây là thứ adapter đọc lúc truy vấn.
 
     Tài khoản suy từ tên vai để mỗi vai có đúng một định danh trong mọi bộ
     test, và để một bộ test không tự chế ra một tài khoản không khớp bộ khác.
+
+    `grant_ids` (story 5.3) là dãy id hyperedge của grant break-glass còn hạn,
+    đi thẳng xuống factory; mặc định rỗng nên mọi ca trước 5.3 giữ nguyên.
     """
     return user_context(
-        policy=policy, role=ten_vai, space=khong_gian, real_account=f"{ten_vai}01"
+        policy=policy, role=ten_vai, space=khong_gian, real_account=f"{ten_vai}01",
+        grant_ids=grant_ids,
     )
 
 

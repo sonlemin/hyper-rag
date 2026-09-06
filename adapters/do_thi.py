@@ -225,7 +225,7 @@ def dung_do_thi(
     id khác space cho cùng một kết quả). Thứ tự dòng của adapter không có nghĩa
     (`IN $ids` không hứa gì); mọi thứ tự dựng lại ở đây.
 
-    Mức của node hyperedge suy bằng `masking.muc_tiet_lo` từ `allowed_keys`,
+    Mức của node hyperedge suy bằng `masking.muc_hieu_luc` từ `allowed_keys` và grant,
     gọi **qua module** như citation để một đột biến ở `core/` đổi cả hai. Node
     che dựng theo (hyperedge, slot): hai entity cùng bị che ở một vai của một
     hyperedge ra đúng một node và một cạnh - dấu che không mang số lượng, cùng
@@ -268,7 +268,9 @@ def dung_do_thi(
         la = sorted({d["slot"] for d in dong if not isinstance(d["slot"], str) or d["slot"] not in SLOT_ROLE_SET}, key=str)
         if la:
             raise DoThiNgoaiQuyen(f"hyperedge {id_he!r} mang vai ngoài danh mục 8 vai: {la}")
-        muc = masking.muc_tiet_lo(context, khoa)
+        # Mức đã tính grant (5.3): node của hyperedge được cấp nói `L2`, đúng
+        # mức mà `_che` của adapter vừa áp lên tên các đỉnh của nó.
+        muc = masking.muc_hieu_luc(context, khoa, id_he)
         vi_tri_node_he = len(nodes)
         nodes.append(None)  # điền sau khi biết các cạnh, vì label dựng từ chúng
         canh_cua_he: set[tuple[str, str]] = set()

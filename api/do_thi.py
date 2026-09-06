@@ -45,6 +45,7 @@ from api.hoi_dap import (
     THONG_DIEP_TRICH_DAN,
     LoiHoiDap,
     dict_do_thi,
+    doc_grant_ids,
     dung_envelope,
     dung_meta,
     loi_truy_hoi,
@@ -105,14 +106,17 @@ async def lay_do_thi(
     claim: ClaimNguoiHoi,
     policy: Policy,
     engine: EngineACL,
+    kho,
 ) -> dict:
-    """Một lượt lấy đồ thị: kiểm đầu vào, dựng ngữ cảnh một lần, đọc kho, trả envelope.
+    """Một lượt lấy đồ thị: kiểm đầu vào, đọc grant, dựng ngữ cảnh một lần, đọc kho, trả envelope.
 
     Thứ tự cố định như `tra_loi`: kiểm đầu vào **trước** khi dựng ngữ cảnh (một
-    danh sách quá dài không đáng một phép tra bảng chính sách), dựng ngữ cảnh
-    **trước** khi chạm engine (vai lạ là 403 mà không chạm kho), và
+    danh sách quá dài không đáng một phép tra bảng chính sách), đọc grant
+    break-glass (story 5.3, `kho` là `KhoBreakGlass`; kho hỏng là 503) rồi dựng
+    ngữ cảnh **trước** khi chạm engine (vai lạ là 403 mà không chạm kho), và
     `use_context` bọc trọn `engine.do_thi`. Không `request_id`: đường này không
-    ghi hàng audit nào, nên không có gì để nối.
+    ghi hàng audit nào, nên không có gì để nối. Grant đi vào cùng tầng che với
+    `/hoi-dap`: node của hyperedge được cấp nói `L2` và chỉ còn node che `owner`.
 
     Ánh xạ lỗi dùng lại đúng bốn nhánh của `api.hoi_dap.loi_truy_hoi`, để một
     Neo4j rớt ra 503 `KHO_KHONG_SAN_SANG` ở cả hai tuyến. `TrichDanNgoaiQuyen`
@@ -121,7 +125,8 @@ async def lay_do_thi(
     hai ca không có ở vận hành bình thường.
     """
     ids = kiem_danh_sach_id(hyperedge_ids)
-    ngu_canh = ngu_canh_cua_claim(claim, policy)
+    grant_ids = await doc_grant_ids(kho, claim)
+    ngu_canh = ngu_canh_cua_claim(claim, policy, grant_ids=grant_ids)
     try:
         with use_context(ngu_canh):
             do_thi = await engine.do_thi(ids)

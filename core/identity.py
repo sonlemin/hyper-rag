@@ -19,9 +19,10 @@ dừng ở `adapters/identity_seed.py` và bảng `users` (AD-7), vì `core/` ch
 stdlib nên nó không so được hash, và một trường hash ở đây lọt vào mọi `repr()`
 của tầng trên. JWT và phiên đăng nhập ở `api/xac_thuc.py`.
 
-Không có `grant_ids` ở đây: đường nâng quyền break-glass thuộc Epic 5, và một
-trường rỗng nằm sẵn trong seed là một chỗ để ai đó điền vào trước khi cơ chế
-kiểm nó tồn tại.
+`grant_ids` **không** nằm trong `DanhTinh`: nó không phải thuộc tính của một
+người mà là trạng thái của một cặp `(act, role)` trong một space, đọc từ bảng
+`breakglass_grants` ở đầu mỗi lượt (story 5.3). Nó đi vào ngữ cảnh qua tham số
+của `ngu_canh_cua`, cùng kênh với `request_id`, không qua seed.
 
 Hàm thuần, chỉ stdlib, không đọc file: nửa I/O (đọc YAML seed) nằm ở
 `adapters/identity_seed.py`, cùng khuôn với cặp `core/policy.py` và
@@ -170,7 +171,11 @@ class TaiKhoan:
 
 
 def ngu_canh_cua(
-    danh_tinh: DanhTinh, policy: Policy, *, request_id: str | None = None
+    danh_tinh: DanhTinh,
+    policy: Policy,
+    *,
+    request_id: str | None = None,
+    grant_ids: tuple[str, ...] = (),
 ) -> PermissionContext:
     """Ngữ cảnh quyền của một danh tính, tính từ bảng chính sách đang hiệu lực.
 
@@ -185,7 +190,9 @@ def ngu_canh_cua(
     mà cũng không ai biết vì sao.
 
     `request_id` (story 3.6) đi thẳng xuống factory: handler phát một id cho mỗi
-    lượt để các hàng audit của lượt đó nối được với nhau.
+    lượt để các hàng audit của lượt đó nối được với nhau. `grant_ids` (story
+    5.3) cũng vậy: dãy id hyperedge của grant break-glass còn hạn, handler đọc
+    từ kho grant rồi đưa vào đây; điều kiện nền và phép nới sống ở tầng che.
     """
     if not isinstance(danh_tinh, DanhTinh):
         raise TypeError(
@@ -198,6 +205,7 @@ def ngu_canh_cua(
             role=danh_tinh.vai,
             space=danh_tinh.khong_gian,
             real_account=danh_tinh.tai_khoan,
+            grant_ids=grant_ids,
             request_id=request_id,
         )
     except KeyError:

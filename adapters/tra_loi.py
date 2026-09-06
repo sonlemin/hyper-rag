@@ -29,12 +29,15 @@ xuất của story 2.4, chứ không nằm rải trong một handler HTTP.
 
 Ba hàm ở đây đều **thuần**: `ngu_canh_rong` đọc một chuỗi, `doc_dau_ra` đọc một
 chuỗi, `dung_prompt` ghép hai chuỗi. Lời gọi LLM nằm ở `adapters/engine.py`,
-nơi đã cầm `self.llm_model_func`.
+nơi đã cầm `self.llm_model_func`. Story 5.3 thêm một hàm thuần thứ tư,
+`hop_nhat_ngu_canh`: ghép các dòng của đường phụ theo grant break-glass vào khối
+Relationships của khung, khử trùng theo id hyperedge.
 """
 
 import csv
 import io
 import json
+import logging
 import re
 from dataclasses import dataclass
 from typing import Mapping
@@ -63,6 +66,8 @@ from core.masking import (
 # một bản upstream mới đổi câu ấy mà nhánh nhận diện không đổi theo, và khi đó
 # một lỗi nội bộ lại đi ra thành `answer` như trước story này.
 CAU_HONG_UPSTREAM: str = PROMPTS["fail_response"]
+
+logger = logging.getLogger(__name__)
 
 # --- Ba lý do từ chối ----------------------------------------------------------
 
@@ -366,7 +371,16 @@ def ngu_canh_rong(chuoi) -> bool:
 
 
 def _cac_khoi_csv(chuoi: str) -> list[str]:
-    """Nội dung ba khối ```csv ... ``` của khung, hoặc rỗng nếu không phải khung.
+    """Nội dung ba khối ```csv ... ``` của khung, hoặc rỗng nếu không phải khung."""
+    return [chuoi[dau:cuoi] for dau, cuoi in _vi_tri_khoi(chuoi)]
+
+
+def _vi_tri_khoi(chuoi: str) -> list[tuple[int, int]]:
+    """Vị trí (đầu, cuối) của thân ba khối ```csv ... ``` trong chuỗi, hoặc rỗng nếu không phải khung.
+
+    Tách khỏi `_cac_khoi_csv` ở story 5.3 vì `hop_nhat_ngu_canh` phải **thay**
+    đúng thân khối Relationships tại chỗ và giữ nguyên văn mọi byte khác của
+    khung; một hàm chỉ trả nội dung thì không nói được thân ấy nằm ở đâu.
 
     Neo vào **ba nhãn** chứ không vào dấu rào, và đó là chỗ bản đầu của story
     sai. Lý lẽ cũ ("quét chuỗi để tránh chỗ regex đọc sai khi mô tả chứa
@@ -389,16 +403,16 @@ def _cac_khoi_csv(chuoi: str) -> list[str]:
     vi_tri = [chuoi.find(nhan) for nhan in _NHAN_KHUNG]
     if any(v < 0 for v in vi_tri) or vi_tri != sorted(vi_tri):
         return []
-    ra: list[str] = []
+    ra: list[tuple[int, int]] = []
     for i, (nhan, dau_nhan) in enumerate(zip(_NHAN_KHUNG, vi_tri)):
         het = vi_tri[i + 1] if i + 1 < len(vi_tri) else len(chuoi)
-        khuc = chuoi[dau_nhan + len(nhan) : het]
-        mo = khuc.find(_MO_KHOI)
+        khuc_dau = dau_nhan + len(nhan)
+        mo = chuoi.find(_MO_KHOI, khuc_dau, het)
         if mo < 0:
             return []
-        than = khuc[mo + len(_MO_KHOI) :]
-        dong = than.rfind(_DONG_KHOI)
-        ra.append(than if dong < 0 else than[:dong])
+        than_dau = mo + len(_MO_KHOI)
+        dong = chuoi.rfind(_DONG_KHOI, than_dau, het)
+        ra.append((than_dau, het if dong < 0 else dong))
     return ra
 
 
@@ -414,6 +428,25 @@ def _cac_khoi_csv(chuoi: str) -> list[str]:
 # `:906` và `:794` để chúng không trôi theo một bản upstream mới.
 _KHOI_RELATIONSHIPS: int = 1
 _COT_HYPEREDGE: str = "hyperedge"
+_COT_ID: str = "id"
+# Header của khối Relationships mà cả hai nhánh vendor dựng (`operate.py:788`,
+# `:987`). Chỉ dùng khi khối **rỗng** (kho vector không cho kết quả nào) mà
+# đường phụ vẫn có dòng để chèn - khi đó không có header nào trong khung để
+# đọc lại, và một dòng phụ không header là một bảng mà LLM không đọc được.
+_HEADER_RELATIONSHIPS: tuple[str, ...] = (_COT_ID, _COT_HYPEREDGE, "related_entities")
+
+
+def _doc_dong(dong_tho: str) -> list[str]:
+    """Một dòng CSV -> danh sách ô đã cắt khoảng trắng (đọc từng dòng, xem `id_hyperedge_trong`)."""
+    hang = next(csv.reader(io.StringIO(dong_tho)), [])
+    return [o.strip() for o in hang]
+
+
+def _id_chuan_hoac_none(o: str) -> str | None:
+    try:
+        return normalize_id(o)
+    except ValueError:
+        return None
 
 
 def id_hyperedge_trong(ngu_canh) -> tuple[str, ...]:
@@ -470,9 +503,9 @@ def id_hyperedge_trong(ngu_canh) -> tuple[str, ...]:
     for dong_tho in khoi[_KHOI_RELATIONSHIPS].strip().splitlines():
         if not dong_tho.strip():
             continue
-        hang = next(csv.reader(io.StringIO(dong_tho)), [])
+        hang = _doc_dong(dong_tho)
         if hang:
-            dong.append([o.strip() for o in hang])
+            dong.append(hang)
     if not dong or _COT_HYPEREDGE not in dong[0]:
         return ()
     cot = dong[0].index(_COT_HYPEREDGE)
@@ -490,6 +523,90 @@ def id_hyperedge_trong(ngu_canh) -> tuple[str, ...]:
         if chuan not in ra:
             ra.append(chuan)
     return tuple(ra)
+
+
+# --- Hợp nhất đường phụ theo grant (story 5.3) ---------------------------------
+
+
+def hop_nhat_ngu_canh(ngu_canh, hang_phu) -> str:
+    """Ghép các dòng của đường phụ vào khối Relationships, khử trùng theo id hyperedge.
+
+    `hang_phu` là dãy dòng cùng hình dạng với dòng của vendor
+    (`[id, hyperedge, related_entities]`, `operate.py:987-997`), mỗi dòng cho
+    một hyperedge được cấp mà `get_node_edges` còn trả cạnh. Ba việc, theo thứ
+    tự: **bỏ** mọi dòng của khối có cột `hyperedge` trùng một id được cấp (bản
+    đã che của đường chính nhường chỗ cho bản đầy đủ), **nối** các dòng phụ
+    bằng CSV chuẩn (`csv.writer`, cột `id` đánh tiếp sau số lớn nhất còn lại),
+    và **giữ nguyên văn** mọi dòng khác cùng hai khối kia - hàm chỉ thay đúng
+    thân khối Relationships mà `_vi_tri_khoi` chỉ ra.
+
+    Cả hai hình dạng của khối đi qua được, cùng lý do với `id_hyperedge_trong`:
+    dạng CSV chuẩn của nhánh đơn và dạng hybrid của `process_combine_contexts`
+    (header ghép `",\t"`, dòng không quote lại). Đọc **từng dòng** để một ô
+    hỏng chỉ hỏng trong phạm vi dòng ấy; dòng không đọc được id thì giữ nguyên
+    chứ không bỏ. Khối rỗng (kho vector không cho kết quả) nhận header của
+    vendor rồi mới nhận dòng phụ - đó là ca "câu hỏi không truy hồi được
+    hyperedge được cấp", và nó phải cho một lượt **không rỗng**. Chuỗi không
+    phải khung vendor hay `hang_phu` rỗng: trả nguyên chuỗi vào, không đổi một
+    byte. Khối có nội dung mà header (sau strip, cùng thứ tự) khác đúng
+    `_HEADER_RELATIONSHIPS` - thiếu cột, thêm cột, đổi tên - cũng trả nguyên
+    nhưng kèm một dòng WARNING: đó là dấu hiệu vendor đổi bảng, không được
+    thành một đường phụ ngừng chèn mà không ai thấy.
+
+    Hàm thuần, không hỏi quyền: dòng phụ là thứ adapter graph đã lọc và đã che
+    dưới ngữ cảnh vai (`EngineACL.ngu_canh_hoi_dap`), ở đây chỉ còn ghép.
+    """
+    hang_phu = [[str(o) for o in h] for h in hang_phu]
+    if not isinstance(ngu_canh, str) or not hang_phu:
+        return ngu_canh
+    vi_tri = _vi_tri_khoi(ngu_canh)
+    if len(vi_tri) <= _KHOI_RELATIONSHIPS:
+        return ngu_canh
+    dau, cuoi = vi_tri[_KHOI_RELATIONSHIPS]
+    dong_tho = [d for d in ngu_canh[dau:cuoi].splitlines() if d.strip()]
+    if dong_tho:
+        header = _doc_dong(dong_tho[0])
+        if tuple(header) != _HEADER_RELATIONSHIPS:
+            # Không lặng lẽ: một bản vendor đổi header là đường phụ ngừng chèn
+            # mà không ai thấy, và lượt vẫn trả lời như thường.
+            logger.warning(
+                "hop_nhat_ngu_canh: header khối Relationships %r khác %r, giữ nguyên ngữ cảnh",
+                header, list(_HEADER_RELATIONSHIPS),
+            )
+            return ngu_canh
+        dong_header, dong_cu = dong_tho[0], dong_tho[1:]
+    else:
+        header = list(_HEADER_RELATIONSHIPS)
+        dong_header, dong_cu = _dong_csv(header), []
+    if any(len(h) != len(header) for h in hang_phu):
+        raise ValueError(
+            f"dòng phụ phải có đúng {len(header)} cột như header {header}"
+        )
+    cot_he, cot_id = header.index(_COT_HYPEREDGE), header.index(_COT_ID)
+    id_cap = {_id_chuan_hoac_none(h[cot_he]) for h in hang_phu} - {None}
+    giu: list[str] = []
+    so_cu: list[int] = []
+    for d in dong_cu:
+        hang = _doc_dong(d)
+        if len(hang) > cot_he and _id_chuan_hoac_none(hang[cot_he]) in id_cap:
+            continue
+        giu.append(d)
+        if len(hang) > cot_id and hang[cot_id].isdecimal():
+            so_cu.append(int(hang[cot_id]))
+    ke = max(so_cu) + 1 if so_cu else 0
+    moi = []
+    for i, h in enumerate(hang_phu):
+        h[cot_id] = str(ke + i)
+        moi.append(_dong_csv(h))
+    than_moi = "\n" + "\n".join([dong_header, *giu, *moi]) + "\n"
+    return ngu_canh[:dau] + than_moi + ngu_canh[cuoi:]
+
+
+def _dong_csv(hang) -> str:
+    """Một dòng CSV chuẩn từ danh sách ô, không ký tự xuống dòng ở cuối."""
+    ra = io.StringIO()
+    csv.writer(ra, lineterminator="").writerow(hang)
+    return ra.getvalue()
 
 
 # --- Đọc đầu ra LLM ------------------------------------------------------------
@@ -585,6 +702,7 @@ __all__ = [
     "NguCanhTruyHoiLa",
     "doc_dau_ra",
     "dung_prompt",
+    "hop_nhat_ngu_canh",
     "id_hyperedge_trong",
     "ngu_canh_rong",
 ]

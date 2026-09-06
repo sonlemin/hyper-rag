@@ -62,7 +62,7 @@ from typing import Any, Mapping
 
 from core.keys import split_key
 from core.permission import PermissionContext
-from core.policy import LEVEL_ORDER, NAMESPACE_MIN_LEVEL
+from core.policy import DISCLOSURE_LEVELS, LEVEL_ORDER, NAMESPACE_MIN_LEVEL
 from core.slots import OWNER_SLOT, SLOT_ROLE_SET, SLOT_ROLES
 
 # Danh sách đóng, sống cạnh interface. Method đọc public mới của adapter mà
@@ -126,6 +126,20 @@ NEIGHBOR_NO_KEY_FIELD: str = "neighbor_no_key"
 # Trường **vắng mặt** nghĩa là không tra được nhóm, và khi đó dấu che rơi về
 # hằng cũ `[owner:group]` - đúng hành vi trước story 3.1, không phải một ca lỗi.
 OWNER_GROUP_FIELD: str = "owner_group"
+
+# Cờ làm giàu thứ ba, cùng khuôn với hai cờ trên (story 5.3, ADR-021): **id của
+# hyperedge** mà bản ghi này thuộc về. Grant break-glass là một dãy id hyperedge
+# (`PermissionContext.grant_ids`), còn chữ ký `mask` chỉ cầm khóa quyền - và
+# một khóa quyền là của cả một loại nội dung trong một scope, không của một
+# fact. Adapter biết id, gắn vào bản ghi trước khi gọi hàm che, gỡ sau, nên
+# luật nâng quyền vẫn sống ở đây và chữ ký T1 không đổi.
+#
+# Trường **vắng mặt** nghĩa là không nới: chunk của kho KV và point của kho
+# vector không ai gắn, đúng quyết định "grant chỉ nâng hyperedge" của ADR-021.
+HYPEREDGE_ID_FIELD: str = "hyperedge_id"
+# Mức mà một grant nâng tới: mức cao nhất của thang. Hyperedge được cấp che
+# theo luật L2, tức chỉ còn `owner` (AD-9), không hơn.
+MUC_DUOC_CAP: str = DISCLOSURE_LEVELS[-1]
 
 # Dấu che, dạng máy đọc được `[{slot}:{lý do}]`. Tầng trên đọc ra được vai nào
 # đã bị che và vì lý do gì mà không phải đoán từ một chuỗi sao. Nhãn tiếng Việt
@@ -381,6 +395,42 @@ def muc_tiet_lo(context: PermissionContext, hyperedge_key: str) -> str:
     return muc
 
 
+def duoc_cap(context: PermissionContext, hyperedge_id) -> bool:
+    """Hyperedge này có trong grant break-glass còn hạn của ngữ cảnh không (story 5.3).
+
+    Một phép hỏi, một chỗ: `mask`, `muc_hieu_luc` và `vai_phai_che_hieu_luc`
+    cùng gọi. `None` (bản ghi không mang id) là không cấp. Ngữ cảnh hệ thống
+    không mang grant nên luôn `False` - nó đọc thô ở cửa trước rồi.
+    """
+    return hyperedge_id is not None and hyperedge_id in context.grant_ids
+
+
+def muc_hieu_luc(context: PermissionContext, hyperedge_key: str, hyperedge_id) -> str:
+    """Mức đã áp thật cho một hyperedge: `muc_tiet_lo`, nâng lên L2 nếu được cấp.
+
+    Điều kiện nền giữ nguyên ở `muc_tiet_lo`: khóa không còn trong tập L1+ của
+    vai là `MaskItemOutOfPermission` **trước** khi hỏi tới grant, nên một grant
+    không kéo được một hyperedge mà bảng chính sách đã hạ xuống L0 (bản ghi ấy
+    không tới được đây, và citation cho nó cũng không). Citation (`level`) và
+    node đồ thị đọc hàm này để nói đúng mức mà `mask` vừa áp.
+    """
+    muc = muc_tiet_lo(context, hyperedge_key)
+    return MUC_DUOC_CAP if duoc_cap(context, hyperedge_id) else muc
+
+
+def vai_phai_che_hieu_luc(context: PermissionContext, content_type: str, hyperedge_id) -> frozenset[str]:
+    """Tập vai phải che đã tính grant: chỉ `owner` nếu được cấp, không thì `vai_phai_che`.
+
+    Hyperedge được cấp che theo luật L2 - tập che của L2 là `{owner}` (AD-9,
+    `owner` tổng quát hóa ở mọi mức). Không kiểm quyền trên khóa ở đây, cùng
+    lý do với `vai_phai_che`: cửa fail-closed đứng ở `mask` và `muc_tiet_lo`,
+    và nơi gọi hỏi mức trước khi hỏi tập che.
+    """
+    if duoc_cap(context, hyperedge_id):
+        return frozenset({OWNER_SLOT})
+    return vai_phai_che(context, content_type)
+
+
 def mask(result: Any, context: PermissionContext, hyperedge_key: str) -> Any:
     """Che nội dung theo chính sách slot trước khi kết quả rời adapter.
 
@@ -395,12 +445,15 @@ def mask(result: Any, context: PermissionContext, hyperedge_key: str) -> Any:
 
     Cửa fail-closed ở đây *chính là* điều kiện nền mà `core/permission.py` nói
     tới cho `grant_ids` ("vai hiện tại còn thấy hyperedge từ L1 trở lên"): khóa
-    đã có trong tay đúng ở chỗ này. Epic 5 dựng đường nâng quyền thì nới đúng
-    cửa này, không mở một đường bỏ che thứ hai ở tầng khác.
+    đã có trong tay đúng ở chỗ này. Story 5.3 nới đúng cửa này chứ không mở
+    một đường bỏ che thứ hai ở tầng khác: bản ghi mang `HYPEREDGE_ID_FIELD`
+    với một id nằm trong `context.grant_ids` **và** đã qua cửa (khóa còn trong
+    L1+) thì che theo luật L2 - chỉ còn `owner`. Vắng trường là không nới.
+    Lân cận không khóa vẫn che cứng (đường ba, AD-9), grant không chạm nó.
 
-    Tập slot phải che lấy từ `vai_phai_che`, và **chỉ** từ đó: citation của
-    story 3.4 dùng cùng hàm ấy, nên dấu che trong ngữ cảnh và `masked_slots`
-    trong citation không trôi khỏi nhau được.
+    Tập slot phải che lấy từ `vai_phai_che_hieu_luc`, và **chỉ** từ đó:
+    citation của story 3.4 dùng cùng hàm ấy, nên dấu che trong ngữ cảnh và
+    `masked_slots` trong citation không trôi khỏi nhau được.
     """
     if context.bypass_filter:
         return result
@@ -416,7 +469,7 @@ def mask(result: Any, context: PermissionContext, hyperedge_key: str) -> Any:
             f" {context.role!r} không thấy khóa đó từ mức L1 trở lên: filter"
             " phía trên đã hỏng, và che tiếp là fail-open im lặng"
         )
-    phai_che = vai_phai_che(context, content_type)
+    phai_che = vai_phai_che_hieu_luc(context, content_type, result.get(HYPEREDGE_ID_FIELD))
 
     da_che = dict(result)
     nhom = da_che.get(OWNER_GROUP_FIELD)

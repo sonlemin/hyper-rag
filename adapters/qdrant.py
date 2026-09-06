@@ -92,9 +92,11 @@ PAYLOAD_M = 16
 GLOBAL_M = 16
 # Số điều kiện tối đa một filter được mang, ép ở phía server (PRD addendum).
 # Quy ước trong code cộng helper assert trong test chỉ chặn được đường code
-# hiện tại; hằng này chặn cả những đường chưa viết. Nếu Epic 5 (break-glass)
-# thật sự cần filter hai điều kiện thì phải quay lại nới chỗ này có chủ đích
-# kèm lý do, không nới lén ở một adapter nào đó.
+# hiện tại; hằng này chặn cả những đường chưa viết. Story 5.3 (break-glass,
+# ADR-021) đã quyết và **không** nới: đường truy vấn phụ theo grant chọn
+# hyperedge theo id trên Neo4j (`get_node_edges` dưới ngữ cảnh vai, `IN $keys`
+# vẫn là điều kiện nền), không đi qua filter của kho vector, nên grant không
+# bao giờ thành điều kiện thứ hai ở đây. Nới chỗ này là Ask First.
 FILTER_MAX_CONDITIONS = 1
 
 # Phiên bản lược đồ của sổ không khóa trên đĩa (`{"version": 1, "ids": [...]}`).

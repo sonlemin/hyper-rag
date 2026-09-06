@@ -19,17 +19,24 @@ import pytest
 from hypergraphrag.base import BaseGraphStorage, BaseKVStorage, BaseVectorStorage
 
 from core.masking import (
+    HYPEREDGE_ID_FIELD,
     MASK_NAMESPACE,
     MASKED_READ_METHODS,
     NEIGHBOR_FIELD,
+    OWNER_GROUP_FIELD,
     SLOT_FIELD,
     MaskItemOutOfPermission,
     SlotRoleUnknown,
     dau_che,
+    dau_che_owner,
     mask,
+    muc_hieu_luc,
+    muc_tiet_lo,
     NEIGHBOR_NO_KEY_FIELD,
     dau_che_lan_can_khong_khoa,
     la_dau_che,
+    vai_phai_che,
+    vai_phai_che_hieu_luc,
 )
 from core.permission import user_context
 from core.slots import OWNER_SLOT, SLOT_ROLES
@@ -706,3 +713,77 @@ def test_canh_gop_vai_la_trong_slots_la_loi_co_ma():
     assert loi.value.code == "SLOT_ROLE_UNKNOWN"
     with pytest.raises(SlotRoleUnknown):
         mask({SLOTS_FIELD: "subject"}, _context("tech_support"), _khoa(he))
+
+
+# --- Grant break-glass nới đúng cửa fail-closed (story 5.3) ------------------
+
+
+def _context_grant(vai: str, *grant_ids: str):
+    from adapters.policy_loader import load_policy
+
+    policy = load_policy(oracle.POLICY_DAY_DU)
+    return user_context(
+        policy=policy, role=vai, space="synth", real_account="tk_" + vai, grant_ids=tuple(grant_ids)
+    )
+
+
+def test_grant_noi_ve_luat_l2_chi_khi_ban_ghi_mang_dung_id():
+    """Hàng "Mở đúng vùng" ở tầng che: id được cấp -> chỉ còn `owner` bị che; vắng trường hay id khác -> che như L1."""
+    he = du_lieu_dung_tay.THEO_ID["HE-02"]
+    ctx = _context_grant("tech_support", "HE-02")
+    goc = dict(he["slots"])
+    che_l1 = {s: dau_che(s) for s in oracle.slot_phai_che(oracle.doc_bang_chinh_sach(oracle.POLICY_DAY_DU), "tech_support", he)}
+    assert "cause" in che_l1 and "owner" in che_l1
+    # Không mang trường: che theo bảng, dù ngữ cảnh có grant.
+    assert mask(goc, ctx, _khoa(he)) == {**goc, **che_l1}
+    # Mang trường với id khác: vẫn che theo bảng.
+    assert mask({**goc, HYPEREDGE_ID_FIELD: "HE-09"}, ctx, _khoa(he)) == {**goc, **che_l1, HYPEREDGE_ID_FIELD: "HE-09"}
+    # Mang đúng id: chỉ `owner`, giá trị các vai khác ra nguyên văn, trường giữ lại (hợp đồng không mất trường).
+    da_che = mask({**goc, HYPEREDGE_ID_FIELD: "HE-02"}, ctx, _khoa(he))
+    assert da_che == {**goc, "owner": dau_che("owner"), HYPEREDGE_ID_FIELD: "HE-02"}
+    # Với nhóm: `[owner:<nhóm>]` như mọi mức (AD-9).
+    co_nhom = mask({**goc, HYPEREDGE_ID_FIELD: "HE-02", OWNER_GROUP_FIELD: "Tech Support"}, ctx, _khoa(he))
+    assert co_nhom["owner"] == dau_che_owner("Tech Support") and co_nhom["cause"] == goc["cause"]
+    # Ngữ cảnh không grant thì trường vô hại.
+    assert mask({**goc, HYPEREDGE_ID_FIELD: "HE-02"}, _context("tech_support"), _khoa(he)) == {**goc, **che_l1, HYPEREDGE_ID_FIELD: "HE-02"}
+
+
+def test_grant_khong_vuot_duoc_cua_fail_closed():
+    """Hàng "Hạ nền" ở tầng che: khóa ngoài L1+ vẫn là `MaskItemOutOfPermission`, kể cả khi id được cấp."""
+    he = du_lieu_dung_tay.THEO_ID["HE-03"]
+    ctx = _context_grant("tech_support", "HE-03")
+    with pytest.raises(MaskItemOutOfPermission):
+        mask({**he["slots"], HYPEREDGE_ID_FIELD: "HE-03"}, ctx, _khoa(he))
+    with pytest.raises(MaskItemOutOfPermission):
+        muc_hieu_luc(ctx, _khoa(he), "HE-03")
+
+
+def test_muc_hieu_luc_va_vai_phai_che_hieu_luc_khop_ban_goc_khi_khong_cap():
+    """Hai hàm `_hieu_luc` chỉ khác bản gốc ở đúng id được cấp; L2 sẵn thì không đổi."""
+    bang = oracle.doc_bang_chinh_sach(oracle.POLICY_DAY_DU)
+    for ten_vai in ("tech_support", "devops"):
+        ctx = _context_grant(ten_vai, "HE-02", "HE-01")
+        for he in du_lieu_dung_tay.HYPEREDGES:
+            khoa = _khoa(he)
+            if khoa not in ctx.keys_for(MASK_NAMESPACE):
+                continue
+            for id_khac in (None, "HE-09"):
+                assert muc_hieu_luc(ctx, khoa, id_khac) == muc_tiet_lo(ctx, khoa)
+                assert vai_phai_che_hieu_luc(ctx, he["content_type"], id_khac) == vai_phai_che(ctx, he["content_type"])
+            if he["id"] in ctx.grant_ids:
+                assert muc_hieu_luc(ctx, khoa, he["id"]) == "L2"
+                assert vai_phai_che_hieu_luc(ctx, he["content_type"], he["id"]) == frozenset({OWNER_SLOT})
+                assert oracle.muc_ky_vong(bang, ten_vai, he["content_type"]) in ("L1", "L2")
+
+
+def test_canh_co_vai_duoc_cap_ra_nguyen_van_tru_owner_va_lan_can_khong_khoa_van_che_cung():
+    """Đường hai và đường ba dưới grant: vai bị che ra nguyên văn, `owner` vẫn dấu che, không khóa vẫn che cứng."""
+    he = du_lieu_dung_tay.THEO_ID["HE-02"]
+    ctx = _context_grant("tech_support", "HE-02")
+    canh = {"node_id": "HE-02", NEIGHBOR_FIELD: he["slots"]["cause"], SLOT_FIELD: "cause", HYPEREDGE_ID_FIELD: "HE-02"}
+    assert mask(canh, ctx, _khoa(he))[NEIGHBOR_FIELD] == he["slots"]["cause"]
+    assert mask({**canh, HYPEREDGE_ID_FIELD: "HE-09"}, ctx, _khoa(he))[NEIGHBOR_FIELD] == dau_che("cause")
+    chu = {**canh, NEIGHBOR_FIELD: he["slots"]["owner"], SLOT_FIELD: "owner", OWNER_GROUP_FIELD: "Tech Support"}
+    assert mask(chu, ctx, _khoa(he))[NEIGHBOR_FIELD] == dau_che_owner("Tech Support")
+    khong_khoa = {**canh, NEIGHBOR_NO_KEY_FIELD: True}
+    assert mask(khong_khoa, ctx, _khoa(he))[NEIGHBOR_FIELD] == dau_che_lan_can_khong_khoa()

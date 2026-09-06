@@ -77,9 +77,10 @@ from adapters.tra_loi import (
     dung_prompt as dung_prompt_tra_loi,
     id_hyperedge_trong,
     ngu_canh_rong,
+    hop_nhat_ngu_canh,
 )
 from adapters.do_thi import DoThi, chuan_hoa_ids, dung_do_thi
-from adapters.trich_dan import TrichDan, dung_danh_sach, dung_theo_id
+from adapters.trich_dan import TrichDan, TrichDanNgoaiQuyen, dung_danh_sach, dung_theo_id
 from adapters.trich_xuat import ThongKeTrichXuat, trich_xuat_chunks
 from adapters.neo4j import (
     HEALTH_DELAY_KEY,
@@ -794,6 +795,11 @@ class EngineACL(HyperGraphRAG):
         lên - trần 204 giây suy từ số lời gọi *không* thử lại. Trần thời gian cho
         một lời gọi thì vẫn có, ở `bo_llm`.
 
+        Từ story 5.3 chuỗi ngữ cảnh lấy qua `ngu_canh_hoi_dap` (đường chính
+        cộng đường phụ theo grant break-glass); ba nhánh trên không đổi, và
+        nhánh 1 đứng trước đường phụ vì `ngu_canh_hoi_dap` trả chuỗi hỏng của
+        vendor nguyên vẹn.
+
         Không đi qua cache LLM của upstream, và không được bật nó lại:
         `compute_args_hash` (`operate.py:493-500,622-634`) chỉ băm `(mode,
         query)`, không mang space, vai hay `policy_version`, nên một lượt trả lời
@@ -806,30 +812,7 @@ class EngineACL(HyperGraphRAG):
                 " stream, và đường này không còn đi qua lời gọi của vendor - nơi"
                 " phép kiểm ấy từng nằm"
             )
-        # Sổ lọc của lượt (story 3.6): adapter KV cộng dồn theo `request_id`
-        # trong lúc `aquery` chạy; phát đúng một hàng mỗi namespace ngay sau
-        # khi có ngữ cảnh, vẫn dưới ngữ cảnh vai; lượt hỏng thì bỏ sổ.
-        # Thiếu ngữ cảnh thì để `aquery` dội đúng lỗi của nó như trước 3.6,
-        # không đổi chỗ nổ; sổ lọc chỉ có nghĩa khi có lượt.
-        try:
-            request_id = current_context().request_id
-        except PermissionContextMissing:
-            request_id = None
-        try:
-            ngu_canh = await self.aquery(cau_hoi, replace(param, only_need_context=True))
-            if request_id is not None:
-                await self.text_chunks.xa_loc(request_id)
-                await self.full_docs.xa_loc(request_id)
-        finally:
-            if request_id is not None:
-                self.text_chunks.bo_so_loc(request_id)
-                self.full_docs.bo_so_loc(request_id)
-        if not isinstance(ngu_canh, str):
-            raise NguCanhTruyHoiLa(
-                "đường truy hồi trả về"
-                f" {type(ngu_canh).__name__} thay vì chuỗi ngữ cảnh: đó là một"
-                " lỗi nội bộ, không phải một lượt từ chối"
-            )
+        ngu_canh = await self.ngu_canh_hoi_dap(cau_hoi, param)
         if ngu_canh == CAU_HONG_UPSTREAM:
             logger.warning("hoi_dap: kg_query không trích được từ khóa, từ chối")
             return KetQuaHoiDap(ly_do_tu_choi=LY_DO_TU_KHOA_RONG)
@@ -849,6 +832,89 @@ class EngineACL(HyperGraphRAG):
         if ket_qua.khong_co_dap_an:
             return KetQuaHoiDap(ly_do_tu_choi=LY_DO_CO_NO_ANSWER)
         return KetQuaHoiDap(cau_tra_loi=ket_qua.cau_tra_loi, trich_dan=trich_dan)
+
+    async def ngu_canh_hoi_dap(self, cau_hoi: str, param: QueryParam | None = None) -> str:
+        """Chuỗi ngữ cảnh mà `hoi_dap` đưa cho LLM: đường chính cộng đường phụ theo grant (story 5.3).
+
+        Tách khỏi `hoi_dap` để bộ test đo được **chuỗi** (chốt brief §6: assert
+        trên ngữ cảnh truy hồi), như `tests/ho_tro_m1.py::hoi` đo đường
+        `aquery`. Đường chính giữ nguyên của 3.5/3.6: `aquery` với
+        `only_need_context=True`, rồi `xa_loc` hai namespace KV theo
+        `request_id` của lượt. Chuỗi hỏng của vendor (`CAU_HONG_UPSTREAM`) và
+        giá trị không phải chuỗi đi ra y như trước, **trước** đường phụ.
+
+        **Đường phụ** chỉ chạy khi ngữ cảnh quyền mang `grant_ids`. Bước một là
+        **một** câu `trich_dan_cua` trên dãy id đã khử trùng - đúng cửa quyền
+        của citation (ADR-016/019), dưới chính ngữ cảnh vai của lượt - và chỉ
+        id có mặt trong kết quả mới đi tiếp. Cửa ấy làm ba việc mà vòng lặp
+        `get_node_edges` trần không làm: khử trùng khi ngữ cảnh mang id lặp;
+        loại **id không phải hyperedge** (một id entity chèn tay vào bảng grant
+        có cạnh trong graph, và một dòng với cột `hyperedge` là tên entity là
+        một dòng vendor không bao giờ dựng); và cho "câm" **một** cửa duy nhất
+        - id vai không còn thấy (bảng chính sách đã hạ về L0, id lạ, khác
+        space) vắng ở đó, không dòng nào, không lỗi, không oracle mới. Bước hai
+        là một câu `get_node_edges(id)` cho mỗi id còn lại; có cạnh thì một
+        dòng cùng hình dạng dòng vendor (`operate.py:987-997`), tên lân cận đã
+        qua `_che` với `HYPEREDGE_ID_FIELD` nên đủ giá trị trừ `owner`, và
+        **sắp xếp chuỗi** trước khi ghép `"|"` vì Cypher của `get_node_edges`
+        không có `ORDER BY` - dòng phụ phải tất định (ADR-021, khác dòng
+        vendor vốn giữ thứ tự kho trả).
+        `hop_nhat_ngu_canh` ghép vào khối Relationships: bản đã che của đường
+        chính (nếu có) nhường chỗ, dòng khác giữ nguyên văn. Không LLM, không
+        embedding, không chạm kho vector (ADR-021: `FILTER_MAX_CONDITIONS`
+        giữ 1). Đường phụ luôn chèn, kể cả khi đường chính đã có hyperedge ấy:
+        nhịp "hỏi lại câu này" của demo phải tất định, không phụ thuộc từ khóa
+        LLM trích ra.
+
+        Ngữ cảnh đọc **mềm** ở dòng đầu, như `hoi_dap` từ 3.6: thiếu ngữ cảnh
+        thì để `aquery` dội `PermissionContextMissing` đúng chỗ nó vẫn dội
+        (không đổi chỗ nổ), và đường phụ không có gì để chạy. Ngữ cảnh hệ thống
+        bị từ chối bằng `TrichDanNgoaiQuyen` như `dung_danh_sach` **trước** khi
+        chạm kho - đường phục vụ không có lượt nào đọc thô, và đọc thô rồi ghép
+        dòng phụ là ghép tên chưa che.
+        """
+        try:
+            context = current_context()
+        except PermissionContextMissing:
+            context = None
+        if context is not None and context.bypass_filter:
+            raise TrichDanNgoaiQuyen(
+                "ngu_canh_hoi_dap không chạy dưới ngữ cảnh hệ thống: không có"
+                " mức tiết lộ nào để dựng ngữ cảnh cho một lượt hỏi"
+            )
+        param = QueryParam() if param is None else replace(param)
+        # Sổ lọc của lượt (story 3.6): adapter KV cộng dồn theo `request_id`
+        # trong lúc `aquery` chạy; phát đúng một hàng mỗi namespace ngay sau
+        # khi có ngữ cảnh, vẫn dưới ngữ cảnh vai; lượt hỏng thì bỏ sổ.
+        request_id = None if context is None else context.request_id
+        try:
+            ngu_canh = await self.aquery(cau_hoi, replace(param, only_need_context=True))
+            if request_id is not None:
+                await self.text_chunks.xa_loc(request_id)
+                await self.full_docs.xa_loc(request_id)
+        finally:
+            if request_id is not None:
+                self.text_chunks.bo_so_loc(request_id)
+                self.full_docs.bo_so_loc(request_id)
+        if not isinstance(ngu_canh, str):
+            raise NguCanhTruyHoiLa(
+                "đường truy hồi trả về"
+                f" {type(ngu_canh).__name__} thay vì chuỗi ngữ cảnh: đó là một"
+                " lỗi nội bộ, không phải một lượt từ chối"
+            )
+        if ngu_canh == CAU_HONG_UPSTREAM or context is None or not context.grant_ids:
+            return ngu_canh
+        graph = self.chunk_entity_relation_graph
+        thay = await graph.trich_dan_cua(chuan_hoa_ids(context.grant_ids))
+        hang_phu: list[list] = []
+        for id_he in chuan_hoa_ids(context.grant_ids):
+            if id_he not in thay:
+                continue
+            canh = await graph.get_node_edges(id_he)
+            if not canh:
+                continue
+            hang_phu.append([len(hang_phu), id_he, "|".join(sorted(n[1] for n in canh))])
+        return hop_nhat_ngu_canh(ngu_canh, hang_phu)
 
     async def trich_dan_theo_id(self, ids: Iterable[str]) -> dict[str, TrichDan]:
         """`{id: TrichDan}` của những hyperedge mà vai hiện tại còn thấy (story 5.1).

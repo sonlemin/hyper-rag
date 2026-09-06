@@ -5,7 +5,10 @@ Tech Support thấy một dòng hạn chế L1 (`citations[].masked_slots` cộn
 đi hỏi chui là đúng thứ FR-20 sinh ra để thay. Module này là ruột của ba tuyến
 (`api/main.py` chỉ nối tuyến): xin cho **một** hyperedge mà vai hiện tại thấy
 ở mức L1, người xin hủy khi còn chờ, và liệt kê yêu cầu của chính mình. Duyệt,
-từ chối, cấp grant là 5.2; `grant_ids` vào ngữ cảnh là 5.3.
+từ chối, cấp grant là 5.2 (ADR-020); `grant_ids` vào ngữ cảnh là 5.3 (ADR-021):
+`KhoBreakGlass.grant_hieu_luc` là cửa đọc mà `/hoi-dap` và `/do-thi` gọi trước
+khi dựng ngữ cảnh quyền - ba tuyến break-glass ở đây thì **không** đọc grant,
+mức nền cho xin và vùng cấp vẫn là mức của bảng chính sách.
 
 Bốn luật, cả bốn là cơ chế.
 
@@ -599,6 +602,14 @@ _SQL_GRANT_CON_HAN = """
     WHERE act = $1 AND role = $2 AND $3 = ANY(hyperedge_ids) AND space = $4 AND expires_at > now()
     LIMIT 1
 """
+# Grant còn hạn của cặp `(act, role)` trong space, mọi hàng (story 5.3): hợp
+# `hyperedge_ids` ở Python. Cùng ba cột lọc với `_SQL_GRANT_CON_HAN`, cùng đồng
+# hồ `now()` của Postgres. Index `(act, role, expires_at)` của DDL thu hẹp theo
+# cặp và hạn; `space` lọc trên tập đã thu hẹp đó (không nằm trong index).
+_SQL_GRANT_HIEU_LUC = """
+    SELECT hyperedge_ids FROM breakglass_grants
+    WHERE act = $1 AND role = $2 AND space = $3 AND expires_at > now()
+"""
 # 1. Tuần tự hóa mọi đường ghi grant của một cặp trong một space (review 5.2):
 # `duyet` và `cap` đều là kiểm-rồi-ghi, hai transaction chen nhau trên cùng
 # cặp không thấy nhau trước COMMIT, nên hai owner cấp cùng lúc là hai grant.
@@ -878,6 +889,20 @@ class KhoBreakGlass:
         """
         async with self._pool.acquire() as conn:
             return bool(await conn.fetchval(_SQL_GRANT_CON_HAN, act, role, hyperedge_id, space))
+
+    async def grant_hieu_luc(self, act: str, role: str, space: str) -> tuple[str, ...]:
+        """Dãy id hyperedge của mọi grant còn hạn của cặp trong space: hợp, khử trùng, sắp xếp (story 5.3).
+
+        Đây là thứ đi vào `PermissionContext.grant_ids` của một lượt `/hoi-dap`
+        hay `/do-thi`; "còn hạn" so với `now()` của Postgres như mọi phép kiểm
+        grant khác (ADR-019 mục 4), không mốc giờ nào từ tiến trình `api`.
+        Grant ở vai khác hay space khác không vào - nó ngủ ở đó. Lỗi kết nối
+        dội nguyên cho `loi_kho` ở tầng trên ánh xạ 503: một kho grant hỏng
+        không được lặng lẽ thành "không có grant".
+        """
+        async with self._pool.acquire() as conn:
+            dong = await conn.fetch(_SQL_GRANT_HIEU_LUC, act, role, space)
+        return tuple(sorted({id_he for d in dong for id_he in d["hyperedge_ids"]}))
 
     async def dong(self) -> None:
         await self._pool.close()

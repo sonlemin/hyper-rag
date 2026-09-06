@@ -699,3 +699,39 @@ def test_do_thi_cua_tren_neo4j_that(khong_gian, policy, bang):
                     assert d["bi_che"] and d["ten_da_che"] == oracle.dau_che_ky_vong(v, he["content_type"])
                 else:
                     assert not d["bi_che"] and d["ten_da_che"] == he["slots"][v]
+
+
+def test_get_node_edges_duoi_grant_tra_ten_that_tren_neo4j_that(khong_gian, policy, bang):
+    """Story 5.3: `HYPEREDGE_ID_FIELD` đi đúng trên Cypher thật.
+
+    `get_node_edges(HE-02)` dưới `tech_support` không grant che vai `cause`
+    bằng dấu che; cùng ngữ cảnh mang `grant_ids=(HE-02,)` trả tên thật của
+    vai ấy (đối chiếu oracle), `owner` vẫn `[owner:<nhóm>]`, còn grant cho
+    HE-03 (L0 với vai này) vẫn trả rỗng.
+    """
+    from core.masking import dau_che, dau_che_owner
+
+    he2 = THEO_ID["HE-02"]
+    id2, id3 = id_hyperedge(he2), id_hyperedge(THEO_ID["HE-03"])
+    che = oracle.slot_phai_che(bang, "tech_support", he2)
+    assert "cause" in che
+
+    async def chay():
+        async with kho_that(khong_gian, policy) as (driver, adapter):
+            ra = {}
+            with use_context(vai(policy, "tech_support", khong_gian)):
+                ra["khong"] = await adapter.get_node_edges(id2)
+            with use_context(vai(policy, "tech_support", khong_gian, grant_ids=(id2,))):
+                ra["co"] = await adapter.get_node_edges(id2)
+            with use_context(vai(policy, "tech_support", khong_gian, grant_ids=(id3,))):
+                ra["l0"] = await adapter.get_node_edges(id3)
+            return ra
+
+    ra = asyncio.run(chay())
+    ten_khong = {t for _, t in ra["khong"]}
+    ten_co = {t for _, t in ra["co"]}
+    assert he2["slots"]["cause"] not in ten_khong and dau_che("cause") in ten_khong
+    assert he2["slots"]["cause"] in ten_co and dau_che("cause") not in ten_co
+    assert he2["slots"]["owner"] not in ten_co and dau_che_owner(oracle.nhom_ky_vong(he2["content_type"])) in ten_co
+    assert ten_co == {v for s, v in he2["slots"].items() if s != "owner"} | {dau_che_owner(oracle.nhom_ky_vong(he2["content_type"]))}
+    assert ra["l0"] == []

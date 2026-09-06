@@ -1,6 +1,6 @@
 # ADR-020 - Vùng cấp hai pha, owner từ bảng `users`, duyệt và cấp trong một transaction
 
-**Bối cảnh.** Story 5.1 (ADR-019) để yêu cầu break-glass nằm trên hàng chờ mà không ai duyệt được, và bảng `breakglass_grants` chưa có đường ghi sản phẩm nào. Story 5.2 (FR-20, AD-14, ĐG5) thêm bốn tuyến trong `cua_dong`: `GET /break-glass/hang-cho` (hàng chờ của owner), `POST /break-glass/yeu-cau/{id}/duyet`, `POST /break-glass/yeu-cau/{id}/tu-choi`, `POST /break-glass/grant` (cấp chủ động). Ruột ở `api/break_glass.py`, luật thuần ở `core/break_glass.py`, pha một của vùng cấp ở `adapters/neo4j.py` và `adapters/engine.py`. `grant_ids` vào ngữ cảnh và đường phụ là 5.3, UI là 5.5. Bốn quyết định dưới đây là chỗ 5.3 và 5.5 đọc luật.
+**Bối cảnh.** Story 5.1 (ADR-019) để yêu cầu break-glass nằm trên hàng chờ mà không ai duyệt được, và bảng `breakglass_grants` chưa có đường ghi sản phẩm nào. Story 5.2 (FR-20, AD-14, ĐG5) thêm bốn tuyến trong `cua_dong`: `GET /break-glass/hang-cho` (hàng chờ của owner), `POST /break-glass/yeu-cau/{id}/duyet`, `POST /break-glass/yeu-cau/{id}/tu-choi`, `POST /break-glass/grant` (cấp chủ động). Ruột ở `api/break_glass.py`, luật thuần ở `core/break_glass.py`, pha một của vùng cấp ở `adapters/neo4j.py` và `adapters/engine.py`. `grant_ids` vào ngữ cảnh và đường phụ là 5.3 (đã làm, ADR-021), UI là 5.5. Bốn quyết định dưới đây là chỗ 5.3 và 5.5 đọc luật.
 
 ## Quyết định 1 - Vùng cấp hai pha, biên là biên import; bước hyperedge là một câu Cypher hai cạnh, lặp k lần
 

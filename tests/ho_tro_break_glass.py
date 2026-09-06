@@ -44,7 +44,7 @@ from core.break_glass import (
 
 
 class KhoBreakGlassGia:
-    """Cùng interface với `KhoBreakGlass`: `tao`, `huy`, `cua_toi`, `tra_mot`, `hang_cho`, `duyet`, `tu_choi`, `cap`, `co_grant_con_han`, `dong`."""
+    """Cùng interface với `KhoBreakGlass`: `tao`, `huy`, `cua_toi`, `tra_mot`, `hang_cho`, `duyet`, `tu_choi`, `cap`, `co_grant_con_han`, `grant_hieu_luc`, `dong`."""
 
     def __init__(self):
         self.yeu_cau: dict[str, YeuCauBreakGlass] = {}
@@ -198,6 +198,18 @@ class KhoBreakGlassGia:
         if self.no is not None:
             raise self.no
         return self._grant_con_han(act, role, hyperedge_id, space)
+
+    async def grant_hieu_luc(self, act: str, role: str, space: str) -> tuple[str, ...]:
+        """Hợp `hyperedge_ids` của mọi grant còn hạn của cặp trong space, khử trùng, sắp xếp (story 5.3)."""
+        if self.no is not None:
+            raise self.no
+        bay_gio = datetime.now(timezone.utc)
+        return tuple(sorted({
+            id_he
+            for g in self.grants
+            if g.act == act and g.role == role and g.space == space and kiem_thoi_diem(g.expires_at) > bay_gio
+            for id_he in g.hyperedge_ids
+        }))
 
     async def dong(self) -> None:
         self.da_dong = True

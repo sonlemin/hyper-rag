@@ -71,6 +71,7 @@ from core.masking import (
     SlotRoleUnknown,
     NEIGHBOR_FIELD,
     NEIGHBOR_NO_KEY_FIELD,
+    HYPEREDGE_ID_FIELD,
     OWNER_GROUP_FIELD,
     SLOT_FIELD,
     SLOTS_FIELD,
@@ -1008,7 +1009,10 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
         if not dong:
             return None
         props = self._che_mo_ta(self._ban_ghi(dong[0]["thuoc_tinh_node"]), context)
-        return self._che(props, context, props.get(FILTER_KEY_FIELD))
+        # Id hyperedge chỉ có nghĩa khi node *là* hyperedge; node entity điền
+        # vào nhiều hyperedge nên không có một id nào để grant nới (5.3).
+        id_he = id_chuan if props.get(ROLE_FIELD) == ROLE_HYPEREDGE else None
+        return self._che(props, context, props.get(FILTER_KEY_FIELD), id_he)
 
     @staticmethod
     def _node_da_che(dau: str) -> dict:
@@ -1107,7 +1111,14 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
         khoa = self._khoa_de_che(
             context, (d["vai_a"], d["khoa_a"]), (d["vai_b"], d["khoa_b"])
         )
-        return self._che(self._gop_canh(d["thuoc_tinh_canh"]), context, khoa)
+        # Đầu nào là hyperedge thì id đầu ấy là id hyperedge của cạnh (5.3);
+        # hai id đã chuẩn hóa ở tham số câu, không đọc lại từ kho.
+        id_he = (
+            normalize_id(source_node_id) if d["vai_a"] == ROLE_HYPEREDGE
+            else normalize_id(target_node_id) if d["vai_b"] == ROLE_HYPEREDGE
+            else None
+        )
+        return self._che(self._gop_canh(d["thuoc_tinh_canh"]), context, khoa, id_he)
 
     @classmethod
     def _gop_canh(cls, cac_canh) -> dict:
@@ -1223,6 +1234,10 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
                 },
                 context,
                 khoa,
+                # Id hyperedge của cạnh (5.3): đầu nguồn nếu gọi từ phía
+                # hyperedge, đầu lân cận nếu gọi từ phía entity. Không đầu nào
+                # là hyperedge thì `_khoa_de_che` đã nổ ở trên.
+                d["nguon"] if d["vai_nguon"] == ROLE_HYPEREDGE else d["lan_can"],
             )
             cac_cap.append((ban_ghi["node_id"], ban_ghi[NEIGHBOR_FIELD]))
         return cac_cap
@@ -1356,6 +1371,7 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
                     },
                     context,
                     khoa,
+                    d["id_hyperedge"],
                 )
             except (MaskItemOutOfPermission, SlotRoleUnknown) as loi:
                 raise DoThiNgoaiQuyen(
@@ -1548,7 +1564,7 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
             return None
         return self._bang_nhom.nhom_cua(content_type)
 
-    def _che(self, ban_ghi: dict, context, khoa: str | None) -> dict:
+    def _che(self, ban_ghi: dict, context, khoa: str | None, id_hyperedge: str | None = None) -> dict:
         """Cửa duy nhất gọi tầng che, để không method nào quên gọi (AD-9).
 
         Ngữ cảnh hệ thống đọc thô nên không che. Khóa truyền vào là khóa của
@@ -1576,6 +1592,14 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
         không gỡ trong `mask`: bản ghi đã làm giàu chính là `truoc_khi_che` của
         `kiem_ket_qua_che`, nên một phép gỡ bên trong hàm che sẽ bị hợp đồng báo
         là **mất trường**.
+
+        `id_hyperedge` (story 5.3, ADR-021) đi cùng đường vận chuyển ấy dưới tên
+        `HYPEREDGE_ID_FIELD`: tầng che so nó với `context.grant_ids` để nới về
+        luật L2 cho hyperedge được cấp break-glass, **sau** cửa fail-closed của
+        chính nó. Bốn method đọc truyền id của hyperedge mà bản ghi thuộc về;
+        vắng (`None`) là không nới. Cũng gỡ ở cả hai đầu, cùng lý do với nhóm:
+        một property cùng tên trong kho không được thành một grant tự phong, và
+        id không đi tiếp lên `vendor/` như một trường lạ.
         """
         if context.bypass_filter:
             return ban_ghi
@@ -1583,11 +1607,15 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
             raise HyperedgeKeyMissing(
                 f"bản ghi {ban_ghi!r} không truy ra khóa hyperedge để che"
             )
-        if OWNER_GROUP_FIELD in ban_ghi:
-            ban_ghi = {k: v for k, v in ban_ghi.items() if k != OWNER_GROUP_FIELD}
+        truong_van_chuyen = (OWNER_GROUP_FIELD, HYPEREDGE_ID_FIELD)
+        if any(t in ban_ghi for t in truong_van_chuyen):
+            ban_ghi = {k: v for k, v in ban_ghi.items() if k not in truong_van_chuyen}
         nhom = self._nhom_phu_trach(khoa)
         if nhom is not None:
             ban_ghi = {**ban_ghi, OWNER_GROUP_FIELD: nhom}
+        if id_hyperedge is not None:
+            ban_ghi = {**ban_ghi, HYPEREDGE_ID_FIELD: id_hyperedge}
         da_che = kiem_ket_qua_che(mask(ban_ghi, context, khoa), ban_ghi, repr(ban_ghi))
-        da_che.pop(OWNER_GROUP_FIELD, None)
+        for t in truong_van_chuyen:
+            da_che.pop(t, None)
         return da_che
