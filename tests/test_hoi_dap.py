@@ -1141,3 +1141,25 @@ def test_api_khong_import_system_context():
             elif isinstance(n, ast.Import):
                 ten = ",".join(a.name for a in n.names)
             assert ten is None or "system_context" not in ten, f"{py}: {ten}"
+
+
+def test_duong_dan_khong_khop_tuyen_ra_envelope_chu_khong_detail_tran(client):
+    """404/405 của router cũng là `{error: {code, message}}` (AD-8, kiểm tay 5.1).
+
+    Ba ca: đường dẫn lạ, phương thức sai trên tuyến có thật, và id rỗng trong
+    tuyến hủy break-glass (`/break-glass/yeu-cau//huy`, ca thấy trên máy chủ).
+    Không ca nào dội lại đường dẫn người gọi gửi.
+    """
+    from api.main import MA_TUYEN_KHONG_CO
+
+    for phuong_thuc, duong_dan, ma_http in (
+        ("GET", "/khong-co-tuyen-nay", 404),
+        ("DELETE", "/health", 405),
+        ("POST", "/break-glass/yeu-cau//huy", 404),
+    ):
+        kq = client.request(phuong_thuc, duong_dan)
+        assert kq.status_code == ma_http, (duong_dan, kq.text)
+        assert kq.json() == {
+            "error": {"code": MA_TUYEN_KHONG_CO, "message": kq.json()["error"]["message"]}
+        }
+        assert "detail" not in kq.json() and duong_dan not in kq.text

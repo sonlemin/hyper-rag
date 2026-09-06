@@ -44,6 +44,10 @@ Ask First còn mở cho story sau: thêm trường vào thân (k, thời hạn, 
 - **Một hàng audit có thể tồn tại cho một yêu cầu đã rollback.** Thứ tự INSERT -> audit -> COMMIT chỉ bảo đảm chiều "không hàng yêu cầu nào thiếu hàng audit"; COMMIT hỏng sau khi audit đã ghi để lại một hàng `breakglass_request` không có yêu cầu tương ứng. Chấp nhận: sổ ghi ý định, bảng ghi trạng thái; hậu kiểm đối chiếu bằng `chi_tiet.request_id`.
 - **Chuỗi kiểm đầu vào là trần cứng, không phải lược đồ id.** `hyperedge_id` tối đa `DAI_ID_TOI_DA` = 200 ký tự, `ly_do` tối đa 1000 sau strip (pydantic chặn trước ở 4000), ký tự NUL bị từ chối ở cả hai; id hủy phải mang tiền tố `bg-` mới chạm kho. Không kiểm định dạng id hyperedge sâu hơn: fixture M1 và id `he-` + 24 hex của kho thật là hai lược đồ khác nhau.
 
+## Quyết định 4 - Một nguồn giờ cho `expires_at`: giờ của Postgres
+
+Phép kiểm "grant còn hạn" (`_SQL_GRANT_CON_HAN`) so `expires_at > now()` bằng đồng hồ của Postgres. Chốt ngay ở 5.1, trước khi 5.2 viết dòng ghi đầu tiên: `expires_at` phải do **cùng đồng hồ đó** sinh ra, tức 5.2 ghi `now() + make_interval(mins => $n)` ngay trong câu INSERT, không tính `datetime.now()` ở tiến trình `api` rồi truyền vào. Hai đồng hồ (container `api` và container `postgres`) hôm nay lệch mili giây vì cùng một máy, nhưng luật "ghi và đọc cùng nguồn giờ" là thứ phải đứng trước con số đo được. Phương án đã loại: truyền giờ của `api` vào cả hai câu - nó buộc mọi đường đọc grant sau này (5.3, hàng chờ 5.5) nhớ truyền cùng một tham số, còn `now()` của Postgres thì không ai quên được. Luật ghi ở comment của `api/sql/breakglass.sql` ngay trên bảng `breakglass_grants`.
+
 ## Điều đã thấy khi viết test trên fixture M1
 
 Trên `policy-day-du.yaml`, `tech_support` thấy HE-02 ở L1 còn `devops` thấy HE-02 ở L2 và HE-03 ở L1. Vì vậy câu "ts01 xin HE-02 rồi dev01 xin HE-02, hai yêu cầu độc lập" của AC-1 chấm trên fixture thành: `ts01` xin HE-02 được 201, `dev01` xin HE-02 là 400 `HYPEREDGE_DA_THAY_DU` (đúng vế "không id nào ngoài tập L1 tạo được"), và yêu cầu độc lập thứ hai là của `dev01` cho HE-03. Tập id xin được của mỗi vai bằng đúng `{h : muc_ky_vong(bang, vai, loại) == "L1"}`.

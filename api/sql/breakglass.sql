@@ -59,6 +59,12 @@ CREATE INDEX IF NOT EXISTS breakglass_requests_nhom_duyet_cho_idx
 -- trùng của đường xin so cả `role`. `hyperedge_ids` là mảng vì grant duyệt có
 -- thể phủ k hyperedge lân cận (hôm nay k = 0, mảng đúng một phần tử).
 -- `request_id` null cho phép grant cấp chủ động không qua yêu cầu (5.2).
+-- **Một nguồn giờ cho `expires_at`, và đó là giờ của Postgres** (quyết định
+-- chốt ở 5.1, ADR-019): phép kiểm "grant còn hạn" của 5.1 so `expires_at >
+-- now()`, nên 5.2 phải ghi `expires_at` bằng chính đồng hồ ấy ngay trong câu
+-- INSERT (`now() + make_interval(mins => $n)`), không tính ở tiến trình `api`
+-- rồi truyền vào - hai đồng hồ là một grant sống theo máy này mà chết theo máy
+-- kia. `tao_luc DEFAULT now()` cùng nguồn.
 CREATE TABLE IF NOT EXISTS breakglass_grants (
     id              text PRIMARY KEY,
     request_id      text REFERENCES breakglass_requests(id),

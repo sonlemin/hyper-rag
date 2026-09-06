@@ -234,6 +234,7 @@ HAM_MAIN_CO_LY_DO: dict[str, str] = {
     "hoi": "POST /hoi-dap; gọi thẳng api.hoi_dap.tra_loi, nội dung đã che ở ba adapter (AD-9)",
     "do_thi": "POST /do-thi; gọi thẳng api.do_thi.lay_do_thi, tên entity đã che ở adapter graph (AD-9), không LLM",
     "_than_yeu_cau_la": "exception handler, đổi 422 thô của FastAPI thành 400 đúng envelope",
+    "_tuyen_khong_co": "exception handler, đổi 404/405 thô của Starlette thành envelope {error:{code,message}}; không chạm kho",
     "_loi_khong_xac_dinh": "exception handler lưới cuối; trả {error:{code,message}} từ hai hằng, nội dung lỗi chỉ vào log",
     "mo_kho_tai_khoan": "điểm nối mở pool Postgres cho bảng users; test thay bằng bản giả",
     "mo_audit": "điểm nối mở pool Postgres cho bảng audit_log; không phải kho tri thức",

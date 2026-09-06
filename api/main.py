@@ -49,6 +49,7 @@ import anyio.to_thread
 from fastapi import APIRouter, Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from adapters.identity_seed import IdentitySeedInvalid, nap_tai_khoan
 from adapters.nhom_phu_trach import bang_nhom_mac_dinh
@@ -90,6 +91,14 @@ MA_SEED_KHONG_DOC_DUOC: str = "SEED_KHONG_DOC_DUOC"
 # thân `Internal Server Error` trần nằm ngoài envelope, tức đúng thứ mà cả
 # story dựng ra để không xảy ra.
 MA_LOI_KHONG_XAC_DINH: str = "LOI_KHONG_XAC_DINH"
+
+# Mã của một đường dẫn hay phương thức không khớp tuyến nào. Thấy lần đầu ở
+# kiểm tay story 5.1: `POST /break-glass/yeu-cau//huy` (id rỗng) ra
+# `{"detail":"Not Found"}` trần của Starlette, thân duy nhất của tiến trình nằm
+# ngoài envelope `{error: {code, message}}` (AD-8). Thông điệp cố định, không
+# dội lại đường dẫn người gọi gửi.
+MA_TUYEN_KHONG_CO: str = "TUYEN_KHONG_CO"
+THONG_DIEP_TUYEN_KHONG_CO: str = "không có tuyến nào cho đường dẫn và phương thức này"
 
 # Thông điệp **chung** của ca thân yêu cầu sai lược đồ. Ở đây chứ không ở
 # `api/hoi_dap.py` vì handler phủ mọi tuyến của app, không riêng `/hoi-dap`.
@@ -302,6 +311,22 @@ async def _than_yeu_cau_la(request: Request, loi: RequestValidationError) -> JSO
                 "message": THONG_DIEP_THAN_YEU_CAU_LA,
             }
         },
+    )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def _tuyen_khong_co(request: Request, loi: StarletteHTTPException) -> JSONResponse:
+    """404/405 của router (đường dẫn hay phương thức không khớp tuyến) ra đúng envelope.
+
+    Không handler nào của dự án dội `HTTPException` (lỗi của dự án là
+    `LoiXacThuc` và lớp con), nên mọi ngoại lệ tới đây là của chính Starlette
+    khi không tìm được tuyến. Giữ mã HTTP của nó, thay thân bằng một mã ổn định
+    và một thông điệp cố định: thân mặc định `{"detail": "Not Found"}` là hình
+    dạng duy nhất trong tiến trình không mang `code` để test assert lên (AD-8).
+    """
+    return JSONResponse(
+        status_code=loi.status_code,
+        content={"error": {"code": MA_TUYEN_KHONG_CO, "message": THONG_DIEP_TUYEN_KHONG_CO}},
     )
 
 
