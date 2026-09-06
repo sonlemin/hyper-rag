@@ -121,10 +121,15 @@ class SuKienAudit:
     liệu riêng của từng loại sự kiện (token, model, USD), giữ dạng map để hiện
     thực Postgres ghi thành jsonb mà không đổi lược đồ bảng khi thêm sự kiện.
 
-    Quy ước `hyperedge_ids`: id **vector** của hyperedge (`rel-<md5>`, do
-    upstream sinh từ tên fact), mờ, không mang nội dung fact - audit đi vào một
-    kho ngoài tầng che. Pipeline ingest (2.3) ghi theo dạng đó; sự kiện lọc /
-    truy vấn của adapter (3.6) theo cùng quy ước.
+    Quy ước `hyperedge_ids`, **hai dạng theo loại sự kiện**, cả hai đều mờ và
+    không mang nội dung fact vì audit đi vào một kho ngoài tầng che:
+
+    - sự kiện ingest (2.3) ghi id **vector** của hyperedge (`rel-<md5>`, do
+      upstream sinh từ tên fact) - đó là id mà đường nạp cầm trong tay;
+    - sự kiện `query` (3.4) ghi id **node** hyperedge, cùng id với trường `id`
+      của từng citation trong response, để hậu kiểm đối chiếu được response
+      với audit bằng một phép so chuỗi. Lượt từ chối ghi tuple rỗng. Sự kiện
+      lọc của adapter (3.6) theo quy ước của `query`.
     """
 
     tier: str

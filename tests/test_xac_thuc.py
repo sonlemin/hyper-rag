@@ -171,6 +171,9 @@ class EngineGia:
 
     `param` giữ lại tham số của từng lời gọi: đó là cách ca "handler không tự
     dựng `QueryParam`" đọc được vế của nó mà không phải thay method.
+
+    `trich_dan` (story 3.4) là tuple `TrichDan` mà lượt trả lời mang; mặc định
+    rỗng để mọi ca của 3.3/3.5 giữ nguyên kỳ vọng `citations: []`.
     """
 
     def __init__(
@@ -178,10 +181,12 @@ class EngineGia:
         tra_loi: str = "câu trả lời giả",
         loi: BaseException | None = None,
         ly_do: str | None = None,
+        trich_dan: tuple = (),
     ):
         self.tra_loi = tra_loi
         self.loi = loi
         self.ly_do = ly_do
+        self.trich_dan = trich_dan
         self.cau_hoi: list[str] = []
         self.param: list = []
         self.ngu_canh: list = []
@@ -210,7 +215,7 @@ class EngineGia:
             raise self.loi
         if self.ly_do is not None:
             return KetQuaHoiDap(ly_do_tu_choi=self.ly_do)
-        return KetQuaHoiDap(cau_tra_loi=self.tra_loi)
+        return KetQuaHoiDap(cau_tra_loi=self.tra_loi, trich_dan=self.trich_dan)
 
     async def dong(self):
         self.da_dong = True

@@ -62,6 +62,7 @@ from typing import Any, Mapping
 
 from core.keys import split_key
 from core.permission import PermissionContext
+from core.policy import LEVEL_ORDER, NAMESPACE_MIN_LEVEL
 from core.slots import OWNER_SLOT, SLOT_ROLE_SET, SLOT_ROLES
 
 # Danh sách đóng, sống cạnh interface. Method đọc public mới của adapter mà
@@ -329,6 +330,54 @@ def la_dau_che(gia_tri, nhom_hop_le) -> bool:
     return any(gia_tri == dau_che_owner(nhom) for nhom in nhom_hop_le)
 
 
+def vai_phai_che(context: PermissionContext, content_type: str) -> frozenset[str]:
+    """Tập vai phải che của một loại nội dung: phần bảng khai hợp với `owner` (AD-9).
+
+    **Một luật, một chỗ** (story 3.4). Trước đây tập này chỉ tồn tại dưới dạng
+    một dòng trong thân `mask`; citation của `POST /hoi-dap` cũng phải nói
+    "hyperedge này bị che những vai nào", và nếu nó tự tính lại thì hai bản của
+    cùng một luật trôi khỏi nhau mà không test nào thấy. Từ đây `mask` gọi hàm
+    này, và `adapters/trich_dan.py` cũng gọi đúng hàm này.
+
+    Hai luật khác nguồn gặp nhau ở đây chứ không trộn sẵn trong bảng: validator
+    của story 1.2 chặn `owner` xuất hiện trong `masked_slots`, và `slots_to_mask`
+    chỉ trả về phần YAML khai. Bảng chỉ khai được `masked_slots` cho loại nội
+    dung đang ở L1, nên ở L2 tập này chỉ còn `owner`.
+
+    Hàm **không** giao với tập vai có mặt trên hyperedge: nó nói luật, còn "vai
+    nào thật sự có trên fact này" là việc của nơi cầm bản ghi. Không kiểm quyền
+    trên khóa ở đây, vì cửa fail-closed đó đứng ở `mask` và `muc_tiet_lo`.
+    """
+    return frozenset(context.slots_to_mask(content_type)) | {OWNER_SLOT}
+
+
+def muc_tiet_lo(context: PermissionContext, hyperedge_key: str) -> str:
+    """Mức tiết lộ của vai với một hyperedge, suy từ `allowed_keys` (story 3.4).
+
+    Suy từ tập khóa của ngữ cảnh, **không tra lại bảng chính sách**: ngữ cảnh
+    quyền là thứ đã phân giải một lần ở đầu request và là thứ ba adapter lọc
+    theo. Một mức tính lại từ bảng có thể lệch với mức mà tầng lọc vừa áp nếu
+    bảng bị hoán giữa chừng (AD-3), còn mức suy từ `allowed_keys` thì luôn nói
+    đúng điều tầng lọc đã làm.
+
+    Luật là ngưỡng theo namespace của `core/policy.py` (NFR-06): khóa nằm trong
+    tập của một namespace ngưỡng L2 (`chunks`, `entities`) là L2; chỉ nằm trong
+    `hyperedges` là L1. Khóa không nằm trong `hyperedges` là ngoài quyền và dội
+    `MaskItemOutOfPermission`, cùng cửa fail-closed với `mask` - một citation
+    cho một khóa ngoài quyền không tồn tại được.
+    """
+    if hyperedge_key not in context.keys_for(MASK_NAMESPACE):
+        raise MaskItemOutOfPermission(
+            f"khóa {hyperedge_key!r} không nằm trong tập L1+ của vai"
+            f" {context.role!r}: không có mức tiết lộ nào để suy"
+        )
+    muc = NAMESPACE_MIN_LEVEL[MASK_NAMESPACE]
+    for namespace, nguong in NAMESPACE_MIN_LEVEL.items():
+        if LEVEL_ORDER[nguong] > LEVEL_ORDER[muc] and hyperedge_key in context.keys_for(namespace):
+            muc = nguong
+    return muc
+
+
 def mask(result: Any, context: PermissionContext, hyperedge_key: str) -> Any:
     """Che nội dung theo chính sách slot trước khi kết quả rời adapter.
 
@@ -346,11 +395,9 @@ def mask(result: Any, context: PermissionContext, hyperedge_key: str) -> Any:
     đã có trong tay đúng ở chỗ này. Epic 5 dựng đường nâng quyền thì nới đúng
     cửa này, không mở một đường bỏ che thứ hai ở tầng khác.
 
-    Tập slot phải che là phần bảng khai cho loại nội dung đó, hợp với `owner`.
-    Hai luật khác nguồn nên chúng gặp nhau ở đây chứ không trộn sẵn trong bảng:
-    validator của story 1.2 chặn `owner` xuất hiện trong `masked_slots`, và
-    `slots_to_mask` chỉ trả về phần YAML khai. Bảng chỉ khai được `masked_slots`
-    cho loại nội dung đang ở L1, nên ở L2 tập này rỗng và chỉ còn `owner`.
+    Tập slot phải che lấy từ `vai_phai_che`, và **chỉ** từ đó: citation của
+    story 3.4 dùng cùng hàm ấy, nên dấu che trong ngữ cảnh và `masked_slots`
+    trong citation không trôi khỏi nhau được.
     """
     if context.bypass_filter:
         return result
@@ -366,7 +413,7 @@ def mask(result: Any, context: PermissionContext, hyperedge_key: str) -> Any:
             f" {context.role!r} không thấy khóa đó từ mức L1 trở lên: filter"
             " phía trên đã hỏng, và che tiếp là fail-open im lặng"
         )
-    phai_che = set(context.slots_to_mask(content_type)) | {OWNER_SLOT}
+    phai_che = vai_phai_che(context, content_type)
 
     da_che = dict(result)
     nhom = da_che.get(OWNER_GROUP_FIELD)

@@ -544,3 +544,51 @@ def test_khong_node_nao_mang_ca_hai_nhan_space_tren_neo4j_that(hai_khong_gian, p
     (dong,) = asyncio.run(chay())
     assert dong["ca_hai"] == 0, "có node mang cả hai nhãn space"
     assert dong["so_a"] > dong["so_b"] > 0
+
+
+def test_trich_dan_cua_tren_neo4j_that(khong_gian, policy, bang):
+    """Story 3.4: cửa quyền của citation chạy được trên Neo4j thật, đúng ngữ nghĩa.
+
+    Driver giả chỉ diễn giải câu; `MATCH ... WHERE h.id IN $ids` cộng
+    `OPTIONAL MATCH` và `collect(DISTINCT r.slot)` phải được server thật chấp
+    nhận. Ba vế: tập id trả về bằng đúng `hyperedge_thay_duoc` của oracle theo
+    từng vai (hyperedge L0 vắng mặt), khóa và tập vai của từng mục khớp fixture,
+    và một hyperedge thấy được nhưng không cạnh nào qua lọc vẫn về một dòng với
+    `cac_vai == ()` - ca ấy dựng bằng một hyperedge mới chỉ có node, không cạnh.
+    """
+    he_moi = "rel-HE-KHONG-CANH"
+    he1 = THEO_ID["HE-01"]
+
+    async def chay():
+        async with kho_that(khong_gian, policy) as (driver, adapter):
+            with use_context(
+                system_context(space=khong_gian, policy_version=policy.policy_version)
+            ):
+                with ingest_label(scope=he1["scope"], content_type=he1["content_type"]):
+                    await adapter.upsert_node(
+                        he_moi, {"role": "hyperedge", "weight": 1.0, "source_id": "chunk-x"}
+                    )
+            ids = [id_hyperedge(he) for he in HYPEREDGES] + [he_moi, "rel-khong-co"]
+            ra = {}
+            for ten_vai in ("devops", "tech_support"):
+                with use_context(vai(policy, ten_vai, khong_gian)):
+                    ra[ten_vai] = await adapter.trich_dan_cua(ids)
+            return ra
+
+    ra = asyncio.run(chay())
+    for ten_vai, thay in ra.items():
+        ky_vong = {
+            id_hyperedge(he)
+            for he in HYPEREDGES
+            if he["id"] in oracle.hyperedge_thay_duoc(bang, ten_vai, HYPEREDGES)
+        }
+        assert set(thay) == ky_vong | {he_moi}, ten_vai
+        assert "rel-khong-co" not in thay
+        for he in HYPEREDGES:
+            if oracle.muc_ky_vong(bang, ten_vai, he["content_type"]) == "L0":
+                assert id_hyperedge(he) not in thay
+            if id_hyperedge(he) in thay:
+                khoa, cac_vai = thay[id_hyperedge(he)]
+                assert khoa == oracle.khoa_ky_vong(he["scope"], he["content_type"])
+                assert set(cac_vai) == set(he["slots"])
+        assert thay[he_moi] == (oracle.khoa_ky_vong(he1["scope"], he1["content_type"]), ())

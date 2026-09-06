@@ -55,7 +55,7 @@ from adapters.mask_contract import (
     MaskContractViolated,
     kiem_ket_qua_che,
 )
-from adapters.nhom_phu_trach import bang_nhom_cho
+from adapters.nhom_phu_trach import BangNhomPhuTrach, bang_nhom_cho
 from adapters.sensitivity_loader import bang_hang_cho
 from core.ids import normalize_id, validate_space
 from core.keys import CHUA_GHI, FILTER_KEY_FIELD, split_key
@@ -1223,6 +1223,75 @@ class Neo4jACLGraphStorage(BaseGraphStorage):
             )
             cac_cap.append((ban_ghi["node_id"], ban_ghi[NEIGHBOR_FIELD]))
         return cac_cap
+
+    async def trich_dan_cua(self, ids) -> dict[str, tuple[str, tuple[str, ...]]]:
+        """`{id hyperedge: (khóa quyền, các vai có mặt)}` dưới ngữ cảnh vai (story 3.4).
+
+        Cửa quyền của citation. Id vào là **khóa tra** đọc từ cột `hyperedge`
+        của ngữ cảnh; thứ đi ra là khóa quyền và tên vai của đúng những
+        hyperedge mà vai hiện tại còn thấy. Hyperedge ngoài quyền **vắng mặt**
+        khỏi dict - không xuất hiện với giá trị rỗng, vì "có id này" cũng là
+        một câu trả lời - và nơi gọi (`adapters/trich_dan.dung_danh_sach`)
+        đổi mỗi chỗ vắng thành `TrichDanNgoaiQuyen`.
+
+        **Không mở đường đọc mới.** Ba mệnh đề lọc chép nguyên từ
+        `get_node_edges`: `_dieu_kien` cho node hyperedge và cho cạnh,
+        `_dieu_kien_lan_can` cho entity - kể cả nhánh nới cho entity không khóa
+        của AD-5, vì một vai bị che cứng ở vai ấy vẫn phải thấy `masked_slots`
+        nhắc tới nó. Method trả **tên vai và khóa**, không trả giá trị slot
+        hay tên entity, nên nó không đi qua `mask`; lý do khai ở
+        `tests/test_phan_chieu_che.py`.
+
+        Vai đọc bằng `collect(DISTINCT r.slot)` trên `OPTIONAL MATCH`: một
+        hyperedge còn thấy được mà không có cạnh nào qua lọc vẫn về một dòng
+        với danh sách rỗng, và `collect` bỏ `null`. Cạnh không mang `slot`
+        (dữ liệu trước 2.4) bị bỏ, cùng cách với `slot_cua_hyperedge`. Thứ tự
+        trả về không hứa gì (`IN $ids`); nơi gọi xếp lại theo ngữ cảnh.
+        """
+        context = current_context()
+        cac_id: list[str] = []
+        for i in ids:
+            chuan = normalize_id(i)
+            if chuan not in cac_id:
+                cac_id.append(chuan)
+        if not cac_id or not self._co_khoa_de_doc(context):
+            return {}
+        space = self._nhan_space(context)
+        dong = await self._chay(
+            f"MATCH (h:`{space}`:`{LABEL_HYPEREDGE}`)\n"
+            f"WHERE h.{NODE_ID_FIELD} IN $ids AND {self._dieu_kien('h', context)}\n"
+            f"OPTIONAL MATCH (h)-[r:{EDGE_TYPE}]-(e:`{space}`)\n"
+            f"WHERE {self._dieu_kien('r', context)}"
+            f" AND {self._dieu_kien_lan_can('e', context)}\n"
+            f"RETURN h.{NODE_ID_FIELD} AS id_hyperedge,"
+            f" h.{FILTER_KEY_FIELD} AS khoa_trich_dan,"
+            f" collect(DISTINCT r.{SLOT_FIELD}) AS cac_vai",
+            ids=cac_id,
+            vai_entity=ROLE_ENTITY,
+            **self._tham_so_loc(context),
+        )
+        ra: dict[str, tuple[str, tuple[str, ...]]] = {}
+        for d in dong:
+            if not d["khoa_trich_dan"]:
+                # Không khóa mà vẫn qua được mệnh đề lọc chỉ xảy ra dưới cờ
+                # system (mệnh đề chỉ còn `space`); ở đó không có mức tiết lộ
+                # nào để nói, nên không có citation.
+                continue
+            vai = tuple(sorted(v for v in d["cac_vai"] if v is not None))
+            ra[d["id_hyperedge"]] = (d["khoa_trich_dan"], vai)
+        return ra
+
+    @property
+    def bang_nhom(self) -> BangNhomPhuTrach:
+        """Bảng nhóm phụ trách mà adapter này che bằng; citation tra cùng bảng.
+
+        Thuộc tính đọc, không phải một đường đọc kho: nó trả cấu hình đã nạp
+        lúc dựng adapter. Đưa ra ngoài để `EngineACL.hoi_dap` điền
+        `owner_group` bằng **đúng bảng** đã sinh dấu che `[owner:<nhóm>]` trong
+        ngữ cảnh - một bảng thứ hai nạp ở engine là hai chỗ nói hai tên nhóm
+        cho cùng một hyperedge (khoản ledger 3.1 mà story 3.4 đóng).
+        """
+        return self._bang_nhom
 
     async def node_degree(self, node_id: str) -> int:
         """Số lân cận *còn thấy được* (distinct), không phải tổng số cạnh.

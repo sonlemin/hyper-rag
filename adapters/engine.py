@@ -75,8 +75,10 @@ from adapters.tra_loi import (
     NguCanhTruyHoiLa,
     doc_dau_ra,
     dung_prompt as dung_prompt_tra_loi,
+    id_hyperedge_trong,
     ngu_canh_rong,
 )
+from adapters.trich_dan import dung_danh_sach
 from adapters.trich_xuat import ThongKeTrichXuat, trich_xuat_chunks
 from adapters.neo4j import (
     HEALTH_DELAY_KEY,
@@ -100,6 +102,7 @@ from adapters.qdrant import (
 from adapters.nhom_phu_trach import NHOM_PHU_TRACH_KEY
 from adapters.sensitivity_loader import SENSITIVITY_RANKS_KEY
 from adapters.tu_dien_thuc_the import ENTITY_DICTIONARY_KEY
+from core.permission import current_context
 
 logger = logging.getLogger(__name__)
 
@@ -734,8 +737,15 @@ class EngineACL(HyperGraphRAG):
            gọi LLM thứ hai**. Đây là chỗ ca L0 chặn sạch đi ra, và là nhánh tất
            định mà FR-16 đòi ("ngữ cảnh truy hồi rỗng thì render template không
            gọi LLM").
-        3. Còn lại -> prompt của dự án, rồi `doc_dau_ra`. Cờ bật thì
-           `co_no_answer`; không thì một câu trả lời.
+        3. **Citation dựng ở đây, trước lời gọi LLM** (story 3.4): id đọc từ
+           cột `hyperedge` của ngữ cảnh chỉ là khóa tra, adapter graph xác
+           nhận khóa quyền và các vai có mặt dưới chính ngữ cảnh vai này, hai
+           hàm thuần của `core/masking.py` cho mức và tập vai bị che. Một id
+           adapter không thấy là `TrichDanNgoaiQuyen` dội lên nguyên - 5xx,
+           không lời gọi LLM trả tiền, không hàng `refusal`.
+        4. Còn lại -> prompt của dự án, rồi `doc_dau_ra`. Cờ bật thì
+           `co_no_answer` (citation bỏ đi, lượt từ chối rỗng); không thì một
+           câu trả lời kèm citation.
 
         Đầu ra không đọc được **dội lên nguyên** dưới dạng `DauRaTraLoiKhongDoc`:
         nó là lỗi hệ thống, và nuốt nó thành một lý do từ chối thứ tư là trộn
@@ -795,10 +805,17 @@ class EngineACL(HyperGraphRAG):
             return KetQuaHoiDap(ly_do_tu_choi=LY_DO_TU_KHOA_RONG)
         if ngu_canh_rong(ngu_canh):
             return KetQuaHoiDap(ly_do_tu_choi=LY_DO_NGU_CANH_RONG)
+        # Citation trước khi trả tiền cho lời gọi LLM: cửa quyền của adapter
+        # graph chạy dưới đúng contextvar của request (cùng ngữ cảnh mà ba
+        # adapter vừa lọc), và bảng nhóm là bảng của chính adapter ấy.
+        graph = self.chunk_entity_relation_graph
+        ids = id_hyperedge_trong(ngu_canh)
+        tu_adapter = await graph.trich_dan_cua(ids) if ids else {}
+        trich_dan = dung_danh_sach(current_context(), ids, tu_adapter, graph.bang_nhom.nhom_cua)
         tho = await self.llm_model_func(
             dung_prompt_tra_loi(cau_hoi, ngu_canh), **THAM_SO_LLM_TRA_LOI
         )
         ket_qua = doc_dau_ra(tho)
         if ket_qua.khong_co_dap_an:
             return KetQuaHoiDap(ly_do_tu_choi=LY_DO_CO_NO_ANSWER)
-        return KetQuaHoiDap(cau_tra_loi=ket_qua.cau_tra_loi)
+        return KetQuaHoiDap(cau_tra_loi=ket_qua.cau_tra_loi, trich_dan=trich_dan)

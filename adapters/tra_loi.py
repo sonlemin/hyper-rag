@@ -32,6 +32,8 @@ chuỗi, `dung_prompt` ghép hai chuỗi. Lời gọi LLM nằm ở `adapters/en
 nơi đã cầm `self.llm_model_func`.
 """
 
+import csv
+import io
 import json
 import re
 from dataclasses import dataclass
@@ -39,6 +41,8 @@ from typing import Mapping
 
 from hypergraphrag.prompt import PROMPTS
 
+from adapters.trich_dan import TrichDan, TrichDanNgoaiQuyen
+from core.ids import normalize_id
 from core.masking import (
     MASK_REASON_L2_ONLY,
     MASK_REASON_NO_KEY,
@@ -145,12 +149,29 @@ class KetQuaHoiDap:
     thứ hai - một engine giả trong test, một nhánh tương lai - cho ra
     `answer: ""` kèm `refused: false`, tức một lượt trả lời rỗng mà người dùng
     đọc thành một lượt từ chối không có template.
+
+    `trich_dan` (story 3.4) là tuple `TrichDan` theo thứ tự xuất hiện trong ngữ
+    cảnh, và **lượt từ chối thì rỗng** - bất biến kiểm ở đây, không ở handler:
+    một lượt từ chối mang citation là một envelope từ chối khác byte với hai
+    lượt kia, tức chính kênh dò mà FR-16 dựng ra để bịt (phép so byte của
+    `tests/test_tu_choi.py`). Lượt trả lời không bắt buộc có citation: ngữ
+    cảnh không phải khung vendor cho danh sách id rỗng, và lượt ấy vẫn trả lời.
     """
 
     cau_tra_loi: str | None = None
     ly_do_tu_choi: str | None = None
+    trich_dan: tuple[TrichDan, ...] = ()
 
     def __post_init__(self):
+        if not isinstance(self.trich_dan, tuple) or not all(
+            isinstance(td, TrichDan) for td in self.trich_dan
+        ):
+            raise TypeError("trich_dan phải là tuple các TrichDan")
+        if self.ly_do_tu_choi is not None and self.trich_dan:
+            raise ValueError(
+                "lượt từ chối không mang citation: envelope từ chối phải bằng"
+                " nhau từng byte giữa mọi lý do (FR-16)"
+            )
         co_tra_loi = self.cau_tra_loi is not None
         co_ly_do = self.ly_do_tu_choi is not None
         if co_tra_loi == co_ly_do:
@@ -195,6 +216,10 @@ DAU_PROMPT_TRA_LOI: str = (
 # Hai ví dụ, một cho mỗi giá trị của cờ. Cả hai đều cần: một ví dụ chỉ có nhánh
 # trả lời dạy LLM rằng nhánh kia là ngoại lệ, và cờ no-answer là nhánh mà FR-16
 # đứng lên.
+# Ví dụ thứ ba (story 3.4, ADR-016): một dấu che nằm **đúng chỗ** trong câu trả
+# lời, dựng từ chính `dau_che` chứ không viết tay - đó là hình dạng mà luật
+# "chép nguyên dấu che" mô tả, và một ví dụ nói được điều mà một câu luật không
+# nói hết: dấu che đứng thay giá trị, câu vẫn trọn vẹn, không có lời bình nào.
 VI_DU_DAU_RA: str = "\n".join(
     json.dumps(muc, ensure_ascii=False)
     for muc in (
@@ -203,22 +228,32 @@ VI_DU_DAU_RA: str = "\n".join(
             KHOA_CAU_TRA_LOI: "App01 trả lỗi 502 do giới hạn bộ nhớ của pool PHP-FPM bị chỉnh sai.",
         },
         {KHOA_KHONG_CO_DAP_AN: True, KHOA_CAU_TRA_LOI: ""},
+        {
+            KHOA_KHONG_CO_DAP_AN: False,
+            KHOA_CAU_TRA_LOI: f"App01 trả lỗi 502 do {dau_che('cause')}, đã khắc phục bằng cách khởi động lại pool PHP-FPM.",
+        },
     )
 )
 
 # Tên trường và tên nhóm **giả** chỉ dùng để dựng ví dụ dấu che. Chúng không
-# phải một tên có thật trong `config/nhom-phu-trach.yaml`: một tên nhóm thật in
-# vào prompt là dạy LLM đúng cái chuỗi mà luật ngay dưới cấm nó viết ra.
+# phải một tên có thật trong `config/nhom-phu-trach.yaml`: prompt là văn bản
+# cố định gửi cho mọi vai, và một tên nhóm thật nằm sẵn trong nó là một tên mà
+# model có thể chép ra ở một lượt mà ngữ cảnh không hề mang nhóm ấy.
 _TRUONG_VI_DU: str = "description"
 _NHOM_VI_DU: str = "TenNhom"
 
 # Ví dụ dấu che, **dựng từ chính hàm của `core/masking.py`** chứ không viết tay.
-# Đây là chỗ bản đầu của story sai nặng nhất: prompt mô tả dấu che là
+# Đây là chỗ bản đầu của story 3.5 sai nặng nhất: prompt mô tả dấu che là
 # `[tên_vai: che]` trong khi dấu thật là `[cause:masked]` - không khoảng trắng
-# sau dấu hai chấm, lý do bằng tiếng Anh. Hai hệ quả của bản mô tả sai: model
-# đọc `masked` như nội dung, và không luật nào cấm nó chép nguyên
-# `[owner:DevOps]` vào câu trả lời, tức **tên nhóm phụ trách rò ra qua `answer`**
-# ở đúng endpoint mở nhất của hệ.
+# sau dấu hai chấm, lý do bằng tiếng Anh - nên model đọc `masked` như nội dung.
+#
+# Luật đi kèm đổi ở story 3.4 (ADR-016). 3.5 cấm chép dấu che vào câu trả lời,
+# vì khi đó `[owner:DevOps]` chép ra `answer` là tên nhóm phụ trách rò qua
+# endpoint mở nhất của hệ. Từ 3.4 nhóm phụ trách đã ra qua `citations[].owner_group`
+# cho đúng cùng vai và cùng hyperedge, nên dấu che trong `answer` không lộ thêm
+# gì; ngược lại, một câu trả lời *bỏ trống* chỗ bị che đọc như fact thiếu một
+# vế, còn dấu che tại chỗ là thứ Epic 4 bôi đen được và nối được vào citation.
+# Luật mới: **chép nguyên dấu che vào đúng chỗ, không đoán, không bỏ**.
 #
 # `adapters/` được phép import `core/`, nên hai bên không trôi khỏi nhau được:
 # đổi `MASK_REASON_*` hay đổi `dau_che_truong` là prompt đổi theo trong cùng một
@@ -241,8 +276,8 @@ Luật:
 - Chỉ dùng thông tin có trong ngữ cảnh. Không thêm tri thức chung, không suy đoán, không bịa tên hệ thống, số hiệu hay mốc thời gian.
 - Ngữ cảnh không chứa đáp án thì đặt "{KHOA_KHONG_CO_DAP_AN}" là true và để "{KHOA_CAU_TRA_LOI}" là chuỗi rỗng. Không tự soạn lời từ chối, không giải thích vì sao thiếu, không gợi ý hỏi ai.
 - Ngữ cảnh chứa đáp án thì đặt "{KHOA_KHONG_CO_DAP_AN}" là false và viết câu trả lời tiếng Việt vào "{KHOA_CAU_TRA_LOI}", ngắn gọn và bám sát ngữ cảnh.
-- Trong ngữ cảnh có thể có những chuỗi dạng [tên:lý_do], ví dụ: {DANH_SACH_DAU_CHE}. Đó là chỗ giá trị gốc đã bị thay bằng một dấu, không phải nội dung. Coi như ô đó trống: không đoán giá trị gốc, và **không chép bất kỳ chuỗi dạng đó vào "{KHOA_CAU_TRA_LOI}"**, kể cả khi phần sau dấu hai chấm trông như một cái tên có nghĩa.
-- Không viết gì trong "{KHOA_CAU_TRA_LOI}" về quyền, về phân quyền, về việc bị chặn hay bị giới hạn, về việc ngữ cảnh thiếu dữ liệu, hay về chính ngữ cảnh này. Chỉ viết nội dung trả lời câu hỏi.
+- Trong ngữ cảnh có thể có những chuỗi dạng [tên:lý_do], ví dụ: {DANH_SACH_DAU_CHE}. Đó là dấu che, đứng ở chỗ giá trị gốc đã bị thay, không phải nội dung. Không đoán giá trị gốc. Khi câu trả lời cần nhắc tới phần đó thì **chép nguyên dấu che vào đúng chỗ trong "{KHOA_CAU_TRA_LOI}"**, giữ nguyên từng ký tự, không bỏ trống, không viết lại thành lời, không ghép thêm chữ nào vào trong dấu.
+- Không tự bình luận trong "{KHOA_CAU_TRA_LOI}" về quyền, về phân quyền, về việc bị chặn hay bị giới hạn, về việc ngữ cảnh thiếu dữ liệu, hay về chính ngữ cảnh này: không viết bằng lời của mình những câu như "phần này bị hạn chế" hay "không có dữ liệu về". Một dấu che chép nguyên như luật trên không phải một lời bình. Chỉ viết nội dung trả lời câu hỏi.
 
 Đầu ra là một object json duy nhất mang đúng hai khóa "{KHOA_KHONG_CO_DAP_AN}" (true hoặc false) và "{KHOA_CAU_TRA_LOI}" (chuỗi), không có văn bản nào khác ngoài json.
 
@@ -367,6 +402,96 @@ def _cac_khoi_csv(chuoi: str) -> list[str]:
     return ra
 
 
+# --- Id hyperedge trong ngữ cảnh (story 3.4) -----------------------------------
+
+# Vị trí và tên cột của khối Relationships trong khung ba nhãn. Cả hai nhánh
+# của vendor dựng bảng với đúng header này (`operate.py:788` local, `:987`
+# global), và cột `hyperedge` mang **id node hyperedge**: nhánh global đổ
+# `k["hyperedge_name"]` (payload point Qdrant, `:953`), nhánh local đổ
+# `"description": k[1]` (`:906`) rồi `e["description"]` vào cột (`:794`), tức
+# id lân cận mà `get_node_edges(entity)` trả về. Từ story 2.4 id ấy là `he-` +
+# 24 hex, không mang chữ nào của slot. `tests/test_trich_dan.py` grep hai mốc
+# `:906` và `:794` để chúng không trôi theo một bản upstream mới.
+_KHOI_RELATIONSHIPS: int = 1
+_COT_HYPEREDGE: str = "hyperedge"
+
+
+def id_hyperedge_trong(ngu_canh) -> tuple[str, ...]:
+    """Id hyperedge ở cột `hyperedge` của khối Relationships, khử trùng, giữ thứ tự.
+
+    Đây là cột **duy nhất** khớp đúng với thứ LLM sắp đọc, và là lý do citation
+    không thu thập ở adapter (Design Notes spec 3.4): nhánh local lấy hyperedge
+    qua `get_node_edges`, không qua kho vector, và cả hai nhánh còn bị
+    `truncate_list_by_token_size` cắt *sau* adapter - "adapter đã trả" khác
+    "LLM đã thấy".
+
+    Id đọc ra chỉ là **khóa tra**, không phải sự thật: khóa quyền, mức, vai và
+    nhóm đều đến từ adapter graph dưới ngữ cảnh vai. Hàm vì thế đọc dễ dãi và
+    để cửa quyền phía sau xử: một id không tồn tại thành `TrichDanNgoaiQuyen`
+    chứ không thành một citation.
+
+    Hai hình dạng của khối, cùng một bộ đọc. Nhánh đơn (`local`/`global`) là
+    CSV chuẩn của `csv.writer`. Nhánh `hybrid` đi qua
+    `utils.process_combine_contexts:296-330`, thứ **viết lại** bảng: header
+    ghép bằng `",\\t"`, mỗi dòng là `f"{{i}},\\t{{item}}"` với `item` là các
+    cột sau `id` ghép bằng dấu phẩy trần, không quote lại. `csv.reader` đọc
+    được cả hai vì cột `hyperedge` đứng ngay sau `id` và id `he-…` không mang
+    dấu phẩy; phần thừa là một tab đầu ô, cắt bằng `strip`. Một id mang dấu
+    phẩy sẽ bị cắt đôi ở dạng hybrid - và khi đó nó không tra trúng gì, tức
+    5xx chứ không một citation sai.
+
+    Đọc **từng dòng một** chứ không đọc cả khối bằng một `csv.reader`: ở dạng
+    hybrid dấu nháy kép không còn được quote lại, nên một tên entity mở đầu
+    bằng `"` ở cột `related_entities` sẽ làm bộ đọc cả khối nuốt các dòng kế
+    cho tới dấu nháy đóng - tức mất citation **lặng lẽ**. Đọc từng dòng thì ô
+    đó hỏng trong phạm vi một dòng, còn cột `hyperedge` đứng trước nó vẫn
+    nguyên. Giá phải trả là một giá trị có xuống dòng bên trong ô sẽ đọc sai,
+    nhưng id entity đi qua `core.facts.chuan_hoa_gia_tri` (gộp khoảng trắng)
+    nên không có xuống dòng nào, và sai ở đây là 5xx chứ không phải một
+    citation thiếu.
+
+    Id trả về **đã qua `normalize_id`** và khử trùng *sau* chuẩn hóa, đúng
+    khóa mà `Neo4jACLGraphStorage.trich_dan_cua` dùng cho dict trả về: chuẩn
+    hóa một lần ở đây thì hai bên không lệch nhau vì một dấu cách hay một cặp
+    nháy kép bao quanh. Ô mà `normalize_id` từ chối (rỗng sau chuẩn hóa, ví dụ
+    chỉ toàn dấu nháy) là `TrichDanNgoaiQuyen`: nó vẫn là "ngữ cảnh mang một
+    thứ ở cột `hyperedge` mà không tra được", và lên tới HTTP phải là một 500
+    mang mã chứ không một `ValueError` không tên.
+
+    Chuỗi không phải khung vendor (thiếu nhãn, sai thứ tự, thiếu header hay
+    thiếu cột) cho tuple rỗng: lượt vẫn trả lời, `citations: []`.
+    """
+    if not isinstance(ngu_canh, str):
+        return ()
+    khoi = _cac_khoi_csv(ngu_canh)
+    if len(khoi) <= _KHOI_RELATIONSHIPS:
+        return ()
+    dong: list[list[str]] = []
+    for dong_tho in khoi[_KHOI_RELATIONSHIPS].strip().splitlines():
+        if not dong_tho.strip():
+            continue
+        hang = next(csv.reader(io.StringIO(dong_tho)), [])
+        if hang:
+            dong.append([o.strip() for o in hang])
+    if not dong or _COT_HYPEREDGE not in dong[0]:
+        return ()
+    cot = dong[0].index(_COT_HYPEREDGE)
+    ra: list[str] = []
+    for hang in dong[1:]:
+        if len(hang) <= cot or not hang[cot]:
+            continue
+        try:
+            chuan = normalize_id(hang[cot])
+        except ValueError as loi:
+            raise TrichDanNgoaiQuyen(
+                "ngữ cảnh mang một ô ở cột `hyperedge` không chuẩn hóa được"
+                " thành id: không tra được citation cho lượt này"
+            ) from loi
+        if chuan not in ra:
+            ra.append(chuan)
+    return tuple(ra)
+
+
 # --- Đọc đầu ra LLM ------------------------------------------------------------
 
 
@@ -460,5 +585,6 @@ __all__ = [
     "NguCanhTruyHoiLa",
     "doc_dau_ra",
     "dung_prompt",
+    "id_hyperedge_trong",
     "ngu_canh_rong",
 ]

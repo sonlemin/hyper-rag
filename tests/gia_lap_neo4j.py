@@ -364,6 +364,9 @@ class Neo4jGhiLai:
             return "ghi:doc-slot-hyperedge", self._doc_slot_hyperedge(cypher, params)
         if "AS da_ghi" in cypher and "SET n." in cypher:
             return "ghi:dat-lai", self._dat_lai(cypher, params)
+        if "AS khoa_trich_dan" in cypher:
+            # Story 3.4: cửa quyền của citation, đường đọc dưới ngữ cảnh vai.
+            return "doc:trich_dan_cua", self._doc_trich_dan(cypher, params)
         if "MERGE (n:" in cypher:
             return "ghi:node", self._ghi_node(cypher, params)
         if "MERGE (a)-[" in cypher:
@@ -626,6 +629,40 @@ class Neo4jGhiLai:
                 "khoa_b": b.props.get(FILTER_KEY_FIELD),
             }
         ]
+
+    def _doc_trich_dan(self, cypher: str, params: dict) -> list[dict]:
+        """`MATCH (h) WHERE h.id IN $ids ... OPTIONAL MATCH (h)-[r]-(e)`: khóa và vai theo id.
+
+        Chỉ node mang nhãn Hyperedge; node qua được điều kiện của biến `h` mà
+        không có cạnh nào qua điều kiện của `r`/`e` vẫn về một dòng với danh
+        sách rỗng, đúng ngữ nghĩa `OPTIONAL MATCH` + `collect` (bỏ `null`).
+        Thứ tự trả về cố ý **đảo** so với `$ids`: `IN` của Cypher không hứa thứ
+        tự, và adapter không được dựa vào nó.
+        """
+        ra = []
+        for id_h in reversed(list(params["ids"])):
+            node = self.nodes.get((params["space"], id_h))
+            if (
+                node is None
+                or LABEL_HYPEREDGE not in node.nhan
+                or not self._hop_le(cypher, params, "h", node.props)
+            ):
+                continue
+            vai = sorted(
+                {
+                    canh.props.get(SLOT_FIELD)
+                    for canh, _, _ in self._lan_can(cypher, params, id_h, "e")
+                    if canh.props.get(SLOT_FIELD) is not None
+                }
+            )
+            ra.append(
+                {
+                    "id_hyperedge": id_h,
+                    "khoa_trich_dan": node.props.get(FILTER_KEY_FIELD),
+                    "cac_vai": vai,
+                }
+            )
+        return ra
 
     def _doc_khoa(self, cypher: str, params: dict) -> list[dict]:
         """Bước đọc khóa của read-merge-write: quét theo danh sách id."""

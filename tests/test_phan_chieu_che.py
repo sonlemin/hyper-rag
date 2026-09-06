@@ -84,6 +84,17 @@ XU_LY_RIENG_THEO_ADAPTER = {
             "đọc slot của hyperedge dưới cờ system cho đường dựng lại content"
             " khi re-ingest, từ chối ngoài ngữ cảnh hệ thống"
         ),
+        # Cửa quyền của citation (3.4): trả **tên vai và khóa quyền** của những
+        # hyperedge mà vai còn thấy, không trả giá trị slot hay tên entity nên
+        # không có gì để che; quyền có mặt dưới dạng đúng ba mệnh đề lọc của
+        # `get_node_edges` (hyperedge, cạnh, lân cận), hyperedge ngoài quyền
+        # vắng mặt khỏi kết quả và `tests/test_trich_dan.py` chấm Cypher của nó
+        # bằng `canh_moi_bien_deu_bi_loc`.
+        "trich_dan_cua": (
+            "chỉ trả khóa quyền và tên vai của hyperedge còn thấy được, không trả"
+            " nội dung; lọc bằng đúng ba mệnh đề của get_node_edges, mục ngoài"
+            " quyền vắng mặt"
+        ),
         # Số đếm là tín hiệu xếp hạng đi thẳng vào ngữ cảnh trả về; nó co theo
         # quyền bằng WHERE trên chính biến lân cận, không bằng che.
         "node_degree": "đếm sau filter, số đếm co theo quyền",
@@ -138,6 +149,7 @@ NGOAI_UPSTREAM = frozenset(
         "so_khong_khoa",
         "khoa_lan_can_hyperedge",
         "slot_cua_hyperedge",
+        "trich_dan_cua",
         "xoa",
         "xoa_tat_ca",
         "ghi_thang",

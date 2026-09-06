@@ -495,9 +495,9 @@ def test_audit_hong_khong_lam_hong_cau_tra_loi(client, audit_gia, engine_gia, ca
 def test_su_kien_query_ghi_thoi_gian_o_tang_observation(client, audit_gia):
     """AC cuối của story: thời gian truy vấn ghi qua audit làm số liệu NFR-08.
 
-    `hyperedge_ids` rỗng cho tới story 3.4 - id thật chỉ nhìn thấy được ở một
-    điểm duy nhất của đường truy hồi (`vendor/operate.py:931`), và khe thu thập
-    nó là thiết kế của 3.4. Rỗng là đúng hình dạng, không phải một số giả vờ.
+    `hyperedge_ids` rỗng ở đây vì `EngineGia` mặc định không mang citation nào;
+    từ story 3.4 nó là dãy `id` của citations, và ca có citation nằm ở
+    `tests/test_trich_dan.py`. Rỗng là đúng hình dạng, không phải một số giả vờ.
     """
     assert _hoi(client, "dev01").status_code == 200
     su_kien = [sk for sk in audit_gia.su_kien if sk.event == EVENT_QUERY]

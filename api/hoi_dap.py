@@ -41,8 +41,13 @@ nạp trước truy vấn đầu tiên, và nếu chưa thì collection vắng c
 `KHO_KHONG_SAN_SANG` chứ không tự tạo - cái giá đó vốn đã có, vì một kho rỗng
 không trả lời được gì.
 
-`citations` rỗng và `graph` rỗng ở story này là **hình dạng đã chốt**, không
-phải nội dung còn thiếu: nội dung citation là story 3.4, nội dung graph là 3.7.
+`graph` rỗng ở story này là **hình dạng đã chốt**, không phải nội dung còn
+thiếu: nội dung graph là 3.7. `citations` có nội dung từ story 3.4: mỗi mục là
+một dict **sáu khóa đóng** (`adapters.trich_dan.KHOA_TRICH_DAN`), dựng ở engine
+từ ngữ cảnh truy hồi cộng cửa quyền của adapter graph, và `dung_envelope` kiểm
+từng mục như nó kiểm `meta`. Handler chỉ chuyển `TrichDan` sang dict; nó không
+dựng, không lọc, không đếm citation nào. Một id trong ngữ cảnh mà adapter không
+thấy là 500 `TRICH_DAN_NGOAI_QUYEN`, không phải một citation bị bỏ lặng lẽ.
 
 **Nhánh từ chối byte-identical của FR-16 vào ở story 3.5.** Ba lý do -
 `ngu_canh_rong`, `co_no_answer`, `tu_khoa_rong` - đi ra qua **đúng một** lời gọi
@@ -55,9 +60,11 @@ thì **không** phải một lý do thứ tư - nó là 502 mang mã ổn địn
 
 import logging
 import time
+from dataclasses import asdict
 
 from pydantic import BaseModel, ConfigDict
 
+from adapters.trich_dan import KHOA_TRICH_DAN, MUC_TRICH_DAN, TrichDan, TrichDanNgoaiQuyen
 from adapters.engine import (
     EngineACL,
     QueryModeKhongHoTro,
@@ -181,6 +188,12 @@ MA_KHO_KHONG_SAN_SANG: str = "KHO_KHONG_SAN_SANG"
 # chính nó, đúng thứ làm hai cột của Đo 2 (PRD 5.2) đếm nhầm.
 MA_DAU_RA_LLM_KHONG_DOC_DUOC: str = "DAU_RA_LLM_KHONG_DOC_DUOC"
 
+# Mã thứ tám, vào ở story 3.4, **re-export** từ lớp ngoại lệ của `adapters/`
+# chứ không chép chuỗi: ngữ cảnh truy hồi mang một id hyperedge mà cửa quyền
+# của adapter graph không xác nhận dưới vai này. 500 vì nó là một lệch giữa
+# tầng lọc và cửa quyền của chính hệ, không phải lỗi của provider hay của kho.
+MA_TRICH_DAN_NGOAI_QUYEN: str = TrichDanNgoaiQuyen.code
+
 # Mã của lớp thứ ba NFR-10 (khoản ledger 1.2). Hai lớp đầu là
 # `tests/test_import_lint.py` (phía module) và `core.permission.use_context`
 # (`SystemContextNested`, ngữ cảnh hệ thống sinh ra giữa chừng); lớp này chặn
@@ -200,6 +213,7 @@ THONG_DIEP_LLM_QUA_HAN: str = "mô hình ngôn ngữ không trả lời trong th
 THONG_DIEP_KHO: str = "kho tri thức chưa sẵn sàng"
 THONG_DIEP_DAU_RA_LLM: str = "mô hình ngôn ngữ trả về đầu ra không đọc được"
 THONG_DIEP_NGU_CANH_SAI: str = "ngữ cảnh quyền của request không phải ngữ cảnh vai"
+THONG_DIEP_TRICH_DAN: str = "không dựng được trích dẫn theo quyền cho lượt này"
 
 # Độ dài tối đa của câu hỏi, tính bằng ký tự. Hằng có tên chứ không phải một số
 # nằm trong một lời gọi: nó là một ngân sách (mỗi ký tự đi vào prompt trích từ
@@ -321,6 +335,12 @@ def dung_envelope(*, answer, refused: bool, citations: list, graph: dict, meta: 
 
     `answer` nhận `None` vì lượt từ chối của story 3.5 khai `answer: null`;
     trên đường trả lời nó luôn là chuỗi.
+
+    Từng citation kiểm như `meta` (story 3.4): dict đúng sáu khóa
+    `KHOA_TRICH_DAN`, `level` trong `MUC_TRICH_DAN`, `masked_slots` là list
+    chuỗi, `owner_group` là chuỗi hoặc `None`. Sai hình là `ValueError` ngay
+    tại đây, fail-closed: một citation thừa một khóa là một kênh nữa để nội
+    dung rò ra ngoài tầng che.
     """
     if answer is not None and not isinstance(answer, str):
         raise TypeError(f"answer phải là chuỗi hoặc None, nhận được {type(answer).__name__}")
@@ -330,6 +350,10 @@ def dung_envelope(*, answer, refused: bool, citations: list, graph: dict, meta: 
         raise TypeError(
             f"citations phải là list, nhận được {type(citations).__name__}"
         )
+    for td in citations:
+        _kiem_trich_dan(td)
+    if refused and citations:
+        raise ValueError("lượt từ chối không mang citation (FR-16)")
     if not isinstance(graph, dict) or set(graph) != set(KHOA_GRAPH):
         raise ValueError(
             f"graph là tập trường đóng {list(KHOA_GRAPH)}, nhận được"
@@ -359,6 +383,44 @@ def dung_envelope(*, answer, refused: bool, citations: list, graph: dict, meta: 
             f" tự đó, dựng ra {list(envelope)}"
         )
     return envelope
+
+
+def _kiem_trich_dan(td) -> None:
+    """Một citation phải là dict đúng `KHOA_TRICH_DAN` và dựng lại được thành `TrichDan`.
+
+    Kiểm bằng cách **dựng lại** chứ không viết một bộ kiểm thứ hai: bản đầu của
+    story kiểm tay và yếu hơn `TrichDan.__post_init__` (bỏ lọt vai ngoài danh
+    mục, sai thứ tự `SLOT_ROLES`, trùng, `owner_group` toàn khoảng trắng, `level`
+    không hashable). Hai bộ kiểm là hai chỗ để lệch nhau; một bộ, ở `adapters/`,
+    và serializer gọi lại nó. Mọi lỗi ra `ValueError` mang thông điệp rõ.
+    """
+    if not isinstance(td, dict):
+        raise ValueError(f"citation phải là dict, nhận được {type(td).__name__}")
+    thieu = [k for k in KHOA_TRICH_DAN if k not in td]
+    thua = [k for k in td if k not in KHOA_TRICH_DAN]
+    if thieu or thua:
+        raise ValueError(
+            f"citation là tập trường đóng {list(KHOA_TRICH_DAN)}: thiếu {thieu},"
+            f" thừa {thua}. Một trường thêm vào citation là một kênh rò ngoài tầng che."
+        )
+    if not isinstance(td["masked_slots"], list):
+        raise ValueError("masked_slots của citation phải là list tên vai")
+    try:
+        TrichDan(**{**td, "masked_slots": tuple(td["masked_slots"])})
+    except (TypeError, ValueError) as loi:
+        raise ValueError(f"citation sai hình dạng: {loi}") from loi
+
+
+def dict_trich_dan(td: TrichDan) -> dict:
+    """`TrichDan` -> dict đúng thứ tự `KHOA_TRICH_DAN`, `masked_slots` thành list.
+
+    Đây là toàn bộ việc `api/` làm với một citation: chuyển kiểu. Không lọc,
+    không thêm, không đọc lại quyền - ba thứ đó đã xong ở `adapters/`. `asdict`
+    giữ tuple cho `masked_slots`; JSON không phân biệt, nhưng `dung_envelope`
+    kiểm bằng `list` cho khớp thứ người gọi đọc lại từ thân response.
+    """
+    tho = asdict(td)
+    return {k: (list(tho[k]) if k == "masked_slots" else tho[k]) for k in KHOA_TRICH_DAN}
 
 
 # --- Engine của tiến trình phục vụ ---------------------------------------------
@@ -543,14 +605,17 @@ def _tu_sdk_kho(loi: BaseException) -> bool:
 
 
 async def _ghi_audit_truy_van(
-    audit: AuditPort, ngu_canh: PermissionContext, mili_giay: float
+    audit: AuditPort,
+    ngu_canh: PermissionContext,
+    mili_giay: float,
+    hyperedge_ids: tuple[str, ...],
 ) -> None:
     """Sự kiện `query` ở tầng **observation**: audit hỏng không làm câu hỏi hỏng.
 
-    `hyperedge_ids` để rỗng cho tới story 3.4 - id thật của hyperedge chỉ nhìn
-    thấy được ở một điểm duy nhất của đường truy hồi (`vendor/operate.py:931`),
-    và khe thu thập nó là thiết kế của 3.4. Ghi một tuple rỗng là đúng hình dạng
-    và không giả vờ có số.
+    `hyperedge_ids` (story 3.4) là dãy `id` của các citation, đúng thứ tự - id
+    **node** hyperedge, cùng id mà response mang, để hậu kiểm đối chiếu được
+    response với audit bằng một phép so chuỗi (quy ước ở `core/audit.py`).
+    Lượt từ chối ghi tuple rỗng. Không đếm số mục bị lọc: sự kiện lọc là 3.6.
 
     `chi_tiet` mang mili giây, thứ NFR-08 đọc. Nó vào audit chứ không vào `meta`
     vì `meta` phải byte-identical giữa mọi lý do từ chối (AD-8).
@@ -565,6 +630,7 @@ async def _ghi_audit_truy_van(
             thoi_diem=thoi_diem_utc(),
             act=ngu_canh.real_account,
             role=ngu_canh.role,
+            hyperedge_ids=hyperedge_ids,
             chi_tiet={CT_MILI_GIAY: round(mili_giay, 3)},
         ),
     )
@@ -677,6 +743,14 @@ async def tra_loi(
         raise LoiHoiDap(
             500, QueryModeKhongHoTro.code, "chế độ truy vấn không được hỗ trợ"
         ) from None
+    except TrichDanNgoaiQuyen as loi:
+        # Story 3.4: ngữ cảnh mang một id hyperedge mà cửa quyền của adapter
+        # graph không xác nhận. Lệch giữa tầng lọc và cửa quyền là lỗi cấu trúc
+        # của hệ -> 500 mang mã ổn định, trước lời gọi LLM sinh câu trả lời và
+        # không hàng `refusal`. Số id thiếu chỉ vào log: thân lỗi không được kể
+        # ra ngữ cảnh có bao nhiêu mục.
+        logger.warning("citation ngoài quyền: %s", loi)
+        raise LoiHoiDap(500, MA_TRICH_DAN_NGOAI_QUYEN, THONG_DIEP_TRICH_DAN) from None
     except DauRaTraLoiKhongDoc as loi:
         # **Lỗi hệ thống, không phải một lý do từ chối.** Bắt trước nhánh chung
         # bên dưới vì `_loi_truy_hoi` trả `None` cho nó (nó không mang mã HTTP
@@ -697,7 +771,12 @@ async def tra_loi(
         logger.warning("truy hồi hỏng (%s): %s", type(loi).__name__, loi)
         raise da_biet from None
     mili_giay = (time.perf_counter() - bat_dau) * 1000.0
-    await _ghi_audit_truy_van(audit, ngu_canh, mili_giay)
+    # `KetQuaHoiDap` đã cấm "từ chối mà có citation" lúc dựng, nên dãy id này
+    # tự rỗng ở lượt từ chối mà không cần một nhánh `if` thứ hai ở đây.
+    citations = [dict_trich_dan(td) for td in ket_qua.trich_dan]
+    await _ghi_audit_truy_van(
+        audit, ngu_canh, mili_giay, tuple(td.id for td in ket_qua.trich_dan)
+    )
     tu_choi = ket_qua.ly_do_tu_choi is not None
     if tu_choi:
         await _ghi_audit_tu_choi(audit, ngu_canh, ket_qua.ly_do_tu_choi)
@@ -711,7 +790,7 @@ async def tra_loi(
         # câu trả lời lẫn lý do" ngay lúc dựng, nên không có ca `answer` khác
         # `None` mà `refused` là `True`.
         refused=tu_choi,
-        citations=[],
+        citations=citations,
         graph=graph_rong(),
         meta=dung_meta(ngu_canh),
     )
@@ -736,11 +815,13 @@ __all__ = [
     "MA_LLM_QUA_HAN",
     "MA_NGU_CANH_KHONG_PHAI_VAI",
     "MA_THAN_YEU_CAU_LA",
+    "MA_TRICH_DAN_NGOAI_QUYEN",
     "SO_LOI_GOI_EMBEDDING_MOI_TRUY_VAN",
     "SO_LOI_GOI_LLM_MOI_TRUY_VAN",
     "TEMPLATE_TU_CHOI",
     "LoiHoiDap",
     "ThanHoiDap",
+    "dict_trich_dan",
     "dung_envelope",
     "dung_meta",
     "graph_rong",

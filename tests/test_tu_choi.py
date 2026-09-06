@@ -51,6 +51,7 @@ from adapters.tra_loi import (
     LY_DO_TU_KHOA_RONG,
     PROMPT_TRA_LOI,
     THAM_SO_LLM,
+    VI_DU_DAU_RA,
     DauRaTraLoiKhongDoc,
     KetQuaHoiDap,
     NguCanhTruyHoiLa,
@@ -420,11 +421,16 @@ def test_prompt_mo_ta_dau_che_dung_dinh_dang_that_cua_tang_che():
     assert ": che]" not in PROMPT_TRA_LOI
 
 
-def test_prompt_cam_chep_dau_che_va_cam_nhac_toi_quyen():
+def test_prompt_chep_nguyen_dau_che_va_cam_nhac_toi_quyen():
     """Hai luật mà prompt **phải** có, và một câu nó không được có.
 
-    Luật một: cấm chép bất kỳ chuỗi dạng dấu che vào `cau_tra_loi`. Không có nó
-    thì `[owner:DevOps]` đi thẳng ra `answer`.
+    Luật một, **đổi ở story 3.4 (ADR-016)**: khi phải nhắc tới phần bị che thì
+    chép **nguyên** dấu che vào đúng chỗ, không đoán, không bỏ trống. Story 3.5
+    cấm chép vì `[owner:DevOps]` trong `answer` là tên nhóm rò qua endpoint mở
+    nhất; từ 3.4 nhóm phụ trách đã ra qua `citations[].owner_group` cho đúng
+    cùng vai và cùng hyperedge, nên dấu che trong `answer` không lộ thêm gì,
+    còn một chỗ bỏ trống thì đọc như fact thiếu một vế và Epic 4 không bôi đen
+    được. Câu cấm cũ không được sống lại.
 
     Luật hai: cấm nhắc tới quyền, hạn chế, hay việc thiếu dữ liệu. Đây là chỗ
     bản đầu hở: nó **nói với model** rằng ngữ cảnh đã lọc theo quyền của người
@@ -433,8 +439,18 @@ def test_prompt_cam_chep_dau_che_va_cam_nhac_toi_quyen():
     của story chỉ phủ **lượt từ chối**, không phủ lượt trả lời, nên lỗ này không
     một ca nào khác bắt được.
     """
-    assert f'không chép bất kỳ chuỗi dạng đó vào "{KHOA_CAU_TRA_LOI}"' in PROMPT_TRA_LOI
-    assert "Không viết gì" in PROMPT_TRA_LOI and "về quyền" in PROMPT_TRA_LOI
+    assert f'chép nguyên dấu che vào đúng chỗ trong "{KHOA_CAU_TRA_LOI}"' in PROMPT_TRA_LOI
+    assert "Không đoán giá trị gốc" in PROMPT_TRA_LOI
+    assert "không bỏ trống" in PROMPT_TRA_LOI
+    assert "không chép bất kỳ chuỗi dạng đó" not in PROMPT_TRA_LOI
+    # Luật hai cấm **bình luận** bằng lời của model, và nói rõ dấu che chép
+    # nguyên không phải một lời bình - hai luật không còn căng nhau.
+    assert "Không tự bình luận" in PROMPT_TRA_LOI and "về quyền" in PROMPT_TRA_LOI
+    assert "không phải một lời bình" in PROMPT_TRA_LOI
+    # Ví dụ đầu ra thứ ba mang một dấu che đúng chỗ, dựng từ `dau_che`.
+    vi_du = [json.loads(d) for d in VI_DU_DAU_RA.splitlines()]
+    assert len(vi_du) == 3
+    assert dau_che("cause") in vi_du[2][KHOA_CAU_TRA_LOI] and vi_du[2][KHOA_KHONG_CO_DAP_AN] is False
     # Câu của bản đầu, và mọi biến thể dạy model rằng ngữ cảnh bị lọc theo quyền.
     for cam in (
         "đã được lọc theo quyền",
