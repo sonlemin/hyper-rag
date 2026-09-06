@@ -62,6 +62,7 @@ from api.hoi_dap import (
 )
 from api.main import MA_LOI_KHONG_XAC_DINH
 from api.xac_thuc import BIEN_KHOA_KY
+from core.facts import cau_fact
 from core.audit import EVENT_EMBEDDING_COST, EVENT_LLM_COST, EVENT_QUERY, EVENT_REFUSAL
 from core.masking import MASKED_READ_METHODS
 from core.permission import use_context
@@ -119,6 +120,9 @@ def test_dung_do_thi_thu_tu_tat_dinh_va_node_che_theo_cap(policy, khong_gian):
         "B", "B#remediation", "B#owner",
     ]
     assert [(n.id, n.level) for n in dt.nodes if isinstance(n, NodeHyperedge)] == [("A", "L2"), ("B", "L1")]
+    # Label dựng từ đúng các cạnh đã khử trùng, theo `SLOT_ROLES`, giá trị đã che.
+    assert _he_theo_id(dt)["A"].label == cau_fact({"subject": ["App01"], "condition": ["a-điều kiện", "b-điều kiện"], "owner": ["[owner:DevOps]"]})
+    assert _he_theo_id(dt)["B"].label == cau_fact({"subject": ["App01"], "remediation": ["[remediation:masked]"], "owner": ["[owner:DevOps]"]})
     assert [c for c in dt.edges] == [
         CanhDoThi("A", "App01", "subject"),
         CanhDoThi("A", "a-điều kiện", "condition"),
@@ -208,7 +212,7 @@ def test_chuan_hoa_ids_khu_trung_giu_thu_tu():
 
 
 def test_do_thi_tu_kiem_id_trung_va_canh_lo_lung():
-    he = NodeHyperedge("A", "L2", "noi_bo", "runbook")
+    he = NodeHyperedge("A", "nhãn", "L2", "noi_bo", "runbook")
     e = NodeEntity("x", "x", False)
     with pytest.raises(ValueError):
         DoThi(nodes=(he, NodeEntity("A", "A", False)), edges=())
@@ -219,7 +223,9 @@ def test_do_thi_tu_kiem_id_trung_va_canh_lo_lung():
     with pytest.raises(ValueError):
         DoThi(nodes=(he, e), edges=(CanhDoThi("A", "x", "subject"),) * 2)
     with pytest.raises(ValueError):
-        NodeHyperedge("A", "L0", "noi_bo", "runbook")
+        NodeHyperedge("A", "nhãn", "L0", "noi_bo", "runbook")
+    with pytest.raises(ValueError):
+        NodeHyperedge("A", "", "L2", "noi_bo", "runbook")
     with pytest.raises(ValueError):
         CanhDoThi("A", "x", "la")
     assert tuple(KHOA_DONG_ADAPTER) == ("id_hyperedge", "khoa", "slot", "ten_da_che", "bi_che")
@@ -228,7 +234,7 @@ def test_do_thi_tu_kiem_id_trung_va_canh_lo_lung():
 def _dt_mau() -> DoThi:
     return DoThi(
         nodes=(
-            NodeHyperedge("A", "L1", "noi_bo", "bao_cao_su_co"),
+            NodeHyperedge("A", "chủ thể: App01; nguyên nhân: [cause:masked]", "L1", "noi_bo", "bao_cao_su_co"),
             NodeEntity("App01", "App01", False),
             NodeEntity("A#cause", "[cause:masked]", True),
         ),
@@ -246,7 +252,8 @@ def test_do_thi_tu_dict_dung_lai_dung_do_thi():
 def test_dict_do_thi_dung_khoa_dong_va_thu_tu():
     g = dict_do_thi(_dt_mau())
     assert list(g) == ["nodes", "edges"]
-    assert tuple(g["nodes"][0]) == KHOA_NODE_HYPEREDGE and g["nodes"][0]["kind"] == KIND_HYPEREDGE
+    assert tuple(g["nodes"][0]) == KHOA_NODE_HYPEREDGE == ("id", "kind", "label", "level", "scope", "content_type")
+    assert g["nodes"][0]["kind"] == KIND_HYPEREDGE
     assert tuple(g["nodes"][1]) == KHOA_NODE_ENTITY and g["nodes"][1]["kind"] == KIND_ENTITY
     assert g["nodes"][2] == {"id": "A#cause", "kind": "entity", "label": "[cause:masked]", "masked": True}
     assert [tuple(c) for c in g["edges"]] == [KHOA_CANH] * 2
@@ -372,11 +379,23 @@ def _chac_khop_oracle(dt: DoThi, bang, ten_vai) -> None:
         thay, dau = _ky_vong_mot_he(bang, ten_vai, he)
         canh = {c.slot: c.target for c in _canh_cua(dt, ten)}
         assert set(canh) == set(he["slots"]), f"{ten_vai}/{ten}: mọi vai có mặt đều có cạnh"
+        _chac_label_tu_chinh_do_thi(dt, node)
+        for v, dau_che in dau.items():
+            assert dau_che in node.label and he["slots"][v] not in node.label, f"{ten_vai}/{ten}: label lộ vai {v}"
         for v, gia_tri in thay.items():
             assert canh[v] == gia_tri and entity[gia_tri] == NodeEntity(gia_tri, gia_tri, False)
         for v, dau_che in dau.items():
             assert canh[v] == id_node_che(ten, v)
             assert entity[canh[v]] == NodeEntity(canh[v], dau_che, True)
+
+
+def _chac_label_tu_chinh_do_thi(dt: DoThi, node: NodeHyperedge) -> None:
+    """Label bằng `cau_fact` tính lại từ chính các edge và node entity của đồ thị."""
+    entity = _entity_theo_id(dt)
+    theo_vai: dict[str, list[str]] = {}
+    for c in _canh_cua(dt, node.id):
+        theo_vai.setdefault(c.slot, []).append(entity[c.target].label)
+    assert node.label == cau_fact(theo_vai), node.id
 
 
 def _khong_lo_gia_tri_bi_che(dt: DoThi, bang, ten_vai) -> None:
@@ -567,6 +586,9 @@ def test_ac2_dinh_khong_khoa_vang_va_hyperedge_chi_co_dinh_ay_vang_ca_vong(works
     assert he3 in he and he[he3].level == "L1"
     assert "cụm máy chủ thanh toán" not in _entity_theo_id(dt)
     assert {c.slot for c in _canh_cua(dt, he3)} == set(THEO_ID["HE-03"]["slots"]) - {"subject"}
+    # Label của HE-03 không mang đỉnh bị loại: nó là văn bản của đồ thị, không phải câu fact gốc.
+    assert "cụm máy chủ thanh toán" not in he[he3].label and "chủ thể" not in he[he3].label
+    _chac_label_tu_chinh_do_thi(dt, he[he3])
     # Tên hyperedge của fixture mang `subject` trong id (`{subject} - {content_type}`),
     # nên phép so chuỗi chỉ đúng trên node entity: không node entity nào mang tên ấy.
     assert not [n for n in dt.nodes if isinstance(n, NodeEntity) and "cụm máy chủ thanh toán" in (n.id, n.label)]

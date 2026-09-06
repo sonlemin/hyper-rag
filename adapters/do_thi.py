@@ -45,6 +45,7 @@ from typing import Iterable, Mapping
 
 from adapters.trich_dan import MUC_TRICH_DAN, TrichDanNgoaiQuyen
 from core import masking
+from core.facts import cau_fact
 from core.ids import normalize_id
 from core.keys import split_key
 from core.permission import PermissionContext
@@ -57,7 +58,7 @@ KIND_ENTITY: str = "entity"
 
 # Ba tập khóa đóng, liệt kê tường minh theo đúng thứ tự đi ra JSON. Thêm hay
 # bớt một khóa là đổi hợp đồng AD-8 và phải đi qua Ask First của spec 3.7.
-KHOA_NODE_HYPEREDGE: tuple[str, ...] = ("id", "kind", "level", "scope", "content_type")
+KHOA_NODE_HYPEREDGE: tuple[str, ...] = ("id", "kind", "label", "level", "scope", "content_type")
 KHOA_NODE_ENTITY: tuple[str, ...] = ("id", "kind", "label", "masked")
 KHOA_CANH: tuple[str, ...] = ("source", "target", "slot")
 
@@ -85,9 +86,18 @@ class DoThiNgoaiQuyen(TrichDanNgoaiQuyen):
 
 @dataclass(frozen=True)
 class NodeHyperedge:
-    """Một node hyperedge: mức và loại suy như citation, không nội dung."""
+    """Một node hyperedge: mức và loại suy như citation, `label` dựng từ giá trị đã che.
+
+    `label` (sonlm mở Ask First 06/09 để đóng khoản ledger 4-6) là văn bản
+    `core.facts.cau_fact` dựng từ **đúng** những giá trị đang có mặt trong đồ
+    thị của hyperedge này - đã qua `_che` và đã qua lọc. Nó không phải câu fact
+    gốc trong kho: vai bị che hiện dấu che, đỉnh ngoài quyền (không khóa, L0)
+    vắng hẳn. Drawer đồ thị của Epic 4 ghi nhãn này trong vòng; trên dữ liệu
+    thật `id` là `he-` cộng 24 hex nên không có gì khác để hiện.
+    """
 
     id: str
+    label: str
     level: str
     scope: str
     content_type: str
@@ -96,6 +106,8 @@ class NodeHyperedge:
     def __post_init__(self):
         if not isinstance(self.id, str) or not self.id:
             raise ValueError("node hyperedge phải mang id không rỗng")
+        if not isinstance(self.label, str) or not self.label:
+            raise ValueError("node hyperedge phải mang label không rỗng")
         if self.level not in MUC_TRICH_DAN:
             raise ValueError(
                 f"level {self.level!r} không hợp lệ cho node hyperedge, chỉ có"
@@ -256,8 +268,11 @@ def dung_do_thi(
         la = sorted({d["slot"] for d in dong if not isinstance(d["slot"], str) or d["slot"] not in SLOT_ROLE_SET}, key=str)
         if la:
             raise DoThiNgoaiQuyen(f"hyperedge {id_he!r} mang vai ngoài danh mục 8 vai: {la}")
-        nodes.append(NodeHyperedge(id=id_he, level=masking.muc_tiet_lo(context, khoa), scope=scope, content_type=content_type))
+        muc = masking.muc_tiet_lo(context, khoa)
+        vi_tri_node_he = len(nodes)
+        nodes.append(None)  # điền sau khi biết các cạnh, vì label dựng từ chúng
         canh_cua_he: set[tuple[str, str]] = set()
+        gia_tri_theo_vai: dict[str, list[str]] = {}
         for d in sorted(dong, key=lambda r: (SLOT_ROLES.index(r["slot"]), r["ten_da_che"])):
             if d["bi_che"]:
                 id_node = id_node_che(id_he, d["slot"])
@@ -275,6 +290,17 @@ def dung_do_thi(
             if (id_node, d["slot"]) not in canh_cua_he:
                 edges.append(CanhDoThi(source=id_he, target=id_node, slot=d["slot"]))
                 canh_cua_he.add((id_node, d["slot"]))
+                gia_tri_theo_vai.setdefault(d["slot"], []).append(hinh[0])
+        # Label từ đúng các cạnh vừa dựng: cùng giá trị đã che, cùng phép khử
+        # trùng, không đọc thêm gì. Hyperedge tới được đây luôn có ít nhất một
+        # cạnh (adapter dùng `MATCH`), nên label không rỗng.
+        nodes[vi_tri_node_he] = NodeHyperedge(
+            id=id_he,
+            label=cau_fact(gia_tri_theo_vai),
+            level=muc,
+            scope=scope,
+            content_type=content_type,
+        )
     try:
         return DoThi(nodes=tuple(nodes), edges=tuple(edges))
     except (TypeError, ValueError) as loi:
