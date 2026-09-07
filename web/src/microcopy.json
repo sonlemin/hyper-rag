@@ -39,5 +39,8 @@
   "khong_giu_duoc_phien": "Trình duyệt không giữ được phiên, mở lại ngoài chế độ riêng tư rồi đăng nhập lại",
   "lien_ket_ve_dang_nhap": "Về màn đăng nhập",
   "nut_gui": "Gửi",
-  "nhan_o_hoi": "Câu hỏi"
+  "nhan_o_hoi": "Câu hỏi",
+  "slab_owner": "[{ten_slot}: {nhom}]",
+  "khoi_nguon": "Nguồn ({n})",
+  "tooltip_chua_kha_dung": "Chưa khả dụng"
 }

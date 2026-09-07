@@ -30,6 +30,11 @@ Nhóm (10) là chat console (story 4.3): hai chuỗi mới có mặt và đượ
 bốn hằng hợp đồng của `web/src/api/hoi_dap.ts` khớp đúng nguồn `api/hoi_dap.py`
 cùng `api/main.py`, và không file nào trong `web/src` đặt trần thời gian cho một
 lượt hỏi.
+Nhóm (11) là cite-row, slab bôi đen và dòng hạn chế L1 (story 4.4): ba chuỗi mới
+cùng năm chuỗi đã treo từ 4.1 được dùng thật, hai bảng nhãn hiển thị của `web/`
+có khóa đúng bằng `core.slots.SLOT_ROLES` và bằng `config/hang-do-nhay.yaml`,
+ngữ pháp dấu che của `web/` dựng ra đúng chuỗi mà `core.masking` dựng ra, và
+không file nào trong `web/src` in id hyperedge thật.
 """
 
 from __future__ import annotations
@@ -43,6 +48,8 @@ import yaml
 
 from api.hoi_dap import KHOA_ENVELOPE, KHOA_META, TEMPLATE_TU_CHOI, ThanHoiDap
 from api.xac_thuc import MA_DANG_NHAP_SAI
+from core import masking
+from core.slots import OWNER_SLOT, SLOT_ROLES
 
 GOC = Path(__file__).resolve().parent.parent
 WEB = GOC / "web"
@@ -87,6 +94,24 @@ CAP_TUONG_PHAN = (
     # Dòng meta của một lượt lỗi nằm thẳng trên nền khối cuộn, không trong bong
     # bóng trắng.
     ("ink-muted", "surface-stream"),
+    # Bốn cặp của cite-row và dòng hạn chế L1 (story 4.4). Chữ của hàng L1 là
+    # `level-l1-ink` chứ không `level-l1` như DESIGN.md viết, vì `level-l1` trên
+    # nền trắng chỉ đạt 4,87:1 khi hàng chưa hover nhưng tụt xuống 4,08:1 trên
+    # nền hover `primary-tint` - cùng lý lẽ đã đổi badge L1 sang `level-l1-ink`
+    # ở story 4.1.
+    #
+    # Cặp trắng trên `level-l1` phủ **hai** bề mặt, và một trong hai chưa tồn
+    # tại ở trạng thái mà cặp này mô tả. Số vuông của hàng L1 dùng nó đúng như
+    # đo (4,87:1). Nút xin break-glass thì ở story 4.4 **luôn** `disabled` với
+    # `opacity: 0.6`, nên chữ hợp thành trên nền `note_l1` chỉ còn khoảng
+    # 2,42:1; WCAG 1.4.3 miễn cho điều khiển vô hiệu nên đó không phải một lỗi
+    # hình, nhưng con số 4,87 dưới đây là của **trạng thái bật** mà Epic 5 mở.
+    # Giữ cặp ở đây chính vì thế: nó là phép canh sẵn cho ngày nút hết mờ, chứ
+    # không phải một phát biểu về màn hình hôm nay.
+    ("#FFFFFF", "level-l1"),
+    ("level-l1-ink", "surface-card"),
+    ("level-l1-ink", "primary-tint"),
+    ("ink-muted", "primary-tint"),
 )
 
 # Route không có mục sidebar và cố ý như vậy. Đây là danh mục ngoại lệ **có tên**
@@ -801,6 +826,28 @@ def test_hop_dong_hoi_dap_khop_nguon_api():
     assert _hang_mang(ts, "KHOA_META") == KHOA_META
 
 
+def test_muc_trich_dan_cua_web_khop_gia_tri_phia_api():
+    """Hai mức mà một citation mang được, so **giá trị** với `adapters/`.
+
+    Cùng khuôn với `test_trich_dan_ts_khai_du_sau_khoa_dong` ngay dưới, và vì
+    cùng một lý do: `MUC_TRICH_DAN` ở `hoi_dap.ts` là một bản chép tay, e2e mock
+    trọn tuyến nên nó xanh với bất kỳ tập nào, và phía `api/` không biết `web/`
+    nhận gì. Phép canh cũ chỉ hỏi chuỗi `"MUC_TRICH_DAN"` có xuất hiện trong
+    thân `la_trich_dan`, tức nó chấm việc hằng **được dùng** chứ không chấm việc
+    hằng **đúng**.
+
+    Phía `api/` tập ấy **dẫn xuất** từ `NAMESPACE_MIN_LEVEL[hyperedges]` chứ
+    không viết tay, nên hạ ngưỡng ấy là ở đó có thêm một mức hợp lệ trong khi
+    `web/` từ chối mọi citation mang mức mới thành `ENVELOPE_LA` - tức mọi lượt
+    trả lời thành một hộp đỏ. So theo **tập** vì phía `api/` là `frozenset`;
+    thứ tự của mảng TS không mang nghĩa gì ngoài thứ tự đọc.
+    """
+    from adapters.trich_dan import MUC_TRICH_DAN
+
+    ts = HOI_DAP_TS.read_text(encoding="utf-8")
+    assert set(_hang_mang(ts, "MUC_TRICH_DAN")) == set(MUC_TRICH_DAN)
+
+
 def test_trich_dan_ts_khai_du_sau_khoa_dong():
     """Kiểu citation phía `web/` khai đủ sáu khóa của `adapters/trich_dan.py`.
 
@@ -892,3 +939,405 @@ def test_var_css_cua_globals_da_duoc_phu():
     """
     duong = [f.relative_to(GOC).as_posix() for f in _file_giao_dien()]
     assert "web/src/app/globals.css" in duong, duong
+
+
+# --- (11) Cite-row, slab bôi đen và dòng hạn chế L1 (story 4.4) --------------
+
+# Ba chuỗi mới của khối nguồn và của nút xin break-glass, cộng **năm chuỗi đã
+# treo từ 4.1**: chúng nằm trong bảng Voice and Tone từ đầu nhưng tới story này
+# mới có bề mặt dùng. Một khóa microcopy không ai dùng là một câu chữ mà bảng
+# Voice and Tone và màn hình nói khác nhau mà không ai thấy.
+KHOA_MICROCOPY_CITE = frozenset(
+    {
+        "slab_owner",
+        "khoi_nguon",
+        "tooltip_chua_kha_dung",
+        "slab_che",
+        "dong_han_che_l1",
+        "nut_xin_truy_cap",
+        "tooltip_badge_muc",
+        "placeholder_l1_trich_dan",
+    }
+)
+
+NHAN_TS = SRC / "nhan.ts"
+DAU_CHE_TS = SRC / "app" / "dau_che.ts"
+KHOI_NGUON_TSX = SRC / "app" / "KhoiNguon.tsx"
+DONG_HAN_CHE_TSX = SRC / "app" / "DongHanChe.tsx"
+
+HANG_DO_NHAY = GOC / "config" / "hang-do-nhay.yaml"
+GLOB_POLICY = "policy-*.yaml"
+
+
+def _hang_chuoi_o(tho: str, ten: str, nguon: str) -> str:
+    """Giá trị của một `export const <ten> = "..."` trong một file TS bất kỳ."""
+    m = re.search(rf'export const {ten}(?::[^=]*)? = "([^"]*)"', tho)
+    assert m, f"{nguon} phải khai hằng {ten}"
+    return m.group(1)
+
+
+def _khoa_bang_ts(tho: str, ten: str) -> tuple[str, ...]:
+    """Khóa của một `export const <ten>: Record<string, string> = { a: "...", }`.
+
+    Đọc văn bản thô chứ không chạy TypeScript: máy chủ CI không có node, và cả
+    file test này đứng trên đúng nguyên tắc đó.
+    """
+    m = re.search(rf"export const {ten}(?::[^=]*)? = \{{(.*?)\n\}};", tho, re.S)
+    assert m, f"nhan.ts phải khai bảng {ten}"
+    return tuple(re.findall(r"^\s*([a-z_][a-z0-9_]*):", m.group(1), re.M))
+
+
+def _duoc_dung(khoa: str, tho: str) -> bool:
+    """Một khóa microcopy được **đọc thật**, không chỉ tình cờ xuất hiện.
+
+    Đúng hai cách đọc microcopy tồn tại trong `web/`: `MICROCOPY.<khóa>` cho
+    chuỗi không có chỗ trống, và `dien("<khóa>"` / `cac_manh("<khóa>"` cho chuỗi
+    có. Vế nới lỏng cũ (`'"<khóa>"' in tho`, bất kỳ đâu) là đúng dạng mà vòng
+    review 4.3 đã bỏ và ghi lý do ở `test_man_chat_dung_bon_chuoi_chat_tu_microcopy`:
+    với `khoi_nguon` thì riêng `className="khoi_nguon"` đã làm test xanh kể cả
+    khi không dòng nào gọi `dien("khoi_nguon", ...)`, và với `slab_che` thì một
+    `data-slab="slab_che"` cũng thế.
+    """
+    return any(
+        mau in tho for mau in (f"MICROCOPY.{khoa}", f'dien("{khoa}"', f'cac_manh("{khoa}"')
+    )
+
+
+def test_microcopy_cite_du_khoa_va_duoc_dung_that(microcopy):
+    thieu = KHOA_MICROCOPY_CITE - set(microcopy)
+    assert not thieu, sorted(thieu)
+    tho = "\n".join(f.read_text(encoding="utf-8") for f in _file_giao_dien())
+    khong_dung = sorted(k for k in KHOA_MICROCOPY_CITE if not _duoc_dung(k, tho))
+    assert not khong_dung, f"khóa microcopy không nơi nào dùng: {khong_dung}"
+
+
+def test_bo_do_microcopy_duoc_dung_khong_nhan_ten_khoa_tran():
+    """Chấm chính bộ dò: một tên khóa nằm trong `className` hay `data-*` không
+    phải là một lần đọc microcopy."""
+    assert _duoc_dung("khoi_nguon", 'dien("khoi_nguon", { n: 2 })')
+    assert _duoc_dung("tu_choi", "<p>{MICROCOPY.tu_choi}</p>")
+    assert _duoc_dung("meta_luot", 'cac_manh("meta_luot", gia_tri)')
+    assert not _duoc_dung("khoi_nguon", '<div className="khoi_nguon" data-khoi-nguon>')
+    assert not _duoc_dung("slab_che", '<span data-slab="slab_che" />')
+
+
+def test_bang_nhan_slot_cua_web_co_khoa_dung_bang_core():
+    """Bảng nhãn hiển thị 8 vai có khóa **đúng bằng** `core.slots.SLOT_ROLES`.
+
+    Ghim **khóa**, không ghim giá trị: nhãn `remediation` của `web/` là "hành
+    động khắc phục" (EXPERIENCE.md) còn của `core/facts.py` là "cách xử lý", và
+    chỗ lệch đó là **cố ý** - nhãn ở `core/` đi vào `PROMPT_TRICH_XUAT` đã đóng
+    băng cùng ba vòng đo đã trả tiền (`tests/test_cham_trich_xuat.py` so
+    `PROMPT_KHONG_TU_DIEN` từng byte). Thêm một vai vào `core/` mà quên bảng này
+    là một slab hiện ra tên vai tiếng Anh giữa câu trả lời.
+    """
+    khoa = _khoa_bang_ts(NHAN_TS.read_text(encoding="utf-8"), "NHAN_SLOT")
+    assert khoa == SLOT_ROLES
+
+
+def test_bang_nhan_loai_cua_web_co_khoa_dung_bang_config():
+    """Bảng nhãn loại nội dung có khóa **đúng bằng** `config/hang-do-nhay.yaml`.
+
+    Thêm một loại nội dung vào bảng hạng mà quên bảng này là một cite-row hiện
+    khóa snake_case giữa danh sách nguồn; ở đây nó đỏ và nêu đúng khóa thiếu.
+    """
+    hang = yaml.safe_load(HANG_DO_NHAY.read_text(encoding="utf-8"))["ranks"]
+    khoa = _khoa_bang_ts(NHAN_TS.read_text(encoding="utf-8"), "NHAN_LOAI")
+    assert set(khoa) == set(hang), sorted(set(hang) ^ set(khoa))
+
+
+def test_bang_nhan_scope_cua_web_co_khoa_dung_bang_policy():
+    """Bảng nhãn scope có khóa đúng bằng **hợp** `scopes:` của mọi bảng chính sách.
+
+    Nguồn ghim là `config/policy-*.yaml` chứ không phải corpus, và lý do là một
+    phát biểu kiểm được chứ không phải một lựa chọn tiện tay: scope là thành
+    phần trái của khóa lọc (AD-4), nên một scope mà không bảng nào cho vai nào
+    chạm tới thì không vai nào có khóa cho nó, mọi tài liệu của nó là L0 với tất
+    cả, và **không citation nào mang được nó** ra tới cite-row. Tập scope hiện
+    được lên một hàng nguồn vì thế đúng bằng hợp đó.
+
+    Mở một scope mới cho một vai mà quên bảng này là một cite-row hiện
+    `khach_hang_c` giữa danh sách nguồn; ở đây nó đỏ và nêu đúng khóa thiếu.
+    """
+    tu_policy: set[str] = set()
+    for f in sorted((GOC / "config").glob(GLOB_POLICY)):
+        bang = yaml.safe_load(f.read_text(encoding="utf-8"))
+        for vai in bang["roles"].values():
+            tu_policy.update(vai["scopes"])
+    assert tu_policy, "không đọc được scope nào từ config/policy-*.yaml"
+    khoa = _khoa_bang_ts(NHAN_TS.read_text(encoding="utf-8"), "NHAN_SCOPE")
+    assert set(khoa) == tu_policy, sorted(set(khoa) ^ tu_policy)
+
+
+def test_bang_nhan_cua_web_tra_nguyen_khoa_khi_khoa_la():
+    """Khóa lạ hiện nguyên khóa, đúng khuôn `nhan_vai` của 4.2.
+
+    Một nhãn đoán là một chỗ UI nói khác với dữ liệu server trả về.
+    """
+    tho = NHAN_TS.read_text(encoding="utf-8")
+    for ham, bang in (
+        ("nhan_slot", "NHAN_SLOT"),
+        ("nhan_loai", "NHAN_LOAI"),
+        ("nhan_scope", "NHAN_SCOPE"),
+    ):
+        m = re.search(rf"export function {ham}\([^)]*\)[^{{]*\{{(.*?)\n\}}", tho, re.S)
+        assert m, f"nhan.ts phải export hàm `{ham}`"
+        assert f"{bang}[" in m.group(1) and "??" in m.group(1), m.group(1)
+
+
+def test_ngu_phap_dau_che_cua_web_khop_core():
+    """Dấu che của `web/` dựng ra **đúng chuỗi** mà `core.masking` dựng ra.
+
+    `web/` nhận diện dấu che bằng cách **dựng lại**, đúng khuôn
+    `core.masking.la_dau_che`, chứ không bằng một regex tự do: một tên entity
+    thật bắt đầu bằng `[owner:` sẽ qua được một phép so tiền tố, và khi đó một
+    mảnh văn bản có thật biến thành một slab đen.
+
+    Ba hằng cộng hình dạng `[{trường}:{lý do}]` khóa trọn tập chuỗi hợp lệ: bảy
+    vai ra `masked`, `owner` ra `group`, và `[owner:<nhóm>]` cho nhóm của chính
+    lượt đang render. Đổi hình dạng dấu che ở `core/` là test này đỏ trước khi
+    ai mở trình duyệt.
+    """
+    ts = DAU_CHE_TS.read_text(encoding="utf-8")
+    assert _hang_chuoi_o(ts, "LY_DO_CHINH_SACH", "dau_che.ts") == masking.MASK_REASON_POLICY
+    assert _hang_chuoi_o(ts, "LY_DO_OWNER", "dau_che.ts") == masking.MASK_REASON_OWNER
+    assert _hang_chuoi_o(ts, "VAI_OWNER", "dau_che.ts") == OWNER_SLOT
+    # Hình dạng `dau_che_truong`, ghim từ **cả hai phía** trong cùng một test.
+    assert masking.dau_che_truong("vai", "ly_do") == "[vai:ly_do]"
+    assert "`[${vai}:${ly_do}]`" in ts, ts
+    # Và `web/` lấy danh mục vai từ chính bảng nhãn đã ghim với `SLOT_ROLES`,
+    # không gõ lại tám tên.
+    assert "VAI_SLOT" in ts
+
+
+# Hai họ dấu che mà `web/` **cố ý không** đổi thành slab, nêu đích danh để một
+# `MASK_REASON_*` thứ năm mọc ở `core/` là đỏ chứ không âm thầm đi qua.
+#
+# Cả hai đều tới được `answer` thật: chúng nằm trong `_VI_DU_DAU_CHE` của
+# `adapters/tra_loi.py` mà prompt v2 dạy model chép nguyên dấu che vào câu trả
+# lời. Để nguyên văn là **quyết định của khối `Always`** đã đóng băng trong spec
+# 4.4 ("`[<vai>:masked]` cho 7 vai, `[owner:group]`, `[owner:<nhóm>]`... mọi
+# chuỗi ngoặc vuông khác là chữ thường"), không phải một chỗ bỏ sót: `l2_only`
+# mang tên trường `description` và `no_key` mang tên trường `neighbor_id`, hai
+# thứ không phải vai slot nên chúng không có nhãn tiếng Việt trong `NHAN_SLOT`
+# và một slab "[description: che]" sẽ nói bằng nửa tiếng Anh giữa câu.
+HO_DAU_CHE_DE_NGUYEN_VAN = frozenset({"l2_only", "no_key"})
+
+
+def test_web_phu_ba_ho_dau_che_cua_vai_slot_va_loai_dung_hai_ho_con_lai():
+    """`web/` dựng đủ ba họ dấu che của vai slot, và **chỉ** ba họ ấy.
+
+    Dựng tập kỳ vọng bằng Python từ chính bốn cửa của `core/masking.py` thay vì
+    gõ lại chuỗi: `dau_che` (7 vai ra `masked`, `owner` ra `group`),
+    `dau_che_owner` (nhóm), `dau_che_lan_can_khong_khoa` (`no_key`) và
+    `dau_che_truong(..., MASK_REASON_L2_ONLY)`. Hai họ sau nằm trong
+    `HO_DAU_CHE_DE_NGUYEN_VAN` và test đọc chính frozenset ấy, nên thêm một lý
+    do che thứ năm ở `core/` là test này đỏ và người thêm phải quyết một lần
+    rằng `web/` bôi đen nó hay để nguyên - thay vì để một dấu che mới lặng lẽ
+    hiện ra nguyên văn `[x:y]` giữa một câu trả lời trên máy chiếu.
+    """
+    ts = DAU_CHE_TS.read_text(encoding="utf-8")
+
+    # Ba họ phải phủ: bảy vai `masked`, `owner` ra `group`, `owner` mang nhóm.
+    ly_do_phu = set()
+    for slot in SLOT_ROLES:
+        dau = masking.dau_che(slot)
+        assert dau.startswith("[") and dau.endswith("]"), dau
+        ly_do_phu.add(dau[1:-1].split(":", 1)[1])
+    assert ly_do_phu == {masking.MASK_REASON_POLICY, masking.MASK_REASON_OWNER}, ly_do_phu
+    # `dau_che_owner` là cửa thứ ba, và `web/` dựng nó bằng cùng hình dạng.
+    assert masking.dau_che_owner("DevOps") == "[owner:DevOps]"
+    assert "dau_che_owner(nhom)" in ts, ts
+
+    # Hai họ để nguyên văn, dựng từ chính `core/` chứ không gõ lại chuỗi.
+    de_nguyen = {
+        masking.dau_che_lan_can_khong_khoa(),
+        masking.dau_che_truong("description", masking.MASK_REASON_L2_ONLY),
+    }
+    ly_do_de_nguyen = {d[1:-1].split(":", 1)[1] for d in de_nguyen}
+    assert ly_do_de_nguyen == HO_DAU_CHE_DE_NGUYEN_VAN, ly_do_de_nguyen
+    # Và `web/` thật sự không dựng chúng: không lý do nào của hai họ ấy xuất
+    # hiện trong một chuỗi của `dau_che.ts`.
+    for ly_do in HO_DAU_CHE_DE_NGUYEN_VAN:
+        assert f'"{ly_do}"' not in ts, f"{ly_do} không được thành một họ slab"
+    # Quyết định ấy phải được **viết ra** ngay trong file, không chỉ sống ở đây.
+    assert "l2_only" in ts and "no_key" in ts, "dau_che.ts phải khai vì sao loại hai họ"
+
+
+def test_danh_muc_ly_do_che_cua_core_van_du_bon():
+    """Bốn `MASK_REASON_*` của `core/masking.py`, không hơn.
+
+    `test_web_phu_ba_ho_dau_che_cua_vai_slot_va_loai_dung_hai_ho_con_lai` đứng
+    trên phép chia "ba họ bôi đen, hai họ để nguyên". Một hằng thứ năm ở `core/`
+    không rơi vào bên nào cả, và không phép so nào ở trên thấy nó. Ở đây thì có.
+    """
+    ly_do = {ten: v for ten, v in vars(masking).items() if ten.startswith("MASK_REASON_")}
+    assert set(ly_do) == {
+        "MASK_REASON_POLICY",
+        "MASK_REASON_OWNER",
+        "MASK_REASON_L2_ONLY",
+        "MASK_REASON_NO_KEY",
+    }, sorted(ly_do)
+
+
+def test_vai_slot_cua_web_dan_xuat_tu_bang_nhan():
+    """`VAI_SLOT` dẫn xuất từ `NHAN_SLOT`, không phải một danh sách chép tay.
+
+    Hai bản của danh mục 8 vai trong cùng một thư mục là hai bản trôi khỏi nhau
+    ở lần sửa đầu tiên; `test_bang_nhan_slot_cua_web_co_khoa_dung_bang_core` chỉ
+    canh được một bản.
+    """
+    tho = NHAN_TS.read_text(encoding="utf-8")
+    assert re.search(r"export const VAI_SLOT[^=]*= Object\.keys\(NHAN_SLOT\)", tho), tho
+
+
+def test_ma_hien_thi_la_ma_hien_thi_chu_khong_phai_id_that():
+    """Tên nguồn trên cite-row là `HE-nn` đánh theo thứ tự citation trong lượt."""
+    ts = HOI_DAP_TS.read_text(encoding="utf-8")
+    assert _hang_chuoi_o(ts, "TIEN_TO_MA_HIEN_THI", "hoi_dap.ts") == "HE-"
+    assert re.search(r"export function ma_hien_thi\(", ts), ts
+    assert "padStart(2" in ts, "hai chữ số, tràn thì nhiều hơn"
+
+
+# Mọi cách một id hyperedge lọt vào DOM qua một chỗ chèn JSX: `{c.id}` trần,
+# cắt ngắn (`{c.id.slice(0, 8)}`), ép kiểu (`{String(c.id)}`), hay lồng trong
+# một template (`` {`nguồn ${c.id}`} ``). Bộ dò cũ chỉ khớp dạng trần, tức nó
+# bắt đúng ca mà không ai viết và bỏ qua ba ca mà người ta thật sự viết khi
+# muốn "chỉ hiện vài ký tự đầu cho gọn" - và một id cắt ngắn vẫn là một id.
+MAU_IN_ID = re.compile(r"\{[^{}]*\b[A-Za-z_]\w*\.id\b[^{}]*\}")
+
+# `key={...}` là khóa React, không phải nội dung DOM. Bỏ **riêng đoạn ấy** rồi
+# mới quét phần còn lại: `continue` cả dòng (bản cũ) làm một id thật in ra trên
+# đúng dòng có `key={` vẫn lọt, và JSX một dòng thì đó là chuyện thường.
+MAU_KHOA_REACT = re.compile(r"\bkey=\{[^{}]*\}")
+
+# Danh mục **đóng** những biến có trường `id` mà `id` ấy không phải id
+# hyperedge. Đúng một tên: `luot` là một lượt chat và `Luot.id` là một bộ đếm
+# `number` sinh ở client (`dem_ref`), không bao giờ đến từ server.
+# `test_luot_id_van_la_so_nen_ngoai_le_con_dung` giữ phát biểu ấy đúng, nên đây
+# là một ngoại lệ **có máy canh** chứ không phải một lần nới cho test xanh.
+BIEN_ID_KHONG_PHAI_HYPEREDGE = ("luot",)
+
+MAU_ID_NGOAI_LE = re.compile(
+    r"\b(?:" + "|".join(BIEN_ID_KHONG_PHAI_HYPEREDGE) + r")\.id\b"
+)
+
+
+def _bo_khoa_react(dong: str) -> str:
+    return MAU_ID_NGOAI_LE.sub("", MAU_KHOA_REACT.sub("", dong))
+
+
+def test_luot_id_van_la_so_nen_ngoai_le_con_dung():
+    """`Luot.id` là `number`, nên `luot.id` không thể là một id hyperedge.
+
+    Ngoại lệ `BIEN_ID_KHONG_PHAI_HYPEREDGE` đứng trên đúng phát biểu này. Đổi
+    `Luot.id` sang `string` (ví dụ để lấy một id do server cấp) là ngoại lệ ấy
+    hết đúng, và ở đây nó đỏ thay vì để một id thật đi ra DOM qua một cái tên
+    đã được miễn quét.
+    """
+    tho = MAN_CHAT.read_text(encoding="utf-8")
+    m = re.search(r"type Luot = \{(.*?)\n\};", tho, re.S)
+    assert m, "ManChat.tsx phải khai kiểu `Luot`"
+    assert re.search(r"^\s*id: number;", m.group(1), re.M), m.group(1)
+
+
+def test_khong_file_nao_trong_web_src_in_id_hyperedge():
+    """Id hyperedge thật **không bao giờ** vào DOM (epic 4: chỉ mã hiển thị `HE-nn`)."""
+    xau = []
+    for f in _file_giao_dien():
+        for so_dong, dong in enumerate(
+            _bo_chu_thich(f.read_text(encoding="utf-8")).splitlines(), 1
+        ):
+            if MAU_IN_ID.search(_bo_khoa_react(dong)):
+                xau.append(f"{f.relative_to(GOC)}:{so_dong}: {dong.strip()}")
+    assert not xau, xau
+    # Và khối nguồn - nơi duy nhất render citation - không chạm `.id` một lần nào.
+    assert ".id" not in _bo_chu_thich(KHOI_NGUON_TSX.read_text(encoding="utf-8"))
+
+
+def test_bo_do_in_id_bat_dung_cho():
+    """Chấm chính bộ dò, để nó không thành một regex không bao giờ khớp."""
+    for dong in (
+        "<span>{c.id}</span>",
+        "title={trich_dan.id}",
+        "<span>{c.id.slice(0, 8)}</span>",
+        "<span>{String(c.id)}</span>",
+        "<span>{`nguồn ${c.id}`}</span>",
+        # Một id thật in ra trên **đúng dòng** có một `key={...}` hợp lệ.
+        "<li key={i}>{c.id}</li>",
+    ):
+        assert MAU_IN_ID.search(_bo_khoa_react(dong)), dong
+    for dong in (
+        "<span>{ma_hien_thi(i)}</span>",
+        "<div className='luot' key={luot.id}>",
+        "<CiteRow key={ma_hien_thi(i)} trich_dan={c} so={i} />",
+        # Hai dòng thật của `ManChat.tsx`: `luot.id` là bộ đếm lượt chat, không
+        # phải một id hyperedge (ngoại lệ có tên, có test canh).
+        "mo_nguon={luot.mo_nguon ?? luot.id === id_tra_loi_moi_nhat}",
+        "dat_mo_nguon={(mo) => dat_mo_nguon(luot.id, mo)}",
+    ):
+        assert not MAU_IN_ID.search(_bo_khoa_react(dong)), dong
+    # Nhưng ngoại lệ chỉ miễn đúng tên ấy: một `trich_dan.id` trên cùng dòng
+    # với một `luot.id` vẫn phải bị bắt.
+    assert MAU_IN_ID.search(_bo_khoa_react("<b key={luot.id}>{trich_dan.id}</b>"))
+
+
+def test_la_envelope_kiem_tung_citation():
+    """Phép kiểm thứ tư của 4.3 (`Array.isArray`) nay siết hình **từng** citation.
+
+    Từ 4.4 mỗi citation thành một hàng mang badge mức, nên một `level` lạ vẽ ra
+    một badge sai về quyền. Fail-closed ở đây rẻ hơn một hàng nói dối.
+    """
+    ts = HOI_DAP_TS.read_text(encoding="utf-8")
+    assert re.search(r"export function la_trich_dan\(", ts), ts
+    assert "t.citations.every(la_trich_dan)" in ts, ts
+    # Sáu khóa và hai mức đi qua chính hai hằng đã ghim với `adapters/`, không
+    # gõ lại tên khóa trong thân hàm.
+    m = re.search(r"export function la_trich_dan\(.*?\n\}", ts, re.S)
+    than = m.group(0)
+    assert "KHOA_TRICH_DAN" in than and "MUC_TRICH_DAN" in than, than
+    # Và `id` phải là chuỗi không rỗng, không chỉ "có khóa". Predicate hứa
+    # `id: string` cho mọi nơi gọi sau nó; `null`, `0` và `""` đều lọt phép kiểm
+    # `khoa in t`, và 4.6 khóa vòng đồ thị lên chính trường đó.
+    assert "chuoi_that(t.id)" in than, than
+
+
+def test_man_chat_lap_ba_khoi_va_khong_dung_nhanh_tu_choi():
+    """Ba khối mới nằm ở nhánh `tra_loi`; nhánh `tu_choi` không đổi một byte.
+
+    Lượt từ chối phải giữ DOM **byte-identical** với 4.3: không khối nguồn,
+    không dòng hạn chế, meta không có vế trích dẫn (L0 vô hình tuyệt đối).
+    """
+    tho = MAN_CHAT.read_text(encoding="utf-8")
+    assert "KhoiNguon" in tho and "DongHanChe" in tho and "tach_slab(" in tho
+    m = re.search(r'if \(luot\.ket_cuc\.loai === "tu_choi"\) \{(.*?)\n  \}', tho, re.S)
+    assert m, "màn chat phải còn nhánh `tu_choi` riêng"
+    nhanh = m.group(1)
+    for cam in ("KhoiNguon", "DongHanChe", "tach_slab", "citations"):
+        assert cam not in nhanh, f"nhánh từ chối không được nhắc {cam}: {nhanh}"
+
+
+def test_dong_han_che_co_nut_khoa_va_khong_goi_api():
+    """Nút xin truy cập khẩn cấp `disabled` kèm tooltip, và không gọi tuyến nào.
+
+    Epic 5 chỉ bật nó lên; một `goi(` ở đây là một tuyến break-glass gọi sớm.
+    """
+    tho = DONG_HAN_CHE_TSX.read_text(encoding="utf-8")
+    assert "disabled" in tho
+    assert "MICROCOPY.tooltip_chua_kha_dung" in tho
+    assert "MICROCOPY.nut_xin_truy_cap" in tho
+    sach = _bo_chu_thich(tho)
+    assert "goi(" not in sach and "goi<" not in sach and "fetch(" not in sach
+
+
+def test_dong_han_che_bo_owner_khoi_phep_dem():
+    """`owner` không vào phép đếm của dòng hạn chế L1.
+
+    `masked_slots` ở L2 cũng mang `owner` (`vai_phai_che_hieu_luc` luôn thêm
+    nó), nên đếm cả `owner` là nói "người phụ trách bị hạn chế" trong đúng câu
+    vừa nêu tên nhóm phụ trách. Hằng loại trừ phải là `VAI_OWNER` chung, không
+    một chuỗi `"owner"` gõ tay ở đây.
+    """
+    tho = DONG_HAN_CHE_TSX.read_text(encoding="utf-8")
+    assert "VAI_OWNER" in tho, tho
+    assert '"owner"' not in _bo_chu_thich(tho), tho

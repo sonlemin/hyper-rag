@@ -11,11 +11,16 @@ import {
 } from "react";
 
 import { LoiApi, MA_MANG } from "@/api/goi";
-import { hoi, type Envelope } from "@/api/hoi_dap";
+import { hoi, type Envelope, type TrichDan } from "@/api/hoi_dap";
 import { duong_het_phien, la_het_phien, nhan_vai, xoa_token } from "@/api/phien";
 import { HopLoi } from "@/khung/HopLoi";
 import { usePhien } from "@/khung/KhungApp";
-import { cac_manh, MICROCOPY, type KhoaMicrocopy } from "@/microcopy";
+import { cac_manh, dien, MICROCOPY, type KhoaMicrocopy } from "@/microcopy";
+import { nhan_slot } from "@/nhan";
+
+import { tach_slab } from "./dau_che";
+import { DongHanChe } from "./DongHanChe";
+import { KhoiNguon } from "./KhoiNguon";
 
 /** Bốn nấc của một lượt. Ba nấc kết thúc phải khác nhau về **cấu trúc DOM**,
  *  không chỉ khác màu: lượt trả lời mang `data-tra-loi`, lượt từ chối mang
@@ -40,6 +45,13 @@ type Luot = {
    *  gửi để "xem như" của 4.5 không phải viết lại lượt cũ. */
   vai_gui: string;
   ket_cuc: KetCuc;
+  /** Người dùng đã tự đặt khối nguồn của lượt này mở hay thu gọn chưa.
+   *
+   *  `null` là "chưa đặt": khi đó khối theo luật mặc định của EXPERIENCE.md -
+   *  lượt trả lời **mới nhất** mở, lượt cũ thu gọn. Một `boolean` là lựa chọn
+   *  của người dùng và nó **giữ nguyên** qua các lượt sau; nếu không, mở lại
+   *  một lượt cũ rồi hỏi câu tiếp là nó tự đóng lại ngay dưới tay họ. */
+  mo_nguon: boolean | null;
 };
 
 /** Dòng meta của một lượt trả lời, tên vai in đậm.
@@ -64,7 +76,15 @@ function DongMeta({ khoa, vai, n }: { khoa: KhoaMicrocopy; vai: string; n?: numb
  *
  *  Lượt lỗi **không** dùng bong bóng: hộp đỏ đứng ở đúng vị trí lượt để nó khác
  *  hẳn template từ chối chữ đen (NFR-10 fail-closed nhìn thấy được). */
-function BongBongTraLoi({ luot }: { luot: Luot }) {
+function BongBongTraLoi({
+  luot,
+  mo_nguon,
+  dat_mo_nguon,
+}: {
+  luot: Luot;
+  mo_nguon: boolean;
+  dat_mo_nguon: (mo: boolean) => void;
+}) {
   // Hai nấc chưa có câu trả lời nào **không** mang dòng meta: câu ấy nói "trả
   // lời theo quyền X" và chưa có lượt trả lời nào để nói thế. Vai của phiên lúc
   // gửi vẫn được ghi vào `luot.vai_gui` (4.5 đọc nó), chỉ là không render.
@@ -106,13 +126,62 @@ function BongBongTraLoi({ luot }: { luot: Luot }) {
     );
   }
 
-  // Lượt trả lời. `citations` ở story này chỉ dùng để **đếm**; cite-row, badge
-  // mức và slab bôi đen là 4.4, drawer đồ thị là 4.6 (`graph` bỏ qua ở đây).
+  // Lượt trả lời, ba khối của story 4.4 (`graph` vẫn bỏ qua, drawer là 4.6).
+  // Cả ba đọc envelope **đã lọc và đã che** của server, không suy diễn thêm:
+  // không lọc bớt citation nào, không sắp lại, không suy mức từ `masked_slots`,
+  // không dựng lại câu trả lời.
   return (
     <div className="luot_tra_loi" data-tra-loi>
       <DongMeta khoa="meta_luot" vai={envelope.meta.role} n={envelope.citations.length} />
-      <p className="luot__than">{envelope.answer}</p>
+      <p className="luot__than">
+        <ThanCoSlab van_ban={envelope.answer ?? ""} citations={envelope.citations} />
+      </p>
+      {/* Khối nguồn đứng **ngoài** vùng `aria-live` của lượt, dù nó nằm trong
+          cùng bong bóng. Vùng live bọc ô trả lời, và mọi lần bấm mở hay thu
+          gọn khối nguồn là một lần đổi DOM bên trong vùng ấy, tức trình đọc
+          màn hình đọc lại cả câu trả lời cho một cú bấm chỉ hiện thêm vài
+          hàng - đúng thứ mà vòng review 4.3 thu hẹp vùng live để chặn (bọc cả
+          khối cuộn thì mỗi lượt mới đọc lại chính câu người dùng vừa gõ).
+          `aria-live="off"` trên tổ tiên gần nhất thắng, nên toggle im lặng;
+          số nguồn vẫn tới trình đọc qua vế "· n trích dẫn" của dòng meta, thứ
+          nằm trong vùng live và có mặt ngay khi envelope về. */}
+      <div aria-live="off">
+        <KhoiNguon citations={envelope.citations} mo={mo_nguon} dat_mo={dat_mo_nguon} />
+      </div>
+      <DongHanChe citations={envelope.citations} />
     </div>
+  );
+}
+
+/** Thân câu trả lời với slab bôi đen thay dấu che, ngay tại vị trí của nó.
+ *
+ *  Slab là **hiển thị best-effort trên `answer`** (chốt brief §6: không test an
+ *  ninh nào trên `answer`), nên một chuỗi không nhận ra là chữ thường và giữ
+ *  nguyên văn. Tập nhóm để nhận diện `[owner:<nhóm>]` lấy từ `owner_group` của
+ *  **chính lượt này**, đúng khuôn `core.masking.la_dau_che`.
+ *
+ *  `[owner:<nhóm>]` render **giữ tên nhóm** ("[người phụ trách: DevOps]") còn
+ *  `[owner:group]` render "[người phụ trách: che]": AD-9 tổng quát hóa `owner`
+ *  về mức nhóm chứ không xóa nó, và FR-14 đòi placeholder nói được nhóm nào.
+ *  Bôi tên nhóm thành "che" là vứt đi đúng thứ server cố ý cho ra. */
+function ThanCoSlab({ van_ban, citations }: { van_ban: string; citations: TrichDan[] }) {
+  const cac_nhom = citations
+    .map((c) => c.owner_group)
+    .filter((n): n is string => n !== null);
+  return (
+    <>
+      {tach_slab(van_ban, cac_nhom).map((manh, i) =>
+        manh.loai === "chu" ? (
+          <span key={i}>{manh.van_ban}</span>
+        ) : (
+          <span key={i} className="slab" data-slab={manh.vai}>
+            {manh.nhom === null
+              ? dien("slab_che", { ten_slot: nhan_slot(manh.vai) })
+              : dien("slab_owner", { ten_slot: nhan_slot(manh.vai), nhom: manh.nhom })}
+          </span>
+        ),
+      )}
+    </>
   );
 }
 
@@ -155,6 +224,22 @@ export function ManChat() {
     o_day.current = el.scrollHeight - el.scrollTop - el.clientHeight <= NGUONG_DAY;
   }
 
+  // Id của lượt **trả lời** mới nhất. Khối nguồn của nó mở mặc định, mọi lượt
+  // trả lời cũ thu gọn thành "Nguồn (n) ▸" (EXPERIENCE.md Component Patterns).
+  // Tính lúc render chứ không giữ trong state: một lượt mới về là mặc định của
+  // lượt cũ đổi theo, và hai state phải đồng bộ tay là hai state lệch nhau.
+  const id_tra_loi_moi_nhat = cac_luot.reduce<number | null>(
+    (moi_nhat, l) => (l.ket_cuc.loai === "tra_loi" ? l.id : moi_nhat),
+    null,
+  );
+
+  /** Người dùng tự mở hay thu gọn khối nguồn của một lượt. Từ đây `mo_nguon`
+   *  của lượt ấy không còn là `null`, nên nó thôi theo mặc định và giữ nguyên
+   *  lựa chọn ấy qua các lượt sau. */
+  function dat_mo_nguon(id: number, mo: boolean) {
+    dat_cac_luot((cu) => cu.map((l) => (l.id === id ? { ...l, mo_nguon: mo } : l)));
+  }
+
   /** Kết thúc một lượt: ghi kết cục và mở khóa composer cho lượt sau. */
   function ket_thuc(id: number, ket_cuc: KetCuc) {
     dat_cac_luot((cu) => cu.map((l) => (l.id === id ? { ...l, ket_cuc } : l)));
@@ -177,7 +262,7 @@ export function ManChat() {
     dem_ref.current = id;
     dat_cac_luot((cu) => [
       ...cu,
-      { id, cau_hoi, vai_gui: phien?.vai ?? "", ket_cuc: { loai: "dang_cho" } },
+      { id, cau_hoi, vai_gui: phien?.vai ?? "", ket_cuc: { loai: "dang_cho" }, mo_nguon: null },
     ]);
     if (o_hoi.current) o_hoi.current.value = "";
 
@@ -241,7 +326,11 @@ export function ManChat() {
                 Ô này có mặt từ lúc lượt được tạo (nấc chờ) và chỉ nội dung bên
                 trong đổi, nên trình đọc màn hình đọc đúng phần mới. */}
             <div className="luot__o_tra_loi" aria-live="polite">
-              <BongBongTraLoi luot={luot} />
+              <BongBongTraLoi
+                luot={luot}
+                mo_nguon={luot.mo_nguon ?? luot.id === id_tra_loi_moi_nhat}
+                dat_mo_nguon={(mo) => dat_mo_nguon(luot.id, mo)}
+              />
             </div>
           </div>
         ))}

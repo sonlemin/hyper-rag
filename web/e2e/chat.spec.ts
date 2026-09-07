@@ -1,10 +1,12 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 import {
+  CAU_HOI,
   chan_moi_api,
   co_token,
   duong_anh,
   envelope,
+  hoi_bang_nut,
   loi_api,
   mock_hoi_dap,
   mock_toi,
@@ -12,6 +14,7 @@ import {
   token_trong_kho,
   TOKEN_CO_SAN,
   trich_dan,
+  vao_chat,
 } from "./ho_tro";
 
 // Chat console và bốn nấc của một lượt (story 4.3). Mười lăm ca theo đúng 15
@@ -19,25 +22,12 @@ import {
 // mock bị chặn ở `beforeEach`, và mỗi ca mock đúng tuyến nó cần.
 
 const ANH_CHAT = duong_anh("chat-4-3-1280.png");
-const CAU_HOI = "Sự cố App01 lỗi 502 nguyên nhân là gì?";
 
 test.beforeEach(async ({ page }) => {
   await chan_moi_api(page);
   await co_token(page);
   await mock_toi(page);
 });
-
-/** Vào màn chat và đợi phiên đã đọc xong (chip có chữ): vai của lượt đang chờ
- *  lấy từ phiên, nên gửi trước khi chip lên là đo một trạng thái khác. */
-async function vao_chat(page: Page) {
-  await page.goto("/");
-  await expect(page.locator("[data-chip-vai]")).toHaveText("dev01 · DevOps");
-}
-
-async function hoi_bang_nut(page: Page, cau = CAU_HOI) {
-  await page.locator("[data-o-hoi]").fill(cau);
-  await page.locator("[data-nut-gui]").click();
-}
 
 test("màn trống lần đầu: chỉ composer, không lượt nào, không màn chào", async ({ page }) => {
   await vao_chat(page);

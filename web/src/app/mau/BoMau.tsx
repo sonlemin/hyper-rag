@@ -2,10 +2,14 @@
 
 import { useState } from "react";
 
+import { type TrichDan } from "@/api/hoi_dap";
 import { component, TOKENS } from "@/design/bien_css";
 import { HopLoi } from "@/khung/HopLoi";
 import { HopThoai } from "@/khung/HopThoai";
 import { dien, MICROCOPY } from "@/microcopy";
+
+import { DongHanChe } from "../DongHanChe";
+import { KhoiNguon } from "../KhoiNguon";
 
 // Tỷ lệ tương phản WCAG, cùng công thức với `tests/test_web_khung.py`. Bản này
 // chỉ để hiển thị trên trang mẫu; phép canh sống ở pytest.
@@ -33,6 +37,31 @@ const CAP: Array<[string, string]> = [
   ["ink", "surface-card"],
   ["ink-muted", "surface-card"],
   ["ink", "surface-app"],
+  ["#FFFFFF", "level-l1"],
+  ["level-l1-ink", "surface-card"],
+  ["level-l1-ink", "primary-tint"],
+  ["ink-muted", "primary-tint"],
+];
+
+/** Hai citation mẫu để xem cite-row, badge mức và dòng hạn chế L1 mà không cần
+ *  một lượt hỏi thật. Cùng sáu khóa đóng với `adapters.trich_dan.KHOA_TRICH_DAN`. */
+const TRICH_DAN_MAU: TrichDan[] = [
+  {
+    id: "he-mau-l2",
+    level: "L2",
+    scope: "noi_bo",
+    content_type: "runbook",
+    masked_slots: ["owner"],
+    owner_group: "DevOps",
+  },
+  {
+    id: "he-mau-l1",
+    level: "L1",
+    scope: "khach_hang_a",
+    content_type: "bao_cao_su_co",
+    masked_slots: ["cause", "remediation", "owner"],
+    owner_group: "DevOps",
+  },
 ];
 
 const MAU = TOKENS.colors as Record<string, string>;
@@ -43,6 +72,7 @@ export function BoMau() {
   // Đếm để trang re-render trong lúc modal mở: bài e2e chấm focus vẫn trả về
   // nút mở sau Esc dù component cha đã render lại giữa chừng.
   const [dem, dat_dem] = useState(0);
+  const [mo_nguon, dat_mo_nguon] = useState(true);
   const chip_vai = component("chip-role");
   const slab = component("slab-redact");
   const badge_l1 = component("badge-level-l1");
@@ -93,6 +123,18 @@ export function BoMau() {
         <span style={{ background: slab.background, color: slab.foreground, borderRadius: slab.radius, padding: "1px 6px", fontWeight: 700 }}>
           {dien("slab_che", { ten_slot: "nguyên nhân" })}
         </span>
+      </div>
+
+      <h2 className="tieu_de_khoi">Khối nguồn, cite-row và dòng hạn chế L1</h2>
+      <div className="the">
+        <p className="luot__than">
+          App01 gặp sự cố ngày 12/08.{" "}
+          <span className="slab">{dien("slab_che", { ten_slot: "nguyên nhân" })}</span>{" "}
+          <span className="slab">{dien("slab_owner", { ten_slot: "người phụ trách", nhom: "DevOps" })}</span>{" "}
+          đã xử lý xong.
+        </p>
+        <KhoiNguon citations={TRICH_DAN_MAU} mo={mo_nguon} dat_mo={dat_mo_nguon} />
+        <DongHanChe citations={TRICH_DAN_MAU} />
       </div>
 
       <h2 className="tieu_de_khoi">Nút và hộp lỗi</h2>

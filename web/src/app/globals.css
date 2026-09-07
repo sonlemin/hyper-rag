@@ -643,3 +643,220 @@ a {
      khỏi màn. Ô của trang mẫu vẫn kéo được (`.o_hoi` giữ `resize: vertical`). */
   resize: none;
 }
+
+/* ===== Cite-row, slab bôi đen và dòng hạn chế L1 (story 4.4) ===== */
+
+/* Slab bôi đen inline (components.slab-redact, FR-15). Cặp nền tối chữ vàng
+   này **chỉ** dùng ở đây (DESIGN.md Colors). `white-space: nowrap` để một dấu
+   che không bị bẻ làm hai dòng thành hai vệt đen rời nhau; `.luot__than` giữ
+   `pre-wrap` nên phần chữ quanh nó vẫn xuống dòng như cũ. */
+.slab {
+  background: var(--mau-redact-bg);
+  color: var(--mau-redact-ink);
+  border-radius: var(--bo-sm);
+  padding: 2px 9px;
+  font-size: var(--chu-meta-chip-co);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  /* **Không** `white-space: nowrap` ở đây, dù mockup có. `nowrap` giữ một dấu
+     che liền một khối nhưng nó hủy đúng phép chống tràn mà 4.3 thêm vào
+     `.luot__than` (`overflow-wrap: anywhere` không có hiệu lực dưới `nowrap`),
+     và `config/nhom-phu-trach.yaml` cấm `[`, `]`, `:` trong tên nhóm nhưng
+     không cấm khoảng trắng hay độ dài - "[người phụ trách: Trung tâm Vận hành
+     Hạ tầng ...]" là một khối không ngắt được đẩy tràn bong bóng.
+     `inline-block` cộng `max-width: 100%` giữ slab thành **một** hộp tối liền
+     (ngắt xuống dòng bên trong hộp chứ không vỡ thành hai vệt rời), và
+     `anywhere` lo ca một mảnh dài hơn cả dòng. Slab ngắn thực tế không bao giờ
+     ngắt vì bong bóng rộng 88%. */
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/* Khối nguồn thu gọn được, ngăn với thân câu trả lời bằng một nét đứt. */
+.khoi_nguon {
+  border-top: 1px dashed var(--mau-border);
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+/* Nhãn mở/thu gọn là một `<button>` thật: nó đổi trạng thái của khối nên bàn
+   phím phải tới được nó, và một `<div onClick>` thì không. */
+.khoi_nguon__nhan {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  color: var(--mau-ink-muted);
+  font-size: var(--chu-nav-item-co);
+  font-weight: 700;
+}
+
+.khoi_nguon__caret {
+  color: var(--mau-ink-muted);
+  font-size: var(--chu-caption-min-co);
+}
+
+.khoi_nguon__ds {
+  margin-top: 5px;
+}
+
+/* Hàng nguồn (DESIGN.md Cite-row). Hover nền primary-tint cho mọi hàng: chữ
+   của hàng L1 là `level-l1-ink` nên nó giữ 6,49:1 trên nền đó. */
+.cite_row {
+  display: flex;
+  align-items: center;
+  /* Xuống dòng thay vì đẩy badge ra ngoài. Ba ô chữ của hàng đều là nội dung
+     **của server**, không phải hằng của `web/`: `nhan_loai` và `nhan_scope`
+     trả nguyên khóa cho khóa lạ (một space mới nạp một scope mới), và tên nhóm
+     trong câu hạn chế đến từ `config/nhom-phu-trach.yaml` không giới hạn độ
+     dài. Một hàng không wrap đẩy `.badge_muc` - thứ mang nghĩa quyền - ra khỏi
+     tầm nhìn trước tiên, vì nó đứng cuối hàng. */
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: var(--bo-sm);
+  font-size: var(--chu-nav-item-co);
+  color: var(--mau-ink);
+}
+
+.cite_row:hover {
+  background: var(--mau-primary-tint);
+}
+
+/* Số vuông 20px. Nền xanh thép ở hàng L2, hổ phách ở hàng L1 - cùng tín hiệu
+   với badge, để hàng đọc được cả khi badge đã ra ngoài tầm mắt. */
+/* Ô số 20px của DESIGN.md là **sàn chứ không phải trần**: một lượt `dev01`
+   trên `synth` đo được 95-97 citation ở story 3.4 và 3.7, và spec 4.4 cố ý
+   không đặt trần cho số cite-row, nên `HE-100` phải hiện đủ chứ không bị ô
+   vuông cắt mất một chữ số. Ca một và hai chữ số vẫn ra đúng hình vuông. */
+.cite_row__so {
+  min-width: 20px;
+  width: auto;
+  padding: 0 4px;
+  height: 20px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--bo-sm);
+  background: var(--mau-primary);
+  color: #ffffff;
+  font-size: var(--chu-caption-min-co);
+  font-weight: 700;
+  font-style: normal;
+}
+
+.cite_row__ma {
+  font-weight: 600;
+}
+
+.cite_row__scope,
+.cite_row__loai {
+  color: var(--mau-ink-muted);
+  font-size: var(--chu-caption-min-co);
+}
+
+.cite_row__han_che {
+  color: var(--mau-level-l1-ink);
+  font-size: var(--chu-caption-min-co);
+}
+
+/* `min-width: 0` để một ô chữ dài co lại được thay vì giữ nguyên bề rộng nội
+   dung và đẩy cả hàng (mặc định `min-width: auto` của flex item), `anywhere`
+   để chính chữ trong ô ấy ngắt được. */
+.cite_row__ma,
+.cite_row__scope,
+.cite_row__loai,
+.cite_row__han_che {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Hàng L1: nghiêng hổ phách. Chữ dùng `level-l1-ink` chứ không `level-l1` như
+   DESIGN.md viết - `level-l1` trên nền hover `primary-tint` chỉ đạt 4,08:1,
+   dưới sàn 4.5:1 của EXPERIENCE.md; cùng lý lẽ đã đổi badge L1 ở story 4.1. */
+.cite_row[data-muc="L1"] {
+  color: var(--mau-level-l1-ink);
+  font-style: italic;
+}
+
+.cite_row[data-muc="L1"] .cite_row__so {
+  background: var(--mau-level-l1);
+}
+
+.cite_row[data-muc="L1"] .cite_row__scope,
+.cite_row[data-muc="L1"] .cite_row__loai {
+  color: var(--mau-level-l1-ink);
+}
+
+/* Badge mức của vai hiện tại với **nguồn đó** (components.badge-level-l1/l2).
+   `margin-left: auto` đẩy nó về cuối hàng như DESIGN.md khai. */
+.badge_muc {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 1px 8px;
+  border-radius: var(--bo-sm);
+  font-size: var(--chu-caption-min-co);
+  font-weight: 700;
+  font-style: normal;
+}
+
+.cite_row[data-muc="L2"] .badge_muc {
+  background: var(--mau-level-l2-bg);
+  color: var(--mau-level-l2);
+}
+
+.cite_row[data-muc="L1"] .badge_muc {
+  background: var(--mau-level-l1-bg);
+  color: var(--mau-level-l1-ink);
+}
+
+/* Dòng hạn chế L1 (components.note-l1): viền trái hổ phách, icon khóa, chứa
+   nút xin break-glass. Khung này giữ nguyên qua trạng thái chờ duyệt và đã cấp
+   của Epic 5, chỉ đổi nội dung. */
+.note_l1 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  background: var(--mau-level-l1-bg);
+  border: 1px solid var(--mau-level-l1-border);
+  border-left: 3px solid var(--mau-level-l1);
+  border-radius: var(--bo-md);
+  padding: 9px 12px;
+  color: var(--mau-level-l1-ink);
+  font-size: var(--chu-nav-item-co);
+}
+
+.note_l1__icon {
+  flex-shrink: 0;
+}
+
+.note_l1__chu {
+  min-width: 0;
+}
+
+/* Nút xin truy cập khẩn cấp (components.button-breakglass). Khóa cho tới Epic
+   5, và nó phải **trông** khóa: một nút mời bấm mà không có gì xảy ra thì tệ
+   hơn một nút mờ có tooltip nói vì sao. */
+.nut_break_glass {
+  margin-left: auto;
+  flex-shrink: 0;
+  background: var(--mau-level-l1);
+  color: #ffffff;
+  border: 0;
+  border-radius: var(--bo-sm);
+  padding: 5px 12px;
+  font-size: var(--chu-caption-min-co);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.nut_break_glass:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { type Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 // Đồ dùng chung của lưới Playwright. Không mang `.spec.` trong tên nên
 // `testMatch` mặc định không nhặt nó thành một file test rỗng.
@@ -104,16 +104,20 @@ export function envelope(sua: Record<string, unknown> = {}) {
   };
 }
 
-/** Một citation sáu khóa đóng (`adapters.trich_dan.KHOA_TRICH_DAN`). 4.3 chỉ
- *  đếm chúng, nhưng mock phải đúng hình để `la_envelope` không đổi cách xử. */
-export function trich_dan(id: string) {
+/** Một citation sáu khóa đóng (`adapters.trich_dan.KHOA_TRICH_DAN`).
+ *
+ *  Mặc định là một nguồn L2 không che gì. Story 4.4 mở chữ ký để dựng ca L1:
+ *  `sua` ghi đè từng khóa, kể cả bằng một giá trị sai hình (ca "citation sai
+ *  hình" đi qua đúng cửa này). */
+export function trich_dan(id: string, sua: Record<string, unknown> = {}) {
   return {
     id,
     level: "L2",
     scope: "noi_bo",
     content_type: "runbook",
-    masked_slots: [],
-    owner_group: null,
+    masked_slots: [] as string[],
+    owner_group: null as string | null,
+    ...sua,
   };
 }
 
@@ -142,4 +146,28 @@ export async function mock_hoi_dap(
 /** Thân lỗi chuẩn `{error: {code, message}}` của `api/`. */
 export function loi_api(code: string) {
   return { error: { code, message: "loi" } };
+}
+
+// --- Vào màn chat (dùng chung từ story 4.4) ---------------------------------
+//
+// Ba thứ dưới đây từng nằm trong `chat.spec.ts` và bị `cite-row.spec.ts` chép
+// nguyên văn. Vòng review 4.3 đã dời đồ dùng chung ra file này đúng vì hai spec
+// chép nhau rồi lệch một chỗ vô cớ (token giả mang hai tên khác nhau); một bản
+// chép thứ ba là cùng một lỗi lặp lại, và 4.5-4.7 còn thêm spec nữa.
+
+/** Câu ghim của cả epic (EXPERIENCE.md nhịp 1, `scripts/cong-m2.sh` B2/B4/B5). */
+export const CAU_HOI = "Sự cố App01 lỗi 502 nguyên nhân là gì?";
+
+/** Vào màn chat và **đợi phiên đã đọc xong** (chip có chữ).
+ *
+ *  Vai của lượt đang chờ lấy từ phiên, nên gửi trước khi chip lên là đo một
+ *  trạng thái khác: `waitForURL` về `/` xong thì `/auth/toi` vẫn chưa trả. */
+export async function vao_chat(page: Page) {
+  await page.goto("/");
+  await expect(page.locator("[data-chip-vai]")).toHaveText("dev01 · DevOps");
+}
+
+export async function hoi_bang_nut(page: Page, cau = CAU_HOI) {
+  await page.locator("[data-o-hoi]").fill(cau);
+  await page.locator("[data-nut-gui]").click();
 }
