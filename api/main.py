@@ -273,7 +273,22 @@ async def vong_doi(app: FastAPI):
                     await kho.dong()
 
 
-app = FastAPI(title="hyper-rag-copilot", lifespan=vong_doi)
+# `docs_url`/`redoc_url`/`openapi_url` tắt hẳn, cùng lý do và cùng cách với
+# `api/man_nap.py`: FastAPI thêm `/openapi.json`, `/docs`, `/docs/oauth2-redirect`
+# và `/redoc` **thẳng vào `app.router`**, không qua `cua_dong`, nên chúng là bốn
+# tuyến không xác thực mà `cua_mo` không khai và không cơ chế nào cản. Cổng 8000
+# publish công khai (quyết định story 1.1), nên `/openapi.json` để mở là bản đồ
+# API - tên bảy tuyến break-glass, `/admin/policy`, lược đồ thân - trả 200 cho
+# người chưa đăng nhập. Đường phục vụ và cổng M2 đều đi bằng `curl`, không ai
+# dùng Swagger UI, nên tắt không mất gì. `tests/test_api_khong_cham_tang_che.py`
+# canh cả hai vế: bốn tuyến ấy không tồn tại, và mọi tuyến còn lại mang cửa.
+app = FastAPI(
+    title="hyper-rag-copilot",
+    lifespan=vong_doi,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
 # Trần thân request 64 KB ở tầng ASGI (story 3.8, ADR-022): một trần cho mọi
 # tuyến, đứng trước pydantic; thân quá cỡ là 413 `THAN_QUA_LON` đúng envelope.
 # Luật và lý do ở `api/gioi_han_than.py`.

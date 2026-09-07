@@ -412,20 +412,58 @@ def _trai_phang(cac):
             yield from _trai_phang(t.routes)
 
 
+# Bốn tuyến FastAPI tự thêm khi `docs_url`/`redoc_url`/`openapi_url` còn mặc
+# định. Chúng vào thẳng `app.router`, không qua `cua_dong`, nên chúng là bốn
+# tuyến không xác thực mà `cua_mo` không khai.
+TUYEN_TAI_LIEU_TU_DONG: frozenset[str] = frozenset(
+    {"/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc"}
+)
+
+
 def _tuyen_cua_app() -> list:
-    """Tuyến của `api/main.py` trừ bốn tuyến tài liệu mà FastAPI tự thêm."""
+    """Mọi tuyến của `api/main.py`, không loại trừ gì.
+
+    Bản trước lọc bỏ bốn tuyến tài liệu của `TUYEN_TAI_LIEU_TU_DONG` trước khi
+    chấm, nên ca "mọi tuyến đều qua cửa" xanh vĩnh viễn trong khi
+    `/openapi.json` thật sự trả 200 không token (retro Epic 3, F1). Nay
+    `api/main.py` tắt cả ba tham số, `test_khong_co_tuyen_tai_lieu_tu_dong`
+    khẳng định bốn tuyến ấy không còn, và ca này chấm trên danh sách đầy đủ -
+    bật lại một tham số là ca dưới đỏ chứ không phải lặng.
+    """
     from api.main import app
 
-    bo_qua = {"/docs", "/redoc", "/docs/oauth2-redirect"}
-    tuyen = [
-        t
-        for t in _trai_phang(app.routes)
-        if t.path not in bo_qua and not t.path.startswith("/openapi")
-    ]
+    tuyen = list(_trai_phang(app.routes))
     # Danh sách rỗng là cách im lặng nhất mà ba ca dưới có thể hỏng: chúng đều
     # là "không tuyến nào vi phạm", nên không tuyến nào cũng là xanh.
     assert tuyen, "không đọc được tuyến nào của `api/main.py`"
     return tuyen
+
+
+def test_khong_co_tuyen_tai_lieu_tu_dong():
+    """`/openapi.json`, `/docs`, `/redoc` không tồn tại, và không trả 200 cho ai.
+
+    Hai vế vì một vế không đủ. Vế cấu trúc bắt được lần ai đó bỏ một tham số
+    `*_url=None`; vế HTTP bắt được lần một tuyến tài liệu quay lại bằng một
+    đường khác (một router phụ, một middleware phục vụ tĩnh). Cổng 8000 publish
+    công khai, nên một bản đồ API trả 200 không token là bề mặt thật chứ không
+    phải một chi tiết nội bộ - và nó không nằm trong bốn giới hạn mà ADR-022
+    nhận.
+    """
+    from fastapi.testclient import TestClient
+
+    from api.main import app
+
+    co = sorted(t.path for t in _tuyen_cua_app() if t.path in TUYEN_TAI_LIEU_TU_DONG)
+    assert not co, (
+        f"FastAPI đang phơi {co} ngoài `cua_dong`. Dựng `FastAPI(...)` với"
+        " `docs_url=None, redoc_url=None, openapi_url=None` như `api/man_nap.py`;"
+        " nếu cố ý mở thì khai vào `TUYEN_KHONG_XAC_THUC` kèm lý do và ghi vào"
+        " mục giới hạn của ADR-022."
+    )
+
+    khach = TestClient(app, raise_server_exceptions=False)
+    for duong in sorted(TUYEN_TAI_LIEU_TU_DONG):
+        assert khach.get(duong).status_code == 404, f"{duong} còn phục vụ được"
 
 
 def _cua_khai_o_tuyen(tuyen) -> bool:

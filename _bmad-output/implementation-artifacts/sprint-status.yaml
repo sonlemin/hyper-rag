@@ -76,7 +76,7 @@
 #   nếu chạy repair thì chép lại khối chú thích từ git history.
 
 generated: 08-31-2026 21:50
-last_updated: 09-07-2026 10:26
+last_updated: 09-07-2026 13:27
 project: hyper_graph_rag
 project_key: NOKEY
 tracking_system: file-system
@@ -312,14 +312,7 @@ action_items:
       openapi_url=None như api/man_nap.py:246) và gỡ danh sách loại trừ bốn tuyến
       ấy khỏi tests/test_api_khong_cham_tang_che.py:418-423 (F1)"
     owner: "sonlm"
-    status: open
-    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
-  - id: "epic-3-retro-item-19-đối-chiếu-role-của-thân-post-break-glass"
-    epic: 3
-    action: "Đối chiếu role của thân POST /break-glass/grant với users.role, hoặc
-      bỏ tham số role và luôn lấy từ users (api/break_glass.py:1254-1258) (F3)"
-    owner: "sonlm"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
   - id: "epic-3-retro-item-20-thêm-and-space-vào-_sql_cua_toi-và-truyề"
     epic: 3
