@@ -91,3 +91,55 @@ export async function rong_cuon(page: Page): Promise<number> {
 export async function token_trong_kho(page: Page): Promise<string | null> {
   return page.evaluate(() => sessionStorage.getItem("hyper_rag_token"));
 }
+
+/** Envelope mẫu của `POST /hoi-dap` (AD-8, năm khóa). `sua` ghi đè từng khóa. */
+export function envelope(sua: Record<string, unknown> = {}) {
+  return {
+    answer: "App01 lỗi 502 vì PHP-FPM hết bộ nhớ.",
+    refused: false,
+    citations: [],
+    graph: { nodes: [], edges: [] },
+    meta: { role: "devops", space: "synth", policy_version: "day-du@1" },
+    ...sua,
+  };
+}
+
+/** Một citation sáu khóa đóng (`adapters.trich_dan.KHOA_TRICH_DAN`). 4.3 chỉ
+ *  đếm chúng, nhưng mock phải đúng hình để `la_envelope` không đổi cách xử. */
+export function trich_dan(id: string) {
+  return {
+    id,
+    level: "L2",
+    scope: "noi_bo",
+    content_type: "runbook",
+    masked_slots: [],
+    owner_group: null,
+  };
+}
+
+/** Mock `POST /hoi-dap` và trả về bộ đếm. `cho_ms` giữ phản hồi lại để ca "đang
+ *  chờ" và ca "gửi hai lần" quan sát được trạng thái đang chờ. Cùng khuôn với
+ *  `mock_login`. */
+export async function mock_hoi_dap(
+  page: Page,
+  than: unknown,
+  status = 200,
+  cho_ms = 0,
+): Promise<() => number> {
+  let so = 0;
+  await page.route("**/api/hoi-dap", async (route) => {
+    so += 1;
+    if (cho_ms > 0) await new Promise((xong) => setTimeout(xong, cho_ms));
+    await route.fulfill({
+      status,
+      contentType: "application/json",
+      body: typeof than === "string" ? than : JSON.stringify(than),
+    });
+  });
+  return () => so;
+}
+
+/** Thân lỗi chuẩn `{error: {code, message}}` của `api/`. */
+export function loi_api(code: string) {
+  return { error: { code, message: "loi" } };
+}

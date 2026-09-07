@@ -86,6 +86,24 @@ export const LY_DO_HET_HAN = "het_han";
 /** Tên tham số truy vấn mang lý do trên `/dang-nhap`. */
 export const THAM_SO_LY_DO = "ly_do";
 
+/** Màn đăng nhập, route mở duy nhất của app.
+ *
+ *  Hằng sống ở đây chứ không ở `KhungApp.tsx` (nơi nó ở tới story 4.2): từ màn
+ *  chat 4.3 có **hai** nơi điều hướng về màn đăng nhập vì hết phiên, và một
+ *  đường dẫn chép hai lần là một bản viết sai mà không phép so nào bắt.
+ *  `KhungApp` re-export nó cho `ROUTE_MO`. */
+export const DUONG_DANG_NHAP = "/dang-nhap";
+
+/** URL đầy đủ để đá về màn đăng nhập vì **hết phiên**, kèm lý do trung tính.
+ *
+ *  Một hàm chứ không một chuỗi ghép tay ở mỗi nơi gọi: hai bản chép là hai chỗ
+ *  một bản quên `?ly_do=het_han` rồi người dùng bị đá ra mà không biết vì sao.
+ *  Đăng xuất thì dùng thẳng `DUONG_DANG_NHAP` (không `ly_do`): tự thoát và hết
+ *  phiên là hai chuyện khác nhau. */
+export function duong_het_phien(): string {
+  return `${DUONG_DANG_NHAP}?${THAM_SO_LY_DO}=${LY_DO_HET_HAN}`;
+}
+
 /** Luật phân loại lỗi của cả app, khai **một chỗ**: chỉ 401 là hết phiên.
  *
  *  Chỉ một nhánh `la_het_phien` mới **được phép** điều hướng tới màn đăng nhập

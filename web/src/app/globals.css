@@ -327,6 +327,10 @@ a {
   border: 1px solid var(--mau-border-strong);
   border-radius: var(--bo-md);
   padding: 8px 10px;
+  /* `font: inherit` của reset không tới `textarea` trong mọi trình duyệt theo
+     cùng một cách, và một ô hỏi lệch font với cả app là thứ nhìn thấy ngay
+     trên máy chiếu. Khai thẳng font của app. */
+  font-family: var(--chu-base-font);
   font-size: var(--chu-base-co);
   resize: vertical;
 }
@@ -478,4 +482,164 @@ a {
   padding: 3px 10px;
   cursor: pointer;
   white-space: nowrap;
+}
+
+/* ===== Màn chat (story 4.3) ===== */
+
+/* Cột của cả màn: tiêu đề trên, danh sách lượt cuộn ở giữa, composer ở đáy.
+   Chiều cao tính thẳng từ token thay vì chuỗi `height: 100%`: `.noi_dung` là
+   khối thường trong một `.khung` chỉ có `min-height`, nên phần trăm chiều cao
+   ở đây không phân giải được. */
+.man_chat {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--khoang-topbar-height) - var(--khoang-pad-content) * 2);
+}
+
+.man_chat__cuon {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--khoang-gap-turn);
+  background: var(--mau-surface-stream);
+  border: 1px solid var(--mau-border);
+  border-radius: var(--bo-lg) var(--bo-lg) 0 0;
+  padding: 18px 22px;
+}
+
+.luot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--khoang-gap-turn);
+}
+
+/* Câu hỏi lệch phải (components.turn-question), trả lời lệch trái
+   (components.turn-answer). Bốn bán kính chép từ token: `8px 8px 2px 8px` và
+   `8px 8px 8px 2px` là giá trị của chính hai component đó, và `2px` không có
+   tên trong khối `rounded` nên không có biến để trỏ. */
+.luot_hoi {
+  align-self: flex-end;
+  max-width: 72%;
+  background: var(--mau-primary-tint);
+  border: 1px solid var(--mau-primary-border);
+  border-radius: 8px 8px 2px 8px;
+  padding: 10px 15px;
+  font-size: var(--chu-question-co);
+  line-height: var(--chu-question-cao-dong);
+  white-space: pre-wrap;
+  /* Một URL hay đường dẫn dài không có khoảng trắng làm tràn bong bóng, và ca
+     1280px không bắt được vì nó đo `scrollWidth` của tài liệu chứ không của
+     khối cuộn. */
+  overflow-wrap: anywhere;
+}
+
+.luot_tra_loi {
+  align-self: flex-start;
+  max-width: 88%;
+  background: var(--mau-surface-card);
+  border: 1px solid var(--mau-border);
+  border-radius: 8px 8px 8px 2px;
+  padding: 13px 17px;
+}
+
+/* Lượt lỗi không dùng bong bóng: hộp đỏ đứng ở đúng vị trí lượt để nó khác hẳn
+   template từ chối chữ đen (NFR-10 fail-closed nhìn thấy được). */
+.luot_loi {
+  align-self: flex-start;
+  max-width: 88%;
+}
+
+/* Dòng meta: tên vai in đậm nhưng **cùng một màu** với cả dòng ở mọi lượt, kể
+   cả lượt từ chối (DESIGN.md, EXPERIENCE.md Component Patterns). */
+.luot__meta {
+  font-size: var(--chu-caption-min-co);
+  color: var(--mau-ink-muted);
+  margin-bottom: 8px;
+}
+
+/* Ô bọc bong bóng trả lời (vùng `aria-live`): trong suốt về mặt bố cục, chỉ để
+   `align-self` của bong bóng vẫn cho ra lệch trái. */
+.luot__o_tra_loi {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.luot__than {
+  margin: 0;
+  font-size: var(--chu-answer-body-co);
+  line-height: var(--chu-answer-body-cao-dong);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.luot__cho {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--mau-ink-muted);
+  font-size: var(--chu-answer-body-co);
+}
+
+.ba_cham {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.ba_cham i {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--bo-full);
+  background: var(--mau-ink-faint);
+  animation: ba_cham_nhay 1.2s infinite ease-in-out;
+}
+
+.ba_cham i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.ba_cham i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes ba_cham_nhay {
+  0%,
+  70%,
+  100% {
+    opacity: 0.3;
+  }
+  35% {
+    opacity: 1;
+  }
+}
+
+/* Hoạt ảnh là trang trí: người đã khai không muốn chuyển động thì ba chấm đứng
+   yên, chỉ báo vẫn còn (chữ "Đang truy vấn..." mới là thứ mang nghĩa). */
+@media (prefers-reduced-motion: reduce) {
+  .ba_cham i {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+/* Composer luôn ở đáy, dính vào khối cuộn thành một khối (viền trên bỏ đi). */
+.composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+  background: var(--mau-surface-card);
+  border: 1px solid var(--mau-border);
+  border-top: 0;
+  border-radius: 0 0 var(--bo-lg) var(--bo-lg);
+  padding: 12px 20px;
+}
+
+.composer .o_hoi {
+  flex: 1;
+  /* `.man_chat` là một cột chiều cao cố định, nên kéo cao ô hỏi đẩy chính nó ra
+     khỏi màn. Ô của trang mẫu vẫn kéo được (`.o_hoi` giữ `resize: vertical`). */
+  resize: none;
 }

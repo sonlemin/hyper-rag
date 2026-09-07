@@ -10,7 +10,7 @@ mà không cần một trình phân tích TypeScript. Một bản chép lệch m
 UI mang em dash, một route không có mục sidebar - cả ba đỏ ở `uv run pytest`
 trước khi ai mở trình duyệt.
 
-Chín nhóm test. Bảy nhóm đầu đúng thứ tự spec 4.1:
+Mười nhóm test. Bảy nhóm đầu đúng thứ tự spec 4.1:
 (1) `tokens.json` bằng frontmatter DESIGN.md từng giá trị;
 (2) tương phản WCAG >= 4.5:1 cho các cặp chữ/nền đã khai;
 (3) sàn chữ 13px ở token và ở mọi `.css`/`.ts`/`.tsx` của `web/src`;
@@ -26,6 +26,10 @@ Nhóm (9) là màn đăng nhập và vòng đời phiên (story 4.2): tám chu�
 được dùng thật, `/dang-nhap` có `page.tsx` và cố ý không có mục sidebar, luật
 phân loại lỗi `la_het_phien` chỉ khai 401, và ngoài `phien.ts` không file nào
 chạm `sessionStorage` hay khóa token.
+Nhóm (10) là chat console (story 4.3): hai chuỗi mới có mặt và được dùng thật,
+bốn hằng hợp đồng của `web/src/api/hoi_dap.ts` khớp đúng nguồn `api/hoi_dap.py`
+cùng `api/main.py`, và không file nào trong `web/src` đặt trần thời gian cho một
+lượt hỏi.
 """
 
 from __future__ import annotations
@@ -37,7 +41,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from api.hoi_dap import TEMPLATE_TU_CHOI
+from api.hoi_dap import KHOA_ENVELOPE, KHOA_META, TEMPLATE_TU_CHOI, ThanHoiDap
 from api.xac_thuc import MA_DANG_NHAP_SAI
 
 GOC = Path(__file__).resolve().parent.parent
@@ -76,6 +80,13 @@ CAP_TUONG_PHAN = (
     ("ink-muted", "surface-app"),
     ("ink-muted", "surface-nav"),
     ("primary-deep", "surface-app"),
+    # Bong bóng câu hỏi của màn chat 4.3: chữ `ink` trên nền `primary-tint`
+    # (`components.turn-question` khai nền và viền nhưng không khai chữ, nên
+    # phép canh theo component không phủ cặp này).
+    ("ink", "primary-tint"),
+    # Dòng meta của một lượt lỗi nằm thẳng trên nền khối cuộn, không trong bong
+    # bóng trắng.
+    ("ink-muted", "surface-stream"),
 )
 
 # Route không có mục sidebar và cố ý như vậy. Đây là danh mục ngoại lệ **có tên**
@@ -454,9 +465,15 @@ def test_goi_ts_la_cua_fetch_duy_nhat():
 
 def test_khung_app_co_route_mo_chua_dang_nhap():
     """`ROUTE_MO` của `KhungApp.tsx` phải chứa `/dang-nhap`: màn đăng nhập (4.2)
-    không được gate bởi chính phiên mà nó sắp tạo, và không gọi `/auth/toi`."""
+    không được gate bởi chính phiên mà nó sắp tạo, và không gọi `/auth/toi`.
+
+    Hằng `DUONG_DANG_NHAP` **sống ở `phien.ts`** từ story 4.3: màn chat là nơi
+    thứ hai điều hướng về màn đăng nhập vì hết phiên, và một bản chép thứ hai
+    của đường dẫn ấy là một bản viết sai mà không phép so nào bắt.
+    """
+    phien = (SRC / "api" / "phien.ts").read_text(encoding="utf-8")
+    assert 'DUONG_DANG_NHAP = "/dang-nhap"' in phien
     tho = (SRC / "khung" / "KhungApp.tsx").read_text(encoding="utf-8")
-    assert 'DUONG_DANG_NHAP = "/dang-nhap"' in tho
     assert re.search(r"export const ROUTE_MO = \[DUONG_DANG_NHAP", tho)
 
 
@@ -707,3 +724,171 @@ def test_man_dang_nhap_phan_biet_401_dang_nhap_voi_401_ha_tang():
     man = MAN_DANG_NHAP.read_text(encoding="utf-8")
     assert "la_sai_thong_tin(" in man
     assert "la_het_phien(" not in _bo_chu_thich(man)
+
+
+# --- (10) Chat console (story 4.3) ------------------------------------------
+
+# Hai chuỗi mới của composer. Chúng **không** nằm trong bảng Voice and Tone (bốn
+# chuỗi chat của bảng - placeholder, "Đang truy vấn...", hai dòng meta - đã có
+# từ 4.1), nên phép canh của chúng là "có mặt, là chuỗi, và được dùng thật".
+KHOA_MICROCOPY_CHAT = frozenset({"nut_gui", "nhan_o_hoi"})
+
+# Cửa duy nhất của tuyến hỏi đáp phía `web/`.
+HOI_DAP_TS = SRC / "api" / "hoi_dap.ts"
+MAN_CHAT = SRC / "app" / "ManChat.tsx"
+
+
+def _hang_mang(tho: str, ten: str) -> tuple[str, ...]:
+    """Giá trị của một `export const <ten> = ["a", "b"] as const;` trong TypeScript."""
+    m = re.search(rf"export const {ten}[^=]*= \[(.*?)\]", tho, re.S)
+    assert m, f"hoi_dap.ts phải khai hằng {ten} dạng mảng"
+    return tuple(re.findall(r'"([^"]*)"', m.group(1)))
+
+
+def test_microcopy_chat_du_khoa_va_duoc_dung_that(microcopy):
+    """Hai chuỗi mới có mặt và mỗi chuỗi được một file `.tsx` dùng.
+
+    Cùng luật với chín chuỗi màn đăng nhập: một khóa microcopy không ai dùng là
+    một câu chữ mà bảng Voice and Tone và màn hình nói khác nhau mà không ai thấy.
+    """
+    thieu = KHOA_MICROCOPY_CHAT - set(microcopy)
+    assert not thieu, sorted(thieu)
+    tho = "\n".join(f.read_text(encoding="utf-8") for f in _file_giao_dien())
+    khong_dung = sorted(k for k in KHOA_MICROCOPY_CHAT if f"MICROCOPY.{k}" not in tho)
+    assert not khong_dung, f"khóa microcopy không nơi nào dùng: {khong_dung}"
+
+
+def test_man_chat_dung_bon_chuoi_chat_tu_microcopy(microcopy):
+    """Màn chat lấy bốn câu chữ của lượt từ `microcopy.json`, không tự soạn.
+
+    `tu_choi` là chỗ nặng nhất: một câu viết tay trong `.tsx` lệch với hằng
+    `api.hoi_dap.TEMPLATE_TU_CHOI` mà không ai thấy (khoản ledger của 3.5, đóng
+    ở 4.1 bằng cách chấp nhận hai bản **có máy canh**).
+
+    Đòi đúng `MICROCOPY.<khóa>`, không nhận một vế "hay có chuỗi `"<khóa>"` ở
+    đâu đó": tên khóa trùng với nhãn của kiểu `KetCuc` (`loai: "tu_choi"`), nên
+    vế ấy khớp ngay cả khi không dòng nào đọc microcopy.
+    """
+    tho = MAN_CHAT.read_text(encoding="utf-8")
+    thieu = [
+        khoa
+        for khoa in ("tu_choi", "dang_truy_van", "placeholder_o_hoi", "loi_he_thong")
+        if f"MICROCOPY.{khoa}" not in tho
+    ]
+    assert not thieu, thieu
+    # Hai dòng meta đi qua `cac_manh` để tô đậm tên vai mà câu vẫn ở JSON.
+    assert 'khoa="meta_luot"' in tho and 'khoa="meta_luot_tu_choi"' in tho
+    assert "cac_manh(" in tho
+
+
+def test_hop_dong_hoi_dap_khop_nguon_api():
+    """Bốn hằng hợp đồng của `web/src/api/hoi_dap.ts` khớp đúng nguồn `api/`.
+
+    Cùng khuôn với `test_ba_truong_cua_auth_login_khop_nguon_api` của 4.2, và vì
+    cùng một lý do: e2e mock trọn tuyến nên nó xanh với bất kỳ tên nào, còn phía
+    `api/` không biết `web/` gửi gì. `ThanHoiDap` khai `extra="forbid"`, nên một
+    tên trường lệch là 422 cho **mọi** câu hỏi - màn chat chết ngay lượt đầu.
+    """
+    ts = HOI_DAP_TS.read_text(encoding="utf-8")
+    tuyen = _hang_chuoi(ts, "TUYEN_HOI_DAP")
+    truong = _hang_chuoi(ts, "TRUONG_CAU_HOI")
+
+    py = (GOC / "api" / "main.py").read_text(encoding="utf-8")
+    assert f'@cua_dong.post("{tuyen}")' in py, tuyen
+    assert set(ThanHoiDap.model_fields) == {truong}, truong
+
+    assert _hang_mang(ts, "KHOA_ENVELOPE") == KHOA_ENVELOPE
+    assert _hang_mang(ts, "KHOA_META") == KHOA_META
+
+
+def test_trich_dan_ts_khai_du_sau_khoa_dong():
+    """Kiểu citation phía `web/` khai đủ sáu khóa của `adapters/trich_dan.py`.
+
+    Story 4.3 chỉ **đếm** `citations`, nhưng khai đủ ở đây để 4.4 lắp cite-row
+    vào mà không phải đổi hợp đồng.
+    """
+    from adapters.trich_dan import KHOA_TRICH_DAN
+
+    ts = HOI_DAP_TS.read_text(encoding="utf-8")
+    assert _hang_mang(ts, "KHOA_TRICH_DAN") == KHOA_TRICH_DAN
+
+
+# Mọi cách đặt một trần thời gian phía trình duyệt cho một lượt hỏi.
+MAU_TRAN_THOI_GIAN = re.compile(r"\bsetTimeout\b|\bsetInterval\b|\bAbortSignal\b|\bAbortController\b")
+
+
+def test_khong_file_nao_trong_web_src_dat_tran_thoi_gian():
+    """Không timeout cứng phía UI (NFR-08 không đặt SLA), và đây là phép quét.
+
+    Một đợt hỏi thật đã đo tới hàng chục giây; một `setTimeout` thêm vào "cho
+    chắc" cắt đúng những câu chậm nhất, tức đúng những câu đáng xem trong buổi
+    demo. Luật rẻ để viết và đắt để phát hiện lại, nên nó là một phép quét chứ
+    không phải một dòng văn xuôi. Chú thích bị bỏ trước khi quét, nếu không luật
+    này phạt đúng những chỗ giải thích luật.
+    """
+    xau = [
+        str(f.relative_to(GOC))
+        for f in _file_giao_dien()
+        if MAU_TRAN_THOI_GIAN.search(_bo_chu_thich(f.read_text(encoding="utf-8")))
+    ]
+    assert not xau, xau
+
+
+def test_bo_do_tran_thoi_gian_bat_ca_bon_cach_viet():
+    """Chấm chính bộ dò, để nó không thành một regex không bao giờ khớp."""
+    assert MAU_TRAN_THOI_GIAN.search("const t = setTimeout(huy, 30000);")
+    assert MAU_TRAN_THOI_GIAN.search("setInterval(poll, 5000)")
+    assert MAU_TRAN_THOI_GIAN.search("signal: AbortSignal.timeout(30000)")
+    assert MAU_TRAN_THOI_GIAN.search("new AbortController()")
+    assert not MAU_TRAN_THOI_GIAN.search("await goi(TUYEN_HOI_DAP, { than })")
+
+
+def test_man_chat_di_qua_luat_het_phien_chung():
+    """401 giữa một lượt đi qua `la_het_phien`, và URL hết phiên là một hàm.
+
+    Đây là nhánh **duy nhất** của màn chat được điều hướng; `test_khong_file_nao_ngoai_phien_ts_tu_so_401`
+    canh chiều còn lại (không ai tự so status). `duong_het_phien()` chứ không
+    một chuỗi ghép tay: `KhungApp` và màn chat phải về **đúng một** URL.
+    """
+    tho = MAN_CHAT.read_text(encoding="utf-8")
+    assert "la_het_phien(" in tho
+    assert "duong_het_phien()" in tho
+    khung = (SRC / "khung" / "KhungApp.tsx").read_text(encoding="utf-8")
+    assert "duong_het_phien()" in khung
+    phien = (SRC / "api" / "phien.ts").read_text(encoding="utf-8")
+    assert re.search(r"export function duong_het_phien\(", phien)
+
+
+def test_route_goc_boc_man_chat():
+    """`/` là server component mỏng bọc `ManChat`, giữ tiêu đề từ `dieu_huong.json`."""
+    tho = (SRC / "app" / "page.tsx").read_text(encoding="utf-8")
+    assert "ManChat" in tho and "dieu_huong" in tho
+    assert '"use client"' not in tho, "page.tsx là server component"
+    assert MAN_CHAT.read_text(encoding="utf-8").startswith('"use client"')
+
+
+def test_microcopy_ts_chi_mot_mau_cho_trong():
+    """`dien()` và `cac_manh()` dùng **một** mẫu chỗ trống, khai một lần.
+
+    Docstring của `cac_manh` khẳng định nó nhận cùng tập chỗ trống với `dien`;
+    hai regex chép nhau là hai regex lệch nhau ở lần sửa đầu tiên, và khi đó một
+    chuỗi microcopy điền được ở một hàm mà không điền được ở hàm kia - triệu
+    chứng là một `{vai}` trần hiện trên màn chat.
+    """
+    tho = (SRC / "microcopy.ts").read_text(encoding="utf-8")
+    assert tho.count("[a-z][a-z0-9_]*") == 1, "mẫu chỗ trống phải khai đúng một lần"
+    assert "function mau_cho_trong(" in tho
+    goi = [d for d in tho.splitlines() if "mau_cho_trong()" in d and "function" not in d]
+    assert len(goi) == 2, goi
+
+
+def test_var_css_cua_globals_da_duoc_phu():
+    """Phép quét `var(--x)` đã phủ `globals.css`, và đây là phép canh giữ nó phủ.
+
+    `_file_giao_dien()` lấy cả `.css`, nên `test_moi_var_trong_web_src_la_bien_bien_css_sinh_ra`
+    đã chấm từng tên biến trong `globals.css`; không cần một phép quét thứ hai.
+    Test này chỉ khẳng định file ấy còn nằm trong tập quét - thu `_file_giao_dien`
+    về `.ts`/`.tsx` là một lần sửa im lặng làm mất phép canh kia.
+    """
+    duong = [f.relative_to(GOC).as_posix() for f in _file_giao_dien()]
+    assert "web/src/app/globals.css" in duong, duong

@@ -8,10 +8,10 @@ import { goi, LoiApi, MA_MANG } from "@/api/goi";
 import {
   dang_xuat,
   doc_token,
+  DUONG_DANG_NHAP,
+  duong_het_phien,
   la_het_phien,
   la_phien,
-  LY_DO_HET_HAN,
-  THAM_SO_LY_DO,
   xoa_token,
   type Phien,
 } from "@/api/phien";
@@ -20,8 +20,10 @@ import { HopLoi } from "./HopLoi";
 import { SidebarDieuHuong } from "./SidebarDieuHuong";
 import { Topbar } from "./Topbar";
 
-// Màn đăng nhập (story 4.2). Route mở duy nhất của app.
-export const DUONG_DANG_NHAP = "/dang-nhap";
+// Màn đăng nhập (story 4.2). Hằng sống ở `phien.ts` từ story 4.3, vì màn chat
+// là nơi thứ hai điều hướng về đó khi hết phiên; nơi nào cần thì nhập thẳng từ
+// đó, khung không re-export (một re-export không ai dùng là một cửa thứ hai để
+// hai bản chép mọc lên).
 
 // Route **mở**: không cần phiên, khung không gọi `/auth/toi` và không gate,
 // render **trần** (không topbar, không sidebar) vì màn đăng nhập là màn đứng
@@ -82,7 +84,7 @@ export function KhungApp({ children }: { children: ReactNode }) {
         // đá về màn đăng nhập. 403 và 5xx báo tại chỗ, giữ nguyên URL.
         if (la_het_phien(l)) {
           xoa_token();
-          router.replace(`${DUONG_DANG_NHAP}?${THAM_SO_LY_DO}=${LY_DO_HET_HAN}`);
+          router.replace(duong_het_phien());
           return;
         }
         dat({ loai: "loi", loi: l });
