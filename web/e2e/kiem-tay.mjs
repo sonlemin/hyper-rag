@@ -13,6 +13,10 @@
 //      snake_case, và không id hyperedge thật nào trong DOM.
 //   2. Không cuộn ngang ở 1280.
 //   3. Khối nguồn nằm ngoài vùng `aria-live` của câu trả lời.
+// Cộng hai phép kiểm trên cả phiên, sau khi mọi lượt đã xong:
+//   4. Lượt trả lời mới nhất có nguồn thì mở, lượt cũ thu gọn và không còn hàng
+//      nào trong DOM, bấm nhãn thì mở lại; lượt từ chối không mang khối nguồn.
+//   5. Mọi cặp lượt từ chối giống nhau **từng ký tự**.
 //
 // Bảng nhãn đọc **từ chính `web/src/nhan.ts`** chứ không chép lại: một bản chép
 // thứ hai ở đây sẽ báo xanh cho đúng cái nó chép sai.
@@ -232,6 +236,62 @@ for (const [i, cau] of ts.cau.entries()) {
   if (dom.han_che !== null) {
     ghi("nút xin truy cập đang khóa", dom.nut_khoa === true, `${dom.nut_khoa}`);
   }
+}
+
+// --- Phép kiểm trên cả phiên, sau khi mọi lượt đã xong ----------------------
+
+console.log("--- cả phiên");
+
+const phien = await page.evaluate(() => {
+  return [...document.querySelectorAll("[data-luot]")].map((l, i) => ({
+    so: i + 1,
+    nac: l.querySelector("[data-tra-loi]") ? "tra_loi"
+      : l.querySelector("[data-tu-choi]") ? "tu_choi" : "loi",
+    mo: l.querySelector("[data-khoi-nguon]")?.getAttribute("data-mo") ?? null,
+    so_hang: l.querySelectorAll("[data-cite-row]").length,
+    html: l.querySelector("[data-tu-choi]")?.outerHTML ?? null,
+  }));
+});
+
+// (4) Thu gọn: lượt **trả lời** mới nhất có nguồn thì mở, mọi lượt có nguồn
+// trước nó thu gọn. Lượt từ chối không có khối nguồn nào và không cướp vai trò
+// "mới nhất" - EXPERIENCE.md nói "lượt **trả lời** mới nhất".
+const co_nguon = phien.filter((l) => l.mo !== null);
+if (co_nguon.length >= 2) {
+  const cuoi = co_nguon[co_nguon.length - 1];
+  ghi(`lượt ${cuoi.so} (có nguồn, mới nhất) mở sẵn`, cuoi.mo === "1", `data-mo=${cuoi.mo}`);
+  for (const l of co_nguon.slice(0, -1)) {
+    ghi(`lượt ${l.so} (có nguồn, cũ) thu gọn`, l.mo === "0", `data-mo=${l.mo}`);
+    ghi(`lượt ${l.so} thu gọn thì không hàng nào trong DOM`, l.so_hang === 0, `${l.so_hang} hàng`);
+  }
+  // Bấm mở lại lượt cũ nhất rồi kiểm nó mở thật.
+  const cu = page.locator("[data-luot]").nth(co_nguon[0].so - 1);
+  await cu.locator("[data-nut-khoi-nguon]").click();
+  const mo_lai = await cu.locator("[data-khoi-nguon]").getAttribute("data-mo");
+  ghi(`bấm nhãn lượt ${co_nguon[0].so} thì nó mở lại`, mo_lai === "1", `data-mo=${mo_lai}`);
+} else {
+  console.log("  (bỏ qua thu gọn: cần từ hai lượt có nguồn trở lên)");
+}
+
+// Một lượt từ chối không được mang khối nguồn nào (L0 vô hình tuyệt đối).
+for (const l of phien.filter((x) => x.nac === "tu_choi")) {
+  ghi(`lượt ${l.so} từ chối: không khối nguồn`, l.mo === null, `data-mo=${l.mo}`);
+}
+
+// (5) Hai lượt từ chối phải giống nhau **từng ký tự**: lý do từ chối chỉ nằm
+// trong `audit_log`, response không mang nó, nên khác một dấu cách là một kênh
+// dò. So mọi cặp chứ không chỉ cặp đầu.
+const tu_choi = phien.filter((l) => l.nac === "tu_choi" && l.html);
+if (tu_choi.length >= 2) {
+  for (let i = 1; i < tu_choi.length; i += 1) {
+    ghi(
+      `lượt từ chối ${tu_choi[0].so} và ${tu_choi[i].so} giống nhau từng ký tự`,
+      tu_choi[0].html === tu_choi[i].html,
+      `dài ${tu_choi[0].html.length} vs ${tu_choi[i].html.length}`,
+    );
+  }
+} else {
+  console.log("  (bỏ qua so hai lượt từ chối: cần từ hai lượt từ chối trở lên)");
 }
 
 // (2) Không cuộn ngang ở 1280.
