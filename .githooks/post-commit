@@ -5,6 +5,13 @@ if [ "${SKIP_CI:-0}" = "1" ]; then
     echo "[ci] SKIP_CI=1, bo qua"
     exit 0
 fi
-"$(git rev-parse --show-toplevel)/scripts/ci-remote.sh"
-# post-commit khong the huy commit; ket qua FAIL chi hien thi va ghi log tren server.
+GOC="$(git rev-parse --show-toplevel)"
+# Luoi Playwright cua web/ (story 4.1) chay o day, phia dev, vi may chu khong co
+# node: chi khi commit cham web/, va chi khi node + node_modules co san. Thieu
+# mot trong hai thi in FAIL ro rang chu khong lang le bo qua - mot test bi bo
+# qua thi bang khong co. post-commit khong huy duoc commit; FAIL chi hien thi.
+if git diff --name-only HEAD~1 HEAD 2>/dev/null | grep -q '^web/'; then
+    "$GOC/scripts/e2e-web.sh" || echo "[e2e] FAIL: luoi Playwright cua web/ do, xem o tren" >&2
+fi
+"$GOC/scripts/ci-remote.sh"
 exit 0

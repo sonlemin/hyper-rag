@@ -2,7 +2,7 @@
 name: Copilot IT
 description: Console doanh nghiệp nền sáng cho AI Copilot hỏi đáp tiếng Việt trên kho tri thức IT nội bộ có phân quyền mức hyperedge. Tự dựng theo spine này, không dùng design system ngoài.
 status: final
-updated: 2026-08-30
+updated: 2026-09-07
 sources:
   - ../../prds/prd-hyper_graph_rag-2026-08-29/prd.md
   - ../../prds/prd-hyper_graph_rag-2026-08-29/addendum.md
@@ -138,7 +138,9 @@ components:
     radius: '{rounded.sm}'
   badge-level-l1:
     background: '{colors.level-l1-bg}'
-    foreground: '{colors.level-l1}'
+    # Chữ trên nền hổ phách dùng level-l1-ink theo luật ở mục Colors; level-l1 trên
+    # nền này chỉ đạt 4,44:1, dưới sàn 4.5:1 (đo ở story 4.1, sửa 07/09/2026).
+    foreground: '{colors.level-l1-ink}'
     radius: '{rounded.sm}'
   turn-question:
     background: '{colors.primary-tint}'

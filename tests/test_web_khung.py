@@ -162,13 +162,37 @@ def ty_le_tuong_phan(chu: str, nen: str) -> float:
 
 
 def _hex(tokens: dict, ten: str) -> str:
-    return ten if ten.startswith("#") else tokens["colors"][ten]
+    """Nhận `#hex`, tên màu trần, hay tham chiếu `{colors.x}` của khối components."""
+    if ten.startswith("#"):
+        return ten
+    m = re.fullmatch(r"\{colors\.([\w-]+)\}", ten)
+    return tokens["colors"][m.group(1) if m else ten]
 
 
 @pytest.mark.parametrize("chu,nen", CAP_TUONG_PHAN)
 def test_tuong_phan_toi_thieu_4_5(tokens, chu, nen):
     ty_le = ty_le_tuong_phan(_hex(tokens, chu), _hex(tokens, nen))
     assert ty_le >= 4.5, f"{chu} trên {nen}: {ty_le:.2f}:1 < 4.5:1"
+
+
+def test_moi_cap_chu_nen_cua_components_deu_tu_4_5(tokens):
+    """Mọi component khai cả `foreground` lẫn `background` màu đặc phải đạt sàn.
+
+    Đây là phép canh trên **cặp mà component thật sự render**, không chỉ trên
+    danh sách cặp đích danh ở trên: review 4.1 tìm ra `badge-level-l1` từng khai
+    chữ `level-l1` trên nền `level-l1-bg` (4,44:1) trong khi chín cặp đích danh
+    đều xanh. Nền rgba (chip vai trên topbar) không quy về một màu đặc nên bỏ qua
+    có tên.
+    """
+    hong = []
+    for ten, c in tokens["components"].items():
+        chu, nen = c.get("foreground"), c.get("background")
+        if not (chu and nen) or not nen.startswith(("#", "{")):
+            continue
+        ty_le = ty_le_tuong_phan(_hex(tokens, chu), _hex(tokens, nen))
+        if ty_le < 4.5:
+            hong.append(f"{ten}: {chu} trên {nen} = {ty_le:.2f}:1")
+    assert not hong, hong
 
 
 def test_ham_tuong_phan_dung_moc_wcag():
