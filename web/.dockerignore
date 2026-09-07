@@ -1,0 +1,11 @@
+node_modules
+.next
+next-env.d.ts
+tsconfig.tsbuildinfo
+test-results
+playwright-report
+# Rieng cho image: lưới e2e và file chỉ máy dev dùng, không có trong .gitignore
+# vì chúng có commit.
+e2e
+playwright.config.ts
+.nvmrc

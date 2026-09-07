@@ -6,7 +6,7 @@
 # Kiem tra bien truoc khi len:
 #   docker compose --env-file .env --env-file .env.server config --quiet
 # Moi gia tri moi truong lay tu .env (secret) va .env.server/.env.laptop (tham so),
-# khong hard-code. Chi cong 8000 (api) mo ra ngoai; cong 8100 (man-nap) chi bind
+# khong hard-code. Chi cong 8000 (api) va 3000 (web) mo ra ngoai; cong 8100 (man-nap) chi bind
 # loopback cua may chu, vao bang SSH tunnel; 7474/7687/6333/5432/11434 chi trong
 # network noi bo cua compose. Profile local-llm (ollama) khong bat mac dinh.
 
@@ -193,6 +193,37 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+    restart: unless-stopped
+
+  # Console web (story 4.1): Next.js 16.3.3 build standalone trong image
+  # (web/Dockerfile, node:20-alpine). Trinh duyet chi noi chuyen voi cong 3000;
+  # moi loi goi `/api/*` di qua rewrite cua Next toi API_NOI_BO (ten service
+  # `api` trong network compose), khong bao gio goi thang cong 8000 tu client.
+  # Rewrite dong bang luc `next build`, nen API_NOI_BO la **build arg**
+  # (`build.args` -> `ARG` trong web/Dockerfile), khong phai `environment`:
+  # doi no la phai `up -d --build web`, mot bien luc chay khong doi duoc gi.
+  # Cong 8000 van publish cho demo bang curl (quyet dinh 31/08); thu no ve
+  # loopback + reverse proxy la Ask First cua spec 4.1, chua lam.
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        API_NOI_BO: "http://api:8000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      # node:20-alpine co wget cua busybox. 127.0.0.1 chu khong `localhost`:
+      # alpine phan giai localhost ra ::1 truoc, ma server.js cua Next chi nghe
+      # IPv4 (HOSTNAME=0.0.0.0) - healthcheck bang localhost do mai (do 07/09).
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
     restart: unless-stopped
 
   # Profile local-llm: chi khai bao, khong bat mac dinh, khong pull model o story 1.1.

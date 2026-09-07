@@ -58,3 +58,12 @@ eval/de_xuat/*.bak.yaml
 # Đo 3 thô (story 3.8): file dở dang của một đợt hỏng và bản cũ khi --ghi-de
 eval/ket_qua_do3/*-chua-xong.json
 eval/ket_qua_do3/*.bak.json
+
+# Console web (story 4.1): gói npm, đầu ra build và rác của một lần chạy
+# Playwright. Ảnh chụp khung *có commit* vẫn ở `eval/anh_bang_chung/`.
+web/node_modules/
+web/.next/
+web/next-env.d.ts
+web/tsconfig.tsbuildinfo
+web/test-results/
+web/playwright-report/

@@ -1,0 +1,338 @@
+/* Reset tối giản và các lớp của khung app. Màu, cỡ chữ, bo góc và khoảng cách
+   của token đọc từ CSS variables mà root layout sinh từ `src/design/tokens.json`
+   (`src/design/bien_css.ts`); không có file CSS token thứ hai. Hai thứ viết
+   thẳng vì không phải token: chữ trắng `#ffffff` trên nền đậm (topbar, chip
+   vai, nút chính - DESIGN.md khai `foreground: '#FFFFFF'` trực tiếp) và hai cỡ
+   16px/14px của thương hiệu topbar và nút gập (theo mockup, typography không
+   đặt tên). Nền trắng dùng `var(--mau-surface-card)`. Sàn chữ 13px:
+   `tests/test_web_khung.py` quét file này. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--chu-base-font);
+  font-size: var(--chu-base-co);
+  line-height: var(--chu-base-cao-dong);
+  color: var(--mau-ink);
+  background: var(--mau-surface-app);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--mau-primary);
+}
+
+/* Focus bàn phím thấy được: viền primary (EXPERIENCE.md Accessibility Floor). */
+:focus-visible {
+  outline: 2px solid var(--mau-primary);
+  outline-offset: 2px;
+}
+
+/* ===== Khung app ===== */
+
+.khung {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.topbar {
+  height: var(--khoang-topbar-height);
+  background: var(--mau-primary-deep);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 18px;
+  flex-shrink: 0;
+}
+
+.topbar__thuong_hieu {
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.3px;
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.topbar__thuong_hieu span {
+  opacity: 0.65;
+  font-weight: 400;
+  font-size: 14px;
+}
+
+.topbar__gian {
+  flex: 1;
+}
+
+/* Chip vai: "Tên · Vai", không bao giờ gắn Lx. Màu theo components.chip-role. */
+.chip_vai {
+  font-size: var(--chu-meta-chip-co);
+  font-weight: var(--chu-meta-chip-dam);
+  background: rgba(255, 255, 255, 0.13);
+  color: #ffffff;
+  padding: 3px 10px;
+  border-radius: var(--bo-sm);
+  white-space: nowrap;
+}
+
+.than {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ===== Sidebar hai trạng thái kiểu VS Code ===== */
+
+.sidebar {
+  width: var(--khoang-sidebar-open);
+  background: var(--mau-surface-nav);
+  border-right: 1px solid var(--mau-border);
+  padding-top: 12px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar--mini {
+  width: var(--khoang-sidebar-mini);
+  padding-top: 10px;
+  align-items: center;
+}
+
+.sidebar__muc {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 18px;
+  color: var(--mau-ink);
+  text-decoration: none;
+  font-size: var(--chu-nav-item-co);
+}
+
+.sidebar__muc--chon {
+  background: var(--mau-primary-tint);
+  border-right: 3px solid var(--mau-primary);
+  font-weight: 600;
+  color: var(--mau-primary-deep);
+}
+
+.sidebar__phim_tat {
+  color: var(--mau-ink-muted);
+  font-size: var(--chu-caption-min-co);
+}
+
+.sidebar--mini .sidebar__muc {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--bo-lg);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  margin: 2px 0;
+  font-size: 16px;
+  color: var(--mau-ink-muted);
+  border-right: 0;
+}
+
+.sidebar--mini .sidebar__muc--chon {
+  background: var(--mau-primary-tint);
+  color: var(--mau-primary-deep);
+  box-shadow: inset -3px 0 0 var(--mau-primary);
+  font-weight: 700;
+}
+
+.sidebar__chan {
+  margin-top: auto;
+  border-top: 1px solid var(--mau-border);
+  padding: 10px 14px;
+  width: 100%;
+}
+
+.sidebar--mini .sidebar__chan {
+  padding: 8px 0 10px;
+  display: flex;
+  justify-content: center;
+}
+
+.sidebar__nut_gap {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--mau-ink-muted);
+  font-size: 14px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.sidebar__nut_gap i {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--mau-border);
+  border-radius: var(--bo-md);
+  display: grid;
+  place-items: center;
+  font-style: normal;
+  font-size: 14px;
+  background: var(--mau-surface-card);
+}
+
+/* ===== Nội dung ===== */
+
+.noi_dung {
+  flex: 1;
+  min-width: 0;
+  padding: var(--khoang-pad-content);
+  max-width: var(--khoang-page-max);
+}
+
+.tieu_de_trang {
+  font-size: var(--chu-heading-page-co);
+  font-weight: var(--chu-heading-page-dam);
+  margin: 0 0 12px;
+}
+
+.tieu_de_khoi {
+  font-size: var(--chu-heading-block-co);
+  font-weight: var(--chu-heading-block-dam);
+  margin: 24px 0 8px;
+}
+
+.the {
+  background: var(--mau-surface-card);
+  border: 1px solid var(--mau-border);
+  border-radius: var(--bo-lg);
+  padding: var(--khoang-pad-card);
+  box-shadow: 0 4px 16px rgba(27, 39, 51, 0.1);
+}
+
+.nut_chinh {
+  background: var(--mau-primary);
+  color: #ffffff;
+  border: 0;
+  border-radius: var(--bo-md);
+  padding: 7px 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.nut_phu {
+  background: var(--mau-surface-card);
+  color: var(--mau-ink-muted);
+  border: 1px solid var(--mau-border-strong);
+  border-radius: var(--bo-md);
+  padding: 7px 14px;
+  cursor: pointer;
+}
+
+/* Hộp lỗi hệ thống (components.errbox): viền trái đỏ, icon kèm chữ. */
+.hop_loi {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: var(--mau-danger-bg);
+  border: 1px solid var(--mau-danger-border);
+  border-left: 4px solid var(--mau-danger);
+  color: var(--mau-danger);
+  border-radius: var(--bo-md);
+  padding: 10px 14px;
+  font-weight: 600;
+}
+
+/* ===== Modal một lớp 560px ===== */
+
+.hop_thoai__nen {
+  position: fixed;
+  inset: 0;
+  background: rgba(27, 39, 51, 0.45);
+  display: grid;
+  place-items: center;
+  z-index: 100;
+}
+
+.hop_thoai {
+  width: 560px;
+  max-width: calc(100vw - 32px);
+  background: var(--mau-surface-card);
+  border-radius: var(--bo-xl);
+  box-shadow: 0 16px 48px rgba(27, 39, 51, 0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+.hop_thoai__dau {
+  padding: 14px var(--khoang-pad-card);
+  border-bottom: 1px solid var(--mau-border);
+  font-size: var(--chu-heading-page-co);
+  font-weight: var(--chu-heading-page-dam);
+  display: flex;
+  align-items: center;
+}
+
+.hop_thoai__dong {
+  margin-left: auto;
+  background: transparent;
+  border: 0;
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--mau-ink-muted);
+}
+
+.hop_thoai__than {
+  padding: var(--khoang-pad-card);
+}
+
+.hop_thoai__chan {
+  padding: 12px var(--khoang-pad-card);
+  border-top: 1px solid var(--mau-border);
+  background: var(--mau-surface-nav);
+  border-radius: 0 0 var(--bo-xl) var(--bo-xl);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ===== Composer (ô hỏi, đích của ⌘K) ===== */
+
+.o_hoi {
+  width: 100%;
+  border: 1px solid var(--mau-border-strong);
+  border-radius: var(--bo-md);
+  padding: 8px 10px;
+  font-size: var(--chu-base-co);
+  resize: vertical;
+}
+
+/* Chữ chỉ cho trình đọc màn hình (nhãn mục sidebar khi thu gọn). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

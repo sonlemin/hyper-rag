@@ -218,7 +218,7 @@ Phần MUST giữ đến cùng là hover trích dẫn làm sáng hyperedge. Ph�
 1. Số đỉnh hyperedge demo (5 hay 6): treo đến khi dựng corpus T2; mockup vẽ 6 hiện + 1 ẩn là giả định.
 2. ~~Câu chữ template từ chối FR-16~~ **đã chốt** ở story 3.5 (`docs/adr/ADR-015-wording-template-tu-choi-fr-16.md`): giữ nguyên câu đề xuất của spine, và ADR ghi ba biến thể đã bị loại. Wording sống ở đúng một hằng `api.hoi_dap.TEMPLATE_TU_CHOI`, có test canh bản chép thứ hai.
 3. Tên sản phẩm và visual identity: "Copilot IT" là tên tạm, chưa có logo.
-4. Ai được bật toggle live/offline: đề xuất dùng cờ demo/admin của FR-18, chưa được duyệt.
+4. ~~Ai được bật toggle live/offline~~ **đã chốt** ở AD-10 (ARCHITECTURE-SPINE, khớp action item retro Epic 3, đóng ở story 4.1): toggle demo và endpoint cache offline đòi claim `demo` hoặc `admin`, đọc từ token, không suy từ vai giả.
 5. Tên và biến thể kịch bản red-team RT-01..RT-05: chốt ở bước test design; RT-02, RT-05 trong mockup là biến thể tự đặt.
 6. Hex cụ thể của dải 5 tầng tin cậy {colors.trust-1}..{colors.trust-5}: dải tím là đề xuất chưa duyệt.
-7. Cơ chế owner biết có yêu cầu break-glass mới (polling hay chỉ badge khi tải lại): chưa đặc tả, mockup dùng badge.
+7. ~~Cơ chế owner biết có yêu cầu break-glass mới~~ **đã chốt** ở AD-14 (ARCHITECTURE-SPINE, đóng ở story 4.1): UI poll một endpoint trạng thái nhẹ theo chu kỳ cố định 5 giây, trả badge counts và `expires_at` tuyệt đối; endpoint đó là story 5.4. Badge trong mockup là cách hiển thị, không phải cơ chế.

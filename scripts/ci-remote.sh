@@ -42,6 +42,12 @@ rsync -az --delete \
     --exclude 'extra' \
     --exclude 'eval/expr' \
     --exclude 'hypergraphrag.log' \
+    --exclude 'web/node_modules' \
+    --exclude 'web/.next' \
+    --exclude 'web/next-env.d.ts' \
+    --exclude 'web/tsconfig.tsbuildinfo' \
+    --exclude 'web/test-results' \
+    --exclude 'web/playwright-report' \
     -e "ssh ${SSH_OPTS[*]}" \
     "$REPO_ROOT"/ "$SERVER:$REMOTE_DIR"/ || {
     echo "[ci] rsync that bai, bo qua lan chay nay" >&2

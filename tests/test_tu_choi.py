@@ -1005,8 +1005,13 @@ def test_template_tu_choi_chi_co_mot_ban_trong_ma_nguon():
     `api/hoi_dap.py` (nơi khai) và ở chính file test này (nơi ghim nguyên văn).
     Bản thứ hai của một wording là chỗ hai bên lệch nhau mà không ai biết, và
     ADR-015 khi đó chỉ chốt được một trong hai.
+
+    Story 4.1 mở rộng: `web/src` được quét ở bốn đuôi văn bản (`.json`, `.ts`,
+    `.tsx`, `.css`), và bản chép duy nhất được phép ở đó là `web/src/microcopy.json` -
+    bản mà `tests/test_web_khung.py::test_microcopy_tu_choi_bang_hang_phia_api`
+    đối chiếu với hằng này. Một chuỗi viết tay trong một `.tsx` là đỏ ở đây.
     """
-    cho_phep = {"api/hoi_dap.py", "tests/test_tu_choi.py"}
+    cho_phep = {"api/hoi_dap.py", "tests/test_tu_choi.py", "web/src/microcopy.json"}
     thay = set()
     for tang in ("core", "adapters", "api", "eval", "redteam", "tests"):
         thu_muc = GOC / tang
@@ -1015,6 +1020,11 @@ def test_template_tu_choi_chi_co_mot_ban_trong_ma_nguon():
         for py in thu_muc.rglob("*.py"):
             if TEMPLATE_TU_CHOI in py.read_text(encoding="utf-8"):
                 thay.add(str(py.relative_to(GOC)))
+    for f in (GOC / "web" / "src").rglob("*"):
+        if f.suffix not in {".json", ".ts", ".tsx", ".css"}:
+            continue  # chỉ file văn bản của web; một ảnh hay font là UnicodeDecodeError
+        if TEMPLATE_TU_CHOI in f.read_text(encoding="utf-8"):
+            thay.add(str(f.relative_to(GOC)))
     assert thay == cho_phep, f"wording template từ chối xuất hiện ở {sorted(thay)}"
 
 

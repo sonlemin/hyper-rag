@@ -89,20 +89,91 @@ def test_khong_service_nao_khac_mang_profile(compose):
     assert co_profile == {"ollama"}
 
 
-# --- Cổng ra ngoài: chỉ 8000 --------------------------------------------
+# --- Cổng ra ngoài: 8000, 3000 và loopback 8100 --------------------------
+
+# Ba service có cổng publish: hai service Python và console web (story 4.1).
+SERVICE_PUBLISH_CONG = (*SERVICE_PYTHON, "web")
 
 
-def test_chi_hai_service_python_publish_cong(compose):
+def test_chi_ba_service_ung_dung_publish_cong(compose):
     """Ba kho và ollama không bao giờ publish cổng (chốt 31/08/2026).
 
-    Cùng một hợp đồng với quyết định phơi cổng trong ledger: 8000 công khai có
-    chủ đích, 7474/7687/6333/5432/11434 chỉ trong network nội bộ của compose.
+    Cùng một hợp đồng với quyết định phơi cổng trong ledger: 8000 (api) và 3000
+    (web) công khai có chủ đích, 7474/7687/6333/5432/11434 chỉ trong network
+    nội bộ của compose.
     """
     co_ports = {
         ten for ten, dv in compose["services"].items() if dv.get("ports")
     }
-    assert co_ports == set(SERVICE_PYTHON)
+    assert co_ports == set(SERVICE_PUBLISH_CONG)
     assert compose["services"]["api"]["ports"] == ["8000:8000"]
+    assert compose["services"]["web"]["ports"] == ["3000:3000"]
+
+
+# --- Story 4.1: service web ---------------------------------------------
+
+
+def test_web_cho_api_healthy_va_tu_co_healthcheck(compose):
+    """`web` chỉ lên sau `api` healthy, và tự khai healthcheck để `docker compose ps` nói thật."""
+    web = compose["services"]["web"]
+    assert web["depends_on"] == {"api": {"condition": "service_healthy"}}
+    assert web["healthcheck"]["test"]
+    assert web["restart"] == "unless-stopped"
+
+
+def test_web_healthcheck_goi_127_0_0_1_khong_localhost(compose):
+    """Healthcheck của `web` phải gọi `127.0.0.1:3000`, không `localhost`.
+
+    Đo 07/09/2026: `localhost` trong node:20-alpine phân giải ra `::1` trước,
+    còn server.js của Next với `HOSTNAME=0.0.0.0` chỉ nghe IPv4, nên container
+    đứng ở `health: starting` mãi và `depends_on` của story sau không bao giờ
+    thỏa. Ghim ở đây để một lần "sửa cho giống ba kho" không lặp lại chuyện đó.
+    """
+    lenh = " ".join(compose["services"]["web"]["healthcheck"]["test"])
+    assert "127.0.0.1:3000" in lenh
+    assert "localhost" not in lenh
+
+
+def test_web_build_tu_thu_muc_web_va_api_noi_bo_la_build_arg(compose):
+    """Build context là `web/` (không kéo cả repo vào image node), và `API_NOI_BO`
+    đi bằng **`build.args`**, không `environment`.
+
+    Rewrite `/api/*` của Next đóng băng lúc `next build` (routes-manifest của bản
+    standalone), nên chỉ biến lúc build mới điều khiển được nó; một
+    `environment: API_NOI_BO` trông như cấu hình mà đổi không có hiệu lực.
+    """
+    web = compose["services"]["web"]
+    assert web["build"] == {
+        "context": "./web",
+        "dockerfile": "Dockerfile",
+        "args": {"API_NOI_BO": "http://api:8000"},
+    }
+    assert "API_NOI_BO" not in web.get("environment", {})
+    assert "command" not in web, "service `web` giữ CMD của image"
+
+
+def test_web_khong_thay_secret_nao(compose):
+    """Web là client tĩnh; không lý do gì để nó cầm khóa ký, mật khẩu DB hay key LLM."""
+    web = compose["services"]["web"]
+    assert not (BIEN_SECRET & set(web.get("environment", {})))
+    assert not (BIEN_SECRET & set(web["build"].get("args", {})))
+
+
+def test_dockerfile_web_bind_0_0_0_0_va_chay_server_js():
+    """`web/Dockerfile`: `HOSTNAME=0.0.0.0`, `ARG API_NOI_BO`, `CMD ["node", "server.js"]`.
+
+    Docker đặt `HOSTNAME` = id container và server.js của Next bind theo biến
+    ấy; không ép về 0.0.0.0 thì cổng publish không trả lời (đo 07/09/2026).
+    `ARG API_NOI_BO` là chỗ `build.args` của compose đổ vào (test trên).
+    """
+    import json as _json
+
+    tho = (Path(__file__).resolve().parent.parent / "web" / "Dockerfile").read_text(encoding="utf-8")
+    assert "HOSTNAME=0.0.0.0" in tho
+    assert "ARG API_NOI_BO=http://api:8000" in tho
+    cmd = [d for d in tho.splitlines() if d.startswith("CMD ")]
+    assert len(cmd) == 1
+    assert _json.loads(cmd[0][len("CMD "):]) == ["node", "server.js"]
 
 
 def test_man_nap_chi_bind_loopback_cua_may_chu(compose):

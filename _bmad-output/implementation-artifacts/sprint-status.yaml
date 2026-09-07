@@ -76,7 +76,7 @@
 #   nếu chạy repair thì chép lại khối chú thích từ git history.
 
 generated: 08-31-2026 21:50
-last_updated: 09-07-2026 13:27
+last_updated: 09-07-2026 15:09
 project: hyper_graph_rag
 project_key: NOKEY
 tracking_system: file-system
@@ -127,8 +127,8 @@ development_status:
 
   # Epic 4 - TEST: chạy TD lần 2 (kế hoạch E2E UI) rồi TF dựng Playwright cho Next.js
   # trước/cùng 4-1; sau đó QA sinh E2E cho từng màn đã xong.
-  epic-4: backlog
-  4-1-khung-web-hệ-token-thiết-kế-và-khung-app: backlog  # TF: khởi tạo Playwright tại đây; smoke test khung app
+  epic-4: in-progress
+  4-1-khung-web-hệ-token-thiết-kế-và-khung-app: done  # 07/09/2026, sau vòng review (0 intent_gap / 0 bad_spec, 24 patch áp hết). `tests/test_web_khung.py` **31 ca thu thập thật** (`--collect-only`), tám nhóm: bảy nhóm spec (tokens.json == frontmatter DESIGN.md từng giá trị; 9 cặp tương phản >= 4.5:1; sàn 13px ở token và ba dạng khai cỡ chữ trong .css/.ts/.tsx; microcopy không em dash và 5 chuỗi khớp nguyên văn bảng Voice and Tone; `tu_choi` == `api.hoi_dap.TEMPLATE_TU_CHOI`; sidebar-route một-một trừ `/mau` và `src/proxy.ts` chặn đúng tập đó ở production; ghim next 16.3.3 / cytoscape 3.34.2 / node >= 20.9, dependency đóng) cộng nhóm luật khung (không localStorage, không `:8000`, một cửa HTTP duy nhất, `ROUTE_MO` chứa `/dang-nhap`, mọi `var(--x)` là biến `bien_css.ts` sinh). `web/` dựng bằng Next 16.3.3 App Router + React 19.2.8, không design system, không webfont: token và microcopy là JSON, `bien_css.ts` sinh CSS variables lúc build, khung app (Topbar chip `Tên · Vai`, Sidebar 216/52 nhớ sessionStorage và chọn theo route con, HopThoai 560px với Esc/focus trap/trả focus khi đóng, HopLoi mang `data-ma-loi`), `api/goi.ts` cửa fetch duy nhất (2xx rỗng trả null), `KhungApp` kiểm hình thân `/auth/toi`, route mở không gate, rewrite `/api/*` -> `API_NOI_BO` (build arg). Playwright 1.63: `web/e2e/khung.spec.ts` **16 passed + 1 skipped có lý do** máy dev (chặn mọi `/api/**` chưa mock; chip, topbar 52px, không token, route mở, 401, 5xx, lỗi mạng MANG, thân HTML, thân thiếu khóa, sidebar nhớ, 1280 không cuộn ở cả hai trạng thái sidebar và /mau, Ctrl+K kể cả khi modal mở, modal Esc/re-render/Tab vòng, tương phản); ca `/api/health` thật chạy riêng với `API_NOI_BO` trỏ máy chủ: passed. Ảnh `eval/anh_bang_chung/khung-4-1-1280.png`; `npm run lint` (tsc) và `npm run build` 0 lỗi. Máy chủ: service `web` (node:20-alpine standalone, 3000, `build.args` API_NOI_BO, depends_on api healthy) build và healthy, `curl` `/` 200, `/mau` 404, `/api/health` 200 qua rewrite. **Ba điều đo được**: `notFound()` trong page prerender tĩnh cho thân 404 nhưng HTTP 200 trên image standalone, nên rào thật cho `/mau` là `src/proxy.ts` trả 404 ở production; healthcheck `web` phải gọi `127.0.0.1:3000` vì `localhost` trong alpine ra `::1` còn Next chỉ nghe IPv4; nút Dev Tools của `next dev` đè nút gập sidebar nên `devIndicators: false`. Sổ nợ: khoản Playwright màn nạp chốt chấp nhận vĩnh viễn, khoản bản chép template từ chối đóng bằng test + phép quét mở rộng sang `web/src`; action item retro `epic: 4` done (EXPERIENCE.md OQ 4 -> AD-10, OQ 7 -> AD-14); khoản badge L1 (level-l1 trên level-l1-bg 4,44:1, defer cho DESIGN.md) do reviewer ghi. `next dev` tự sinh `web/AGENTS.md`/`web/CLAUDE.md`, giữ trong repo. Chưa làm (đúng spec): `/dang-nhap` (4.2), Playwright vào CI máy chủ (Ask First 4.7), thu cổng 8000 về loopback (Ask First). Mọi task, AC và 12 hàng I/O Matrix đã kiểm, nên ghi `done` theo luật CLAUDE.md.
   4-2-màn-đăng-nhập-và-vòng-đời-phiên: backlog  # QA: E2E đăng nhập, hết phiên, đăng xuất
   4-3-chat-console-và-các-trạng-thái-lượt: backlog  # QA: E2E các trạng thái lượt (đang trả lời, lỗi, rỗng)
   4-4-cite-row-slab-bôi-đen-và-dòng-hạn-chế-l1: backlog  # QA: E2E cite-row và slab che theo L0/L1/L2, so với hai tài khoản
@@ -216,7 +216,10 @@ action_items:
     action: "Cập nhật EXPERIENCE.md Open Questions 4 và 7 (toggle demo/admin, poll
       5 giây) cho khớp AD-10/AD-14 đã chốt"
     owner: "sonlm"
-    status: open
+    status: done
+    ref: "Story 4.1 (07/09/2026): hai câu hỏi gạch trong EXPERIENCE.md Open Questions,
+      câu 4 trỏ AD-10 (toggle và cache offline đòi claim demo hoặc admin), câu 7 trỏ
+      AD-14 (poll 5 giây endpoint trạng thái nhẹ, story 5.4)."
   - id: "epic-1-retro-item-6-bỏ-mệnh-đề-không-mở-lại-adapter-khỏi-epi"
     epic: 1
     action: "Bỏ mệnh đề \"không mở lại adapter\" khỏi epics.md:267, :350, epic-1-context.md:39,
