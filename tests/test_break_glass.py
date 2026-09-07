@@ -68,6 +68,7 @@ from api.hoi_dap import (
     MA_TRICH_DAN_NGOAI_QUYEN,
     LoiHoiDap,
 )
+from api.che_do_do import BIEN_CHE_DO_DO
 from api.xac_thuc import BIEN_KHOA_KY
 from core.audit import (
     EVENT_BREAKGLASS_CANCEL,
@@ -339,6 +340,8 @@ def _kho_gia(khong_gian: str = "synth", them=()) -> KhoGia:
 
 def _client(monkeypatch, kho, audit, engine, **tuy_chon):
     monkeypatch.setenv(BIEN_KHOA_KY, KHOA_TEST)
+    # Story 3.8: các ca hoán sang bảng đo qua HTTP chạy như tiến trình đo.
+    monkeypatch.setenv(BIEN_CHE_DO_DO, "1")
 
     async def _mo_kho():
         return kho

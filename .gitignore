@@ -55,3 +55,6 @@ eval/de_xuat/*.yaml
 !eval/de_xuat/synth*.yaml
 !eval/de_xuat/khao_sat*.yaml
 eval/de_xuat/*.bak.yaml
+# Đo 3 thô (story 3.8): file dở dang của một đợt hỏng và bản cũ khi --ghi-de
+eval/ket_qua_do3/*-chua-xong.json
+eval/ket_qua_do3/*.bak.json

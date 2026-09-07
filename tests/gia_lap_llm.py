@@ -50,6 +50,7 @@ from adapters.tra_loi import (
     DAU_PROMPT_TRA_LOI,
     KHOA_CAU_TRA_LOI,
     KHOA_KHONG_CO_DAP_AN,
+    KHOA_NGUON,
 )
 from core.audit import SuKienAudit
 from hypergraphrag.prompt import PROMPTS
@@ -84,12 +85,20 @@ def phan_hoi_tu_khoa(
     )
 
 
-def phan_hoi_tra_loi(cau_tra_loi: str, khong_co_dap_an: bool = False) -> str:
-    """Đầu ra hợp lệ của lượt sinh câu trả lời (story 3.5)."""
-    return json.dumps(
-        {KHOA_KHONG_CO_DAP_AN: khong_co_dap_an, KHOA_CAU_TRA_LOI: cau_tra_loi},
-        ensure_ascii=False,
-    )
+def phan_hoi_tra_loi(
+    cau_tra_loi: str, khong_co_dap_an: bool = False, nguon: list | None = None
+) -> str:
+    """Đầu ra hợp lệ của lượt sinh câu trả lời (story 3.5).
+
+    `nguon` (story 3.8) là khóa thứ ba tùy chọn: `None` thì đầu ra **không
+    mang** khóa ấy (hình dạng hai khóa của 3.5, vẫn hợp lệ và citation là cả tập
+    thấy); một danh sách thì mang nguyên văn, kể cả một danh sách sai kiểu để
+    chấm nhánh `DAU_RA_LLM_KHONG_DOC_DUOC`.
+    """
+    than = {KHOA_KHONG_CO_DAP_AN: khong_co_dap_an, KHOA_CAU_TRA_LOI: cau_tra_loi}
+    if nguon is not None:
+        than[KHOA_NGUON] = nguon
+    return json.dumps(than, ensure_ascii=False)
 
 
 def phan_hoi_hai_luot(
@@ -98,6 +107,7 @@ def phan_hoi_hai_luot(
     khong_co_dap_an: bool = False,
     entity: str = TU_KHOA_ENTITY,
     hyperedge: str = TU_KHOA_HYPEREDGE,
+    nguon: list | None = None,
 ) -> Callable[[str], str]:
     """`theo_prompt` cho một lượt `hoi_dap`: lượt một trả từ khóa, lượt hai trả JSON.
 
@@ -113,7 +123,7 @@ def phan_hoi_hai_luot(
 
     def _theo(prompt: str) -> str:
         if prompt.startswith(DAU_PROMPT_TRA_LOI):
-            return phan_hoi_tra_loi(cau_tra_loi, khong_co_dap_an=khong_co_dap_an)
+            return phan_hoi_tra_loi(cau_tra_loi, khong_co_dap_an=khong_co_dap_an, nguon=nguon)
         return phan_hoi_tu_khoa(entity, hyperedge)
 
     return _theo

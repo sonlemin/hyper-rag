@@ -364,7 +364,7 @@ def test_nam_su_kien_moi_qua_postgres_that_va_su_kien_tien_trinh(cau_hinh_pg, kh
                     chi_tiet={CT_POLICY_ID: ID_MAC_DINH, CT_POLICY_VERSION: dau, CT_CHE_DO_DO: True},
                 )
                 await audit.ghi(startup)
-                _, moi = await kho.hoan("nhi-phan", audit=audit, act=dau, role="devops")
+                _, moi = await kho.hoan("nhi-phan", audit=audit, act=dau, role="devops", che_do_do=True)
                 await audit.ghi(su_kien_dang_nhap(dau, False, "v-3-6"))
                 await audit.ghi(
                     _hang_3_6(

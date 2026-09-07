@@ -75,7 +75,9 @@ from adapters.tra_loi import (
     NguCanhTruyHoiLa,
     doc_dau_ra,
     dung_prompt as dung_prompt_tra_loi,
+    hang_hyperedge_trong,
     id_hyperedge_trong,
+    loc_trich_dan_theo_nguon,
     ngu_canh_rong,
     hop_nhat_ngu_canh,
 )
@@ -759,7 +761,10 @@ class EngineACL(HyperGraphRAG):
            không lời gọi LLM trả tiền, không hàng `refusal`.
         4. Còn lại -> prompt của dự án, rồi `doc_dau_ra`. Cờ bật thì
            `co_no_answer` (citation bỏ đi, lượt từ chối rỗng); không thì một
-           câu trả lời kèm citation.
+           câu trả lời kèm citation **được dùng** (story 3.8, ADR-022): dãy
+           `nguon` của model tra qua `hang_hyperedge_trong` rồi giao với tập
+           citation đã dựng (`loc_trich_dan_theo_nguon`, chỉ thu hẹp, rỗng thì
+           giữ cả), còn `hyperedge_da_thay` giữ trọn tập thấy cho audit.
 
         Đầu ra không đọc được **dội lên nguyên** dưới dạng `DauRaTraLoiKhongDoc`:
         nó là lỗi hệ thống, và nuốt nó thành một lý do từ chối thứ tư là trộn
@@ -831,7 +836,12 @@ class EngineACL(HyperGraphRAG):
         ket_qua = doc_dau_ra(tho)
         if ket_qua.khong_co_dap_an:
             return KetQuaHoiDap(ly_do_tu_choi=LY_DO_CO_NO_ANSWER)
-        return KetQuaHoiDap(cau_tra_loi=ket_qua.cau_tra_loi, trich_dan=trich_dan)
+        # Hyperedge được cấp (5.3) luôn giữ citation, bất kể model có liệt kê
+        # dòng phụ hay không: nhịp "hỏi lại câu này" phải tất định (ADR-021).
+        dung = loc_trich_dan_theo_nguon(
+            trich_dan, hang_hyperedge_trong(ngu_canh), ket_qua.nguon, giu=current_context().grant_ids
+        )
+        return KetQuaHoiDap(cau_tra_loi=ket_qua.cau_tra_loi, trich_dan=dung, hyperedge_da_thay=ids)
 
     async def ngu_canh_hoi_dap(self, cau_hoi: str, param: QueryParam | None = None) -> str:
         """Chuỗi ngữ cảnh mà `hoi_dap` đưa cho LLM: đường chính cộng đường phụ theo grant (story 5.3).

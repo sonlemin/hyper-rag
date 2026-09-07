@@ -16,14 +16,18 @@ from fastapi.testclient import TestClient
 
 from adapters.policy_loader import load_policy
 from api import main as api_main
+from api.che_do_do import BIEN_CHE_DO_DO
 from api.chinh_sach import (
     ID_MAC_DINH,
     MA_DANH_MUC_RONG,
     MA_ID_KHONG_CO,
+    MA_POLICY_CHI_CHE_DO_DO,
+    POLICY_VAN_HANH,
     SPACE_TOAN_HE,
     KhoChinhSach,
     LoiChinhSach,
     danh_muc,
+    kiem_cong_cau_hinh_do,
 )
 from api.xac_thuc import BIEN_KHOA_KY, MA_THIEU_QUYEN, MA_THIEU_QUYEN_ADMIN
 from core.audit import EVENT_POLICY_SWAP, TIER_MUTATION
@@ -66,6 +70,9 @@ def audit_gia():
 @pytest.fixture
 def client(monkeypatch, kho_gia, audit_gia):
     monkeypatch.setenv(BIEN_KHOA_KY, KHOA_TEST)
+    # Story 3.8: ba bảng đo chỉ hoán sang được trên tiến trình đo. Bộ này chấm
+    # đường hoán nên nó chạy như tiến trình đo; ca cờ tắt có fixture riêng dưới.
+    monkeypatch.setenv(BIEN_CHE_DO_DO, "1")
 
     async def _mo_kho():
         return kho_gia
@@ -130,7 +137,7 @@ def test_hoan_doi_policy_version_va_ghi_mot_su_kien_mutation():
     audit = AuditGia()
     cu = kho.hien_tai()
     ma_moi, moi = asyncio.run(
-        kho.hoan("nhi-phan", audit=audit, act="dev01", role="devops")
+        kho.hoan("nhi-phan", audit=audit, act="dev01", role="devops", che_do_do=True)
     )
 
     assert ma_moi == "nhi-phan" and kho.ma == "nhi-phan"
@@ -184,7 +191,7 @@ def test_file_hong_thi_policy_dang_chay_giu_nguyen(tmp_path):
     cu = kho.hien_tai()
     audit = AuditGia()
     with pytest.raises(LoiChinhSach) as loi:
-        asyncio.run(kho.hoan("hong", audit=audit))
+        asyncio.run(kho.hoan("hong", audit=audit, che_do_do=True))
     assert loi.value.ma == PolicyInvalid.code
     assert loi.value.http == 400
     # Thân nói **bảng nào** hỏng và hỏng ở đâu trong bảng, không nói cây thư mục
@@ -209,7 +216,7 @@ def test_audit_hong_thi_hoan_khong_co_hieu_luc():
     audit = AuditGia()
     audit.no = RuntimeError("postgres chết")
     with pytest.raises(RuntimeError):
-        asyncio.run(kho.hoan("nhi-phan", audit=audit))
+        asyncio.run(kho.hoan("nhi-phan", audit=audit, che_do_do=True))
     assert kho.hien_tai() is cu and kho.ma == ID_MAC_DINH
 
 
@@ -228,7 +235,7 @@ def test_ngu_canh_dung_truoc_giu_tron_policy_cu_qua_mot_lan_hoan():
     ctx = ngu_canh_cua(danh_tinh, policy)
     khoa_truoc = ctx.keys_for("hyperedges")
 
-    asyncio.run(kho.hoan("nhi-phan", audit=AuditGia()))
+    asyncio.run(kho.hoan("nhi-phan", audit=AuditGia(), che_do_do=True))
 
     assert ctx.policy_version == policy.policy_version
     assert ctx.keys_for("hyperedges") == khoa_truoc
@@ -261,8 +268,8 @@ def test_hai_lan_hoan_dong_thoi_noi_duoi_nhau_chu_khong_dan_nhau():
 
     async def chay():
         return await asyncio.gather(
-            kho.hoan("nhi-phan", audit=audit),
-            kho.hoan("tat-phan-quyen", audit=audit),
+            kho.hoan("nhi-phan", audit=audit, che_do_do=True),
+            kho.hoan("tat-phan-quyen", audit=audit, che_do_do=True),
         )
 
     asyncio.run(chay())
@@ -327,7 +334,7 @@ def test_bon_cau_hinh_deu_hoan_duoc_qua_kho():
     audit = AuditGia()
     ban = {}
     for ma in kho.danh_muc():
-        ma_moi, p = asyncio.run(kho.hoan(ma, audit=audit))
+        ma_moi, p = asyncio.run(kho.hoan(ma, audit=audit, che_do_do=True))
         assert ma_moi == ma
         ban[ma] = p.policy_version
     assert len(set(ban.values())) == 4, ban
@@ -344,6 +351,8 @@ def test_get_policy_tra_id_version_va_danh_muc(client):
     assert than["id"] == ID_MAC_DINH
     assert than["policy_version"] == load_policy(oracle.POLICY_DAY_DU).policy_version
     assert than["danh_muc"] == sorted(danh_muc())
+    assert than["che_do_do"] is True, "fixture `client` chạy như tiến trình đo (story 3.8)"
+    assert set(than) == {"id", "policy_version", "danh_muc", "che_do_do"}
 
 
 def test_post_policy_bang_admin_doi_version_va_ghi_audit(client, audit_gia):
@@ -474,6 +483,7 @@ def test_lifespan_dung_bang_khai_trong_moi_truong(monkeypatch, kho_gia, audit_gi
     """FR-28 ở tầng vận hành: đổi biến môi trường là đổi bảng, không sửa code."""
     monkeypatch.setenv(BIEN_KHOA_KY, KHOA_TEST)
     monkeypatch.setenv("HYPER_RAG_POLICY_ID", "tat-phan-quyen")
+    monkeypatch.setenv(BIEN_CHE_DO_DO, "1")
 
     async def _mo_kho():
         return kho_gia
@@ -494,3 +504,150 @@ def test_lifespan_dung_bang_khai_trong_moi_truong(monkeypatch, kho_gia, audit_gi
         than["policy_version"]
         == load_policy(oracle.POLICY_TAT_PHAN_QUYEN).policy_version
     )
+
+
+# --- Story 3.8: cổng cấu hình đo theo cờ `HYPER_RAG_CHE_DO_DO` ---------------
+
+BA_BANG_DO = ("nhi-phan", "tat-phan-quyen", "toi-thieu-l1")
+
+
+def test_bang_van_hanh_la_day_du_va_ba_bang_con_lai_la_bang_do():
+    """Danh mục bốn id chia thành một bảng vận hành và ba bảng đo, suy từ glob."""
+    assert POLICY_VAN_HANH == frozenset({ID_MAC_DINH})
+    assert set(danh_muc()) - POLICY_VAN_HANH == set(BA_BANG_DO)
+    for ma in BA_BANG_DO:
+        with pytest.raises(LoiChinhSach) as loi:
+            kiem_cong_cau_hinh_do(ma, che_do_do=False)
+        assert loi.value.ma == MA_POLICY_CHI_CHE_DO_DO and loi.value.http == 400
+        assert "HYPER_RAG_CHE_DO_DO" in loi.value.thong_diep
+        assert "/" not in loi.value.thong_diep
+        kiem_cong_cau_hinh_do(ma, che_do_do=True)
+    kiem_cong_cau_hinh_do(ID_MAC_DINH, che_do_do=False)
+
+
+@pytest.mark.parametrize("ma", BA_BANG_DO)
+def test_co_tat_thi_hoan_sang_bang_do_bi_tu_choi_truoc_audit(ma):
+    """Hàng "Hoán cấu hình đo khi cờ tắt": 400 `POLICY_CHI_CHE_DO_DO`, bảng giữ
+    nguyên, **không hàng `policy_swap`** - từ chối trước `load_policy` và audit."""
+    kho = _kho()
+    cu = kho.hien_tai()
+    audit = AuditGia()
+    with pytest.raises(LoiChinhSach) as loi:
+        asyncio.run(kho.hoan(ma, audit=audit))
+    assert loi.value.ma == MA_POLICY_CHI_CHE_DO_DO and loi.value.http == 400
+    assert kho.hien_tai() is cu and kho.ma == ID_MAC_DINH
+    assert audit.su_kien == []
+    # Mặc định của `hoan` là tắt: một nơi gọi không khai gì chỉ hoán được bảng
+    # vận hành - fail-closed, cùng chiều với `nap`.
+    asyncio.run(kho.hoan(ID_MAC_DINH, audit=audit))
+    assert len(audit.su_kien) == 1
+
+
+def test_co_tat_id_la_van_la_ma_id_khong_co():
+    """Cổng đo đứng **sau** danh mục: id lạ vẫn `POLICY_ID_KHONG_CO`, không đổi mã theo cờ."""
+    with pytest.raises(LoiChinhSach) as loi:
+        asyncio.run(_kho().hoan("khong-co", audit=AuditGia()))
+    assert loi.value.ma == MA_ID_KHONG_CO
+
+
+def test_co_tat_nap_bang_do_bi_tu_choi_truoc_khi_doc_file(tmp_path):
+    """`KhoChinhSach.nap` với một id đo khi cờ tắt không chạm file: file hỏng cũng
+    chỉ ra `POLICY_CHI_CHE_DO_DO`, không `POLICY_INVALID`."""
+    (tmp_path / "policy-day-du.yaml").write_text(
+        oracle.POLICY_DAY_DU.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    (tmp_path / "policy-nhi-phan.yaml").write_text("hong", encoding="utf-8")
+    with pytest.raises(LoiChinhSach) as loi:
+        KhoChinhSach.nap("nhi-phan", tmp_path)
+    assert loi.value.ma == MA_POLICY_CHI_CHE_DO_DO
+    assert KhoChinhSach.nap("day-du", tmp_path).ma == "day-du"
+    with pytest.raises(PolicyInvalid):
+        KhoChinhSach.nap("nhi-phan", tmp_path, che_do_do=True)
+
+
+@pytest.fixture
+def client_co_tat(monkeypatch, kho_gia, audit_gia):
+    monkeypatch.setenv(BIEN_KHOA_KY, KHOA_TEST)
+    monkeypatch.setenv(BIEN_CHE_DO_DO, "0")
+
+    async def _mo_kho():
+        return kho_gia
+
+    async def _mo_audit():
+        return audit_gia
+
+    async def _mo_engine(audit):
+        return EngineGia()
+
+    monkeypatch.setattr(api_main, "mo_kho_tai_khoan", _mo_kho)
+    monkeypatch.setattr(api_main, "mo_audit", _mo_audit)
+    monkeypatch.setattr(api_main.hoi_dap, "mo_engine", _mo_engine)
+    with TestClient(api_main.app) as c:
+        yield c
+
+
+@pytest.mark.parametrize("ma", BA_BANG_DO)
+def test_http_co_tat_hoan_bang_do_ra_400_va_bang_giu_nguyen(client_co_tat, audit_gia, ma):
+    """Qua HTTP với `HYPER_RAG_CHE_DO_DO=0`: admin thật vẫn bị 400, bảng và audit không đổi."""
+    dau = _bearer(client_co_tat, "dev01")
+    kq = client_co_tat.post("/admin/policy", json={"id": ma}, headers=dau)
+    assert kq.status_code == 400, kq.text
+    assert kq.json()["error"]["code"] == MA_POLICY_CHI_CHE_DO_DO
+    than = client_co_tat.get("/admin/policy", headers=dau).json()
+    assert than["id"] == ID_MAC_DINH and than["che_do_do"] is False
+    assert [s for s in audit_gia.su_kien if s.event == EVENT_POLICY_SWAP] == []
+    # Hoán sang chính bảng vận hành thì vẫn được, và vẫn ghi audit.
+    assert client_co_tat.post("/admin/policy", json={"id": ID_MAC_DINH}, headers=dau).status_code == 200
+    assert len([s for s in audit_gia.su_kien if s.event == EVENT_POLICY_SWAP]) == 1
+
+
+def test_http_co_bat_hoan_du_bon_bang(client, audit_gia):
+    """Hàng "Hoán khi cờ bật": bốn id đều 200 như 3.2, bốn hàng `policy_swap`."""
+    dau = _bearer(client, "dev01")
+    for ma in (*BA_BANG_DO, ID_MAC_DINH):
+        kq = client.post("/admin/policy", json={"id": ma}, headers=dau)
+        assert kq.status_code == 200, (ma, kq.text)
+        assert kq.json()["id"] == ma
+    assert len([s for s in audit_gia.su_kien if s.event == EVENT_POLICY_SWAP]) == 4
+    assert client.get("/admin/policy", headers=dau).json()["id"] == ID_MAC_DINH
+
+
+@pytest.mark.parametrize("ma", BA_BANG_DO)
+def test_lifespan_chet_voi_id_do_khi_co_tat(monkeypatch, kho_gia, ma):
+    """Hàng "Khởi động với id đo mà cờ tắt": chết ở giây đầu, trước mọi kết nối."""
+    monkeypatch.setenv(BIEN_KHOA_KY, KHOA_TEST)
+    monkeypatch.setenv("HYPER_RAG_POLICY_ID", ma)
+    monkeypatch.setenv(BIEN_CHE_DO_DO, "0")
+    da_mo = []
+
+    async def _mo():
+        da_mo.append(1)
+        return kho_gia
+
+    monkeypatch.setattr(api_main, "mo_kho_tai_khoan", _mo)
+    with pytest.raises(LoiChinhSach) as loi:
+        with TestClient(api_main.app):
+            pass
+    assert loi.value.ma == MA_POLICY_CHI_CHE_DO_DO
+    assert da_mo == [], "phải từ chối trước khi mở kết nối nào"
+
+
+def test_lifespan_doc_co_do_truoc_khi_nap_policy(monkeypatch, kho_gia):
+    """Cờ đọc **trước** policy: một cờ gõ sai nổ `CHE_DO_DO_KHONG_HOP_LE` kể cả khi
+    id policy cũng sai - và hai lỗi đều trước mọi kết nối."""
+    from api.che_do_do import CheDoDoKhongHopLe
+
+    monkeypatch.setenv(BIEN_KHOA_KY, KHOA_TEST)
+    monkeypatch.setenv("HYPER_RAG_POLICY_ID", "khong-co-bang-nay")
+    monkeypatch.setenv(BIEN_CHE_DO_DO, "yes")
+    da_mo = []
+
+    async def _mo():
+        da_mo.append(1)
+        return kho_gia
+
+    monkeypatch.setattr(api_main, "mo_kho_tai_khoan", _mo)
+    with pytest.raises(CheDoDoKhongHopLe):
+        with TestClient(api_main.app):
+            pass
+    assert da_mo == []

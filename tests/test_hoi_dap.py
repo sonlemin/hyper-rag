@@ -510,6 +510,33 @@ def test_su_kien_query_ghi_thoi_gian_o_tang_observation(client, audit_gia):
     assert sk.chi_tiet[hoi_dap.CT_MILI_GIAY] >= 0
 
 
+def test_su_kien_query_ghi_tap_thay_khong_phai_tap_dung(monkeypatch, kho_gia, audit_gia):
+    """Story 3.8: `hyperedge_ids` là `KetQuaHoiDap.hyperedge_da_thay`, không phải dãy id citation."""
+    from tests.test_trich_dan import _td
+
+    engine = EngineGia(trich_dan=(_td("he-1"),), hyperedge_da_thay=("he-1", "he-2"))
+    monkeypatch.setenv(BIEN_KHOA_KY, KHOA_TEST)
+
+    async def _mo_kho():
+        return kho_gia
+
+    async def _mo_audit():
+        return audit_gia
+
+    async def _mo_engine(audit):
+        return engine
+
+    monkeypatch.setattr(api_main, "mo_kho_tai_khoan", _mo_kho)
+    monkeypatch.setattr(api_main, "mo_audit", _mo_audit)
+    monkeypatch.setattr(api_main.hoi_dap, "mo_engine", _mo_engine)
+    with TestClient(api_main.app) as c:
+        kq = _hoi(c, "dev01")
+    assert kq.status_code == 200, kq.text
+    assert [x["id"] for x in kq.json()["citations"]] == ["he-1"]
+    sk = [s for s in audit_gia.su_kien if s.event == EVENT_QUERY]
+    assert len(sk) == 1 and sk[0].hyperedge_ids == ("he-1", "he-2")
+
+
 def test_khong_ghi_su_kien_query_khi_truy_hoi_hong(client, audit_gia, engine_gia):
     """Một 502 không được vào mẫu số thời gian của NFR-08.
 

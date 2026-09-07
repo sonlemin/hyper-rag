@@ -72,6 +72,22 @@ BIEN_ID_POLICY: str = "HYPER_RAG_POLICY_ID"
 
 MA_ID_KHONG_CO: str = "POLICY_ID_KHONG_CO"
 
+# Cổng cấu hình đo (story 3.8, ADR-022, khoản ledger 3.2). Danh mục id là một
+# danh mục phẳng, nhưng chỉ **một** id là bảng vận hành; ba id kia là ba cấu
+# hình đo của PRD 5.3, và `tat-phan-quyen` bỏ cả mức tiết lộ lẫn biên cách ly
+# `khach_hang_b` (PRD: "không pass mô hình đe dọa"). Tiến trình chỉ được chạy
+# hay hoán sang một cấu hình đo khi nó là **tiến trình đo** - cờ
+# `HYPER_RAG_CHE_DO_DO=1` của ADR-017, đọc một lần lúc khởi động, không có
+# endpoint bật/tắt. Cờ tắt thì `nap` (khởi động) và `hoan` (lúc chạy) từ chối id
+# ngoài `POLICY_VAN_HANH` **trước** `load_policy` và trước audit: không hàng
+# `policy_swap` cho một lần hoán không xảy ra, bảng đang chạy giữ nguyên.
+#
+# Vì sao gắn vào cờ đã có thay vì một cờ mới: ADR-017 đã định nghĩa "tiến trình
+# này sinh ra để đo" bằng đúng biến ấy, và ba bảng đo chỉ có nghĩa trong cửa sổ
+# đó. Hai cờ cho một trạng thái là hai định nghĩa của cùng một thứ.
+POLICY_VAN_HANH: frozenset[str] = frozenset({ID_MAC_DINH})
+MA_POLICY_CHI_CHE_DO_DO: str = "POLICY_CHI_CHE_DO_DO"
+
 # Danh mục rỗng là một ca **khác** id lạ, và nó có mã riêng: `config/` không
 # mount được trong container cho một danh mục rỗng, và khi đó thông điệp của ca
 # id lạ cụt ngang ở chữ "danh mục là " - một câu không nói được gì cho người
@@ -174,6 +190,23 @@ def _khong_lo_duong_dan(loi: PolicyInvalid, duong_dan: Path) -> str:
     return str(loi).replace(str(duong_dan), duong_dan.name)
 
 
+def kiem_cong_cau_hinh_do(ma: str, *, che_do_do: bool) -> None:
+    """Từ chối một id cấu hình đo khi tiến trình không ở chế độ đo (400).
+
+    Hàm thuần, gọi ở cả `nap` lẫn `hoan` sau khi id đã qua `duong_dan_cua`
+    (id lạ vẫn là `POLICY_ID_KHONG_CO`, không đổi mã theo cờ). Thông điệp nói
+    tên biến môi trường để người vận hành biết phải bật gì, không nói đường dẫn.
+    """
+    if che_do_do or ma in POLICY_VAN_HANH:
+        return
+    raise LoiChinhSach(
+        400,
+        MA_POLICY_CHI_CHE_DO_DO,
+        f"bảng chính sách {ma!r} là cấu hình đo, chỉ chạy được trên tiến trình đo"
+        " (HYPER_RAG_CHE_DO_DO=1); bảng vận hành là " + ", ".join(sorted(POLICY_VAN_HANH)),
+    )
+
+
 class KhoChinhSach:
     """Bảng chính sách đang chạy của tiến trình, hoán được lúc chạy.
 
@@ -193,9 +226,18 @@ class KhoChinhSach:
         self._khoa = asyncio.Lock()
 
     @classmethod
-    def nap(cls, ma: str, thu_muc: str | Path | None = None) -> "KhoChinhSach":
-        """Dựng kho từ một id; file hỏng là `PolicyInvalid` ngay lúc khởi động."""
-        return cls(ma, load_policy(duong_dan_cua(ma, thu_muc)), thu_muc)
+    def nap(
+        cls, ma: str, thu_muc: str | Path | None = None, *, che_do_do: bool = False
+    ) -> "KhoChinhSach":
+        """Dựng kho từ một id; file hỏng là `PolicyInvalid` ngay lúc khởi động.
+
+        `che_do_do` (story 3.8) mặc định **tắt**, fail-closed: một nơi gọi không
+        khai gì chỉ dựng được bảng vận hành. Lifespan truyền cờ đã đọc; id đo
+        với cờ tắt là `POLICY_CHI_CHE_DO_DO` trước khi chạm file.
+        """
+        duong_dan = duong_dan_cua(ma, thu_muc)
+        kiem_cong_cau_hinh_do(ma, che_do_do=che_do_do)
+        return cls(ma, load_policy(duong_dan), thu_muc)
 
     @property
     def ma(self) -> str:
@@ -226,8 +268,14 @@ class KhoChinhSach:
         audit: AuditPort,
         act: str | None = None,
         role: str | None = None,
+        che_do_do: bool = False,
     ) -> tuple[str, Policy]:
         """Hoán sang bảng `ma`: nạp, ghi audit mutation, rồi mới thay.
+
+        `che_do_do` (story 3.8): cờ của tiến trình, handler truyền
+        `app.state.che_do_do`. Tắt thì chỉ hoán được sang bảng vận hành; một id
+        đo là 400 `POLICY_CHI_CHE_DO_DO` **trước** `load_policy` và trước audit,
+        bảng đang chạy giữ nguyên. Mặc định tắt vì cùng lý do với `nap`.
 
         Trả **cả cặp** `(id, Policy)` chứ không riêng bảng, để nơi gọi không
         phải đọc lại `ma` sau đó - một phép đọc thứ hai sau `await` là một cặp
@@ -236,6 +284,7 @@ class KhoChinhSach:
         Ba cách hỏng, ba kết cục, và không cách nào để lại một bảng nửa vời:
 
         - id lạ -> 400 `POLICY_ID_KHONG_CO`, không chạm đĩa ngoài `config/`;
+        - id đo khi cờ đo tắt -> 400 `POLICY_CHI_CHE_DO_DO`, không chạm file;
         - file hỏng -> 400 `POLICY_INVALID`, **bảng đang chạy giữ nguyên**;
         - audit hỏng -> lỗi dội lên nơi gọi và hoán **không** có hiệu lực.
 
@@ -248,6 +297,7 @@ class KhoChinhSach:
         là một lỗ trong lịch sử mà không ai nhìn thấy lúc đọc code.
         """
         duong_dan = duong_dan_cua(ma, self._thu_muc)
+        kiem_cong_cau_hinh_do(ma, che_do_do=che_do_do)
         async with self._khoa:
             try:
                 moi = load_policy(duong_dan)

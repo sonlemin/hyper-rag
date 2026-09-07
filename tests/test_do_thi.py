@@ -61,6 +61,7 @@ from api.hoi_dap import (
     graph_rong,
 )
 from api.main import MA_LOI_KHONG_XAC_DINH
+from api.che_do_do import BIEN_CHE_DO_DO
 from api.xac_thuc import BIEN_KHOA_KY
 from core.facts import cau_fact
 from core.audit import EVENT_EMBEDDING_COST, EVENT_LLM_COST, EVENT_QUERY, EVENT_REFUSAL
@@ -623,6 +624,8 @@ def test_hoan_policy_doi_do_thi_theo_bang_moi(workspace_dir, khong_gian, policy)
 
 def _client(monkeypatch, kho, audit, engine, **tuy_chon):
     monkeypatch.setenv(BIEN_KHOA_KY, KHOA_TEST)
+    # Story 3.8: các ca hoán sang bảng đo qua HTTP chạy như tiến trình đo.
+    monkeypatch.setenv(BIEN_CHE_DO_DO, "1")
 
     async def _mo_kho():
         return kho

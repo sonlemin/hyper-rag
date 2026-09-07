@@ -1,0 +1,97 @@
+
+== B0 health
+  PASS  GET /health 200
+
+== B1 dang nhap
+  PASS  dang nhap ts01 200 co token
+  PASS  dang nhap dev01 200 co token
+  PASS  dang nhap demo01 200 co token
+  PASS  sai mat khau -> 401 DANG_NHAP_SAI
+
+== B2 cung cau hoi, hai vai
+  dev01: refused=False citation=1 L1=0 L2=1 che=0 answer='Nguyên nhân là chỉnh sai giới hạn bộ nhớ PHP-FPM trong một phiếu thay đổi được duyệt tối hôm trước, làm tiến trình bị hệ điều hành thu hồi hàng loạt khi lưu lượ'
+  ts01 : refused=False citation=1 L1=1 L2=0 che=1 answer='Nguyên nhân sự cố App01 lỗi 502 là [cause:masked].'
+  PASS  dev01 tra loi (refused false)
+  PASS  ts01 tra loi (khoan ledger co_no_answer)
+  PASS  ts01 co >=1 citation L1 mang masked_slots
+  PASS  moi citation cua ts01 mang du 6 khoa
+  QUAN SAT  dev01 citation L2 = 1, ts01 citation L2 = 0 (tap dung do model chon)
+  QUAN SAT  hai answer khac nhau
+  PASS  meta.role khac nhau, khong truong nao khac ngoai 5 khoa
+  hyperedge L1 chon cho B5: he-a2ccd36021446e740d8cdc3e
+
+== B3 vai L0 nhan template tu choi, bang tung byte voi tu choi khong-co-dap-an
+  L0 : refused=True citation=0 L1=0 L2=0 che=0 answer=''
+  N7 : refused=True citation=0 L1=0 L2=0 che=0 answer=''
+  PASS  cau L0 -> refused true, answer null, citations []
+  PASS  cau N7 -> refused true
+  PASS  hai than tu choi bang nhau tung byte
+  QUAN SAT  dev01 hoi cung cau L0: refused=False (khac nhau la do quyen)
+
+== B4 hoan 4 bang chinh sach, khong sua code
+  PASS  GET /admin/policy bang admin: dang chay day-du, danh muc 4
+  PASS  ts01 (khong admin) bi 403
+  PASS  hoan sang tat-phan-quyen 200, policy_version 3b20bfefbc58
+    ts01 @ tat-phan-quyen: refused=False citation=1 L1=0 L2=1 che=0 answer='Nguyên nhân là chỉnh sai giới hạn bộ nhớ PHP-FPM trong một phiếu thay đổi được duyệt tối hôm trước, làm tiến trình bị hệ điều hành thu hồi hàng loạt khi lưu lượ'
+  PASS    tat-phan-quyen: moi citation L2, chi owner con bi che (AD-9)
+  PASS  hoan sang nhi-phan 200, policy_version 816c11697e12
+    ts01 @ nhi-phan: refused=True citation=0 L1=0 L2=0 che=0 answer=''
+  PASS    nhi-phan: khong citation L1 (L1 ep xuong L0)
+  PASS  hoan sang day-du 200, policy_version 1248bd691b23
+    ts01 @ day-du: refused=False citation=1 L1=1 L2=0 che=1 answer='Nguyên nhân sự cố App01 lỗi 502 là [cause:masked].'
+  PASS    day-du: co citation L1
+  PASS  hoan sang toi-thieu-l1 200, policy_version fe8f3c9ce0f2
+    ts01 @ toi-thieu-l1: refused=False citation=1 L1=1 L2=0 che=1 answer='Nguyên nhân sự cố App01 lỗi 502 là [cause:masked].'
+  QUAN SAT    toi-thieu-l1: ts01 refused=False, L1=1
+  PASS  ve day-du
+
+== B5 break-glass: xin -> duyet -> hoi lai -> don (muc kiem qua /do-thi, tat dinh)
+  PASS  truoc grant: /do-thi goc L1 co node che
+  PASS  ts01 xin 201, id bg-9ff7647712be, trang thai cho_duyet
+  PASS  demo01 (Tech Support) thay yeu cau tren hang cho
+  PASS  demo01 duyet 200, grant gr-e829cc7312f8 cho (ts01, tech_support)
+  PASS  sau grant: /do-thi goc L2, chi owner con che (L2|)
+  PASS  dev01 /do-thi goc khong doi (grant khong lan vai khac)
+  PASS  citation goc co mat va len L2
+  ts01 sau grant: refused=False citation=1 L1=0 L2=1 che=1 answer='Sự cố App01 lỗi 502 do kỹ sư trực chỉnh sai giới hạn bộ nhớ của pool PHP-FPM khi tối ưu cấu hình, worker bị kill liên tục khi traffic vượt 5000 request mỗi phút'
+  PASS  xin lai cung hyperedge -> 409 GRANT_CON_HAN
+  PASS  sau het han: /do-thi goc ve L1 co node che
+
+== B6 audit_log (30 hang moi nhat cua cac su kien lien quan)
+  01:34:48|observation|query|ts01|tech_support||88
+  01:34:46|observation|filter|ts01|tech_support||
+  01:34:40|mutation|breakglass_approve|demo01|tech_support|da_duyet|1
+  01:34:40|mutation|breakglass_request|ts01|tech_support|cho_duyet|1
+  01:34:40|mutation|policy_swap|dev01|devops|day-du|
+  01:34:40|observation|query|ts01|tech_support||93
+  01:34:38|observation|filter|ts01|tech_support||
+  01:34:34|mutation|policy_swap|dev01|devops|toi-thieu-l1|
+  01:34:34|observation|query|ts01|tech_support||85
+  01:34:33|observation|filter|ts01|tech_support||
+  01:34:28|mutation|policy_swap|dev01|devops|day-du|
+  01:34:28|observation|query|ts01|tech_support||
+  01:34:28|mutation|refusal|ts01|tech_support|co_no_answer|
+  01:34:22|mutation|policy_swap|dev01|devops|nhi-phan|
+  01:34:22|observation|query|ts01|tech_support||97
+  01:34:13|mutation|policy_swap|dev01|devops|tat-phan-quyen|
+  01:34:13|observation|query|dev01|devops||104
+  01:34:11|observation|filter|dev01|devops||
+  01:34:06|observation|query|ts01|tech_support||
+  01:34:06|mutation|refusal|ts01|tech_support|co_no_answer|
+  01:34:06|observation|filter|ts01|tech_support||
+  01:34:02|observation|query|ts01|tech_support||
+  01:34:02|mutation|refusal|ts01|tech_support|co_no_answer|
+  01:34:00|observation|filter|ts01|tech_support||
+  01:33:56|observation|query|ts01|tech_support||79
+  01:33:54|observation|filter|ts01|tech_support||
+  01:33:50|observation|query|dev01|devops||83
+  01:33:40|observation|auth_login|ts01|-||
+  01:33:39|observation|auth_login|demo01|-||
+  01:33:39|observation|auth_login|dev01|-||
+  PASS  tu 2026-09-07T01:33:38Z: >=5 hang policy_swap cua dev01, >=2 refusal cua ts01 kem ly_do, >=1 breakglass_approve
+
+== B7 tran than request (ADR-022 quyet dinh 1)
+  PASS  than 70 KB -> 413 THAN_QUA_LON
+  PASS  GET /admin/policy khai che_do_do=true (tien trinh do)
+
+CONG M2: PASS (0 FAIL)

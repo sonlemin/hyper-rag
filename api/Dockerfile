@@ -48,4 +48,11 @@ ten = { \
 print('tiktoken warm:', sorted(ten))"
 
 EXPOSE 8000
-CMD ["uv", "run", "--no-sync", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# --limit-concurrency 16 (story 3.8, ADR-022): tran dong thoi cua tien trinh
+# phuc vu, thay cho mot semaphore trong ung dung (trang thai ngoai Postgres,
+# AD-7) hay mot tran nhip theo tai khoan (chot nhan o ADR-022). Vuot tran thi
+# uvicorn tra 503 van ban tran, khong envelope - gioi han da khai. Moi luot
+# /hoi-dap la hai loi goi LLM tra tien, nen 16 request dang bay la tran tien
+# cua mot khoanh khac. Service `api` giu CMD nay (khong `command` trong compose,
+# `tests/test_compose_ha_tang.py` canh); `man-nap` co `command` rieng.
+CMD ["uv", "run", "--no-sync", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--limit-concurrency", "16"]

@@ -757,18 +757,24 @@ async def _ghi_audit_truy_van(
 ) -> None:
     """Sự kiện `query` ở tầng **observation**: audit hỏng không làm câu hỏi hỏng.
 
-    `hyperedge_ids` (story 3.4) là dãy `id` của các citation, đúng thứ tự - id
-    **node** hyperedge, cùng id mà response mang, để hậu kiểm đối chiếu được
-    response với audit bằng một phép so chuỗi (quy ước ở `core/audit.py`).
-    Lượt từ chối ghi tuple rỗng. Không đếm số mục bị lọc: đó là hàng `filter`
-    của adapter KV (3.6), đứng cạnh hàng này và nối bằng `request_id`.
+    `hyperedge_ids` là dãy id **node** hyperedge của **tập thấy** - mọi
+    hyperedge trong ngữ cảnh đã lọc mà LLM đọc (`KetQuaHoiDap.hyperedge_da_thay`),
+    đúng thứ tự ngữ cảnh. Story 3.4 ghi dãy id citation; story 3.8 (ADR-022)
+    tách hai tập: `citations` của response là tập **dùng** (thu hẹp theo
+    `nguon` của model), audit giữ tập thấy để hậu kiểm không phụ thuộc vào một
+    danh sách do model khai. Tập dùng luôn là tập con của dãy này, nên phép so
+    chuỗi "mọi `citations[].id` nằm trong `hyperedge_ids`" vẫn đứng. Quy ước ở
+    `core/audit.py` nói "cùng id với citation" theo nghĩa cùng **loại** id
+    (node, không phải vector). Lượt từ chối ghi tuple rỗng. Không đếm số mục bị
+    lọc: đó là hàng `filter` của adapter KV (3.6), đứng cạnh hàng này và nối
+    bằng `request_id`.
 
     `chi_tiet` mang mili giây, thứ NFR-08 đọc, cộng `request_id` để nối với
     `llm_cost`/`embedding_cost`/`filter` của cùng lượt. Cả hai vào audit chứ
     không vào `meta`, vì `meta` phải byte-identical giữa mọi lý do từ chối (AD-8).
     Khóa thứ ba `grant_ids` (story 5.3) **chỉ khi** ngữ cảnh mang grant: hàng
     của lượt không grant giữ nguyên hình dạng, hàng của lượt có grant nói lượt
-    ấy chạy dưới những id nào; `hyperedge_ids` vẫn là dãy id citation.
+    ấy chạy dưới những id nào; `hyperedge_ids` vẫn là dãy id tập thấy.
     """
     chi_tiet = _kem_grant({CT_MILI_GIAY: round(mili_giay, 3), CT_REQUEST_ID: ngu_canh.request_id}, ngu_canh)
     await ghi_quan_sat(
@@ -982,9 +988,9 @@ async def tra_loi(
     # gian cho một lượt không trả lời được.
     if tu_choi:
         await _ghi_audit_tu_choi(audit, ngu_canh, ket_qua.ly_do_tu_choi, che_do_do)
-    await _ghi_audit_truy_van(
-        audit, ngu_canh, mili_giay, tuple(td.id for td in ket_qua.trich_dan)
-    )
+    # Audit ghi **tập thấy**, response mang tập dùng (story 3.8): hậu kiểm
+    # không đứng trên một danh sách do model khai.
+    await _ghi_audit_truy_van(audit, ngu_canh, mili_giay, ket_qua.hyperedge_da_thay)
     return dung_envelope(
         # `None` ở lượt từ chối, và đó là hợp đồng chứ không một chỗ chưa điền:
         # câu người dùng đọc là `TEMPLATE_TU_CHOI`, do tầng render dựng từ cờ

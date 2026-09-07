@@ -182,6 +182,10 @@ class EngineGia:
     `trich_dan` theo id (story 5.1): `trich_dan_theo_id` trả `trich_dan_tra`,
     một dict `{id: TrichDan}` điều khiển được (mặc định rỗng, tức mọi id đều
     vô hình); `ids` và `ngu_canh` ghi lại như `do_thi`.
+
+    `hyperedge_da_thay` (story 3.8): tập thấy mà lượt trả lời mang, thứ audit
+    `query` ghi; `None` là "bằng dãy id của `trich_dan`" - đúng hành vi mà
+    `KetQuaHoiDap` suy khi không ai khai, nên mọi ca cũ giữ nguyên kỳ vọng.
     """
 
     def __init__(
@@ -192,6 +196,7 @@ class EngineGia:
         trich_dan: tuple = (),
         do_thi=None,
         trich_dan_tra: dict | None = None,
+        hyperedge_da_thay: tuple | None = None,
     ):
         from adapters.do_thi import DoThi
 
@@ -199,6 +204,7 @@ class EngineGia:
         self.loi = loi
         self.ly_do = ly_do
         self.trich_dan = trich_dan
+        self.hyperedge_da_thay = hyperedge_da_thay
         self.do_thi_tra = DoThi() if do_thi is None else do_thi
         self.trich_dan_tra = {} if trich_dan_tra is None else dict(trich_dan_tra)
         # Story 5.2: lân cận một bước của từng id (chỉ dùng khi k > 0), và
@@ -234,7 +240,11 @@ class EngineGia:
             raise self.loi
         if self.ly_do is not None:
             return KetQuaHoiDap(ly_do_tu_choi=self.ly_do)
-        return KetQuaHoiDap(cau_tra_loi=self.tra_loi, trich_dan=self.trich_dan)
+        return KetQuaHoiDap(
+            cau_tra_loi=self.tra_loi,
+            trich_dan=self.trich_dan,
+            hyperedge_da_thay=() if self.hyperedge_da_thay is None else tuple(self.hyperedge_da_thay),
+        )
 
     async def do_thi(self, ids):
         from core.permission import current_context

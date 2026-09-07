@@ -1,0 +1,1746 @@
+{
+ "version": 1,
+ "space": "synth",
+ "ngay_do": "2026-09-07T01:06:51.422887+00:00",
+ "anh_do_thi": {
+  "space": "synth",
+  "so_hyperedge": 281,
+  "ngay_do": "2026-09-05T07:15:45.909875+00:00"
+ },
+ "so_cau_co_nhan": 22,
+ "model": {
+  "llm": "deepseek-v4-flash",
+  "embedding": "text-embedding-3-small"
+ },
+ "chi_phi": {
+  "so_loi_goi_llm": 88,
+  "so_loi_goi_embedding": 176,
+  "token_vao": 375837,
+  "token_ra": 29056,
+  "usd": 0.199582
+ },
+ "cau_hinh": {
+  "tat-phan-quyen": {
+   "thu_tu_prd": 1,
+   "policy_version": "3b20bfefbc5817961de93e7a62ab818de13f83a482a1d3ba83366566174eab3c",
+   "tat_ca": {
+    "so_cau": 22,
+    "tong": 41,
+    "ton_tai": 37,
+    "tra_loi_duoc": 37,
+    "recall_ton_tai": 0.9024,
+    "recall_tra_loi_duoc": 0.9024
+   },
+   "theo_nhom": {
+    "N3": {
+     "so_cau": 12,
+     "tong": 18,
+     "ton_tai": 18,
+     "tra_loi_duoc": 18,
+     "recall_ton_tai": 1.0,
+     "recall_tra_loi_duoc": 1.0
+    },
+    "N5": {
+     "so_cau": 10,
+     "tong": 23,
+     "ton_tai": 19,
+     "tra_loi_duoc": 19,
+     "recall_ton_tai": 0.8261,
+     "recall_tra_loi_duoc": 0.8261
+    }
+   },
+   "so_cau_tu_khoa_rong": 0,
+   "cau": [
+    {
+     "cau_id": "n3-01",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 2,
+     "ton_tai": 2,
+     "tra_loi_duoc": 2,
+     "co_mat": [
+      "he-88e11246a5a2896a063216d1",
+      "he-494aad99371ffc2404013e09"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 124
+    },
+    {
+     "cau_id": "n3-02",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-dc9ea1f5d232148586ae153a"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 102
+    },
+    {
+     "cau_id": "n3-03",
+     "nhom": "N3",
+     "vai": "tech_support",
+     "tong": 2,
+     "ton_tai": 2,
+     "tra_loi_duoc": 2,
+     "co_mat": [
+      "he-e04b174aca2a50ace8588d00",
+      "he-3045258117fdffba880a20fe"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 103
+    },
+    {
+     "cau_id": "n3-04",
+     "nhom": "N3",
+     "vai": "tech_support",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-2bda1d0460829064232a2051"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 102
+    },
+    {
+     "cau_id": "n3-05",
+     "nhom": "N3",
+     "vai": "tech_support",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-76dba0a98497333fa0b8df2d"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 94
+    },
+    {
+     "cau_id": "n3-06",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 2,
+     "ton_tai": 2,
+     "tra_loi_duoc": 2,
+     "co_mat": [
+      "he-de10202d12585a33d95ce9be",
+      "he-b2bb3027ad9f6e73a59a7612"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 107
+    },
+    {
+     "cau_id": "n3-07",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-991d13f5f925571b97fbf926"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 90
+    },
+    {
+     "cau_id": "n3-08",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 2,
+     "ton_tai": 2,
+     "tra_loi_duoc": 2,
+     "co_mat": [
+      "he-61a078dd0bfc37041eb30731",
+      "he-8889137cf69e8416933d028c"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 88
+    },
+    {
+     "cau_id": "n3-09",
+     "nhom": "N3",
+     "vai": "tech_support",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-d34b20f72d6b3f7b73cc86a8"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 106
+    },
+    {
+     "cau_id": "n3-10",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-1bce446f0948bad62c9be755"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 99
+    },
+    {
+     "cau_id": "n3-11",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-9b52b665a06488bd9f0285aa"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 94
+    },
+    {
+     "cau_id": "n3-12",
+     "nhom": "N3",
+     "vai": "tech_support",
+     "tong": 3,
+     "ton_tai": 3,
+     "tra_loi_duoc": 3,
+     "co_mat": [
+      "he-3a98e64055db3e388b244338",
+      "he-db3a42ba20927aa5a1f33b36",
+      "he-e90ed43661dcf4c670ff50e1"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 101
+    },
+    {
+     "cau_id": "n5-01",
+     "nhom": "N5",
+     "vai": "tech_support",
+     "tong": 3,
+     "ton_tai": 3,
+     "tra_loi_duoc": 3,
+     "co_mat": [
+      "he-022ed16bbb63216cc486e687",
+      "he-a2ccd36021446e740d8cdc3e",
+      "he-1aaefc697e361238b15f8943"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 102
+    },
+    {
+     "cau_id": "n5-02",
+     "nhom": "N5",
+     "vai": "devops",
+     "tong": 3,
+     "ton_tai": 3,
+     "tra_loi_duoc": 3,
+     "co_mat": [
+      "he-022ed16bbb63216cc486e687",
+      "he-a2ccd36021446e740d8cdc3e",
+      "he-1aaefc697e361238b15f8943"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 119
+    },
+    {
+     "cau_id": "n5-03",
+     "nhom": "N5",
+     "vai": "tech_support",
+     "tong": 3,
+     "ton_tai": 2,
+     "tra_loi_duoc": 2,
+     "co_mat": [
+      "he-022ed16bbb63216cc486e687",
+      "he-a2ccd36021446e740d8cdc3e"
+     ],
+     "vang": [
+      "he-d5b6499536b8a2b6f9e40f12"
+     ],
+     "ly_do": [
+      "he-d5b6499536b8a2b6f9e40f12 vắng dù vai được thấy (L2): truy hồi không kéo về trong top-k"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 121
+    },
+    {
+     "cau_id": "n5-04",
+     "nhom": "N5",
+     "vai": "devops",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-3bca45167461932e4c6c1b8b"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 88
+    },
+    {
+     "cau_id": "n5-05",
+     "nhom": "N5",
+     "vai": "tech_support",
+     "tong": 2,
+     "ton_tai": 2,
+     "tra_loi_duoc": 2,
+     "co_mat": [
+      "he-827391fec18fe5d974f8ab5f",
+      "he-317cdefeba8bf426e0a7bd31"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 103
+    },
+    {
+     "cau_id": "n5-06",
+     "nhom": "N5",
+     "vai": "devops",
+     "tong": 2,
+     "ton_tai": 2,
+     "tra_loi_duoc": 2,
+     "co_mat": [
+      "he-3f51fad31d2c07d6e66e4f78",
+      "he-08c4c7d64ed5e99ca3757f73"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 88
+    },
+    {
+     "cau_id": "n5-07",
+     "nhom": "N5",
+     "vai": "tech_support",
+     "tong": 2,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-33919ecf147d781f564aa8c3"
+     ],
+     "vang": [
+      "he-4b5d7f93aa7ad0c2ac5574fe"
+     ],
+     "ly_do": [
+      "he-4b5d7f93aa7ad0c2ac5574fe vắng dù vai được thấy (L2): truy hồi không kéo về trong top-k"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 75
+    },
+    {
+     "cau_id": "n5-08",
+     "nhom": "N5",
+     "vai": "devops",
+     "tong": 2,
+     "ton_tai": 2,
+     "tra_loi_duoc": 2,
+     "co_mat": [
+      "he-33919ecf147d781f564aa8c3",
+      "he-e6867a8192492e4e8d4660ce"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 121
+    },
+    {
+     "cau_id": "n5-09",
+     "nhom": "N5",
+     "vai": "tech_support",
+     "tong": 2,
+     "ton_tai": 2,
+     "tra_loi_duoc": 2,
+     "co_mat": [
+      "he-f5b17022758ce758669d897f",
+      "he-a0dfeee24f6222aa4081f5a9"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 86
+    },
+    {
+     "cau_id": "n5-10",
+     "nhom": "N5",
+     "vai": "devops",
+     "tong": 3,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-0e67fe5d43e70854fdf54d3f"
+     ],
+     "vang": [
+      "he-52852beec872be913a4ff6d4",
+      "he-df580cd9e0efeaf0fecdb545"
+     ],
+     "ly_do": [
+      "he-52852beec872be913a4ff6d4 vắng dù vai được thấy (L2): truy hồi không kéo về trong top-k",
+      "he-df580cd9e0efeaf0fecdb545 vắng dù vai được thấy (L2): truy hồi không kéo về trong top-k"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 109
+    }
+   ]
+  },
+  "nhi-phan": {
+   "thu_tu_prd": 2,
+   "policy_version": "816c11697e1220373f35002259a3ae0275db184618d1198a74a036f6c2d194dd",
+   "tat_ca": {
+    "so_cau": 22,
+    "tong": 41,
+    "ton_tai": 18,
+    "tra_loi_duoc": 18,
+    "recall_ton_tai": 0.439,
+    "recall_tra_loi_duoc": 0.439
+   },
+   "theo_nhom": {
+    "N3": {
+     "so_cau": 12,
+     "tong": 18,
+     "ton_tai": 12,
+     "tra_loi_duoc": 12,
+     "recall_ton_tai": 0.6667,
+     "recall_tra_loi_duoc": 0.6667
+    },
+    "N5": {
+     "so_cau": 10,
+     "tong": 23,
+     "ton_tai": 6,
+     "tra_loi_duoc": 6,
+     "recall_ton_tai": 0.2609,
+     "recall_tra_loi_duoc": 0.2609
+    }
+   },
+   "so_cau_tu_khoa_rong": 0,
+   "cau": [
+    {
+     "cau_id": "n3-01",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 2,
+     "ton_tai": 2,
+     "tra_loi_duoc": 2,
+     "co_mat": [
+      "he-88e11246a5a2896a063216d1",
+      "he-494aad99371ffc2404013e09"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 98
+    },
+    {
+     "cau_id": "n3-02",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-dc9ea1f5d232148586ae153a"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 93
+    },
+    {
+     "cau_id": "n3-03",
+     "nhom": "N3",
+     "vai": "tech_support",
+     "tong": 2,
+     "ton_tai": 0,
+     "tra_loi_duoc": 0,
+     "co_mat": [],
+     "vang": [
+      "he-e04b174aca2a50ace8588d00",
+      "he-3045258117fdffba880a20fe"
+     ],
+     "ly_do": [
+      "he-e04b174aca2a50ace8588d00 vắng: loại 'canh_bao' ở L0 với vai",
+      "he-3045258117fdffba880a20fe vắng: loại 'canh_bao' ở L0 với vai"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 76
+    },
+    {
+     "cau_id": "n3-04",
+     "nhom": "N3",
+     "vai": "tech_support",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-2bda1d0460829064232a2051"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 78
+    },
+    {
+     "cau_id": "n3-05",
+     "nhom": "N3",
+     "vai": "tech_support",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-76dba0a98497333fa0b8df2d"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 78
+    },
+    {
+     "cau_id": "n3-06",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 2,
+     "ton_tai": 2,
+     "tra_loi_duoc": 2,
+     "co_mat": [
+      "he-de10202d12585a33d95ce9be",
+      "he-b2bb3027ad9f6e73a59a7612"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 98
+    },
+    {
+     "cau_id": "n3-07",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 1,
+     "ton_tai": 0,
+     "tra_loi_duoc": 0,
+     "co_mat": [],
+     "vang": [
+      "he-991d13f5f925571b97fbf926"
+     ],
+     "ly_do": [
+      "he-991d13f5f925571b97fbf926 vắng: scope 'khach_hang_b' ngoài scopes của vai"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 82
+    },
+    {
+     "cau_id": "n3-08",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 2,
+     "ton_tai": 0,
+     "tra_loi_duoc": 0,
+     "co_mat": [],
+     "vang": [
+      "he-61a078dd0bfc37041eb30731",
+      "he-8889137cf69e8416933d028c"
+     ],
+     "ly_do": [
+      "he-61a078dd0bfc37041eb30731 vắng: scope 'khach_hang_b' ngoài scopes của vai",
+      "he-8889137cf69e8416933d028c vắng: scope 'khach_hang_b' ngoài scopes của vai"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 90
+    },
+    {
+     "cau_id": "n3-09",
+     "nhom": "N3",
+     "vai": "tech_support",
+     "tong": 1,
+     "ton_tai": 0,
+     "tra_loi_duoc": 0,
+     "co_mat": [],
+     "vang": [
+      "he-d34b20f72d6b3f7b73cc86a8"
+     ],
+     "ly_do": [
+      "he-d34b20f72d6b3f7b73cc86a8 vắng: loại 'canh_bao' ở L0 với vai"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 86
+    },
+    {
+     "cau_id": "n3-10",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-1bce446f0948bad62c9be755"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 93
+    },
+    {
+     "cau_id": "n3-11",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-9b52b665a06488bd9f0285aa"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 98
+    },
+    {
+     "cau_id": "n3-12",
+     "nhom": "N3",
+     "vai": "tech_support",
+     "tong": 3,
+     "ton_tai": 3,
+     "tra_loi_duoc": 3,
+     "co_mat": [
+      "he-3a98e64055db3e388b244338",
+      "he-db3a42ba20927aa5a1f33b36",
+      "he-e90ed43661dcf4c670ff50e1"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 77
+    },
+    {
+     "cau_id": "n5-01",
+     "nhom": "N5",
+     "vai": "tech_support",
+     "tong": 3,
+     "ton_tai": 0,
+     "tra_loi_duoc": 0,
+     "co_mat": [],
+     "vang": [
+      "he-022ed16bbb63216cc486e687",
+      "he-a2ccd36021446e740d8cdc3e",
+      "he-1aaefc697e361238b15f8943"
+     ],
+     "ly_do": [
+      "he-022ed16bbb63216cc486e687 vắng: scope 'khach_hang_a' ngoài scopes của vai",
+      "he-a2ccd36021446e740d8cdc3e vắng: loại 'bao_cao_su_co' ở L0 với vai",
+      "he-1aaefc697e361238b15f8943 vắng: scope 'khach_hang_a' ngoài scopes của vai"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 75
+    },
+    {
+     "cau_id": "n5-02",
+     "nhom": "N5",
+     "vai": "devops",
+     "tong": 3,
+     "ton_tai": 3,
+     "tra_loi_duoc": 3,
+     "co_mat": [
+      "he-022ed16bbb63216cc486e687",
+      "he-a2ccd36021446e740d8cdc3e",
+      "he-1aaefc697e361238b15f8943"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 110
+    },
+    {
+     "cau_id": "n5-03",
+     "nhom": "N5",
+     "vai": "tech_support",
+     "tong": 3,
+     "ton_tai": 0,
+     "tra_loi_duoc": 0,
+     "co_mat": [],
+     "vang": [
+      "he-022ed16bbb63216cc486e687",
+      "he-a2ccd36021446e740d8cdc3e",
+      "he-d5b6499536b8a2b6f9e40f12"
+     ],
+     "ly_do": [
+      "he-022ed16bbb63216cc486e687 vắng: scope 'khach_hang_a' ngoài scopes của vai",
+      "he-a2ccd36021446e740d8cdc3e vắng: loại 'bao_cao_su_co' ở L0 với vai",
+      "he-d5b6499536b8a2b6f9e40f12 vắng: loại 'bao_cao_su_co' ở L0 với vai"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 78
+    },
+    {
+     "cau_id": "n5-04",
+     "nhom": "N5",
+     "vai": "devops",
+     "tong": 1,
+     "ton_tai": 0,
+     "tra_loi_duoc": 0,
+     "co_mat": [],
+     "vang": [
+      "he-3bca45167461932e4c6c1b8b"
+     ],
+     "ly_do": [
+      "he-3bca45167461932e4c6c1b8b vắng: loại 'bi_mat_ha_tang' ở L0 với vai"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 83
+    },
+    {
+     "cau_id": "n5-05",
+     "nhom": "N5",
+     "vai": "tech_support",
+     "tong": 2,
+     "ton_tai": 0,
+     "tra_loi_duoc": 0,
+     "co_mat": [],
+     "vang": [
+      "he-827391fec18fe5d974f8ab5f",
+      "he-317cdefeba8bf426e0a7bd31"
+     ],
+     "ly_do": [
+      "he-827391fec18fe5d974f8ab5f vắng: loại 'bi_mat_ha_tang' ở L0 với vai",
+      "he-317cdefeba8bf426e0a7bd31 vắng: loại 'bi_mat_ha_tang' ở L0 với vai"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 79
+    },
+    {
+     "cau_id": "n5-06",
+     "nhom": "N5",
+     "vai": "devops",
+     "tong": 2,
+     "ton_tai": 0,
+     "tra_loi_duoc": 0,
+     "co_mat": [],
+     "vang": [
+      "he-3f51fad31d2c07d6e66e4f78",
+      "he-08c4c7d64ed5e99ca3757f73"
+     ],
+     "ly_do": [
+      "he-3f51fad31d2c07d6e66e4f78 vắng: scope 'khach_hang_b' ngoài scopes của vai",
+      "he-08c4c7d64ed5e99ca3757f73 vắng: scope 'khach_hang_b' ngoài scopes của vai"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 94
+    },
+    {
+     "cau_id": "n5-07",
+     "nhom": "N5",
+     "vai": "tech_support",
+     "tong": 2,
+     "ton_tai": 0,
+     "tra_loi_duoc": 0,
+     "co_mat": [],
+     "vang": [
+      "he-33919ecf147d781f564aa8c3",
+      "he-4b5d7f93aa7ad0c2ac5574fe"
+     ],
+     "ly_do": [
+      "he-33919ecf147d781f564aa8c3 vắng: loại 'bao_cao_su_co' ở L0 với vai",
+      "he-4b5d7f93aa7ad0c2ac5574fe vắng: loại 'bao_cao_su_co' ở L0 với vai"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 78
+    },
+    {
+     "cau_id": "n5-08",
+     "nhom": "N5",
+     "vai": "devops",
+     "tong": 2,
+     "ton_tai": 2,
+     "tra_loi_duoc": 2,
+     "co_mat": [
+      "he-33919ecf147d781f564aa8c3",
+      "he-e6867a8192492e4e8d4660ce"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 116
+    },
+    {
+     "cau_id": "n5-09",
+     "nhom": "N5",
+     "vai": "tech_support",
+     "tong": 2,
+     "ton_tai": 0,
+     "tra_loi_duoc": 0,
+     "co_mat": [],
+     "vang": [
+      "he-f5b17022758ce758669d897f",
+      "he-a0dfeee24f6222aa4081f5a9"
+     ],
+     "ly_do": [
+      "he-f5b17022758ce758669d897f vắng: scope 'khach_hang_b' ngoài scopes của vai",
+      "he-a0dfeee24f6222aa4081f5a9 vắng: scope 'khach_hang_b' ngoài scopes của vai"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 77
+    },
+    {
+     "cau_id": "n5-10",
+     "nhom": "N5",
+     "vai": "devops",
+     "tong": 3,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-0e67fe5d43e70854fdf54d3f"
+     ],
+     "vang": [
+      "he-52852beec872be913a4ff6d4",
+      "he-df580cd9e0efeaf0fecdb545"
+     ],
+     "ly_do": [
+      "he-52852beec872be913a4ff6d4 vắng dù vai được thấy (L2): truy hồi không kéo về trong top-k",
+      "he-df580cd9e0efeaf0fecdb545 vắng dù vai được thấy (L2): truy hồi không kéo về trong top-k"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 105
+    }
+   ]
+  },
+  "day-du": {
+   "thu_tu_prd": 3,
+   "policy_version": "1248bd691b2390f0606d3eac9ae1bd3b15dfdbd76eb07e6271b35a7a7dba52e1",
+   "tat_ca": {
+    "so_cau": 22,
+    "tong": 41,
+    "ton_tai": 24,
+    "tra_loi_duoc": 19,
+    "recall_ton_tai": 0.5854,
+    "recall_tra_loi_duoc": 0.4634
+   },
+   "theo_nhom": {
+    "N3": {
+     "so_cau": 12,
+     "tong": 18,
+     "ton_tai": 13,
+     "tra_loi_duoc": 12,
+     "recall_ton_tai": 0.7222,
+     "recall_tra_loi_duoc": 0.6667
+    },
+    "N5": {
+     "so_cau": 10,
+     "tong": 23,
+     "ton_tai": 11,
+     "tra_loi_duoc": 7,
+     "recall_ton_tai": 0.4783,
+     "recall_tra_loi_duoc": 0.3043
+    }
+   },
+   "so_cau_tu_khoa_rong": 0,
+   "cau": [
+    {
+     "cau_id": "n3-01",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 2,
+     "ton_tai": 0,
+     "tra_loi_duoc": 0,
+     "co_mat": [],
+     "vang": [
+      "he-88e11246a5a2896a063216d1",
+      "he-494aad99371ffc2404013e09"
+     ],
+     "ly_do": [
+      "he-88e11246a5a2896a063216d1 vắng dù vai được thấy (L2): truy hồi không kéo về trong top-k",
+      "he-494aad99371ffc2404013e09 vắng dù vai được thấy (L2): truy hồi không kéo về trong top-k"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 92
+    },
+    {
+     "cau_id": "n3-02",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-dc9ea1f5d232148586ae153a"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 95
+    },
+    {
+     "cau_id": "n3-03",
+     "nhom": "N3",
+     "vai": "tech_support",
+     "tong": 2,
+     "ton_tai": 2,
+     "tra_loi_duoc": 2,
+     "co_mat": [
+      "he-e04b174aca2a50ace8588d00",
+      "he-3045258117fdffba880a20fe"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 84
+    },
+    {
+     "cau_id": "n3-04",
+     "nhom": "N3",
+     "vai": "tech_support",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-2bda1d0460829064232a2051"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 82
+    },
+    {
+     "cau_id": "n3-05",
+     "nhom": "N3",
+     "vai": "tech_support",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-76dba0a98497333fa0b8df2d"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 80
+    },
+    {
+     "cau_id": "n3-06",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 2,
+     "ton_tai": 2,
+     "tra_loi_duoc": 2,
+     "co_mat": [
+      "he-de10202d12585a33d95ce9be",
+      "he-b2bb3027ad9f6e73a59a7612"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 96
+    },
+    {
+     "cau_id": "n3-07",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 1,
+     "ton_tai": 0,
+     "tra_loi_duoc": 0,
+     "co_mat": [],
+     "vang": [
+      "he-991d13f5f925571b97fbf926"
+     ],
+     "ly_do": [
+      "he-991d13f5f925571b97fbf926 vắng: scope 'khach_hang_b' ngoài scopes của vai"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 85
+    },
+    {
+     "cau_id": "n3-08",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 2,
+     "ton_tai": 0,
+     "tra_loi_duoc": 0,
+     "co_mat": [],
+     "vang": [
+      "he-61a078dd0bfc37041eb30731",
+      "he-8889137cf69e8416933d028c"
+     ],
+     "ly_do": [
+      "he-61a078dd0bfc37041eb30731 vắng: scope 'khach_hang_b' ngoài scopes của vai",
+      "he-8889137cf69e8416933d028c vắng: scope 'khach_hang_b' ngoài scopes của vai"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 91
+    },
+    {
+     "cau_id": "n3-09",
+     "nhom": "N3",
+     "vai": "tech_support",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 0,
+     "co_mat": [
+      "he-d34b20f72d6b3f7b73cc86a8"
+     ],
+     "vang": [],
+     "ly_do": [
+      "he-d34b20f72d6b3f7b73cc86a8 có mặt nhưng slot đáp án ['remediation'] bị che ở mức L1"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 95
+    },
+    {
+     "cau_id": "n3-10",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-1bce446f0948bad62c9be755"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 95
+    },
+    {
+     "cau_id": "n3-11",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-9b52b665a06488bd9f0285aa"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 97
+    },
+    {
+     "cau_id": "n3-12",
+     "nhom": "N3",
+     "vai": "tech_support",
+     "tong": 3,
+     "ton_tai": 3,
+     "tra_loi_duoc": 3,
+     "co_mat": [
+      "he-3a98e64055db3e388b244338",
+      "he-db3a42ba20927aa5a1f33b36",
+      "he-e90ed43661dcf4c670ff50e1"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 88
+    },
+    {
+     "cau_id": "n5-01",
+     "nhom": "N5",
+     "vai": "tech_support",
+     "tong": 3,
+     "ton_tai": 1,
+     "tra_loi_duoc": 0,
+     "co_mat": [
+      "he-a2ccd36021446e740d8cdc3e"
+     ],
+     "vang": [
+      "he-022ed16bbb63216cc486e687",
+      "he-1aaefc697e361238b15f8943"
+     ],
+     "ly_do": [
+      "he-022ed16bbb63216cc486e687 vắng: scope 'khach_hang_a' ngoài scopes của vai",
+      "he-a2ccd36021446e740d8cdc3e có mặt nhưng slot đáp án ['cause'] bị che ở mức L1",
+      "he-1aaefc697e361238b15f8943 vắng: scope 'khach_hang_a' ngoài scopes của vai"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 90
+    },
+    {
+     "cau_id": "n5-02",
+     "nhom": "N5",
+     "vai": "devops",
+     "tong": 3,
+     "ton_tai": 3,
+     "tra_loi_duoc": 3,
+     "co_mat": [
+      "he-022ed16bbb63216cc486e687",
+      "he-a2ccd36021446e740d8cdc3e",
+      "he-1aaefc697e361238b15f8943"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 108
+    },
+    {
+     "cau_id": "n5-03",
+     "nhom": "N5",
+     "vai": "tech_support",
+     "tong": 3,
+     "ton_tai": 1,
+     "tra_loi_duoc": 0,
+     "co_mat": [
+      "he-a2ccd36021446e740d8cdc3e"
+     ],
+     "vang": [
+      "he-022ed16bbb63216cc486e687",
+      "he-d5b6499536b8a2b6f9e40f12"
+     ],
+     "ly_do": [
+      "he-022ed16bbb63216cc486e687 vắng: scope 'khach_hang_a' ngoài scopes của vai",
+      "he-a2ccd36021446e740d8cdc3e có mặt nhưng slot đáp án ['remediation'] bị che ở mức L1",
+      "he-d5b6499536b8a2b6f9e40f12 vắng dù vai được thấy (L1): truy hồi không kéo về trong top-k"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 82
+    },
+    {
+     "cau_id": "n5-04",
+     "nhom": "N5",
+     "vai": "devops",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-3bca45167461932e4c6c1b8b"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 88
+    },
+    {
+     "cau_id": "n5-05",
+     "nhom": "N5",
+     "vai": "tech_support",
+     "tong": 2,
+     "ton_tai": 0,
+     "tra_loi_duoc": 0,
+     "co_mat": [],
+     "vang": [
+      "he-827391fec18fe5d974f8ab5f",
+      "he-317cdefeba8bf426e0a7bd31"
+     ],
+     "ly_do": [
+      "he-827391fec18fe5d974f8ab5f vắng: loại 'bi_mat_ha_tang' ở L0 với vai",
+      "he-317cdefeba8bf426e0a7bd31 vắng: loại 'bi_mat_ha_tang' ở L0 với vai"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 88
+    },
+    {
+     "cau_id": "n5-06",
+     "nhom": "N5",
+     "vai": "devops",
+     "tong": 2,
+     "ton_tai": 0,
+     "tra_loi_duoc": 0,
+     "co_mat": [],
+     "vang": [
+      "he-3f51fad31d2c07d6e66e4f78",
+      "he-08c4c7d64ed5e99ca3757f73"
+     ],
+     "ly_do": [
+      "he-3f51fad31d2c07d6e66e4f78 vắng: scope 'khach_hang_b' ngoài scopes của vai",
+      "he-08c4c7d64ed5e99ca3757f73 vắng: scope 'khach_hang_b' ngoài scopes của vai"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 98
+    },
+    {
+     "cau_id": "n5-07",
+     "nhom": "N5",
+     "vai": "tech_support",
+     "tong": 2,
+     "ton_tai": 2,
+     "tra_loi_duoc": 0,
+     "co_mat": [
+      "he-33919ecf147d781f564aa8c3",
+      "he-4b5d7f93aa7ad0c2ac5574fe"
+     ],
+     "vang": [],
+     "ly_do": [
+      "he-33919ecf147d781f564aa8c3 có mặt nhưng slot đáp án ['cause'] bị che ở mức L1",
+      "he-4b5d7f93aa7ad0c2ac5574fe có mặt nhưng slot đáp án ['cause'] bị che ở mức L1"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 85
+    },
+    {
+     "cau_id": "n5-08",
+     "nhom": "N5",
+     "vai": "devops",
+     "tong": 2,
+     "ton_tai": 2,
+     "tra_loi_duoc": 2,
+     "co_mat": [
+      "he-33919ecf147d781f564aa8c3",
+      "he-e6867a8192492e4e8d4660ce"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 105
+    },
+    {
+     "cau_id": "n5-09",
+     "nhom": "N5",
+     "vai": "tech_support",
+     "tong": 2,
+     "ton_tai": 0,
+     "tra_loi_duoc": 0,
+     "co_mat": [],
+     "vang": [
+      "he-f5b17022758ce758669d897f",
+      "he-a0dfeee24f6222aa4081f5a9"
+     ],
+     "ly_do": [
+      "he-f5b17022758ce758669d897f vắng: scope 'khach_hang_b' ngoài scopes của vai",
+      "he-a0dfeee24f6222aa4081f5a9 vắng: scope 'khach_hang_b' ngoài scopes của vai"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 81
+    },
+    {
+     "cau_id": "n5-10",
+     "nhom": "N5",
+     "vai": "devops",
+     "tong": 3,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-0e67fe5d43e70854fdf54d3f"
+     ],
+     "vang": [
+      "he-52852beec872be913a4ff6d4",
+      "he-df580cd9e0efeaf0fecdb545"
+     ],
+     "ly_do": [
+      "he-52852beec872be913a4ff6d4 vắng dù vai được thấy (L2): truy hồi không kéo về trong top-k",
+      "he-df580cd9e0efeaf0fecdb545 vắng dù vai được thấy (L2): truy hồi không kéo về trong top-k"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 120
+    }
+   ]
+  },
+  "toi-thieu-l1": {
+   "thu_tu_prd": 4,
+   "policy_version": "fe8f3c9ce0f2d8803620a5121784648f4fc1083443c8b9651b806bd755eb9ea1",
+   "tat_ca": {
+    "so_cau": 22,
+    "tong": 41,
+    "ton_tai": 26,
+    "tra_loi_duoc": 19,
+    "recall_ton_tai": 0.6341,
+    "recall_tra_loi_duoc": 0.4634
+   },
+   "theo_nhom": {
+    "N3": {
+     "so_cau": 12,
+     "tong": 18,
+     "ton_tai": 14,
+     "tra_loi_duoc": 13,
+     "recall_ton_tai": 0.7778,
+     "recall_tra_loi_duoc": 0.7222
+    },
+    "N5": {
+     "so_cau": 10,
+     "tong": 23,
+     "ton_tai": 12,
+     "tra_loi_duoc": 6,
+     "recall_ton_tai": 0.5217,
+     "recall_tra_loi_duoc": 0.2609
+    }
+   },
+   "so_cau_tu_khoa_rong": 0,
+   "cau": [
+    {
+     "cau_id": "n3-01",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 2,
+     "ton_tai": 2,
+     "tra_loi_duoc": 2,
+     "co_mat": [
+      "he-88e11246a5a2896a063216d1",
+      "he-494aad99371ffc2404013e09"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 102
+    },
+    {
+     "cau_id": "n3-02",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-dc9ea1f5d232148586ae153a"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 95
+    },
+    {
+     "cau_id": "n3-03",
+     "nhom": "N3",
+     "vai": "tech_support",
+     "tong": 2,
+     "ton_tai": 2,
+     "tra_loi_duoc": 2,
+     "co_mat": [
+      "he-e04b174aca2a50ace8588d00",
+      "he-3045258117fdffba880a20fe"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 94
+    },
+    {
+     "cau_id": "n3-04",
+     "nhom": "N3",
+     "vai": "tech_support",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-2bda1d0460829064232a2051"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 89
+    },
+    {
+     "cau_id": "n3-05",
+     "nhom": "N3",
+     "vai": "tech_support",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-76dba0a98497333fa0b8df2d"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 69
+    },
+    {
+     "cau_id": "n3-06",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 2,
+     "ton_tai": 2,
+     "tra_loi_duoc": 2,
+     "co_mat": [
+      "he-de10202d12585a33d95ce9be",
+      "he-b2bb3027ad9f6e73a59a7612"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 97
+    },
+    {
+     "cau_id": "n3-07",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 1,
+     "ton_tai": 0,
+     "tra_loi_duoc": 0,
+     "co_mat": [],
+     "vang": [
+      "he-991d13f5f925571b97fbf926"
+     ],
+     "ly_do": [
+      "he-991d13f5f925571b97fbf926 vắng: scope 'khach_hang_b' ngoài scopes của vai"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 85
+    },
+    {
+     "cau_id": "n3-08",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 2,
+     "ton_tai": 0,
+     "tra_loi_duoc": 0,
+     "co_mat": [],
+     "vang": [
+      "he-61a078dd0bfc37041eb30731",
+      "he-8889137cf69e8416933d028c"
+     ],
+     "ly_do": [
+      "he-61a078dd0bfc37041eb30731 vắng: scope 'khach_hang_b' ngoài scopes của vai",
+      "he-8889137cf69e8416933d028c vắng: scope 'khach_hang_b' ngoài scopes của vai"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 87
+    },
+    {
+     "cau_id": "n3-09",
+     "nhom": "N3",
+     "vai": "tech_support",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 0,
+     "co_mat": [
+      "he-d34b20f72d6b3f7b73cc86a8"
+     ],
+     "vang": [],
+     "ly_do": [
+      "he-d34b20f72d6b3f7b73cc86a8 có mặt nhưng slot đáp án ['remediation'] bị che ở mức L1"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 93
+    },
+    {
+     "cau_id": "n3-10",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-1bce446f0948bad62c9be755"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 97
+    },
+    {
+     "cau_id": "n3-11",
+     "nhom": "N3",
+     "vai": "devops",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-9b52b665a06488bd9f0285aa"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 95
+    },
+    {
+     "cau_id": "n3-12",
+     "nhom": "N3",
+     "vai": "tech_support",
+     "tong": 3,
+     "ton_tai": 2,
+     "tra_loi_duoc": 2,
+     "co_mat": [
+      "he-3a98e64055db3e388b244338",
+      "he-e90ed43661dcf4c670ff50e1"
+     ],
+     "vang": [
+      "he-db3a42ba20927aa5a1f33b36"
+     ],
+     "ly_do": [
+      "he-db3a42ba20927aa5a1f33b36 vắng dù vai được thấy (L2): truy hồi không kéo về trong top-k"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 75
+    },
+    {
+     "cau_id": "n5-01",
+     "nhom": "N5",
+     "vai": "tech_support",
+     "tong": 3,
+     "ton_tai": 1,
+     "tra_loi_duoc": 0,
+     "co_mat": [
+      "he-a2ccd36021446e740d8cdc3e"
+     ],
+     "vang": [
+      "he-022ed16bbb63216cc486e687",
+      "he-1aaefc697e361238b15f8943"
+     ],
+     "ly_do": [
+      "he-022ed16bbb63216cc486e687 vắng: scope 'khach_hang_a' ngoài scopes của vai",
+      "he-a2ccd36021446e740d8cdc3e có mặt nhưng slot đáp án ['cause'] bị che ở mức L1",
+      "he-1aaefc697e361238b15f8943 vắng: scope 'khach_hang_a' ngoài scopes của vai"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 92
+    },
+    {
+     "cau_id": "n5-02",
+     "nhom": "N5",
+     "vai": "devops",
+     "tong": 3,
+     "ton_tai": 2,
+     "tra_loi_duoc": 2,
+     "co_mat": [
+      "he-022ed16bbb63216cc486e687",
+      "he-a2ccd36021446e740d8cdc3e"
+     ],
+     "vang": [
+      "he-1aaefc697e361238b15f8943"
+     ],
+     "ly_do": [
+      "he-1aaefc697e361238b15f8943 vắng dù vai được thấy (L2): truy hồi không kéo về trong top-k"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 98
+    },
+    {
+     "cau_id": "n5-03",
+     "nhom": "N5",
+     "vai": "tech_support",
+     "tong": 3,
+     "ton_tai": 1,
+     "tra_loi_duoc": 0,
+     "co_mat": [
+      "he-a2ccd36021446e740d8cdc3e"
+     ],
+     "vang": [
+      "he-022ed16bbb63216cc486e687",
+      "he-d5b6499536b8a2b6f9e40f12"
+     ],
+     "ly_do": [
+      "he-022ed16bbb63216cc486e687 vắng: scope 'khach_hang_a' ngoài scopes của vai",
+      "he-a2ccd36021446e740d8cdc3e có mặt nhưng slot đáp án ['remediation'] bị che ở mức L1",
+      "he-d5b6499536b8a2b6f9e40f12 vắng dù vai được thấy (L1): truy hồi không kéo về trong top-k"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 88
+    },
+    {
+     "cau_id": "n5-04",
+     "nhom": "N5",
+     "vai": "devops",
+     "tong": 1,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-3bca45167461932e4c6c1b8b"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 88
+    },
+    {
+     "cau_id": "n5-05",
+     "nhom": "N5",
+     "vai": "tech_support",
+     "tong": 2,
+     "ton_tai": 2,
+     "tra_loi_duoc": 0,
+     "co_mat": [
+      "he-827391fec18fe5d974f8ab5f",
+      "he-317cdefeba8bf426e0a7bd31"
+     ],
+     "vang": [],
+     "ly_do": [
+      "he-827391fec18fe5d974f8ab5f có mặt nhưng slot đáp án ['condition', 'remediation'] bị che ở mức L1",
+      "he-317cdefeba8bf426e0a7bd31 có mặt nhưng slot đáp án ['condition'] bị che ở mức L1"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 95
+    },
+    {
+     "cau_id": "n5-06",
+     "nhom": "N5",
+     "vai": "devops",
+     "tong": 2,
+     "ton_tai": 0,
+     "tra_loi_duoc": 0,
+     "co_mat": [],
+     "vang": [
+      "he-3f51fad31d2c07d6e66e4f78",
+      "he-08c4c7d64ed5e99ca3757f73"
+     ],
+     "ly_do": [
+      "he-3f51fad31d2c07d6e66e4f78 vắng: scope 'khach_hang_b' ngoài scopes của vai",
+      "he-08c4c7d64ed5e99ca3757f73 vắng: scope 'khach_hang_b' ngoài scopes của vai"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 101
+    },
+    {
+     "cau_id": "n5-07",
+     "nhom": "N5",
+     "vai": "tech_support",
+     "tong": 2,
+     "ton_tai": 2,
+     "tra_loi_duoc": 0,
+     "co_mat": [
+      "he-33919ecf147d781f564aa8c3",
+      "he-4b5d7f93aa7ad0c2ac5574fe"
+     ],
+     "vang": [],
+     "ly_do": [
+      "he-33919ecf147d781f564aa8c3 có mặt nhưng slot đáp án ['cause'] bị che ở mức L1",
+      "he-4b5d7f93aa7ad0c2ac5574fe có mặt nhưng slot đáp án ['cause'] bị che ở mức L1"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 81
+    },
+    {
+     "cau_id": "n5-08",
+     "nhom": "N5",
+     "vai": "devops",
+     "tong": 2,
+     "ton_tai": 2,
+     "tra_loi_duoc": 2,
+     "co_mat": [
+      "he-33919ecf147d781f564aa8c3",
+      "he-e6867a8192492e4e8d4660ce"
+     ],
+     "vang": [],
+     "ly_do": [],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 110
+    },
+    {
+     "cau_id": "n5-09",
+     "nhom": "N5",
+     "vai": "tech_support",
+     "tong": 2,
+     "ton_tai": 0,
+     "tra_loi_duoc": 0,
+     "co_mat": [],
+     "vang": [
+      "he-f5b17022758ce758669d897f",
+      "he-a0dfeee24f6222aa4081f5a9"
+     ],
+     "ly_do": [
+      "he-f5b17022758ce758669d897f vắng: scope 'khach_hang_b' ngoài scopes của vai",
+      "he-a0dfeee24f6222aa4081f5a9 vắng: scope 'khach_hang_b' ngoài scopes của vai"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 86
+    },
+    {
+     "cau_id": "n5-10",
+     "nhom": "N5",
+     "vai": "devops",
+     "tong": 3,
+     "ton_tai": 1,
+     "tra_loi_duoc": 1,
+     "co_mat": [
+      "he-0e67fe5d43e70854fdf54d3f"
+     ],
+     "vang": [
+      "he-52852beec872be913a4ff6d4",
+      "he-df580cd9e0efeaf0fecdb545"
+     ],
+     "ly_do": [
+      "he-52852beec872be913a4ff6d4 vắng dù vai được thấy (L2): truy hồi không kéo về trong top-k",
+      "he-df580cd9e0efeaf0fecdb545 vắng dù vai được thấy (L2): truy hồi không kéo về trong top-k"
+     ],
+     "tu_khoa_rong": false,
+     "so_hyperedge_ngu_canh": 107
+    }
+   ]
+  }
+ },
+ "mat_o_baseline_so_voi_van_hanh": [
+  {
+   "cau_id": "n3-03",
+   "nhom": "N3",
+   "vai": "tech_support",
+   "mat": [
+    "he-3045258117fdffba880a20fe",
+    "he-e04b174aca2a50ace8588d00"
+   ],
+   "ly_do": [
+    "he-e04b174aca2a50ace8588d00 vắng: loại 'canh_bao' ở L0 với vai",
+    "he-3045258117fdffba880a20fe vắng: loại 'canh_bao' ở L0 với vai"
+   ]
+  },
+  {
+   "cau_id": "n3-09",
+   "nhom": "N3",
+   "vai": "tech_support",
+   "mat": [
+    "he-d34b20f72d6b3f7b73cc86a8"
+   ],
+   "ly_do": [
+    "he-d34b20f72d6b3f7b73cc86a8 vắng: loại 'canh_bao' ở L0 với vai"
+   ]
+  },
+  {
+   "cau_id": "n5-01",
+   "nhom": "N5",
+   "vai": "tech_support",
+   "mat": [
+    "he-a2ccd36021446e740d8cdc3e"
+   ],
+   "ly_do": [
+    "he-a2ccd36021446e740d8cdc3e vắng: loại 'bao_cao_su_co' ở L0 với vai"
+   ]
+  },
+  {
+   "cau_id": "n5-03",
+   "nhom": "N5",
+   "vai": "tech_support",
+   "mat": [
+    "he-a2ccd36021446e740d8cdc3e"
+   ],
+   "ly_do": [
+    "he-a2ccd36021446e740d8cdc3e vắng: loại 'bao_cao_su_co' ở L0 với vai"
+   ]
+  },
+  {
+   "cau_id": "n5-04",
+   "nhom": "N5",
+   "vai": "devops",
+   "mat": [
+    "he-3bca45167461932e4c6c1b8b"
+   ],
+   "ly_do": [
+    "he-3bca45167461932e4c6c1b8b vắng: loại 'bi_mat_ha_tang' ở L0 với vai"
+   ]
+  },
+  {
+   "cau_id": "n5-07",
+   "nhom": "N5",
+   "vai": "tech_support",
+   "mat": [
+    "he-33919ecf147d781f564aa8c3",
+    "he-4b5d7f93aa7ad0c2ac5574fe"
+   ],
+   "ly_do": [
+    "he-33919ecf147d781f564aa8c3 vắng: loại 'bao_cao_su_co' ở L0 với vai",
+    "he-4b5d7f93aa7ad0c2ac5574fe vắng: loại 'bao_cao_su_co' ở L0 với vai"
+   ]
+  }
+ ],
+ "ghi_chu": "Bản thô của Đo 3 (story 3.8): từ khóa do LLM trích không tất định tuyệt đối giữa hai lần chạy; harness 7.3 đo lại có đối chứng. Số của cấu hình 1 (tat-phan-quyen) là phần thực nghiệm thật (a) của PRD 5.3."
+}

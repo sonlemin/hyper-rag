@@ -9,6 +9,7 @@
 #   scripts/chay-may-chu.sh xoa --xoa-space --space synth
 #   HYPER_RAG_MODULE=eval.chup_do_thi scripts/chay-may-chu.sh chup --space synth
 #   HYPER_RAG_MODULE=eval.ct03 scripts/chay-may-chu.sh ct03 --space synth
+#   HYPER_RAG_MODULE=eval.do3_tho scripts/chay-may-chu.sh do3 --space synth
 #   HYPER_RAG_CUC_BO=1 scripts/chay-may-chu.sh nap /root/hyper-rag-data/real --space real
 #
 # Tham so dau la *ten buoc* (chi de doc log), phan con lai di thang vao module
@@ -16,6 +17,7 @@
 #
 # DIEM VAO (story 2.9): mac dinh `api.do_chi_phi`, doi duoc bang HYPER_RAG_MODULE.
 # Story 2.10 them `eval.ct03` (doc thuan, khong ton tien) vao danh sach cho phep.
+# Story 3.8 them `eval.do3_tho` (Do 3 tho: 88 loi goi LLM trich tu khoa, vai xu).
 # Truoc 2.9 ten module ghim cung trong script, nen `eval.chup_do_thi` - lenh doc
 # do thi de gan nhan truy hoi vang - phai tu dung lai ca khoi moi truong nay.
 # Mot ban sao thu hai cua khoi do la mot bo tham so se troi khoi ban nay.
@@ -50,7 +52,7 @@ REMOTE_DIR="${HYPER_RAG_REPO:-/root/hyper-rag-copilot}"
 VOLUME_API="${HYPER_RAG_VOLUME:-hyper_rag_api_data}"
 MODULE_MAC_DINH="api.do_chi_phi"
 FILE_CUC_BO=".env.local-llm"
-MODULE_CHO_PHEP="api.do_chi_phi eval.chup_do_thi eval.ct03"
+MODULE_CHO_PHEP="api.do_chi_phi eval.chup_do_thi eval.ct03 eval.do3_tho"
 # Duong dan con ben trong volume, khop HYPER_RAG_WORKING_DIR cua docker-compose.yml
 # (`api_data:/data` + `/data/hyper-rag`).
 DUONG_DAN_CON="hyper-rag"

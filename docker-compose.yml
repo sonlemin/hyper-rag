@@ -166,9 +166,10 @@ services:
   # voi `api` de CLI trong container va man dung chung mot HYPER_RAG_WORKING_DIR
   # (cung so tai lieu, cung flock `ingest_{space}.lock`).
   #
-  # Cong 8100 bind **chi loopback cua may chu**: man khong co xac thuc (JWT la
-  # story 3.1) nen no khong duoc lo ra ngoai bang bat ky duong nao. Vao bang SSH
-  # tunnel tu laptop:  ssh -L 8100:127.0.0.1:8100 root@<may-chu>
+  # Cong 8100 bind **chi loopback cua may chu**: man khong co xac thuc va se
+  # khong co (ADR-022 quyet dinh 6, story 3.8: mot nguoi dung, sau SSH tunnel,
+  # khong nam trong duong demo) nen no khong duoc lo ra ngoai bang bat ky duong
+  # nao. Vao bang SSH tunnel tu laptop:  ssh -L 8100:127.0.0.1:8100 root@<may-chu>
   # (0.0.0.0 trong `command` la bind *ben trong* container - cong publish phia
   # host moi la cua ngo, va no la 127.0.0.1.)
   man-nap:

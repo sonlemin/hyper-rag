@@ -651,7 +651,12 @@ def _hoi(client, tai_khoan: str):
 
 
 def test_ac2_audit_query_mang_id_cua_citations(monkeypatch):
-    """AC-2: hàng `query` mang `hyperedge_ids` đúng bằng dãy `id` của citations."""
+    """AC-2 (3.4), đọc lại ở 3.8: hàng `query` mang **tập thấy**, response mang tập dùng.
+
+    Engine không khai tập thấy thì hai tập bằng nhau (hành vi 3.4 giữ nguyên);
+    khai tập thấy rộng hơn thì `hyperedge_ids` là tập rộng và mọi `citations[].id`
+    nằm trong nó (`tests/test_citation_duoc_dung.py` chấm phần còn lại).
+    """
     audit = AuditGia()
     engine = EngineGia(trich_dan=(_td("he-2"), _td("he-1", level="L2", masked_slots=("owner",))))
     with _client(monkeypatch, _kho_gia(), audit, engine) as client:
@@ -664,6 +669,7 @@ def test_ac2_audit_query_mang_id_cua_citations(monkeypatch):
     query = [sk for sk in audit.su_kien if sk.event == EVENT_QUERY]
     assert len(query) == 1
     assert query[0].hyperedge_ids == ("he-2", "he-1")
+    assert {c["id"] for c in than["citations"]} <= set(query[0].hyperedge_ids)
 
 
 def test_ac2_luot_tu_choi_khong_doi_mot_byte_va_audit_rong(monkeypatch):
@@ -713,6 +719,7 @@ def test_http_hai_tai_khoan_seed_tren_engine_m1_that(monkeypatch, workspace_dir,
             assert than["refused"] is False
             assert {c["id"]: c for c in than["citations"]} == _ky_vong(bang, ten_vai)
             query = [sk for sk in audit.su_kien if sk.event == EVENT_QUERY]
+            # LLM giả không khai `nguon` nên tập dùng bằng tập thấy (story 3.8).
             assert query[0].hyperedge_ids == tuple(c["id"] for c in than["citations"])
             assert query[0].role == ten_vai
 

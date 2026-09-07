@@ -89,12 +89,13 @@ def test_module_diem_vao_la_danh_sach_cho_phep(script):
     là một con số đóng, khai thẳng rẻ hơn.
 
     Story 2.10 thêm `eval.ct03` (thí nghiệm mô tả entity đa nguồn, đọc thuần,
-    không tốn tiền). Thêm một module là sửa **một** hằng ở đây và một hằng trong
-    script, không phải nới luật thành chuỗi tự do.
+    không tốn tiền). Story 3.8 thêm `eval.do3_tho` (Đo 3 thô, một lời gọi LLM
+    trích từ khóa mỗi ô). Thêm một module là sửa **một** hằng ở đây và một hằng
+    trong script, không phải nới luật thành chuỗi tự do.
     """
     assert (
         _gan(script, "MODULE_CHO_PHEP")
-        == "api.do_chi_phi eval.chup_do_thi eval.ct03"
+        == "api.do_chi_phi eval.chup_do_thi eval.ct03 eval.do3_tho"
     )
     assert "khong nam trong danh sach cho phep" in script
 

@@ -48,7 +48,7 @@ from typing import Annotated
 import anyio.to_thread
 from fastapi import APIRouter, Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from adapters.identity_seed import IdentitySeedInvalid, nap_tai_khoan
@@ -59,6 +59,7 @@ from api import hoi_dap
 from api.audit_postgres import AuditPostgres
 from api.che_do_do import doc_che_do_do, ghi_startup
 from api.chinh_sach import KhoChinhSach, ma_policy_mac_dinh
+from api.gioi_han_than import GioiHanThan, ThanQuaLon, than_413
 from api.tai_khoan import KhoTaiKhoan
 from api.xac_thuc import (
     ClaimNguoiHoi,
@@ -193,16 +194,22 @@ async def vong_doi(app: FastAPI):
     # một `config/policy-*.yaml` hỏng hay một `HYPER_RAG_POLICY_ID` gõ sai là
     # lỗi cấu hình, và nó phải nổ ở giây đầu chứ không ở request đầu tiên dựng
     # ngữ cảnh quyền - lúc đó nó trông giống một sự cố kho.
-    app.state.kho_chinh_sach = KhoChinhSach.nap(ma_policy_mac_dinh())
+    #
+    # Cờ chế độ đo (story 3.6, ADR-017) đọc **đúng một lần**, ở đây, và từ story
+    # 3.8 đọc **trước** khi nạp policy: `KhoChinhSach.nap` từ chối một id cấu
+    # hình đo khi cờ tắt (`POLICY_CHI_CHE_DO_DO`, ADR-022), nên cờ phải có trước.
+    # Cả hai vẫn trước mọi kết nối; một giá trị lạ là lỗi cấu hình và chết cùng
+    # nhịp với một id policy gõ sai. Không có endpoint bật/tắt.
+    app.state.che_do_do = doc_che_do_do()
+    app.state.kho_chinh_sach = KhoChinhSach.nap(
+        ma_policy_mac_dinh(), che_do_do=app.state.che_do_do
+    )
     logger.info(
-        "bảng chính sách %r, policy_version %s",
+        "bảng chính sách %r, policy_version %s, chế độ đo %s",
         app.state.kho_chinh_sach.ma,
         app.state.kho_chinh_sach.hien_tai().policy_version[:12],
+        app.state.che_do_do,
     )
-    # Cờ chế độ đo (story 3.6, ADR-017): đọc **đúng một lần**, ở đây, trước mọi
-    # kết nối - một giá trị lạ là lỗi cấu hình và chết cùng nhịp với một id
-    # policy gõ sai. Không có endpoint bật/tắt.
-    app.state.che_do_do = doc_che_do_do()
     kho = await mo_kho_tai_khoan()
     app.state.kho_tai_khoan = kho
     audit = None
@@ -267,6 +274,10 @@ async def vong_doi(app: FastAPI):
 
 
 app = FastAPI(title="hyper-rag-copilot", lifespan=vong_doi)
+# Trần thân request 64 KB ở tầng ASGI (story 3.8, ADR-022): một trần cho mọi
+# tuyến, đứng trước pydantic; thân quá cỡ là 413 `THAN_QUA_LON` đúng envelope.
+# Luật và lý do ở `api/gioi_han_than.py`.
+app.add_middleware(GioiHanThan)
 
 
 @app.exception_handler(LoiXacThuc)
@@ -316,14 +327,19 @@ async def _than_yeu_cau_la(request: Request, loi: RequestValidationError) -> JSO
 
 @app.exception_handler(StarletteHTTPException)
 async def _tuyen_khong_co(request: Request, loi: StarletteHTTPException) -> JSONResponse:
-    """404/405 của router (đường dẫn hay phương thức không khớp tuyến) ra đúng envelope.
+    """404/405 của router và 413 của trần thân ra đúng envelope.
 
-    Không handler nào của dự án dội `HTTPException` (lỗi của dự án là
-    `LoiXacThuc` và lớp con), nên mọi ngoại lệ tới đây là của chính Starlette
-    khi không tìm được tuyến. Giữ mã HTTP của nó, thay thân bằng một mã ổn định
-    và một thông điệp cố định: thân mặc định `{"detail": "Not Found"}` là hình
-    dạng duy nhất trong tiến trình không mang `code` để test assert lên (AD-8).
+    Hai nguồn tới đây. Một, Starlette khi không tìm được tuyến (404/405): giữ
+    mã HTTP, thay thân bằng một mã ổn định và một thông điệp cố định, vì thân
+    mặc định `{"detail": "Not Found"}` là hình dạng duy nhất trong tiến trình
+    không mang `code` để test assert lên (AD-8). Hai, `ThanQuaLon` (story 3.8):
+    trần thân dội từ `receive` khi FastAPI đang đọc thân, là `HTTPException(413)`
+    có chủ đích để đi qua nhánh `except HTTPException: raise` của FastAPI thay vì
+    bị đổi thành 400 "error parsing the body"; ra thân `THAN_QUA_LON`. Mọi
+    `HTTPException` 413 khác không tồn tại trong dự án nên ánh xạ theo mã là đủ.
     """
+    if loi.status_code == 413:
+        return Response(content=than_413(), status_code=413, media_type="application/json")
     return JSONResponse(
         status_code=loi.status_code,
         content={"error": {"code": MA_TUYEN_KHONG_CO, "message": THONG_DIEP_TUYEN_KHONG_CO}},
@@ -416,6 +432,10 @@ async def dang_nhap(request: Request) -> dict:
     policy_version = request.app.state.kho_chinh_sach.hien_tai().policy_version
     try:
         than = await request.json()
+    except ThanQuaLon:
+        # Trần thân (story 3.8) không được nuốt thành "thân hỏng": 413 phải ra
+        # đúng mã, không phải một lần đăng nhập sai có ghi `auth_login`.
+        raise
     except Exception:
         than = None
     ten = than.get("tai_khoan") if isinstance(than, dict) else None
@@ -529,6 +549,10 @@ async def policy_dang_chay(request: Request, c: Claim) -> dict:
         "id": ma,
         "policy_version": policy.policy_version,
         "danh_muc": kho.danh_muc(),
+        # Chỉ đọc (story 3.8): người vận hành biết tiến trình có hoán sang bảng
+        # đo được không trước khi gặp 400 `POLICY_CHI_CHE_DO_DO`. Không có đường
+        # ghi cờ (ADR-017).
+        "che_do_do": request.app.state.che_do_do,
     }
 
 
@@ -544,10 +568,16 @@ async def hoan_policy(request: Request, c: Claim) -> dict:
     vấn chứ không ghi lên kho, nên hoán bảng là hoán một object trong bộ nhớ.
     Đây **không** phải FR-22: nó chỉ trỏ sang một file đã có, không ghi đè nội
     dung file nào.
+
+    Ba bảng đo (`nhi-phan`, `tat-phan-quyen`, `toi-thieu-l1`) chỉ hoán sang
+    được khi tiến trình chạy `HYPER_RAG_CHE_DO_DO=1` (story 3.8, ADR-022);
+    cờ tắt là 400 `POLICY_CHI_CHE_DO_DO`, bảng giữ nguyên, không hàng audit.
     """
     doi_admin(c)
     try:
         than = await request.json()
+    except ThanQuaLon:
+        raise
     except Exception:
         than = None
     ma = than.get("id") if isinstance(than, dict) else None
@@ -561,6 +591,9 @@ async def hoan_policy(request: Request, c: Claim) -> dict:
         audit=request.app.state.audit,
         act=c.sub,
         role=c.role,
+        # Cổng cấu hình đo (story 3.8): ba bảng đo chỉ hoán sang được trên
+        # tiến trình đo; cờ đọc một lần ở lifespan, không đọc lại môi trường.
+        che_do_do=request.app.state.che_do_do,
     )
     return {"id": ma_moi, "policy_version": policy.policy_version}
 

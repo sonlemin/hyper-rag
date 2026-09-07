@@ -40,7 +40,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass
-from typing import Mapping
+from typing import Iterable, Mapping
 
 from hypergraphrag.prompt import PROMPTS
 
@@ -86,10 +86,22 @@ LY_DO_TU_CHOI: frozenset[str] = frozenset(
 
 # --- Lược đồ đầu ra ------------------------------------------------------------
 
-# Hai khóa của đầu ra LLM. Hằng vì cả prompt lẫn bộ đọc đều nhắc tới chúng, và
+# Ba khóa của đầu ra LLM. Hằng vì cả prompt lẫn bộ đọc đều nhắc tới chúng, và
 # hai bản viết tay lệch nhau một chữ là một cờ không bao giờ bật được.
+#
+# Khóa thứ ba `nguon` (story 3.8, ADR-022): dãy **chỉ số dòng** (cột `id`) của
+# khối Relationships mà model đã dùng để viết câu trả lời. Nó chỉ **thu hẹp**
+# citation: tập "được dùng" là tập con của tập "được thấy" (`id_hyperedge_trong`),
+# và một chỉ số ngoài dãy bị bỏ chứ không thêm được id nào. Khóa tùy chọn: vắng
+# hay rỗng thì citation là cả tập thấy (một model lười không biến một lượt trả
+# lời thành "0 trích dẫn").
 KHOA_KHONG_CO_DAP_AN: str = "khong_co_dap_an"
 KHOA_CAU_TRA_LOI: str = "cau_tra_loi"
+KHOA_NGUON: str = "nguon"
+# Trần số phần tử của `nguon`: khối Relationships không bao giờ dài tới đây
+# (top_k 60 × hai nhánh hybrid cộng dòng phụ theo grant), nên một danh sách dài
+# hơn là lược đồ hỏng chứ không phải một model chăm chỉ.
+TRAN_SO_NGUON: int = 1000
 
 # Tham số của lời gọi sinh câu trả lời. Cùng ba knob với
 # `adapters/trich_xuat.THAM_SO_LLM` và cùng lý do: `temperature=0` để NFR-02
@@ -131,10 +143,17 @@ class NguCanhTruyHoiLa(DauRaTraLoiKhongDoc):
 
 @dataclass(frozen=True)
 class KetQuaTraLoi:
-    """Đầu ra LLM đã đọc: cờ no-answer cộng câu trả lời."""
+    """Đầu ra LLM đã đọc: cờ no-answer, câu trả lời, và dãy chỉ số dòng đã dùng.
+
+    `nguon` (story 3.8) là tuple số nguyên **đã khử trùng, giữ thứ tự**, rỗng
+    khi model không khai. Nó là chỉ số cột `id` của khối Relationships, chưa
+    tra ra id hyperedge: phép tra và phép giao với tập thấy sống ở
+    `loc_trich_dan_theo_nguon`, dưới engine.
+    """
 
     khong_co_dap_an: bool
     cau_tra_loi: str
+    nguon: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -161,21 +180,51 @@ class KetQuaHoiDap:
     lượt kia, tức chính kênh dò mà FR-16 dựng ra để bịt (phép so byte của
     `tests/test_tu_choi.py`). Lượt trả lời không bắt buộc có citation: ngữ
     cảnh không phải khung vendor cho danh sách id rỗng, và lượt ấy vẫn trả lời.
+
+    `hyperedge_da_thay` (story 3.8, ADR-022) là dãy id hyperedge của **cả** ngữ
+    cảnh đã lọc mà LLM đọc - tập "được thấy" - trong khi `trich_dan` từ nay là
+    tập "được dùng" (thu hẹp theo `nguon` của model). Audit `query.hyperedge_ids`
+    ghi tập thấy để hậu kiểm, response mang tập dùng. Bất biến: mọi id của
+    `trich_dan` nằm trong `hyperedge_da_thay`; vắng thì tập thấy suy bằng tập
+    dùng (nơi dựng không khai gì thì hai tập bằng nhau, đúng hành vi trước 3.8).
+    Lượt từ chối để tập thấy rỗng, cùng luật với citation rỗng: hàng `query` của
+    lượt từ chối giữ nguyên hình dạng tuple rỗng của 3.4.
     """
 
     cau_tra_loi: str | None = None
     ly_do_tu_choi: str | None = None
     trich_dan: tuple[TrichDan, ...] = ()
+    hyperedge_da_thay: tuple[str, ...] = ()
 
     def __post_init__(self):
         if not isinstance(self.trich_dan, tuple) or not all(
             isinstance(td, TrichDan) for td in self.trich_dan
         ):
             raise TypeError("trich_dan phải là tuple các TrichDan")
+        if not isinstance(self.hyperedge_da_thay, tuple) or not all(
+            isinstance(i, str) for i in self.hyperedge_da_thay
+        ):
+            raise TypeError("hyperedge_da_thay phải là tuple các chuỗi id")
         if self.ly_do_tu_choi is not None and self.trich_dan:
             raise ValueError(
                 "lượt từ chối không mang citation: envelope từ chối phải bằng"
                 " nhau từng byte giữa mọi lý do (FR-16)"
+            )
+        if self.ly_do_tu_choi is not None and self.hyperedge_da_thay:
+            raise ValueError(
+                "lượt từ chối để tập thấy rỗng: hàng `query` của lượt từ chối giữ"
+                " hình dạng tuple rỗng của 3.4"
+            )
+        if not self.hyperedge_da_thay and self.trich_dan:
+            object.__setattr__(
+                self, "hyperedge_da_thay", tuple(td.id for td in self.trich_dan)
+            )
+        tap_thay = set(self.hyperedge_da_thay)
+        thieu = [td.id for td in self.trich_dan if td.id not in tap_thay]
+        if thieu:
+            raise ValueError(
+                "citation phải là tập con của tập hyperedge đã thấy (chốt brief"
+                f" §6: `nguon` chỉ thu hẹp); id ngoài tập thấy: {thieu}"
             )
         co_tra_loi = self.cau_tra_loi is not None
         co_ly_do = self.ly_do_tu_choi is not None
@@ -225,17 +274,23 @@ DAU_PROMPT_TRA_LOI: str = (
 # lời, dựng từ chính `dau_che` chứ không viết tay - đó là hình dạng mà luật
 # "chép nguyên dấu che" mô tả, và một ví dụ nói được điều mà một câu luật không
 # nói hết: dấu che đứng thay giá trị, câu vẫn trọn vẹn, không có lời bình nào.
+# Story 3.8 thêm khóa `nguon` vào cả ba ví dụ: lượt trả lời khai chỉ số dòng
+# Relationships đã dùng, lượt từ chối khai dãy rỗng. Ví dụ thứ ba còn mang thêm
+# một ý mới: dấu che nằm đúng ở vai được hỏi mà câu **vẫn là một câu trả lời**,
+# vì ngữ cảnh có fact về điều được hỏi - nó chỉ bị che một vế.
 VI_DU_DAU_RA: str = "\n".join(
     json.dumps(muc, ensure_ascii=False)
     for muc in (
         {
             KHOA_KHONG_CO_DAP_AN: False,
             KHOA_CAU_TRA_LOI: "App01 trả lỗi 502 do giới hạn bộ nhớ của pool PHP-FPM bị chỉnh sai.",
+            KHOA_NGUON: [0, 3],
         },
-        {KHOA_KHONG_CO_DAP_AN: True, KHOA_CAU_TRA_LOI: ""},
+        {KHOA_KHONG_CO_DAP_AN: True, KHOA_CAU_TRA_LOI: "", KHOA_NGUON: []},
         {
             KHOA_KHONG_CO_DAP_AN: False,
             KHOA_CAU_TRA_LOI: f"App01 trả lỗi 502 do {dau_che('cause')}, đã khắc phục bằng cách khởi động lại pool PHP-FPM.",
+            KHOA_NGUON: [0, 2],
         },
     )
 )
@@ -275,16 +330,18 @@ DANH_SACH_DAU_CHE: str = ", ".join(_VI_DU_DAU_CHE)
 
 PROMPT_TRA_LOI: str = f"""{DAU_PROMPT_TRA_LOI} Đọc phần ngữ cảnh rồi trả lời câu hỏi ở cuối, đầu ra là json.
 
-Ngữ cảnh là ba bảng CSV do hệ truy hồi dựng: thực thể, quan hệ và đoạn văn bản nguồn.
+Ngữ cảnh là ba bảng CSV do hệ truy hồi dựng: thực thể, quan hệ và đoạn văn bản nguồn. Bảng quan hệ là nguồn chính: mỗi dòng là một fact về một sự việc, các vế của fact nối bằng "|".
+
+Dấu che. Trong ngữ cảnh có những chuỗi dạng [tên:lý_do], ví dụ: {DANH_SACH_DAU_CHE}. Mỗi dấu che là **một giá trị hợp lệ của ngữ cảnh**, đứng ở chỗ giá trị gốc đã bị thay. Một dòng mang dấu che vẫn là một fact có thật về sự việc nó nói tới: dấu che là phần bị che của một fact có thật, không phải một chỗ thiếu dữ liệu, và câu hỏi nhắm đúng vào vế bị che vẫn là câu hỏi có đáp án. Không đoán giá trị gốc. Khi câu trả lời cần nhắc tới phần đó thì **chép nguyên dấu che vào đúng chỗ trong "{KHOA_CAU_TRA_LOI}"**, giữ nguyên từng ký tự, không bỏ trống, không viết lại thành lời, không ghép thêm chữ nào vào trong dấu. Ví dụ: hỏi "nguyên nhân sự cố X là gì" mà dòng về sự cố X có vế {dau_che('cause')} thì trả lời "Nguyên nhân sự cố X là {dau_che('cause')}." với "{KHOA_KHONG_CO_DAP_AN}" false.
 
 Luật:
 - Chỉ dùng thông tin có trong ngữ cảnh. Không thêm tri thức chung, không suy đoán, không bịa tên hệ thống, số hiệu hay mốc thời gian.
-- Ngữ cảnh không chứa đáp án thì đặt "{KHOA_KHONG_CO_DAP_AN}" là true và để "{KHOA_CAU_TRA_LOI}" là chuỗi rỗng. Không tự soạn lời từ chối, không giải thích vì sao thiếu, không gợi ý hỏi ai.
-- Ngữ cảnh chứa đáp án thì đặt "{KHOA_KHONG_CO_DAP_AN}" là false và viết câu trả lời tiếng Việt vào "{KHOA_CAU_TRA_LOI}", ngắn gọn và bám sát ngữ cảnh.
-- Trong ngữ cảnh có thể có những chuỗi dạng [tên:lý_do], ví dụ: {DANH_SACH_DAU_CHE}. Đó là dấu che, đứng ở chỗ giá trị gốc đã bị thay, không phải nội dung. Không đoán giá trị gốc. Khi câu trả lời cần nhắc tới phần đó thì **chép nguyên dấu che vào đúng chỗ trong "{KHOA_CAU_TRA_LOI}"**, giữ nguyên từng ký tự, không bỏ trống, không viết lại thành lời, không ghép thêm chữ nào vào trong dấu.
+- Ngữ cảnh có dòng nói về sự việc được hỏi, kể cả khi vế được hỏi là một dấu che, thì đặt "{KHOA_KHONG_CO_DAP_AN}" là false và viết câu trả lời tiếng Việt vào "{KHOA_CAU_TRA_LOI}", ngắn gọn, bám sát ngữ cảnh, dấu che chép nguyên vào đúng vị trí của vế bị che.
+- Chỉ đặt "{KHOA_KHONG_CO_DAP_AN}" là true khi không dòng nào trong ngữ cảnh nói về sự việc được hỏi; khi đó để "{KHOA_CAU_TRA_LOI}" là chuỗi rỗng. Không tự soạn lời từ chối, không giải thích vì sao thiếu, không gợi ý hỏi ai.
 - Không tự bình luận trong "{KHOA_CAU_TRA_LOI}" về quyền, về phân quyền, về việc bị chặn hay bị giới hạn, về việc ngữ cảnh thiếu dữ liệu, hay về chính ngữ cảnh này: không viết bằng lời của mình những câu như "phần này bị hạn chế" hay "không có dữ liệu về". Một dấu che chép nguyên như luật trên không phải một lời bình. Chỉ viết nội dung trả lời câu hỏi.
+- "{KHOA_NGUON}" là danh sách số nguyên: giá trị cột "id" của những dòng trong bảng quan hệ mà câu trả lời đã dùng, mỗi số một lần. Lượt trả lời phải liệt kê đủ các dòng đã dùng, không liệt kê dòng không dùng; lượt "{KHOA_KHONG_CO_DAP_AN}" true thì để danh sách rỗng.
 
-Đầu ra là một object json duy nhất mang đúng hai khóa "{KHOA_KHONG_CO_DAP_AN}" (true hoặc false) và "{KHOA_CAU_TRA_LOI}" (chuỗi), không có văn bản nào khác ngoài json.
+Đầu ra là một object json duy nhất mang đúng ba khóa "{KHOA_KHONG_CO_DAP_AN}" (true hoặc false), "{KHOA_CAU_TRA_LOI}" (chuỗi) và "{KHOA_NGUON}" (danh sách số nguyên), không có văn bản nào khác ngoài json.
 
 Ví dụ đầu ra:
 {VI_DU_DAU_RA}
@@ -493,6 +550,35 @@ def id_hyperedge_trong(ngu_canh) -> tuple[str, ...]:
 
     Chuỗi không phải khung vendor (thiếu nhãn, sai thứ tự, thiếu header hay
     thiếu cột) cho tuple rỗng: lượt vẫn trả lời, `citations: []`.
+
+    Từ story 3.8 hàm này **suy từ** `hang_hyperedge_trong`: cùng một bộ đọc cho
+    cả tập thấy lẫn phép tra `nguon`, để hai bên không lệch nhau ở một dòng nào.
+    """
+    ra: list[str] = []
+    for _, chuan in hang_hyperedge_trong(ngu_canh):
+        if chuan not in ra:
+            ra.append(chuan)
+    return tuple(ra)
+
+
+def hang_hyperedge_trong(ngu_canh) -> tuple[tuple[int, str], ...]:
+    """Từng dòng của khối Relationships: `(chỉ số cột id, id hyperedge đã chuẩn hóa)`.
+
+    Đây là bảng mà `nguon` của model trỏ vào (story 3.8): model đọc cột `id`
+    của khối, khai lại các số nó đã dùng, và hàm này là chỗ duy nhất nối số ấy
+    với một id hyperedge. **Không khử trùng**: hai dòng cùng hyperedge (một của
+    đường chính, một của đường phụ trước hợp nhất; hay hai dòng vendor cùng id)
+    là hai chỉ số cùng trỏ một id, và phép tra phải chấp nhận cả hai.
+
+    Chỉ số lấy từ ô cột `id` khi nó là số thập phân - cả dạng CSV chuẩn lẫn
+    dạng hybrid (`f"{{i}},\\t{{item}}"`) đều mang số ở ô đầu. Ô không đọc được
+    thành số mang chỉ số **-1**: model đọc chính ô ấy chứ không đọc vị trí dòng,
+    nên một chỉ số suy từ vị trí là một ánh xạ không bên nào dùng và còn trùng
+    được với một `id` thật (vòng review 3.8); -1 không bao giờ khớp `nguon` (số
+    âm bị `_doc_nguon` bỏ), dòng ấy vẫn vào tập thấy qua `id_hyperedge_trong`.
+
+    Mọi luật đọc (từng dòng, `normalize_id`, ô không chuẩn hóa được là
+    `TrichDanNgoaiQuyen`) giữ nguyên của `id_hyperedge_trong`; xem docstring đó.
     """
     if not isinstance(ngu_canh, str):
         return ()
@@ -509,7 +595,8 @@ def id_hyperedge_trong(ngu_canh) -> tuple[str, ...]:
     if not dong or _COT_HYPEREDGE not in dong[0]:
         return ()
     cot = dong[0].index(_COT_HYPEREDGE)
-    ra: list[str] = []
+    cot_id = dong[0].index(_COT_ID) if _COT_ID in dong[0] else None
+    ra: list[tuple[int, str]] = []
     for hang in dong[1:]:
         if len(hang) <= cot or not hang[cot]:
             continue
@@ -520,9 +607,56 @@ def id_hyperedge_trong(ngu_canh) -> tuple[str, ...]:
                 "ngữ cảnh mang một ô ở cột `hyperedge` không chuẩn hóa được"
                 " thành id: không tra được citation cho lượt này"
             ) from loi
-        if chuan not in ra:
-            ra.append(chuan)
+        stt = -1
+        if cot_id is not None and len(hang) > cot_id and hang[cot_id].strip().isdecimal():
+            stt = int(hang[cot_id])
+        ra.append((stt, chuan))
     return tuple(ra)
+
+
+def loc_trich_dan_theo_nguon(
+    trich_dan: tuple[TrichDan, ...],
+    hang: tuple[tuple[int, str], ...],
+    nguon: tuple[int, ...],
+    giu: Iterable[str] = (),
+) -> tuple[TrichDan, ...]:
+    """Citation "được dùng": giao của `nguon` với dãy chỉ số của ngữ cảnh (story 3.8).
+
+    Hàm thuần và **chỉ thu hẹp**: kết quả là tập con của `trich_dan` theo đúng
+    thứ tự ngữ cảnh, không bao giờ thêm một id ngoài tập thấy (chốt brief §6).
+    Chỉ số ngoài dãy bị bỏ, không lỗi - model đếm nhầm một dòng là chuyện của
+    hiển thị, không phải của an ninh.
+
+    Fallback về **cả** tập thấy khi `nguon` rỗng, hay khi không chỉ số nào
+    trỏ vào một citation còn thấy: một model lười (hay đếm sai hết) không biến
+    một lượt trả lời thành "0 trích dẫn", và người đọc còn có cái để soát. Cả
+    hai ca fallback in một dòng WARNING vì đó là dấu hiệu prompt và model đang
+    lệch nhau, không phải một trạng thái bình thường. `trich_dan` rỗng (ngữ cảnh
+    không phải khung vendor) trả rỗng ngay, không WARNING: không có gì để lệch.
+
+    `giu` (vòng review 3.8) là dãy id **luôn giữ** nếu có trong `trich_dan`,
+    bất kể `nguon`: engine truyền `context.grant_ids`, vì ADR-021 hứa hyperedge
+    được cấp luôn có mặt trong lượt hỏi lại và một model quên liệt kê dòng phụ
+    không được làm citation ấy biến mất khỏi nhịp 4 của demo. Vẫn chỉ thu hẹp:
+    id trong `giu` mà không trong `trich_dan` thì không thêm được.
+    """
+    if not trich_dan:
+        return trich_dan
+    tap_giu = set(giu)
+    if not nguon:
+        logger.warning("loc_trich_dan_theo_nguon: model không khai `nguon`, citation là cả tập thấy")
+        return trich_dan
+    tap_nguon = set(nguon)
+    id_dung = {chuan for stt, chuan in hang if stt in tap_nguon} | tap_giu
+    dung = tuple(td for td in trich_dan if td.id in id_dung)
+    if not dung:
+        logger.warning(
+            "loc_trich_dan_theo_nguon: `nguon` %r không trỏ vào citation nào trong %d dòng,"
+            " citation là cả tập thấy",
+            list(nguon), len(hang),
+        )
+        return trich_dan
+    return dung
 
 
 # --- Hợp nhất đường phụ theo grant (story 5.3) ---------------------------------
@@ -680,7 +814,43 @@ def doc_dau_ra(chuoi) -> KetQuaTraLoi:
             f"{KHOA_KHONG_CO_DAP_AN} là false mà {KHOA_CAU_TRA_LOI} rỗng:"
             " cờ tự mâu thuẫn, không suy diễn thành một lượt từ chối"
         )
-    return KetQuaTraLoi(khong_co_dap_an=co, cau_tra_loi=cau)
+    return KetQuaTraLoi(khong_co_dap_an=co, cau_tra_loi=cau, nguon=_doc_nguon(raw))
+
+
+def _doc_nguon(raw: dict) -> tuple[int, ...]:
+    """Khóa `nguon` tùy chọn: vắng là `()`; có thì phải là danh sách số nguyên.
+
+    Sai kiểu (một chuỗi `"0,3"`, một phần tử không phải số, một `bool`) là
+    `DauRaTraLoiKhongDoc` như ba khóa kia: đó là lược đồ hỏng, và đoán hộ nó
+    là đọc một danh sách mà model không viết. Khử trùng giữ thứ tự bằng một
+    `set` đi kèm (đường nóng của mỗi lượt hỏi); số âm bị bỏ vì không dòng nào
+    mang chỉ số âm và -1 là chỉ số "không đọc được" của `hang_hyperedge_trong`.
+    Dài quá `TRAN_SO_NGUON` là lược đồ hỏng: một model liệt kê hàng nghìn dòng
+    không đọc ngữ cảnh nào có bấy nhiêu dòng.
+    """
+    if KHOA_NGUON not in raw:
+        return ()
+    nguon = raw[KHOA_NGUON]
+    if not isinstance(nguon, list):
+        raise DauRaTraLoiKhongDoc(
+            f"{KHOA_NGUON} phải là danh sách số nguyên, nhận được {type(nguon).__name__}"
+        )
+    if len(nguon) > TRAN_SO_NGUON:
+        raise DauRaTraLoiKhongDoc(
+            f"{KHOA_NGUON} có {len(nguon)} phần tử, quá trần {TRAN_SO_NGUON}"
+        )
+    ra: list[int] = []
+    da_thay: set[int] = set()
+    for muc in nguon:
+        if isinstance(muc, bool) or not isinstance(muc, int):
+            raise DauRaTraLoiKhongDoc(
+                f"{KHOA_NGUON} phải là danh sách số nguyên, có phần tử {muc!r}"
+            )
+        if muc < 0 or muc in da_thay:
+            continue
+        da_thay.add(muc)
+        ra.append(muc)
+    return tuple(ra)
 
 
 __all__ = [
@@ -689,6 +859,8 @@ __all__ = [
     "DAU_PROMPT_TRA_LOI",
     "KHOA_CAU_TRA_LOI",
     "KHOA_KHONG_CO_DAP_AN",
+    "KHOA_NGUON",
+    "TRAN_SO_NGUON",
     "LY_DO_CO_NO_ANSWER",
     "LY_DO_NGU_CANH_RONG",
     "LY_DO_TU_CHOI",
@@ -702,7 +874,9 @@ __all__ = [
     "NguCanhTruyHoiLa",
     "doc_dau_ra",
     "dung_prompt",
+    "hang_hyperedge_trong",
     "hop_nhat_ngu_canh",
     "id_hyperedge_trong",
+    "loc_trich_dan_theo_nguon",
     "ngu_canh_rong",
 ]

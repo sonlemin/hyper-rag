@@ -328,3 +328,17 @@ def test_hai_service_python_deu_thay_co_che_do_do(compose, dv):
     from api.che_do_do import BIEN_CHE_DO_DO
 
     assert BIEN_CHE_DO_DO in compose["services"][dv]["environment"]
+
+
+def test_dockerfile_api_gioi_han_dong_thoi_16():
+    """Story 3.8 (ADR-022 quyết định 3): CMD của image `api` mang `--limit-concurrency 16`.
+
+    Cờ đếm **kết nối** của uvicorn (gồm healthcheck và keep-alive), không đếm
+    riêng request `/hoi-dap`; con số ghim ở đây để một lần đổi phải đi qua diff.
+    """
+    import json as _json
+    dong = [d for d in (Path(__file__).resolve().parent.parent / "api" / "Dockerfile").read_text(encoding="utf-8").splitlines() if d.startswith("CMD ")]
+    assert len(dong) == 1
+    cmd = _json.loads(dong[0][len("CMD "):])
+    assert cmd[-2:] == ["--limit-concurrency", "16"]
+    assert "api.main:app" in cmd

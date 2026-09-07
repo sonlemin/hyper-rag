@@ -45,6 +45,7 @@ from adapters.tra_loi import (
     DAU_PROMPT_TRA_LOI,
     KHOA_CAU_TRA_LOI,
     KHOA_KHONG_CO_DAP_AN,
+    KHOA_NGUON,
     LY_DO_CO_NO_ANSWER,
     LY_DO_NGU_CANH_RONG,
     LY_DO_TU_CHOI,
@@ -275,6 +276,9 @@ def test_doc_dau_ra_hai_hinh_dang_hop_le():
         json.dumps({KHOA_KHONG_CO_DAP_AN: False, KHOA_CAU_TRA_LOI: 7}),
         json.dumps([{KHOA_KHONG_CO_DAP_AN: True, KHOA_CAU_TRA_LOI: ""}]),
         None,
+        # Story 3.8: khóa thứ ba `nguon` sai kiểu cũng là lược đồ hỏng.
+        json.dumps({KHOA_KHONG_CO_DAP_AN: False, KHOA_CAU_TRA_LOI: "x", KHOA_NGUON: "0,3"}),
+        json.dumps({KHOA_KHONG_CO_DAP_AN: False, KHOA_CAU_TRA_LOI: "x", KHOA_NGUON: [0, "x"]}),
     ],
     ids=[
         "khong_phai_json",
@@ -286,6 +290,8 @@ def test_doc_dau_ra_hai_hinh_dang_hop_le():
         "cau_tra_loi_khong_phai_chuoi",
         "json_la_mang",
         "khong_phai_chuoi",
+        "nguon_la_chuoi",
+        "nguon_phan_tu_chuoi",
     ],
 )
 def test_dau_ra_khong_doc_duoc_thi_doi_chu_khong_doan(tho):
@@ -379,6 +385,7 @@ def test_prompt_tra_loi_doc_duoc_va_dung_json_mode():
     assert PROMPT_TRA_LOI.startswith(DAU_PROMPT_TRA_LOI)
     assert KHOA_KHONG_CO_DAP_AN in PROMPT_TRA_LOI
     assert KHOA_CAU_TRA_LOI in PROMPT_TRA_LOI
+    assert KHOA_NGUON in PROMPT_TRA_LOI  # story 3.8: khóa thứ ba
     assert "json" in PROMPT_TRA_LOI.lower()
     assert THAM_SO_LLM["temperature"] == 0
     assert THAM_SO_LLM["response_format"] == {"type": "json_object"}
@@ -451,6 +458,7 @@ def test_prompt_chep_nguyen_dau_che_va_cam_nhac_toi_quyen():
     vi_du = [json.loads(d) for d in VI_DU_DAU_RA.splitlines()]
     assert len(vi_du) == 3
     assert dau_che("cause") in vi_du[2][KHOA_CAU_TRA_LOI] and vi_du[2][KHOA_KHONG_CO_DAP_AN] is False
+    assert all(KHOA_NGUON in v for v in vi_du)  # story 3.8
     # Câu của bản đầu, và mọi biến thể dạy model rằng ngữ cảnh bị lọc theo quyền.
     for cam in (
         "đã được lọc theo quyền",
