@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 import { goi, LoiApi, MA_MANG } from "@/api/goi";
 import { doc_token, la_phien, xoa_token, type Phien } from "@/api/phien";
@@ -18,6 +18,13 @@ export const DUONG_DANG_NHAP = "/dang-nhap";
 // render thẳng nội dung với chip trống. Hôm nay chỉ màn đăng nhập; test pytest
 // đòi `/dang-nhap` luôn nằm trong đây.
 export const ROUTE_MO = [DUONG_DANG_NHAP];
+
+// Phiên hiện tại cho trang con (null khi chưa có phiên hay route mở). Trang
+// mẫu `/mau` đọc cờ `admin` từ đây; không trang nào tự gọi `/auth/toi` lần hai.
+const PhienContext = createContext<Phien | null>(null);
+export function usePhien(): Phien | null {
+  return useContext(PhienContext);
+}
 
 type TrangThai =
   | { loai: "dang_doc" }
@@ -116,7 +123,9 @@ export function KhungApp({ children }: { children: ReactNode }) {
       <Topbar phien={phien} />
       <div className="than">
         <SidebarDieuHuong />
-        <main className="noi_dung">{than}</main>
+        <main className="noi_dung">
+          <PhienContext.Provider value={phien}>{than}</PhienContext.Provider>
+        </main>
       </div>
     </div>
   );

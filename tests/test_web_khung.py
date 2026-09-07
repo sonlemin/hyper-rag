@@ -17,7 +17,7 @@ Tám nhóm test. Bảy nhóm đầu đúng thứ tự spec 4.1:
 (4) microcopy không em dash, không "không chỉ", và nguyên văn theo bảng Voice and Tone;
 (5) `tu_choi` bằng đúng hằng phía `api/`;
 (6) mục sidebar và route `web/src/app/*/page.tsx` khớp một-một (trừ trang mẫu,
-    và trang mẫu bị `src/proxy.ts` chặn 404 ở production);
+    và trang mẫu chỉ mở cho phiên có cờ `admin`, ai khác 404);
 (7) `package.json` ghim `next`, `cytoscape`, `engines.node`, danh sách dependency đóng.
 Nhóm (8) là luật khung: không `localStorage`, không gọi thẳng `:8000`, một cửa
 fetch duy nhất, rewrite `/api/*`, route mở `/dang-nhap`, và mọi `var(--x)` trong
@@ -67,8 +67,8 @@ CAP_TUONG_PHAN = (
     ("ink", "surface-app"),
 )
 
-# Route không có mục sidebar và cố ý như vậy: trang mẫu dev-only trả 404 ở
-# production. Đây là ngoại lệ **có tên** duy nhất của nhóm (6).
+# Route không có mục sidebar và cố ý như vậy: trang mẫu chỉ mở cho phiên
+# `admin`, ai khác nhận 404. Đây là ngoại lệ **có tên** duy nhất của nhóm (6).
 ROUTE_KHONG_CO_MUC = {"/mau"}
 
 
@@ -353,21 +353,18 @@ def test_hom_nay_sidebar_dung_mot_muc_hoi_dap():
     assert [(m["khoa"], m["duong_dan"]) for m in muc] == [("hoi_dap", "/")]
 
 
-def test_trang_mau_tu_choi_o_production():
+def test_trang_mau_chi_mo_cho_admin_va_khong_con_proxy():
+    """Trang mẫu đọc phiên từ `usePhien()` và `notFound()` khi không có cờ `admin`.
+
+    Quyết định 07/09/2026: rào theo `NODE_ENV` bỏ đi vì máy chủ là nơi duy nhất
+    sonlm mở giao diện, nên trang phải xem được ở đó; `src/proxy.ts` (rào cũ)
+    phải không còn, vì một proxy chặn `/mau` sẽ chặn luôn admin.
+    """
     tho = (SRC / "app" / "mau" / "page.tsx").read_text(encoding="utf-8")
-    assert "notFound()" in tho and "production" in tho
-
-
-def test_proxy_chan_dung_tap_route_dev_only_o_production():
-    """`src/proxy.ts` là rào thật cho trang dev-only (đo 07/09: `notFound()` trong
-    page prerender tĩnh chỉ cho thân 404 với mã HTTP 200). Matcher phải bằng
-    đúng tập `ROUTE_KHONG_CO_MUC` và có nhánh 404 theo `NODE_ENV`."""
-    tho = (SRC / "proxy.ts").read_text(encoding="utf-8")
-    m = re.search(r"matcher:\s*(\[[^\]]*\]|\"[^\"]+\")", tho)
-    assert m, "proxy.ts phải export config.matcher"
-    matcher = set(re.findall(r"\"([^\"]+)\"", m.group(1)))
-    assert matcher == ROUTE_KHONG_CO_MUC
-    assert "status: 404" in tho and "NODE_ENV" in tho
+    assert "usePhien()" in tho and "notFound()" in tho
+    assert re.search(r"if \(!phien\?\.admin\) notFound\(\)", tho), tho
+    assert "NODE_ENV" not in tho
+    assert not (SRC / "proxy.ts").exists(), "rào proxy cũ chặn cả admin"
 
 
 # --- (7) ghim phiên bản -----------------------------------------------------

@@ -49,8 +49,8 @@ export function BoMau() {
   const badge_l2 = component("badge-level-l2");
 
   return (
-    <>
-      <h1 className="tieu_de_trang">Bộ mẫu khung (dev-only)</h1>
+    <div data-bo-mau>
+      <h1 className="tieu_de_trang">Bộ mẫu khung (chỉ admin)</h1>
 
       <h2 className="tieu_de_khoi">Ô hỏi (đích của ⌘K)</h2>
       <textarea className="o_hoi" rows={2} data-o-hoi placeholder={MICROCOPY.placeholder_o_hoi} />
@@ -133,6 +133,6 @@ export function BoMau() {
           Đếm {dem}
         </button>
       </HopThoai>
-    </>
+    </div>
   );
 }

@@ -236,6 +236,17 @@ test("trang mẫu in tỷ lệ tương phản, không cặp nào dưới sàn", 
   for (const dong of await cac.allTextContents()) expect(dong).toContain("đạt");
 });
 
+test("/mau: không admin thì 404 của Next, admin thì thấy bộ mẫu", async ({ page }) => {
+  await co_token(page);
+  await mock_toi(page, { ...PHIEN, admin: false });
+  await page.goto("/mau");
+  await expect(page.locator("[data-bo-mau]")).toHaveCount(0);
+  await expect(page.getByText("404")).toBeVisible();
+  await mock_toi(page);
+  await page.goto("/mau");
+  await expect(page.locator("[data-bo-mau]")).toBeVisible();
+});
+
 test("/api/health thật qua rewrite (cần API_NOI_BO trỏ máy chủ)", async ({ page }) => {
   test.skip(!process.env.API_NOI_BO, "đặt API_NOI_BO=http://<máy chủ>:8000 trước `npm run test:e2e` để ca này chạy");
   await page.unroute("**/api/**");
