@@ -10,18 +10,22 @@ mà không cần một trình phân tích TypeScript. Một bản chép lệch m
 UI mang em dash, một route không có mục sidebar - cả ba đỏ ở `uv run pytest`
 trước khi ai mở trình duyệt.
 
-Tám nhóm test. Bảy nhóm đầu đúng thứ tự spec 4.1:
+Chín nhóm test. Bảy nhóm đầu đúng thứ tự spec 4.1:
 (1) `tokens.json` bằng frontmatter DESIGN.md từng giá trị;
 (2) tương phản WCAG >= 4.5:1 cho các cặp chữ/nền đã khai;
 (3) sàn chữ 13px ở token và ở mọi `.css`/`.ts`/`.tsx` của `web/src`;
 (4) microcopy không em dash, không "không chỉ", và nguyên văn theo bảng Voice and Tone;
 (5) `tu_choi` bằng đúng hằng phía `api/`;
-(6) mục sidebar và route `web/src/app/*/page.tsx` khớp một-một (trừ trang mẫu,
-    và trang mẫu chỉ mở cho phiên có cờ `admin`, ai khác 404);
+(6) mục sidebar và route `web/src/app/*/page.tsx` khớp một-một (trừ trang mẫu
+    và màn đăng nhập, và trang mẫu chỉ mở cho phiên có cờ `admin`, ai khác 404);
 (7) `package.json` ghim `next`, `cytoscape`, `engines.node`, danh sách dependency đóng.
 Nhóm (8) là luật khung: không `localStorage`, không gọi thẳng `:8000`, một cửa
 fetch duy nhất, rewrite `/api/*`, route mở `/dang-nhap`, và mọi `var(--x)` trong
 `web/src` phải là biến mà `bien_css.ts` sinh ra.
+Nhóm (9) là màn đăng nhập và vòng đời phiên (story 4.2): tám chuỗi mới có mặt và
+được dùng thật, `/dang-nhap` có `page.tsx` và cố ý không có mục sidebar, luật
+phân loại lỗi `la_het_phien` chỉ khai 401, và ngoài `phien.ts` không file nào
+chạm `sessionStorage` hay khóa token.
 """
 
 from __future__ import annotations
@@ -34,6 +38,7 @@ import pytest
 import yaml
 
 from api.hoi_dap import TEMPLATE_TU_CHOI
+from api.xac_thuc import MA_DANG_NHAP_SAI
 
 GOC = Path(__file__).resolve().parent.parent
 WEB = GOC / "web"
@@ -65,11 +70,19 @@ CAP_TUONG_PHAN = (
     ("ink", "surface-card"),
     ("ink-muted", "surface-card"),
     ("ink", "surface-app"),
+    # Ba cặp của màn đăng nhập 4.2 (retro 4.1: không còn cặp chữ/nền nào không
+    # ai chấm): dòng phụ dưới thương hiệu, thông báo hết phiên, và chính chữ
+    # thương hiệu.
+    ("ink-muted", "surface-app"),
+    ("ink-muted", "surface-nav"),
+    ("primary-deep", "surface-app"),
 )
 
-# Route không có mục sidebar và cố ý như vậy: trang mẫu chỉ mở cho phiên
-# `admin`, ai khác nhận 404. Đây là ngoại lệ **có tên** duy nhất của nhóm (6).
-ROUTE_KHONG_CO_MUC = {"/mau"}
+# Route không có mục sidebar và cố ý như vậy. Đây là danh mục ngoại lệ **có tên**
+# của nhóm (6): trang mẫu chỉ mở cho phiên `admin` (ai khác nhận 404), còn màn
+# đăng nhập là cửa vào chứ không phải một surface để điều hướng tới - một mục
+# "Đăng nhập" trong sidebar chỉ hiện được cho người đã đăng nhập rồi.
+ROUTE_KHONG_CO_MUC = {"/mau", "/dang-nhap"}
 
 
 # --- Đọc nguồn -------------------------------------------------------------
@@ -251,8 +264,26 @@ def test_bo_do_co_chu_bat_ca_ba_dang():
 
 # --- (4) và (5) microcopy --------------------------------------------------
 
-# 17 chuỗi của bảng Voice and Tone (EXPERIENCE.md) cộng bốn chuỗi khung 4.1.
-KHOA_MICROCOPY_BAT_BUOC = {
+# Chín chuỗi của màn đăng nhập, nút đăng xuất và lối ra khỏi trạng thái lỗi (4.2). Chúng **không** nằm
+# trong bảng Voice and Tone (bảng chỉ khai câu lỗi đăng nhập và câu hết phiên),
+# nên phép canh của chúng là "có mặt, là chuỗi, và được dùng thật".
+KHOA_MICROCOPY_DANG_NHAP = frozenset(
+    {
+        "dang_nhap_tieu_de",
+        "o_tai_khoan",
+        "o_mat_khau",
+        "nut_dang_nhap",
+        "dang_gui_dang_nhap",
+        "lien_he_quan_tri",
+        "nut_dang_xuat",
+        "khong_giu_duoc_phien",
+        "lien_ket_ve_dang_nhap",
+    }
+)
+
+# 18 chuỗi của bảng Voice and Tone (EXPERIENCE.md, 16 hàng) cộng bốn chuỗi khung
+# 4.1 và chín chuỗi màn đăng nhập 4.2.
+KHOA_MICROCOPY_BAT_BUOC = KHOA_MICROCOPY_DANG_NHAP | {
     "placeholder_l1_trich_dan",
     "slab_che",
     "dong_han_che_l1",
@@ -469,3 +500,210 @@ def test_next_config_rewrite_api_ve_api_noi_bo():
     tho = (WEB / "next.config.ts").read_text(encoding="utf-8")
     assert "standalone" in tho
     assert "/api/:path*" in tho and "API_NOI_BO" in tho and "http://api:8000" in tho
+
+
+# --- (9) Màn đăng nhập và vòng đời phiên (story 4.2) ------------------------
+
+# Ngoài `phien.ts`, chỉ một file được chạm kho của trình duyệt, và nó chạm vì
+# một lý do không phải phiên: `SidebarDieuHuong.tsx` nhớ trạng thái gập. Danh
+# mục này là **đóng**; thêm một tên vào đây là một quyết định, không phải một
+# lần sửa cho test xanh.
+NGOAI_LE_SESSION_STORAGE = {"web/src/khung/SidebarDieuHuong.tsx"}
+
+# File duy nhất được đọc, ghi hay xóa token phiên.
+FILE_GIU_TOKEN = "web/src/api/phien.ts"
+
+# Chú thích không phải mã: `goi.ts` và `KhungApp.tsx` **nói về** sessionStorage
+# trong docstring mà không chạm nó. Bỏ chú thích trước khi quét, nếu không luật
+# này phạt đúng những chỗ giải thích luật.
+MAU_CHU_THICH_KHOI = re.compile(r"/\*.*?\*/", re.S)
+# `//` mở chú thích, trừ khi nó là phần của một URL (`http://`).
+MAU_CHU_THICH_DONG = re.compile(r"(?<![:\w])//.*$", re.M)
+
+
+def _bo_chu_thich(tho: str) -> str:
+    return MAU_CHU_THICH_DONG.sub("", MAU_CHU_THICH_KHOI.sub("", tho))
+
+
+def test_bo_chu_thich_bo_dung_hai_dang_va_giu_url():
+    """Chấm chính bộ dò: hai dạng chú thích biến mất, URL và mã ở lại."""
+    assert "x" not in _bo_chu_thich("// x\n")
+    assert "x" not in _bo_chu_thich("/* nhieu\n dong x */\n")
+    assert "http://api:8000" in _bo_chu_thich('const a = "http://api:8000";')
+    assert "sessionStorage" in _bo_chu_thich("window.sessionStorage.getItem(K);")
+
+
+def test_microcopy_man_dang_nhap_du_khoa_va_duoc_dung_that(microcopy):
+    """Chín chuỗi mới có mặt và mỗi chuỗi được một file `.tsx` dùng.
+
+    Một khóa microcopy không ai dùng là một câu chữ mà bảng Voice and Tone và
+    màn hình nói khác nhau mà không ai thấy.
+    """
+    thieu = KHOA_MICROCOPY_DANG_NHAP - set(microcopy)
+    assert not thieu, sorted(thieu)
+    tho = "\n".join(f.read_text(encoding="utf-8") for f in _file_giao_dien())
+    khong_dung = sorted(k for k in KHOA_MICROCOPY_DANG_NHAP if f"MICROCOPY.{k}" not in tho)
+    assert not khong_dung, f"khóa microcopy không nơi nào dùng: {khong_dung}"
+
+
+def test_route_dang_nhap_co_page_va_co_ten_trong_ngoai_le_sidebar():
+    """`/dang-nhap` phải có `page.tsx` thật và nằm trong `ROUTE_KHONG_CO_MUC`.
+
+    Bỏ nó khỏi danh mục ngoại lệ là `test_moi_muc_sidebar_co_route_va_nguoc_lai`
+    đỏ và nêu đúng tên route.
+    """
+    assert (SRC / "app" / "dang-nhap" / "page.tsx").exists()
+    assert "/dang-nhap" in ROUTE_KHONG_CO_MUC
+
+
+def test_la_het_phien_chi_khai_dung_401():
+    """Luật phân loại lỗi khai **một chỗ** và chỉ nhận đúng 401.
+
+    Hôm nay hai nơi rẽ nhánh theo 401 (`KhungApp`, màn đăng nhập) và các story
+    4.3-4.6 sẽ thêm nữa. Một bản chép viết nhầm thành `>= 400` đá người dùng ra
+    màn đăng nhập giữa một lượt hỏi; ở đây nó đỏ.
+    """
+    tho = (SRC / "api" / "phien.ts").read_text(encoding="utf-8")
+    m = re.search(r"export function la_het_phien\([^)]*\)[^{]*\{(.*?)\n\}", tho, re.S)
+    assert m, "phien.ts phải export hàm `la_het_phien`"
+    than = m.group(1)
+    assert set(re.findall(r"\b\d{3}\b", than)) == {"401"}, than
+    # Cấm đúng thứ phải cấm - một phép so **khoảng** với status - chứ không cấm
+    # ký tự `>` (nó cấm luôn arrow function và generic, và bản cũ bỏ sót `<`).
+    assert not re.search(r"status\s*[<>]=?", than), than
+    assert not re.search(r"[<>]=?\s*\d{3}", than), than
+
+
+# Mọi cách viết một phép so status với 401 bằng tay.
+MAU_SO_401 = re.compile(r"status\s*===?\s*401|401\s*===?\s*[\w.?\[\]\"']*status")
+
+
+def test_khong_file_nao_ngoai_phien_ts_tu_so_401():
+    """Luật phân loại lỗi khai một chỗ, và đây là phép canh trên **cả `web/src`**.
+
+    Nơi duy nhất được phép điều hướng tới `/dang-nhap` vì một lỗi là nhánh
+    `la_het_phien`; 403 và 5xx báo tại chỗ và giữ nguyên URL (spec 4.2, Never).
+    Một bản chép `if (l.status === 401)` ở story 4.3-4.6 là chỗ mà bản sau viết
+    nhầm thành `>= 400` rồi đá người dùng ra ngoài giữa một lượt hỏi.
+    """
+    xau = [
+        str(f.relative_to(GOC))
+        for f in _file_giao_dien()
+        if str(f.relative_to(GOC)) != FILE_GIU_TOKEN
+        and MAU_SO_401.search(_bo_chu_thich(f.read_text(encoding="utf-8")))
+    ]
+    assert not xau, xau
+    khung = (SRC / "khung" / "KhungApp.tsx").read_text(encoding="utf-8")
+    assert "la_het_phien(" in khung, "KhungApp phải dùng hàm chung, không tự so status"
+
+
+def test_bo_do_401_bat_ca_hai_chieu_viet():
+    """Chấm chính bộ dò, để nó không thành một regex không bao giờ khớp."""
+    assert MAU_SO_401.search("if (l.status === 401) {")
+    assert MAU_SO_401.search("if (401 === loi.status) {")
+    assert not MAU_SO_401.search("la_het_phien(loi)")
+
+
+def test_chi_phien_ts_cham_session_storage_va_khoa_token():
+    """Ngoài `phien.ts` không file nào chạm `sessionStorage` hay khóa token.
+
+    Token đi qua đúng một cửa thì `dang_xuat` và nhánh hết phiên xóa được nó ở
+    một chỗ; hai chỗ đọc kho là hai chỗ quên xóa.
+    """
+    xau = []
+    for f in _file_giao_dien():
+        rel = str(f.relative_to(GOC))
+        tho = _bo_chu_thich(f.read_text(encoding="utf-8"))
+        if "sessionStorage" in tho and rel != FILE_GIU_TOKEN and rel not in NGOAI_LE_SESSION_STORAGE:
+            xau.append(f"{rel}: sessionStorage")
+        if "hyper_rag_token" in tho and rel != FILE_GIU_TOKEN:
+            xau.append(f"{rel}: khóa token")
+    assert not xau, xau
+
+
+def test_man_dang_nhap_khong_doc_token_va_khong_tu_dieu_huong():
+    """Màn đăng nhập không đọc kho để tự đá đi khi đã có token (Ask First 4.2).
+
+    Một màn tự điều hướng làm người dùng không đăng nhập lại được bằng tài khoản
+    khác, và khi token trong kho đã hỏng thì nó là một vòng lặp.
+    """
+    tho = (SRC / "app" / "dang-nhap" / "ManDangNhap.tsx").read_text(encoding="utf-8")
+    assert "doc_token" not in tho, "màn đăng nhập không đọc token"
+    assert "ghi_token(" in tho, "ghi token qua đúng cửa `phien.ts`"
+
+
+def test_dang_xuat_chi_xoa_token_phia_trinh_duyet():
+    """`dang_xuat()` sống ở `phien.ts` và không gọi tuyến API nào.
+
+    `api/` không có danh sách đen JWT (giới hạn đã nhận ở ADR-022), nên đăng
+    xuất chỉ là xóa token phía trình duyệt; token cũ vẫn hợp lệ tới hết TTL.
+    """
+    tho = (SRC / "api" / "phien.ts").read_text(encoding="utf-8")
+    m = re.search(r"export function dang_xuat\([^)]*\)[^{]*\{(.*?)\n\}", tho, re.S)
+    assert m, "phien.ts phải export hàm `dang_xuat`"
+    assert "xoa_token()" in m.group(1)
+    assert "goi(" not in m.group(1) and "goi<" not in m.group(1)
+
+
+# --- (9b) Hợp đồng `POST /auth/login` giữa `web/` và `api/` -----------------
+
+MAN_DANG_NHAP = SRC / "app" / "dang-nhap" / "ManDangNhap.tsx"
+
+
+def _hang_chuoi(tho: str, ten: str) -> str:
+    """Giá trị của một `export const <ten> = "..."` trong nguồn TypeScript."""
+    m = re.search(rf'export const {ten} = "([^"]*)"', tho)
+    assert m, f"phien.ts phải khai hằng {ten}"
+    return m.group(1)
+
+
+def test_ba_truong_cua_auth_login_khop_nguon_api():
+    """Ba tên trường của `POST /auth/login` khớp đúng literal mà `api/main.py` đọc và phát.
+
+    Đây là chỗ hợp đồng hai bên **không** có ai canh nếu chỉ nhìn từng phía: e2e
+    mock trọn tuyến nên nó xanh với bất kỳ tên trường nào, còn phía `api/` không
+    biết `web/` gửi gì. Và nó chết **im lặng theo chiều xấu nhất**: `api/main.py`
+    ánh xạ thân sai trường về đúng 401 `DANG_NHAP_SAI`, nên màn đăng nhập nói
+    "Sai tài khoản hoặc mật khẩu" cho một mật khẩu đúng.
+
+    Cùng khuôn với `test_microcopy_tu_choi_bang_hang_phia_api`: một bản chép ở
+    `web/` chỉ được tồn tại khi có một phép so giữ nó khớp nguồn.
+    """
+    ts = (SRC / "api" / "phien.ts").read_text(encoding="utf-8")
+    tai_khoan = _hang_chuoi(ts, "TRUONG_TAI_KHOAN")
+    mat_khau = _hang_chuoi(ts, "TRUONG_MAT_KHAU")
+    token = _hang_chuoi(ts, "TRUONG_TOKEN")
+    tuyen = _hang_chuoi(ts, "TUYEN_DANG_NHAP")
+
+    py = (GOC / "api" / "main.py").read_text(encoding="utf-8")
+    assert f'@cua_mo.post("{tuyen}")' in py, tuyen
+    assert f'than.get("{tai_khoan}")' in py, tai_khoan
+    assert f'than.get("{mat_khau}")' in py, mat_khau
+    assert f'return {{"{token}": token' in py, token
+
+    # Và màn đăng nhập dựng thân bằng chính ba hằng đó, không literal chép tay.
+    man = MAN_DANG_NHAP.read_text(encoding="utf-8")
+    assert f"[TRUONG_TAI_KHOAN]:" in man and f"[TRUONG_MAT_KHAU]:" in man, man
+    assert "goi<unknown>(TUYEN_DANG_NHAP" in man
+    assert f'"{tai_khoan}"' not in man and f'"{mat_khau}"' not in man
+
+
+def test_ma_dang_nhap_sai_bang_hang_phia_api():
+    """Mã mà màn đăng nhập đọc ra "sai tài khoản hoặc mật khẩu" phải là mã `api/` phát.
+
+    `la_sai_thong_tin` đòi **cả** 401 lẫn mã này; một mã lệch làm mọi lần gõ sai
+    mật khẩu hiện ra thành "Hệ thống gặp lỗi, thử lại sau".
+    """
+    ts = (SRC / "api" / "phien.ts").read_text(encoding="utf-8")
+    assert _hang_chuoi(ts, "MA_DANG_NHAP_SAI") == MA_DANG_NHAP_SAI
+
+
+def test_man_dang_nhap_phan_biet_401_dang_nhap_voi_401_ha_tang():
+    """Màn đăng nhập rẽ nhánh bằng `la_sai_thong_tin`, không bằng `la_het_phien`.
+
+    Một 401 của proxy (thân HTML, `goi.ts` gán mã `MANG`) đọc thành "bạn gõ sai
+    mật khẩu" là bắt người dùng gõ lại mãi một mật khẩu đúng.
+    """
+    man = MAN_DANG_NHAP.read_text(encoding="utf-8")
+    assert "la_sai_thong_tin(" in man
+    assert "la_het_phien(" not in _bo_chu_thich(man)

@@ -1,50 +1,24 @@
-import path from "node:path";
+import { expect, test } from "@playwright/test";
 
-import { expect, test, type Page } from "@playwright/test";
+import {
+  chan_moi_api,
+  co_token,
+  dem_goi_toi,
+  duong_anh,
+  mock_toi,
+  PHIEN,
+  rong_cuon,
+} from "./ho_tro";
 
 // Bài smoke khung app (story 4.1). `/api/auth/toi` mock bằng `page.route`,
-// token đặt vào sessionStorage trước khi trang tải. Ảnh chụp 1280px lưu vào
-// `eval/anh_bang_chung/khung-4-1-1280.png` (có commit).
+// token đặt vào sessionStorage trước khi trang tải. Đồ dùng chung ở `ho_tro.ts`.
+// Ảnh chụp 1280px lưu vào `eval/anh_bang_chung/khung-4-1-1280.png` (có commit).
 
-const PHIEN = { tai_khoan: "dev01", vai: "devops", khong_gian: "synth", demo: true, admin: true };
-const ANH_KHUNG = path.resolve(__dirname, "..", "..", "eval", "anh_bang_chung", "khung-4-1-1280.png");
+const ANH_KHUNG = duong_anh("khung-4-1-1280.png");
 
-// Không lượt nào đi ra máy chủ thật: mọi `/api/**` chưa mock bị chặn. Route đăng
-// ký sau thắng route đăng ký trước, nên mock cụ thể trong từng ca vẫn ăn.
 test.beforeEach(async ({ page }) => {
-  await page.route("**/api/**", (route) => route.abort("connectionrefused"));
+  await chan_moi_api(page);
 });
-
-// Đặt token **một lần** cho phiên: init script chạy lại ở mỗi lần tải trang,
-// nên nó phải tự nhận ra đã đặt rồi, nếu không ca 401 (khung xóa token rồi
-// điều hướng) lại thấy token mọc lên sau lần tải kế.
-async function co_token(page: Page) {
-  await page.addInitScript(() => {
-    if (!sessionStorage.getItem("e2e_da_dat_token")) {
-      sessionStorage.setItem("hyper_rag_token", "token-gia");
-      sessionStorage.setItem("e2e_da_dat_token", "1");
-    }
-  });
-}
-
-async function mock_toi(page: Page, than: unknown = PHIEN, status = 200) {
-  await page.route("**/api/auth/toi", (route) =>
-    route.fulfill({ status, contentType: "application/json", body: JSON.stringify(than) }),
-  );
-}
-
-async function dem_goi_toi(page: Page): Promise<() => number> {
-  let so = 0;
-  await page.route("**/api/auth/toi", (route) => {
-    so += 1;
-    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(PHIEN) });
-  });
-  return () => so;
-}
-
-async function rong_cuon(page: Page): Promise<number> {
-  return page.evaluate(() => document.scrollingElement!.scrollWidth);
-}
 
 test("có token: chip 'dev01 · DevOps', topbar 52px, khung render", async ({ page }) => {
   await co_token(page);
@@ -74,15 +48,15 @@ test("không token: chip trống, 'Đăng nhập để bắt đầu', không g�
   expect(so_goi()).toBe(0);
 });
 
-test("route mở /dang-nhap: không gate, không gọi /auth/toi, chip trống", async ({ page }) => {
+// Story 4.2 đổi hợp đồng của route mở: từ "bọc khung với chip trống" thành
+// **render trần**. Màn đăng nhập là màn đứng riêng, không topbar không sidebar.
+test("route mở /dang-nhap: không gate, không gọi /auth/toi, không khung", async ({ page }) => {
   const so_goi = await dem_goi_toi(page);
   await page.goto("/dang-nhap");
-  await expect(page.locator("[data-khung]")).toHaveAttribute("data-khung", "mo");
+  await expect(page.locator("[data-man-dang-nhap]")).toBeVisible();
+  await expect(page.locator("[data-topbar]")).toHaveCount(0);
+  await expect(page.getByRole("navigation")).toHaveCount(0);
   await expect(page.locator("[data-dang-nhap-de-bat-dau]")).toHaveCount(0);
-  await expect(page.locator("[data-chip-vai]")).toHaveText("");
-  // Hôm nay route do 4.2 dựng nên thân là 404 của Next, nhưng nó được render
-  // thẳng chứ không bị thay bằng link đăng nhập.
-  await expect(page.locator("main")).toContainText("404");
   expect(so_goi()).toBe(0);
 });
 
@@ -102,6 +76,10 @@ test("API chết (5xx): hộp đỏ trong thân, chip trống, không về đăn
   await expect(page.locator("[data-hop-loi]")).toContainText("Hệ thống gặp lỗi");
   await expect(page.locator("[data-ma-loi]")).toHaveAttribute("data-ma-loi", "KHO_KHONG_SAN_SANG");
   await expect(page.locator("[data-chip-vai]")).toHaveText("");
+  await expect(page.locator("[data-dang-xuat]")).toHaveCount(0);
+  // Ngõ cụt phải có lối ra: token còn nguyên nên tải lại vẫn rơi vào đây, và
+  // nút thoát thì ẩn. Một liên kết, không tự điều hướng.
+  await expect(page.getByRole("link", { name: "Về màn đăng nhập" })).toBeVisible();
   expect(page.url()).not.toContain("/dang-nhap");
 });
 

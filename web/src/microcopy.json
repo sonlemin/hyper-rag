@@ -28,5 +28,14 @@
   "mo_rong_menu": "Mở rộng",
   "dieu_huong_chinh": "Điều hướng chính",
   "dong": "Đóng",
-  "dang_tai": "Đang tải..."
+  "dang_tai": "Đang tải...",
+  "dang_nhap_tieu_de": "Đăng nhập",
+  "o_tai_khoan": "Tài khoản",
+  "o_mat_khau": "Mật khẩu",
+  "nut_dang_nhap": "Đăng nhập",
+  "dang_gui_dang_nhap": "Đang đăng nhập...",
+  "lien_he_quan_tri": "Chưa có tài khoản? Liên hệ quản trị viên.",
+  "nut_dang_xuat": "Đăng xuất",
+  "khong_giu_duoc_phien": "Trình duyệt không giữ được phiên, mở lại ngoài chế độ riêng tư rồi đăng nhập lại",
+  "lien_ket_ve_dang_nhap": "Về màn đăng nhập"
 }

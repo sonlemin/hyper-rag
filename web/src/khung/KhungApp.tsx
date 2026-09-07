@@ -5,18 +5,28 @@ import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 import { goi, LoiApi, MA_MANG } from "@/api/goi";
-import { doc_token, la_phien, xoa_token, type Phien } from "@/api/phien";
+import {
+  dang_xuat,
+  doc_token,
+  la_het_phien,
+  la_phien,
+  LY_DO_HET_HAN,
+  THAM_SO_LY_DO,
+  xoa_token,
+  type Phien,
+} from "@/api/phien";
 import { MICROCOPY } from "@/microcopy";
 import { HopLoi } from "./HopLoi";
 import { SidebarDieuHuong } from "./SidebarDieuHuong";
 import { Topbar } from "./Topbar";
 
-// Route đăng nhập do story 4.2 dựng; hôm nay là 404 hợp lệ.
+// Màn đăng nhập (story 4.2). Route mở duy nhất của app.
 export const DUONG_DANG_NHAP = "/dang-nhap";
 
 // Route **mở**: không cần phiên, khung không gọi `/auth/toi` và không gate,
-// render thẳng nội dung với chip trống. Hôm nay chỉ màn đăng nhập; test pytest
-// đòi `/dang-nhap` luôn nằm trong đây.
+// render **trần** (không topbar, không sidebar) vì màn đăng nhập là màn đứng
+// riêng. Hôm nay chỉ màn đăng nhập; test pytest đòi `/dang-nhap` luôn nằm
+// trong đây.
 export const ROUTE_MO = [DUONG_DANG_NHAP];
 
 // Phiên hiện tại cho trang con (null khi chưa có phiên hay route mở). Trang
@@ -30,8 +40,7 @@ type TrangThai =
   | { loai: "dang_doc" }
   | { loai: "khong_token" }
   | { loai: "co_phien"; phien: Phien }
-  | { loai: "loi"; loi: LoiApi }
-  | { loai: "mo" };
+  | { loai: "loi"; loi: LoiApi };
 
 /** Khung app: topbar, sidebar, thân. Đọc phiên qua `GET /auth/toi` khi có token
  *  trong sessionStorage; không token thì không gọi API. 401 là xóa token và về
@@ -43,14 +52,18 @@ export function KhungApp({ children }: { children: ReactNode }) {
   const duong_dan = usePathname();
   const [trang_thai, dat] = useState<TrangThai>({ loai: "dang_doc" });
 
-  // Phụ thuộc `duong_dan`: sau khi 4.2 `ghi_token` rồi push client-side, token
-  // mới phải được đọc lại thay vì kẹt ở `khong_token` của lần render trước.
+  // Route mở nhận ra **ngay trong thân render**, không qua một trạng thái khởi
+  // tạo rồi đợi `useEffect` lật lại: trạng thái đầu là `dang_doc`, nên một
+  // vòng qua effect có nghĩa là HTML prerender và lần render client đầu của
+  // `/dang-nhap` là khung đầy đủ với "Đang tải...", tức một nháy khung trước
+  // card. Playwright không thấy nó vì `toHaveCount(0)` tự chờ; người xem thì có.
+  const mo = ROUTE_MO.includes(duong_dan);
+
+  // Phụ thuộc `duong_dan`: sau khi `ghi_token` rồi push client-side, token mới
+  // phải được đọc lại thay vì kẹt ở `khong_token` của lần render trước.
   useEffect(() => {
     let con_song = true;
-    if (ROUTE_MO.includes(duong_dan)) {
-      dat({ loai: "mo" });
-      return;
-    }
+    if (mo) return;
     if (!doc_token()) {
       dat({ loai: "khong_token" });
       return;
@@ -65,9 +78,11 @@ export function KhungApp({ children }: { children: ReactNode }) {
       .catch((loi: unknown) => {
         if (!con_song) return;
         const l = loi instanceof LoiApi ? loi : new LoiApi(MA_MANG, 0);
-        if (l.status === 401) {
+        // Luật phân loại lỗi khai một chỗ (`phien.ts`): chỉ hết phiên mới được
+        // đá về màn đăng nhập. 403 và 5xx báo tại chỗ, giữ nguyên URL.
+        if (la_het_phien(l)) {
           xoa_token();
-          router.replace(`${DUONG_DANG_NHAP}?ly_do=het_han`);
+          router.replace(`${DUONG_DANG_NHAP}?${THAM_SO_LY_DO}=${LY_DO_HET_HAN}`);
           return;
         }
         dat({ loai: "loi", loi: l });
@@ -75,7 +90,7 @@ export function KhungApp({ children }: { children: ReactNode }) {
     return () => {
       con_song = false;
     };
-  }, [router, duong_dan]);
+  }, [router, duong_dan, mo]);
 
   // ⌘K / Ctrl+K focus ô hỏi (phần tử mang `data-o-hoi`) nếu trang có và không
   // modal nào đang mở (Esc đóng modal, phím tắt không được xuyên qua nó).
@@ -93,6 +108,20 @@ export function KhungApp({ children }: { children: ReactNode }) {
     return () => document.removeEventListener("keydown", phim);
   }, []);
 
+  // Đăng xuất: xóa token rồi về màn đăng nhập **không** `ly_do` (hết phiên và
+  // tự thoát là hai chuyện khác nhau, và người tự thoát không cần được báo là
+  // phiên đã hết hạn).
+  function thoat() {
+    dang_xuat();
+    router.replace(DUONG_DANG_NHAP);
+  }
+
+  // Route mở render trần: màn đăng nhập không có topbar và không có sidebar,
+  // và nó không được gate bởi chính phiên mà nó sắp tạo. Đứng sau mọi hook
+  // (luật hook) nhưng vẫn trong cùng một lần render, nên không có khung nào
+  // kịp hiện ra.
+  if (mo) return <>{children}</>;
+
   const phien = trang_thai.loai === "co_phien" ? trang_thai.phien : null;
   let than: ReactNode;
   switch (trang_thai.loai) {
@@ -107,20 +136,25 @@ export function KhungApp({ children }: { children: ReactNode }) {
       );
       break;
     case "loi":
+      // Ngõ cụt nếu không có lối ra: token còn nguyên nên mỗi lần tải lại rơi
+      // đúng vào đây, và nút đăng xuất ẩn vì chưa có phiên. Một liên kết, không
+      // tự điều hướng - 403 và 5xx không được đá người dùng đi (spec 4.2 Never).
       than = (
         <div data-ma-loi={trang_thai.loi.code}>
           <HopLoi>{MICROCOPY.loi_he_thong}</HopLoi>
+          <p className="loi_loi_thoat">
+            <Link href={DUONG_DANG_NHAP}>{MICROCOPY.lien_ket_ve_dang_nhap}</Link>
+          </p>
         </div>
       );
       break;
     case "co_phien":
-    case "mo":
       than = children;
   }
 
   return (
     <div className="khung" data-khung={trang_thai.loai}>
-      <Topbar phien={phien} />
+      <Topbar phien={phien} dang_xuat={thoat} />
       <div className="than">
         <SidebarDieuHuong />
         <main className="noi_dung">

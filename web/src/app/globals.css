@@ -237,6 +237,13 @@ a {
   cursor: pointer;
 }
 
+/* Nút đang khóa (đang gửi) phải **trông** khóa: chữ đổi thôi thì nó vẫn mời
+   bấm, và người bấm không hiểu vì sao không có gì xảy ra. */
+.nut_chinh:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .nut_phu {
   background: var(--mau-surface-card);
   color: var(--mau-ink-muted);
@@ -335,4 +342,140 @@ a {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* ===== Màn đăng nhập (story 4.2) ===== */
+
+/* Màn đứng riêng: `KhungApp` trả trần cho `ROUTE_MO`, nên lớp này tự dựng nền
+   app và căn giữa thay cho `.khung`/`.noi_dung`. */
+.man_dang_nhap {
+  min-height: 100vh;
+  background: var(--mau-surface-app);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* `flex-start` cộng `margin: auto` trên khối giữa, **không** `center`: một
+     flex item bị `justify-content: center` đẩy tràn ra ngoài mép trên thì phần
+     trên bị cắt và không cuộn tới được. Khối giữa gom thương hiệu với card để
+     hai thứ đó vẫn đi cùng nhau khi màn cao. */
+  justify-content: flex-start;
+  padding: 48px 20px;
+}
+
+.man_dang_nhap__giua {
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Lối ra khỏi trạng thái lỗi của khung (403, 5xx, mạng): token còn nguyên nên
+   tải lại vẫn rơi vào đó, và nút đăng xuất ẩn vì chưa có phiên. */
+.loi_loi_thoat {
+  margin: 10px 0 0;
+  font-size: var(--chu-caption-min-co);
+}
+
+.man_dang_nhap__thuong_hieu {
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.man_dang_nhap__ten {
+  font-size: var(--chu-brand-login-co);
+  font-weight: var(--chu-brand-login-dam);
+  letter-spacing: var(--chu-brand-login-gian-chu);
+  color: var(--mau-primary-deep);
+}
+
+.man_dang_nhap__phu {
+  font-size: var(--chu-nav-item-co);
+  color: var(--mau-ink-muted);
+  margin-top: 4px;
+}
+
+/* Card đăng nhập 400px bo `rounded.lg` (DESIGN.md Components). Dùng lại `.the`
+   cho nền, viền và bóng; lớp này chỉ khai bề rộng và nhịp dọc. */
+.the_dang_nhap {
+  width: 400px;
+  max-width: 100%;
+  padding: 26px 28px 28px;
+}
+
+.the_dang_nhap__tieu_de {
+  font-size: var(--chu-heading-block-co);
+  font-weight: var(--chu-heading-block-dam);
+  margin: 0 0 18px;
+}
+
+.the_dang_nhap__loi {
+  margin-bottom: 16px;
+}
+
+.the_dang_nhap__truong {
+  margin-bottom: 15px;
+}
+
+.the_dang_nhap__truong label {
+  display: block;
+  font-size: var(--chu-nav-item-co);
+  font-weight: 600;
+  color: var(--mau-ink-muted);
+  margin-bottom: 5px;
+}
+
+.the_dang_nhap__loi_thoat {
+  margin: 14px 0 0;
+  font-size: var(--chu-caption-min-co);
+  color: var(--mau-ink-muted);
+  text-align: center;
+}
+
+/* Ô nhập của form (composer chat có lớp riêng `.o_hoi`). */
+.o_nhap {
+  width: 100%;
+  border: 1px solid var(--mau-border-strong);
+  border-radius: var(--bo-md);
+  padding: 10px 13px;
+  font-size: var(--chu-base-co);
+  background: var(--mau-surface-card);
+  color: var(--mau-ink);
+}
+
+/* Sai tài khoản hoặc mật khẩu: cả hai ô viền đỏ. Viền đỏ **không** đứng một
+   mình - thông điệp gộp có icon kèm chữ ở ngay trên, và `aria-invalid` nói
+   cùng điều đó cho trình đọc màn hình (EXPERIENCE.md Accessibility Floor). */
+.o_nhap--loi {
+  border-color: var(--mau-danger);
+}
+
+.nut_chinh--rong {
+  width: 100%;
+  padding: 11px 0;
+  margin-top: 4px;
+}
+
+/* Thông báo hết phiên: trung tính, không hộp đỏ, không icon cảnh báo. Hộp đỏ là
+   ngôn ngữ của fail-closed (NFR-10) và hết phiên không phải một lỗi. */
+.thong_bao_phien {
+  margin: 0 0 16px;
+  padding: 9px 12px;
+  background: var(--mau-surface-nav);
+  border: 1px solid var(--mau-border);
+  border-radius: var(--bo-md);
+  color: var(--mau-ink-muted);
+  font-size: var(--chu-caption-min-co);
+}
+
+/* Nút đăng xuất trên topbar: chữ trắng trên nền đậm, viền mảnh, không phải một
+   nút hành động chính (màu hành động duy nhất là xanh thép, và topbar đã đậm). */
+.topbar__nut_thoat {
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: var(--bo-sm);
+  font-size: var(--chu-meta-chip-co);
+  padding: 3px 10px;
+  cursor: pointer;
+  white-space: nowrap;
 }
