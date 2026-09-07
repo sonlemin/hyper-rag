@@ -335,6 +335,36 @@ test("lượt cũ thu gọn: bấm mở lại và giữ mở qua lượt sau", a
   await expect(page.locator("[data-khoi-nguon]").nth(0)).toHaveAttribute("data-mo", "1");
 });
 
+test("lượt từ chối xen giữa không thu gọn lượt trả lời trước", async ({ page }) => {
+  // Luật của EXPERIENCE.md là "lượt **trả lời** mới nhất luôn mở", nên một lượt
+  // từ chối - vốn không có khối nguồn nào - không được cướp vai trò ấy. Nếu nó
+  // cướp thì màn hình còn đúng không nguồn nào mở, ngay sau một câu vừa trả lời
+  // có nguồn. Đo được trên máy chủ thật với `ts01` ngày 07/09/2026: câu thứ hai
+  // rơi vào `refused` và khối nguồn của câu thứ nhất vẫn mở.
+  const luot = [
+    envelope({ citations: [trich_dan("he-01"), trich_dan("he-02")] }),
+    envelope({ answer: null, refused: true, citations: [] }),
+  ];
+  let i = 0;
+  await page.route("**/api/hoi-dap", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(luot[Math.min(i++, luot.length - 1)]),
+    });
+  });
+  await vao_chat(page);
+  await hoi_bang_nut(page, "câu có nguồn");
+  await expect(page.locator("[data-khoi-nguon]")).toHaveAttribute("data-mo", "1");
+
+  await hoi_bang_nut(page, "câu bị từ chối");
+  await expect(page.locator("[data-tu-choi]")).toHaveCount(1);
+  // Lượt từ chối không sinh khối nguồn nào, và lượt trả lời trước vẫn mở.
+  await expect(page.locator("[data-khoi-nguon]")).toHaveCount(1);
+  await expect(page.locator("[data-khoi-nguon]")).toHaveAttribute("data-mo", "1");
+  await expect(page.locator("[data-khoi-nguon] [data-cite-row]")).toHaveCount(2);
+});
+
 test("lượt từ chối: không khối nguồn, không dòng hạn chế, DOM như 4.3", async ({ page }) => {
   await mock_hoi_dap(page, envelope({ answer: null, refused: true, citations: [] }));
   await vao_chat(page);
