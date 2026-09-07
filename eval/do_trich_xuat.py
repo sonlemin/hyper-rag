@@ -460,7 +460,14 @@ def ghi_ket_qua(duong_dan: str | Path, du_lieu: Mapping, ghi_de: bool = False) -
 def _ghi_nguyen_tu(duong_dan: Path, du_lieu: Mapping) -> None:
     """Ghi qua file tạm rồi `os.replace`: một lần chạy bị giết giữa chừng không
     được để lại một file JSON cụt mà `doc_ket_qua` từ chối, trong khi bản đầy đủ
-    thì đã mất."""
+    thì đã mất.
+
+    Giới hạn đã khai (khoản ledger 2.8, chốt nhận ở 3.8): gọi sau **mỗi chunk**
+    và ghi lại **toàn bộ** file, nên chi phí ghi là bậc hai theo số chunk của
+    một tài liệu. Corpus dựng mỗi tài liệu một chunk, tài liệu công ty dài nhất
+    vài chunk, nên ở quy mô khóa luận nó không đo được; đường sửa nếu cần là
+    JSONL nối thêm rồi gộp lúc đọc. Đổi lấy điều đó là không mất tiền đã tiêu.
+    """
     tam = duong_dan.with_name(duong_dan.name + ".dang-ghi")
     tam.write_text(
         json.dumps(dict(du_lieu), ensure_ascii=False, indent=1) + "\n", encoding="utf-8"

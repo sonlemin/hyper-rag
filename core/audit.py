@@ -189,9 +189,10 @@ class SuKienAudit:
 
     - sự kiện ingest (2.3) ghi id **vector** của hyperedge (`rel-<md5>`, do
       upstream sinh từ tên fact) - đó là id mà đường nạp cầm trong tay;
-    - sự kiện `query` (3.4) ghi id **node** hyperedge, cùng id với trường `id`
-      của từng citation trong response, để hậu kiểm đối chiếu được response
-      với audit bằng một phép so chuỗi. Lượt từ chối ghi tuple rỗng;
+    - sự kiện `query` (3.4) ghi id **node** hyperedge của **cả tập thấy** - mọi
+      hyperedge trong ngữ cảnh đã lọc mà LLM đọc (3.8, ADR-022); `citations`
+      của response là tập con "được dùng", nên hậu kiểm đối chiếu bằng phép
+      "mọi `citations[].id` nằm trong `hyperedge_ids`". Lượt từ chối ghi tuple rỗng;
       `permission_mismatch` (3.6) ghi các id node mà cửa quyền không xác nhận.
       Sự kiện `filter` (3.6) ghi tuple rỗng: nó chỉ mang số đếm theo mức.
 

@@ -672,3 +672,34 @@ def test_chi_api_duoc_import_jwt_va_bcrypt():
     assert not vi_pham, (
         "`jwt`/`bcrypt` chỉ được import từ `api/`:\n" + "\n".join(vi_pham)
     )
+
+
+# --- Khoản ledger 2.10 (đóng ở 3.8): file được miễn ngữ cảnh hệ thống phải *ở lại* đọc thuần --
+
+
+# Các file `eval/` trong `CHO_PHEP_SYSTEM_CONTEXT` được miễn vì "đọc thuần":
+# không `initialize()` (dựng ràng buộc, tức ghi), không nạp, không xóa. Lời hứa
+# đó từng chỉ sống trong docstring; đây là chỗ máy canh. `adapters/ingest.py` là
+# đường nạp nên không nằm trong phép kiểm này.
+TEN_GOI_GHI_CAM_O_DOC_THUAN = frozenset({"initialize", "delete_space", "xoa_space", "drop"})
+
+
+def _goi_thuoc_tinh(py: Path, ten: frozenset[str]) -> list[int]:
+    tree = ast.parse(py.read_text(encoding="utf-8"), filename=str(py))
+    return [
+        node.lineno
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr in ten
+    ]
+
+
+def test_file_eval_mien_ngu_canh_he_thong_khong_goi_initialize_hay_xoa():
+    """`eval/chup_do_thi.py`, `eval/ct03.py` được miễn vì đọc thuần; gọi `initialize()`/xóa là CI fail."""
+    doc_thuan = sorted(f for f in CHO_PHEP_SYSTEM_CONTEXT if f.startswith("eval/"))
+    assert doc_thuan, "danh sách miễn phải còn ít nhất một file eval/ đọc thuần"
+    vi_pham = {
+        f: dong for f in doc_thuan if (dong := _goi_thuoc_tinh(REPO_ROOT / f, TEN_GOI_GHI_CAM_O_DOC_THUAN))
+    }
+    assert not vi_pham, f"file đọc thuần gọi hàm ghi/xóa: {vi_pham}"

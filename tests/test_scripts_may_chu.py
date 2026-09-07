@@ -175,3 +175,43 @@ def test_cuc_bo_chi_di_voi_space_real(script):
     làm bẩn mẫu số của Đo 2 và Đo 3 bằng một bộ trích xuất khác hẳn."""
     assert '*" --space real "*|*" --space=real "*' in script
     assert "chi di voi --space real (AD-12)" in script
+
+
+# --- Khoản ledger 2.10: chạy thật cửa chặn module (đóng ở 3.8) -----------------
+
+
+def _chay_script(tmp_path, module: str, *tham_so: str):
+    """Chạy `chay-may-chu.sh` với một REMOTE_DIR giả có `.env`/`.env.server` rỗng.
+
+    Cửa chặn module đứng **trước** mọi lời gọi `docker`, nên test này kiểm được
+    hành vi thật của nó mà không cần stack: module lạ phải thoát mã 2 trước khi
+    script thử tra IP container.
+    """
+    import subprocess
+
+    (tmp_path / ".env").write_text("", encoding="utf-8")
+    (tmp_path / ".env.server").write_text("", encoding="utf-8")
+    # Một `docker` giả luôn thất bại đứng đầu PATH: bước sau cửa chặn là
+    # `docker volume inspect`, và test không được chạm Docker thật của máy dev.
+    bin_gia = tmp_path / "bin"
+    bin_gia.mkdir()
+    (bin_gia / "docker").write_text("#!/usr/bin/env bash\nexit 1\n", encoding="utf-8")
+    (bin_gia / "docker").chmod(0o755)
+    env = {**os.environ, "HYPER_RAG_REPO": str(tmp_path), "HYPER_RAG_MODULE": module,
+           "PATH": f"{bin_gia}:{os.environ.get('PATH', '')}"}
+    return subprocess.run(["bash", str(SCRIPT), "buoc", *tham_so], env=env, capture_output=True, text=True)
+
+
+def test_module_la_bi_chan_truoc_khi_cham_docker(tmp_path):
+    kq = _chay_script(tmp_path, "os")
+    assert kq.returncode == 2, kq.stderr
+    assert "khong nam trong danh sach cho phep" in kq.stderr
+    assert "mountpoint" not in kq.stderr, "phải chặn trước khi chạm docker"
+
+
+def test_module_hop_le_qua_cua_chan_va_dung_o_buoc_docker(tmp_path):
+    """Chiều ngược: module trong danh sách đi qua cửa và chết ở bước kế (`docker` giả thất bại)."""
+    kq = _chay_script(tmp_path, "eval.do3_tho")
+    assert kq.returncode == 1, kq.stderr
+    assert "khong nam trong danh sach cho phep" not in kq.stderr
+    assert "mountpoint" in kq.stderr
