@@ -337,6 +337,18 @@ CT_MA: str = "ma"
 # Không vào response (AD-8).
 CT_GRANT_IDS: str = "grant_ids"
 
+# Vai **thật** của người đang mượn vai (story 4.5), **chỉ có mặt khi lượt chạy
+# dưới một token xem như**, ở cả ba hàng `query`, `refusal`,
+# `permission_mismatch` - cùng khuôn và cùng lý do với `grant_ids` ngay trên.
+#
+# Vì sao cần: một lượt của `dev01` đang mượn `truong_nhom` ghi `act='dev01'`,
+# `role='truong_nhom'`, tức **không khác một tài khoản `truong_nhom` thật**.
+# Không có dấu này thì hậu kiểm FR-23 phải ghép hàng `query` với hàng
+# `role_swap` gần nhất theo cửa sổ thời gian, và một cửa sổ thời gian là thứ
+# hỏng lặng lẽ khi hai phiên chạy song song. Cùng tên khóa với `chi_tiet` của
+# `role_swap` (`vai_that`), nên hai loại hàng đọc bằng một cái tên.
+CT_VAI_THAT: str = "vai_that"
+
 
 class LoiHoiDap(LoiXacThuc):
     """Lỗi của đường hỏi đáp; cùng hình dạng `{error: {code, message}}`.
@@ -736,16 +748,27 @@ def _tu_sdk_kho(loi: BaseException) -> bool:
     return False
 
 
-def _kem_grant(chi_tiet: dict, ngu_canh: PermissionContext) -> dict:
-    """`chi_tiet` cộng `grant_ids` **chỉ khi** ngữ cảnh mang grant (story 5.3).
+def _kem_grant(
+    chi_tiet: dict, ngu_canh: PermissionContext, vai_that: str | None = None
+) -> dict:
+    """`chi_tiet` cộng hai dấu **chỉ khi** lượt này có chúng.
 
     Một luật cho cả ba hàng của một lượt - `query`, `refusal`,
     `permission_mismatch`: hậu kiểm FR-20 đọc được lượt nào chạy dưới quyền
-    nâng dù lượt ấy trả lời, từ chối hay hỏng ở cửa quyền; hàng của lượt không
-    grant giữ nguyên hình dạng cũ.
+    nâng và hậu kiểm FR-23 đọc được lượt nào chạy dưới một vai mượn, dù lượt ấy
+    trả lời, từ chối hay hỏng ở cửa quyền. Hàng của một lượt thường giữ nguyên
+    hình dạng cũ **từng khóa**, nên sáu đợt nạp và mọi hàng đã ghi không đổi.
+
+    `vai_that` đến từ `claim.act.role` ở nơi gọi chứ không từ ngữ cảnh: thêm một
+    trường vào `PermissionContext` là một thay đổi `core/` thứ hai cho một dữ
+    liệu mà không tầng nào dưới `api/` đọc - tầng che không tra nó, adapter
+    không lọc theo nó, và nó chỉ đi vào một hàng sổ. Kênh đúng vì thế là tham số
+    của ba hàm ghi audit, cả ba đều đã nhận `ngu_canh` từ cùng một nơi gọi.
     """
     if ngu_canh.grant_ids:
-        return {**chi_tiet, CT_GRANT_IDS: list(ngu_canh.grant_ids)}
+        chi_tiet = {**chi_tiet, CT_GRANT_IDS: list(ngu_canh.grant_ids)}
+    if vai_that is not None:
+        chi_tiet = {**chi_tiet, CT_VAI_THAT: vai_that}
     return chi_tiet
 
 
@@ -754,6 +777,7 @@ async def _ghi_audit_truy_van(
     ngu_canh: PermissionContext,
     mili_giay: float,
     hyperedge_ids: tuple[str, ...],
+    vai_that: str | None = None,
 ) -> None:
     """Sự kiện `query` ở tầng **observation**: audit hỏng không làm câu hỏi hỏng.
 
@@ -776,7 +800,11 @@ async def _ghi_audit_truy_van(
     của lượt không grant giữ nguyên hình dạng, hàng của lượt có grant nói lượt
     ấy chạy dưới những id nào; `hyperedge_ids` vẫn là dãy id tập thấy.
     """
-    chi_tiet = _kem_grant({CT_MILI_GIAY: round(mili_giay, 3), CT_REQUEST_ID: ngu_canh.request_id}, ngu_canh)
+    chi_tiet = _kem_grant(
+        {CT_MILI_GIAY: round(mili_giay, 3), CT_REQUEST_ID: ngu_canh.request_id},
+        ngu_canh,
+        vai_that,
+    )
     await ghi_quan_sat(
         audit,
         SuKienAudit(
@@ -794,7 +822,10 @@ async def _ghi_audit_truy_van(
 
 
 async def _ghi_audit_lech_quyen(
-    audit: AuditPort, ngu_canh: PermissionContext, loi: TrichDanNgoaiQuyen
+    audit: AuditPort,
+    ngu_canh: PermissionContext,
+    loi: TrichDanNgoaiQuyen,
+    vai_that: str | None = None,
 ) -> None:
     """Sự kiện `permission_mismatch` (story 3.6), tầng observation, best-effort.
 
@@ -814,13 +845,21 @@ async def _ghi_audit_lech_quyen(
             act=ngu_canh.real_account,
             role=ngu_canh.role,
             hyperedge_ids=tuple(loi.ids),
-            chi_tiet=_kem_grant({CT_MA: MA_TRICH_DAN_NGOAI_QUYEN, CT_REQUEST_ID: ngu_canh.request_id}, ngu_canh),
+            chi_tiet=_kem_grant(
+                {CT_MA: MA_TRICH_DAN_NGOAI_QUYEN, CT_REQUEST_ID: ngu_canh.request_id},
+                ngu_canh,
+                vai_that,
+            ),
         ),
     )
 
 
 async def _ghi_audit_tu_choi(
-    audit: AuditPort, ngu_canh: PermissionContext, ly_do: str, che_do_do: bool
+    audit: AuditPort,
+    ngu_canh: PermissionContext,
+    ly_do: str,
+    che_do_do: bool,
+    vai_that: str | None = None,
 ) -> None:
     """Sự kiện `refusal`, tầng **theo cờ chế độ đo**, mang lý do trong `chi_tiet`.
 
@@ -849,7 +888,11 @@ async def _ghi_audit_tu_choi(
         thoi_diem=thoi_diem_utc(),
         act=ngu_canh.real_account,
         role=ngu_canh.role,
-        chi_tiet=_kem_grant({CT_LY_DO: ly_do, CT_REQUEST_ID: ngu_canh.request_id}, ngu_canh),
+        chi_tiet=_kem_grant(
+            {CT_LY_DO: ly_do, CT_REQUEST_ID: ngu_canh.request_id},
+            ngu_canh,
+            vai_that,
+        ),
     )
     if not che_do_do:
         await ghi_quan_sat(audit, su_kien)
@@ -917,6 +960,12 @@ async def tra_loi(
     # `embedding_cost`, `permission_mismatch` của lượt này nối được với nhau.
     # Không vào response (AD-8).
     ngu_canh = ngu_canh_cua_claim(claim, policy, request_id=uuid.uuid4().hex, grant_ids=grant_ids)
+    # Vai **thật** của người đang mượn vai (story 4.5), `None` với một lượt
+    # thường. Nó chỉ đi vào ba hàng audit và **không** vào ngữ cảnh quyền: tầng
+    # che không tra nó, adapter không lọc theo nó, và `meta` của response không
+    # mang nó (AD-8 - một lượt mượn vai phải nhìn giống hệt một lượt của vai ấy
+    # từ phía client, đó là chính điều "xem như" dựng ra để làm).
+    vai_that = claim.act.role if claim.act is not None else None
     try:
         with use_context(ngu_canh):
             # Gọi **không** truyền `param`: `EngineACL.hoi_dap` dựng một
@@ -956,7 +1005,7 @@ async def tra_loi(
         # không hàng `refusal`. Số id thiếu chỉ vào log: thân lỗi không được kể
         # ra ngữ cảnh có bao nhiêu mục.
         logger.warning("citation ngoài quyền: %s", loi)
-        await _ghi_audit_lech_quyen(audit, ngu_canh, loi)
+        await _ghi_audit_lech_quyen(audit, ngu_canh, loi, vai_that)
         raise LoiHoiDap(500, MA_TRICH_DAN_NGOAI_QUYEN, THONG_DIEP_TRICH_DAN) from None
     except DauRaTraLoiKhongDoc as loi:
         # **Lỗi hệ thống, không phải một lý do từ chối.** Bắt trước nhánh chung
@@ -987,10 +1036,10 @@ async def tra_loi(
     # `query`" của NFR-08 phải giữ - ghi `query` trước là để lại một hàng thời
     # gian cho một lượt không trả lời được.
     if tu_choi:
-        await _ghi_audit_tu_choi(audit, ngu_canh, ket_qua.ly_do_tu_choi, che_do_do)
+        await _ghi_audit_tu_choi(audit, ngu_canh, ket_qua.ly_do_tu_choi, che_do_do, vai_that)
     # Audit ghi **tập thấy**, response mang tập dùng (story 3.8): hậu kiểm
     # không đứng trên một danh sách do model khai.
-    await _ghi_audit_truy_van(audit, ngu_canh, mili_giay, ket_qua.hyperedge_da_thay)
+    await _ghi_audit_truy_van(audit, ngu_canh, mili_giay, ket_qua.hyperedge_da_thay, vai_that)
     return dung_envelope(
         # `None` ở lượt từ chối, và đó là hợp đồng chứ không một chỗ chưa điền:
         # câu người dùng đọc là `TEMPLATE_TU_CHOI`, do tầng render dựng từ cờ

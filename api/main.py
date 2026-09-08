@@ -47,6 +47,7 @@ from typing import Annotated
 
 import anyio.to_thread
 from fastapi import APIRouter, Depends, FastAPI, Request
+from pydantic import BaseModel, ConfigDict, Field
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -62,16 +63,23 @@ from api.chinh_sach import KhoChinhSach, ma_policy_mac_dinh
 from api.gioi_han_than import GioiHanThan, ThanQuaLon, than_413
 from api.tai_khoan import KhoTaiKhoan
 from api.xac_thuc import (
+    MA_KHONG_DANG_XEM_NHU,
+    MA_VAI_KHONG_CO,
+    THONG_DIEP_KHONG_DANG_XEM_NHU,
+    THONG_DIEP_VAI_KHONG_CO,
+    ActClaim,
     ClaimNguoiHoi,
     LoiXacThuc,
     doc_token,
     doi_admin,
     doi_demo_hoac_admin,
     ghi_dang_nhap,
+    ghi_doi_vai,
     khoa_ky,
     loi_dang_nhap_sai,
     phat_token,
     so_mat_khau,
+    su_kien_doi_vai,
     token_tu_header,
 )
 
@@ -504,6 +512,16 @@ async def toi(c: Claim) -> dict:
         "khong_gian": c.space,
         "demo": c.demo,
         "admin": c.admin,
+        # Khóa thứ sáu, vào ở story 4.5: `null` với một phiên thường, và
+        # `{tai_khoan, vai}` của **người thật** khi phiên đang mượn vai. Đây là
+        # nguồn duy nhất để `web/` biết có đang xem như không - nó không suy
+        # điều đó từ chênh lệch giữa `vai` và một giá trị nhớ ở client, vì một
+        # trạng thái thứ hai bên client là một trạng thái lệch được với token.
+        "act": (
+            None
+            if c.act is None
+            else {"tai_khoan": c.act.sub, "vai": c.act.role}
+        ),
     }
 
 
@@ -547,6 +565,189 @@ async def danh_sach_tai_khoan(c: Claim) -> dict:
             for m in cac_muc
         ]
     }
+
+
+# --- "Xem như": đường phát token thứ hai (story 4.5, FR-18, AD-10) -----------
+#
+# Ba tuyến, **một** cửa quyền `doi_demo_hoac_admin` đọc hai cờ từ chính claim
+# chứ không suy từ vai đang mang: một phiên đang xem như `sale_ba` vẫn là tài
+# khoản demo/admin đã đăng nhập, nên nó phải thoát ra được. Suy cờ từ vai giả là
+# một phiên tự khóa mình lại trong vai vừa mượn.
+#
+# Đổi vai chỉ đi qua đây. Không tuyến đọc nào nhận vai trong thân, `POST
+# /hoi-dap` không đổi một byte, và mọi tầng sau chỉ nhìn token.
+
+
+async def _phat_va_ghi(
+    request: Request, c: ClaimNguoiHoi, *, vai: str, act: ActClaim | None, su_kien
+) -> dict:
+    """Ký token, ghi hàng `role_swap`, rồi trả token - **đúng thứ tự đó**.
+
+    Hai chiều phải đóng cùng lúc, và bản đầu chỉ đóng một:
+
+    - **audit hỏng là không có token mới.** Một lượt mượn vai không dấu vết là
+      đúng lỗ FR-23 sinh ra để bịt. Ghi đồng bộ, quá hạn hay lỗi port đều là
+      500 `AUDIT_GHI_HONG`, và token đã ký thì bị vứt đi chứ không trả.
+    - **ký hỏng là không có hàng audit.** Bản đầu ghi audit trước rồi mới ký,
+      nên một `phat_token` dội - hôm nay có thật: trần TTL của `het_han` là một
+      `ValueError` - để lại một hàng `role_swap` cho một lần đổi vai **chưa
+      từng xảy ra**, tức sổ kiểm toán nói dối theo đúng chiều mà không ai kiểm
+      lại được. Ký trước thì ngoại lệ ấy thoát ra trước khi chạm audit.
+
+    Đây không phải một transaction, và không cần là: hai bước, bước sau hỏng
+    thì bước trước không để lại gì ra ngoài tiến trình (một chuỗi JWT trong một
+    biến cục bộ), nên thứ tự này là tất cả những gì cần.
+    """
+    token = phat_token(
+        sub=c.sub,
+        role=vai,
+        space=c.space,
+        demo=c.demo,
+        admin=c.admin,
+        khoa=request.app.state.khoa_ky,
+        act=act,
+        het_han=c.het_han,
+    )
+    try:
+        await ghi_doi_vai(
+            request.app.state.audit, su_kien, thoi_han=hoi_dap.THOI_HAN_BIEN_DOI
+        )
+    except Exception as loi:
+        logger.error("audit mutation role_swap không ghi được (%s: %s)", type(loi).__name__, loi)
+        raise LoiXacThuc(500, hoi_dap.MA_AUDIT_GHI_HONG, "không ghi được nhật ký kiểm toán") from None
+    return {"token": token, "token_type": "bearer"}
+
+
+class ThanXemNhu(BaseModel):
+    """Thân của `POST /auth/xem-nhu`: **đúng một** trường.
+
+    `extra="forbid"` cùng lý do với `api.hoi_dap.ThanHoiDap`: một tên thừa mà
+    server nhận rồi bỏ qua dạy người gọi rằng trường đó có nghĩa, và ở đúng
+    tuyến này thì những tên người ta sẽ thử - `act`, `sub`, `exp`, `space` - là
+    thứ quyết định token mới mang gì, tất cả phải đến từ claim đang cầm chứ
+    không từ thân request.
+
+    Khai bằng pydantic chứ không tự `await request.json()`: bản đầu tự parse
+    nên nó nhận im lặng `{"vai": "sale_ba", "them": 1}`, không có schema, và
+    docstring của nó tự nhận là đi qua handler `RequestValidationError` mà nó
+    không hề đi qua. Bốn ca hỏng đã có test (`{}`, sai kiểu, rỗng, thân không
+    phải mapping) ra đúng mã và thân cũ, vì handler chung của `api/main.py` đổi
+    mọi `RequestValidationError` thành 400 `THAN_YEU_CAU_LA`.
+
+    `min_length=1` để `{"vai": ""}` là một lỗi lược đồ chứ không một vai rỗng
+    đi tới phép tra bảng chính sách.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    vai: str = Field(min_length=1)
+
+
+@cua_dong.get("/auth/vai")
+async def danh_muc_vai(request: Request, c: Claim) -> dict:
+    """Danh mục vai của **bảng chính sách đang chạy** - đòi `demo` hoặc `admin`.
+
+    Trả **chỉ tên vai**, không `scopes` và không `disclosure`: một tài khoản
+    demo cần một danh sách để bấm, không cần đọc bảng quyền. Nhãn tiếng Việt và
+    dòng mô tả vùng quyền sống ở `web/` (chuỗi tĩnh trong `microcopy.json`), nên
+    thêm một vai vào YAML là dropdown **dài thêm một dòng ngay**, không sửa một
+    dòng TypeScript nào - đúng lời hứa của AD-4. Nói cho đủ: dòng ấy hiện
+    nguyên khóa `snake_case` cho tới khi ai đó thêm một nhãn và một dòng mô tả,
+    hai dòng **dữ liệu** chứ không một thay đổi cơ chế.
+
+    Sắp xếp để hai lần gọi cho cùng một thứ tự: thứ tự khai trong YAML là thứ tự
+    của một dict, và một danh sách đổi thứ tự giữa hai lần tải trang là một
+    dropdown nhảy dưới tay người trình bày.
+    """
+    doi_demo_hoac_admin(c)
+    return {"vai": sorted(request.app.state.kho_chinh_sach.hien_tai().roles)}
+
+
+@cua_dong.post("/auth/xem-nhu")
+async def xem_nhu(request: Request, than: ThanXemNhu, c: Claim) -> dict:
+    """Phát token mượn vai: `role` là vai giả, `sub` và hai cờ giữ nguyên (FR-18).
+
+    Nhận `{"vai": "<tên vai trong bảng đang chạy>"}`. Thân hỏng, thiếu trường,
+    sai kiểu, rỗng hay thừa khóa đều là 400 `THAN_YEU_CAU_LA` **qua handler
+    `RequestValidationError` chung** của `api/main.py`, nên client không phải
+    đọc hai hình dạng lỗi cho cùng một ca và tuyến có schema như mọi tuyến khác.
+
+    `act` mang **cả** `sub` lẫn `role` của người thật, và nó được giữ nguyên khi
+    đổi tiếp sang vai thứ ba: xem như một vai khác từ trong một lượt xem như vẫn
+    là cùng một người thật ấy. Nhờ vậy thoát xem như là một phép biến đổi thuần
+    trên token, không phép đọc kho nào.
+
+    Xem như **chính vai mình đang mang** vẫn phát token và vẫn ghi audit: nó là
+    một thao tác có thật (bấm đúng dòng đang có dấu ✓), và im lặng bỏ qua là
+    một hàng thiếu trong sổ cho một lần bấm đã xảy ra.
+    """
+    doi_demo_hoac_admin(c)
+    policy = request.app.state.kho_chinh_sach.hien_tai()
+    if than.vai not in policy.roles:
+        raise LoiXacThuc(400, MA_VAI_KHONG_CO, THONG_DIEP_VAI_KHONG_CO)
+
+    # Người thật: `act` của token đang cầm nếu đã đang xem như, còn không thì
+    # chính claim này. Đọc từ token chứ không từ bảng `users`, nên tuyến này
+    # không chạm kho nào.
+    that = c.act or ActClaim(sub=c.sub, role=c.role)
+    return await _phat_va_ghi(
+        request,
+        c,
+        vai=than.vai,
+        act=that,
+        su_kien=su_kien_doi_vai(
+            act=that.sub,
+            vai_cu=c.role,
+            vai_moi=than.vai,
+            vai_that=that.role,
+            space=c.space,
+            policy_version=policy.policy_version,
+            xem_nhu=True,
+        ),
+    )
+
+
+@cua_dong.post("/auth/thoat-xem-nhu")
+async def thoat_xem_nhu(request: Request, c: Claim) -> dict:
+    """Về vai thật: token mới **không** claim `act`, `exp` vẫn giữ nguyên.
+
+    Không thân request và không phép đọc kho: vai thật đã nằm trong `act` của
+    chính token đang cầm. Token không mang `act` là 400 `KHONG_DANG_XEM_NHU` -
+    client dựng mục thoát theo đúng claim ấy nên một request như thế nghĩa là
+    hai bên đã lệch nhau, và một 200 im lặng ở đây giấu đúng chỗ lệch đó.
+
+    **Vai thật cũng phải còn trong bảng đang chạy**, đúng phép kiểm mà đường
+    xin đã có. Hoán bảng chính sách (`POST /admin/policy`) trong lúc ai đó đang
+    mượn vai là chuyện xảy ra được - cả hai tuyến đều mở cho cùng một tài khoản
+    `admin` - và nếu vai thật vừa biến mất khỏi bảng mới thì thoát ra sẽ phát
+    một token mang một vai không tồn tại. Token ấy hợp lệ về chữ ký, nên nó đi
+    qua `_claim`, rồi **mọi lượt sau đó** dội `RoleUnknown` ở
+    `ngu_canh_cua_claim` mà người dùng không có đường nào ra ngoài đăng xuất.
+    400 `VAI_KHONG_CO` cùng mã cùng thân với đường xin: phiên giữ nguyên vai
+    đang mượn, và người dùng đọc được rằng vai kia đã hết tồn tại.
+    """
+    doi_demo_hoac_admin(c)
+    if c.act is None:
+        raise LoiXacThuc(400, MA_KHONG_DANG_XEM_NHU, THONG_DIEP_KHONG_DANG_XEM_NHU)
+    that = c.act
+    policy = request.app.state.kho_chinh_sach.hien_tai()
+    if that.role not in policy.roles:
+        raise LoiXacThuc(400, MA_VAI_KHONG_CO, THONG_DIEP_VAI_KHONG_CO)
+    return await _phat_va_ghi(
+        request,
+        c,
+        vai=that.role,
+        act=None,
+        su_kien=su_kien_doi_vai(
+            act=that.sub,
+            vai_cu=c.role,
+            vai_moi=that.role,
+            vai_that=that.role,
+            space=c.space,
+            policy_version=policy.policy_version,
+            xem_nhu=False,
+        ),
+    )
 
 
 @cua_dong.get("/admin/policy")

@@ -27,6 +27,12 @@
 # `masked_slots` vẫn phải lồng nhau theo hạng (điều kiện (2) của AD-5), và ở đây
 # nó lồng tới tận cùng: [source, remediation] ⊆ [cause, source, remediation]
 # ⊆ [subject, cause, source, remediation] ⊆ cả 7 slot.
+#
+# Ba vai của story 4.5 đi qua đúng phép biến đổi ấy. `sale_ba` và `admin` L0
+# toàn phần ở cấu hình 3 nên **cả 13 ô** lên L1 và **cả 13 ô** che cả 7 slot;
+# đó là hai cột thuần nhất của cấu hình này và cũng là hai cột minh họa rõ nhất
+# luận điểm "biết tồn tại nhưng không đọc được gì". `truong_nhom` L2 toàn phần
+# nên nó giống hệt cấu hình 3, cùng lý do mà `devops` giống hệt.
 version: 1
 roles:
   devops:
@@ -67,6 +73,83 @@ roles:
       canh_bao: [source, remediation]
       bao_cao_su_co: [cause, source, remediation]
       postmortem: [subject, cause, source, remediation]
+      log: [subject, symptom, cause, condition, remediation, source, time]
+      cmdb: [subject, symptom, cause, condition, remediation, source, time]
+      bi_mat_ha_tang: [subject, symptom, cause, condition, remediation, source, time]
+  sale_ba:
+    scopes: [noi_bo]
+    disclosure:
+      faq: L1                # hạng 2
+      tai_lieu_san_pham: L1  # 4
+      sop: L1                # 6
+      troubleshooting: L1    # 8
+      runbook: L1            # 10
+      known_issue: L1        # 12
+      vong_doi_ticket: L1    # 14
+      canh_bao: L1           # 16
+      bao_cao_su_co: L1      # 20
+      postmortem: L1         # 22
+      log: L1                # 24
+      cmdb: L1               # 26
+      bi_mat_ha_tang: L1     # 30
+    masked_slots:
+      faq: [subject, symptom, cause, condition, remediation, source, time]
+      tai_lieu_san_pham: [subject, symptom, cause, condition, remediation, source, time]
+      sop: [subject, symptom, cause, condition, remediation, source, time]
+      troubleshooting: [subject, symptom, cause, condition, remediation, source, time]
+      runbook: [subject, symptom, cause, condition, remediation, source, time]
+      known_issue: [subject, symptom, cause, condition, remediation, source, time]
+      vong_doi_ticket: [subject, symptom, cause, condition, remediation, source, time]
+      canh_bao: [subject, symptom, cause, condition, remediation, source, time]
+      bao_cao_su_co: [subject, symptom, cause, condition, remediation, source, time]
+      postmortem: [subject, symptom, cause, condition, remediation, source, time]
+      log: [subject, symptom, cause, condition, remediation, source, time]
+      cmdb: [subject, symptom, cause, condition, remediation, source, time]
+      bi_mat_ha_tang: [subject, symptom, cause, condition, remediation, source, time]
+  truong_nhom:
+    scopes: [noi_bo, khach_hang_a]
+    disclosure:
+      faq: L2                # hạng 2
+      tai_lieu_san_pham: L2  # 4
+      sop: L2                # 6
+      troubleshooting: L2    # 8
+      runbook: L2            # 10
+      known_issue: L2        # 12
+      vong_doi_ticket: L2    # 14
+      canh_bao: L2           # 16
+      bao_cao_su_co: L2      # 20
+      postmortem: L2         # 22
+      log: L2                # 24
+      cmdb: L2               # 26
+      bi_mat_ha_tang: L2     # 30
+    masked_slots: {}
+  admin:
+    scopes: [noi_bo]
+    disclosure:
+      faq: L1                # hạng 2
+      tai_lieu_san_pham: L1  # 4
+      sop: L1                # 6
+      troubleshooting: L1    # 8
+      runbook: L1            # 10
+      known_issue: L1        # 12
+      vong_doi_ticket: L1    # 14
+      canh_bao: L1           # 16
+      bao_cao_su_co: L1      # 20
+      postmortem: L1         # 22
+      log: L1                # 24
+      cmdb: L1               # 26
+      bi_mat_ha_tang: L1     # 30
+    masked_slots:
+      faq: [subject, symptom, cause, condition, remediation, source, time]
+      tai_lieu_san_pham: [subject, symptom, cause, condition, remediation, source, time]
+      sop: [subject, symptom, cause, condition, remediation, source, time]
+      troubleshooting: [subject, symptom, cause, condition, remediation, source, time]
+      runbook: [subject, symptom, cause, condition, remediation, source, time]
+      known_issue: [subject, symptom, cause, condition, remediation, source, time]
+      vong_doi_ticket: [subject, symptom, cause, condition, remediation, source, time]
+      canh_bao: [subject, symptom, cause, condition, remediation, source, time]
+      bao_cao_su_co: [subject, symptom, cause, condition, remediation, source, time]
+      postmortem: [subject, symptom, cause, condition, remediation, source, time]
       log: [subject, symptom, cause, condition, remediation, source, time]
       cmdb: [subject, symptom, cause, condition, remediation, source, time]
       bi_mat_ha_tang: [subject, symptom, cause, condition, remediation, source, time]

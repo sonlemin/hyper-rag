@@ -32,6 +32,7 @@ from api.xac_thuc import (
     BIEN_KHOA_KY,
     HASH_GIA,
     TTL_GIO,
+    ActClaim,
     ClaimNguoiHoi,
     JwtSecretMissing,
     LoiXacThuc,
@@ -113,15 +114,23 @@ def _dong(account, *, role="tech_support", demo=False, admin=False, hash_mk=None
 # nhau** (khác chữ hoa thường): nếu chúng bằng nhau thì đột biến `sub=ten` thay
 # cho `sub=dong.account` không test nào phân biệt được, và `sub` là thứ audit
 # ghi làm `real_account` (AD-3) cùng thứ Epic 4 chép sang token xem-như.
-TEN_GO = {"ts01": "TS01", "dev01": "DEV01"}
+TEN_GO = {"ts01": "TS01", "dev01": "DEV01", "demo01": "DEMO01"}
 
 
 @pytest.fixture
 def kho_gia():
+    """Ba tài khoản của seed thật, đủ ba tổ hợp cờ.
+
+    `demo01` (demo mà **không** admin) vào ở story 4.5: nó là tài khoản duy
+    nhất chứng minh được qua HTTP rằng cửa của ba tuyến xem như là phép **hoặc**
+    chứ không phép **và**. Với hai tài khoản kia thì một đột biến đổi `or` thành
+    `and` vẫn xanh, vì chúng chỉ phân biệt được "có cả hai" với "không có gì".
+    """
     return KhoGia(
         {
             TEN_GO["ts01"]: _dong("ts01"),
             TEN_GO["dev01"]: _dong("dev01", role="devops", demo=True, admin=True),
+            TEN_GO["demo01"]: _dong("demo01", role="tech_support", demo=True, admin=False),
         }
     )
 
@@ -357,14 +366,21 @@ def test_exp_cach_iat_dung_12_gio(client):
     assert claim["exp"] - claim["iat"] == TTL_GIO * 3600 == 12 * 3600
 
 
-def test_token_khong_mang_claim_act(client):
-    """Claim `act` và đường xem-như thuộc AD-10 / Epic 4, không phát ở đây.
+def test_token_dang_nhap_khong_mang_claim_act(client):
+    """Token **đăng nhập** không mang `act`, kể cả của một tài khoản demo/admin.
 
-    Một claim `act` phát sớm là một trường mà tầng sau đọc được trước khi cơ
-    chế kiểm nó tồn tại.
+    Story 3.1 viết ca này là "không có `act` ở đâu cả"; từ 4.5 `act` tồn tại,
+    nên mệnh đề thu về đúng chỗ nó còn phải đúng: `act` là dấu của một phiên
+    **đang mượn vai**, và một token vừa đăng nhập chưa mượn vai nào. Nếu đường
+    đăng nhập cũng gắn `act` thì `POST /auth/thoat-xem-nhu` nhận mọi phiên, và
+    `web/` vẽ chip "Đang xem như" cho một người vừa đăng nhập bằng vai của
+    chính họ.
+
+    Payload vì thế còn **đúng bảy khóa** của story 3.1.
     """
     claim = jwt.decode(_token(client, "dev01"), KHOA_TEST, algorithms=["HS256"])
     assert "act" not in claim
+    assert set(claim) == {"sub", "role", "space", "demo", "admin", "iat", "exp"}
 
 
 def test_token_dung_duoc_o_endpoint_doc_claim(client):
@@ -376,6 +392,10 @@ def test_token_dung_duoc_o_endpoint_doc_claim(client):
         "khong_gian": "synth",
         "demo": False,
         "admin": False,
+        # Khóa thứ sáu của story 4.5: `null` với một phiên thường. `web/` đọc
+        # đúng trường này để biết có đang mượn vai không, chứ không suy từ một
+        # trạng thái nhớ ở client.
+        "act": None,
     }
 
 
@@ -653,6 +673,686 @@ def test_cua_demo_hoac_admin_la_phep_hoac(demo, admin, qua):
 def test_health_khong_doi_token(client):
     """Healthcheck của compose nằm ngoài mọi cửa."""
     assert client.get("/health").json() == {"status": "ok"}
+
+
+# --- Ba tuyến "xem như" (story 4.5, FR-18, AD-10) ---------------------------
+
+TUYEN_XEM_NHU = "/auth/xem-nhu"
+TUYEN_THOAT = "/auth/thoat-xem-nhu"
+TUYEN_VAI = "/auth/vai"
+BA_TUYEN = (TUYEN_XEM_NHU, TUYEN_THOAT, TUYEN_VAI)
+
+
+def _bearer(token: str) -> dict:
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _giai(token: str) -> dict:
+    return jwt.decode(token, KHOA_TEST, algorithms=["HS256"])
+
+
+def _xem_nhu(client, token: str, vai: str):
+    return client.post(TUYEN_XEM_NHU, json={"vai": vai}, headers=_bearer(token))
+
+
+def test_doi_vai_hop_le_giu_sub_va_hai_co_doi_role_va_them_act(client):
+    """Hàng "Đổi vai hợp lệ": `role` là vai giả, `sub` và hai cờ nguyên vẹn.
+
+    Bốn khẳng định, và mỗi cái chặn một cách hỏng khác nhau:
+
+    - `role` đổi - nếu không thì cả tính năng không làm gì;
+    - `sub` **không** đổi - tám chỗ ghi `act=ngu_canh.real_account` và phép tra
+      grant break-glass theo cặp `(act, role)` đều đọc nó, nên đổi `sub` sang
+      vai giả là làm chúng đổi nghĩa im lặng;
+    - `demo`/`admin` chép nguyên - suy hai cờ từ vai giả là một phiên tự khóa
+      mình lại trong vai vừa mượn, không thoát ra được;
+    - `act` mang **cả** `sub` lẫn `role` của người thật - chip "vai thật" và mục
+      "Thoát xem như · về dev01 · DevOps" đọc chính nó, và không còn chỗ nào
+      khác trong token giữ vai thật.
+    """
+    cu = _token(client, "dev01")
+    kq = _xem_nhu(client, cu, "tech_support")
+    assert kq.status_code == 200, kq.text
+    assert kq.json()["token_type"] == "bearer"
+    moi = _giai(kq.json()["token"])
+    assert moi["role"] == "tech_support"
+    assert moi["sub"] == "dev01"
+    assert (moi["demo"], moi["admin"]) == (True, True)
+    assert moi["act"] == {"sub": "dev01", "role": "devops"}
+    assert moi["space"] == _giai(cu)["space"]
+
+
+def test_token_xem_nhu_khong_keo_dai_phien(client):
+    """`exp` **bằng** `exp` của token đang cầm, không phải một mốc 12 giờ mới.
+
+    Không có luật này thì một vòng bấm nút mỗi 11 giờ là một phiên không bao giờ
+    hết hạn - tức TTL 12 giờ của story 3.1 mất hiệu lực qua một tuyến mà không
+    ai nhìn. `iat` thì vẫn là bây giờ: token này thật sự vừa được ký.
+    """
+    cu = _token(client, "dev01")
+    goc = _giai(cu)
+    moi = _giai(_xem_nhu(client, cu, "sale_ba").json()["token"])
+    assert moi["exp"] == goc["exp"]
+    assert moi["exp"] - moi["iat"] <= TTL_GIO * 3600
+
+
+def test_doi_tiep_vai_khac_van_giu_nguyen_act_cua_nguoi_that(client):
+    """Hàng "Đổi tiếp vai khác": `act` **vẫn** là `{dev01, devops}`.
+
+    Xem như một vai khác từ trong một lượt xem như vẫn là cùng một người thật.
+    Nếu `act` bị ghi đè bằng claim của token đang cầm thì sau hai lần đổi, "vai
+    thật" thành `tech_support` và thoát xem như trả về sai vai - một phiên không
+    còn đường về.
+    """
+    b1 = _xem_nhu(client, _token(client, "dev01"), "tech_support").json()["token"]
+    b2 = _xem_nhu(client, b1, "sale_ba")
+    assert b2.status_code == 200, b2.text
+    claim = _giai(b2.json()["token"])
+    assert claim["role"] == "sale_ba"
+    assert claim["act"] == {"sub": "dev01", "role": "devops"}
+
+
+def test_thoat_xem_nhu_ve_vai_that_va_bo_han_claim_act(client):
+    """Hàng "Thoát xem như": `role` về `devops`, **không** còn claim `act`.
+
+    `act` phải biến mất chứ không thành `null`: nó là dấu duy nhất của một phiên
+    đang mượn vai, và một `act` còn sót lại là chip hổ phách còn trên topbar sau
+    khi người dùng đã bấm ✕.
+    """
+    cu = _token(client, "dev01")
+    muon = _xem_nhu(client, cu, "tech_support").json()["token"]
+    kq = client.post(TUYEN_THOAT, headers=_bearer(muon))
+    assert kq.status_code == 200, kq.text
+    claim = _giai(kq.json()["token"])
+    assert claim["role"] == "devops"
+    assert "act" not in claim
+    assert claim["sub"] == "dev01"
+    assert claim["exp"] == _giai(cu)["exp"]
+
+
+def test_thoat_khi_vai_that_khong_con_trong_bang_la_400_khong_phat_token(client, monkeypatch):
+    """Hoán bảng lúc đang mượn vai rồi thoát: 400 `VAI_KHONG_CO`, phiên giữ nguyên.
+
+    Ca có thật vì cả hai tuyến mở cho cùng một tài khoản `admin`. Không có phép
+    kiểm này thì thoát ra phát một token mang một vai **không tồn tại**: token
+    ấy hợp lệ về chữ ký nên nó qua `_claim`, rồi **mọi lượt sau đó** dội
+    `RoleUnknown` ở `ngu_canh_cua_claim` và người dùng không có đường nào ra
+    ngoài đăng xuất. Đường xin đã có phép kiểm này từ đầu; đường thoát thì
+    không, và đó là chỗ hở.
+
+    Dựng bằng một bảng chỉ có `tech_support`: `dev01` mượn vai ấy, rồi bảng
+    hoán sang bảng không còn `devops`.
+    """
+    goc = _token(client, "dev01")
+    muon = _xem_nhu(client, goc, "tech_support").json()["token"]
+
+    # Bảng mới: cùng nội dung, **bỏ hàng `devops`** - tức vai thật biến mất.
+    kho = client.app.state.kho_chinh_sach
+    ma, policy = kho.ma_va_policy()
+    bo_devops = type(policy)(
+        version=policy.version,
+        policy_version=policy.policy_version + "-khong-devops",
+        roles={k: v for k, v in policy.roles.items() if k != "devops"},
+    )
+    monkeypatch.setattr(kho, "_hien_tai", (ma, bo_devops))
+    assert "devops" not in client.app.state.kho_chinh_sach.hien_tai().roles
+
+    kq = client.post(TUYEN_THOAT, headers=_bearer(muon))
+    assert kq.status_code == 400
+    assert kq.json()["error"]["code"] == "VAI_KHONG_CO"
+    assert "token" not in kq.json()
+    # Cùng **một thân** với đường xin: hai cửa cho cùng một sự thật.
+    la = _xem_nhu(client, goc, "khong_co_that")
+    assert kq.content == la.content
+
+
+def test_thoat_khi_khong_muon_vai_la_400_va_khong_phat_token(client):
+    """Hàng "Thoát khi không mượn vai": 400 `KHONG_DANG_XEM_NHU`, không token.
+
+    Không phải một 200 im lặng: `web/` dựng mục thoát theo đúng claim `act`, nên
+    một request như thế nghĩa là hai bên đã lệch nhau, và một 200 giấu chỗ lệch.
+    """
+    kq = client.post(TUYEN_THOAT, headers=_bearer(_token(client, "dev01")))
+    assert kq.status_code == 400
+    assert kq.json()["error"]["code"] == "KHONG_DANG_XEM_NHU"
+    assert "token" not in kq.json()
+
+
+def test_vai_khong_co_trong_bang_la_400_va_khong_phat_token(client):
+    """Hàng "Vai không có trong bảng": 400 `VAI_KHONG_CO`, thân không dội tên vai.
+
+    Danh mục vai là **bảng chính sách đang chạy** (AD-4), nên phép kiểm đứng ở
+    chính `Policy.roles` chứ không ở một danh sách chép ở `api/`. Không dội lại
+    chuỗi người gọi gửi: danh mục đọc được qua `GET /auth/vai` sau cửa quyền,
+    nên ghép tên vào thông điệp chỉ thêm một đường phản chiếu đầu vào.
+    """
+    kq = _xem_nhu(client, _token(client, "dev01"), "khong_co_that")
+    assert kq.status_code == 400
+    assert kq.json()["error"]["code"] == "VAI_KHONG_CO"
+    assert "khong_co_that" not in kq.text
+    assert "token" not in kq.json()
+
+
+@pytest.mark.parametrize(
+    "than",
+    [
+        pytest.param({}, id="thieu_truong"),
+        pytest.param({"vai": 3}, id="sai_kieu"),
+        pytest.param({"vai": ""}, id="rong"),
+        pytest.param([], id="than_khong_phai_mapping"),
+    ],
+)
+def test_than_xem_nhu_sai_hinh_la_than_yeu_cau_la(client, than):
+    """Hàng "Thân sai hình": 400 `THAN_YEU_CAU_LA` cho cả bốn cách hỏng.
+
+    Cùng mã mà handler `RequestValidationError` phát cho mọi tuyến khai một thân
+    pydantic, nên client không phải đọc hai hình dạng lỗi cho cùng một ca.
+    """
+    kq = client.post(TUYEN_XEM_NHU, json=than, headers=_bearer(_token(client, "dev01")))
+    assert kq.status_code == 400, kq.text
+    assert kq.json()["error"]["code"] == "THAN_YEU_CAU_LA"
+
+
+def test_than_xem_nhu_khong_phai_json_cung_ra_than_yeu_cau_la(client):
+    kq = client.post(
+        TUYEN_XEM_NHU,
+        content=b"khong-phai-json",
+        headers={**_bearer(_token(client, "dev01")), "content-type": "application/json"},
+    )
+    assert kq.status_code == 400
+    assert kq.json()["error"]["code"] == "THAN_YEU_CAU_LA"
+
+
+def test_tai_khoan_thuong_bi_tu_choi_o_ca_ba_tuyen_xem_nhu(client, audit_gia):
+    """Hàng "Tài khoản thường": 403 `THIEU_QUYEN_DEMO_ADMIN`, **một thân** cho cả ba.
+
+    Cả hai vế của FR-18 có test: nút không vẽ cho tài khoản thiếu cờ *và* API
+    từ chối. Vế thứ hai là vế duy nhất kiểm được ở đây, và nó phải đúng dù `web/`
+    có ẩn nút hay không - ẩn một nút không phải một cơ chế quyền.
+
+    Và **không hàng audit nào**: một request bị cửa quyền chặn chưa đổi vai của
+    ai, nên một hàng `role_swap` cho nó là một dòng nói dối trong sổ.
+    """
+    token = _token(client, "ts01")
+    truoc = len(audit_gia.su_kien)
+    than = [
+        client.post(TUYEN_XEM_NHU, json={"vai": "devops"}, headers=_bearer(token)),
+        client.post(TUYEN_THOAT, headers=_bearer(token)),
+        client.get(TUYEN_VAI, headers=_bearer(token)),
+    ]
+    for kq in than:
+        assert kq.status_code == 403, kq.text
+        assert kq.json()["error"]["code"] == "THIEU_QUYEN_DEMO_ADMIN"
+    assert than[0].content == than[1].content == than[2].content
+    assert not [s for s in audit_gia.su_kien[truoc:] if s.event == "role_swap"]
+
+
+def test_demo_khong_admin_van_qua_cua_ba_tuyen(client):
+    """Cửa là phép **hoặc**, và `demo01` là chỗ duy nhất chứng minh được qua HTTP.
+
+    Với `ts01` (không cờ nào) và `dev01` (cả hai cờ), một đột biến đổi `or`
+    thành `and` vẫn xanh cả bộ. Với tài khoản này thì không.
+    """
+    token = _token(client, "demo01")
+    assert client.get(TUYEN_VAI, headers=_bearer(token)).status_code == 200
+    kq = _xem_nhu(client, token, "devops")
+    assert kq.status_code == 200, kq.text
+    assert client.post(TUYEN_THOAT, headers=_bearer(kq.json()["token"])).status_code == 200
+
+
+def test_dang_xem_nhu_van_thoat_duoc_du_vai_gia_khong_co_co_nao(client):
+    """Hai cờ đọc từ **claim**, không suy từ vai giả.
+
+    `sale_ba` không có cờ nào trong seed và không có cờ nào trong bảng chính
+    sách; nếu cửa quyền suy `demo`/`admin` từ vai đang mang thì một phiên mượn
+    vai ấy tự khóa mình lại và không có đường về ngoài đăng xuất.
+    """
+    muon = _xem_nhu(client, _token(client, "dev01"), "sale_ba").json()["token"]
+    assert client.get(TUYEN_VAI, headers=_bearer(muon)).status_code == 200
+    kq = client.post(TUYEN_THOAT, headers=_bearer(muon))
+    assert kq.status_code == 200
+    assert _giai(kq.json()["token"])["role"] == "devops"
+
+
+def test_ba_tuyen_deu_doi_token(client):
+    """Ba tuyến nằm trong `cua_dong`, nên chúng đòi token bằng cơ chế framework."""
+    for tuyen in BA_TUYEN:
+        goi = client.get if tuyen == TUYEN_VAI else client.post
+        kq = goi(tuyen)
+        assert kq.status_code == 401, tuyen
+        assert kq.json()["error"]["code"] == "TOKEN_KHONG_HOP_LE", tuyen
+
+
+def test_danh_muc_vai_bang_khoa_cua_bang_chinh_sach_dang_chay(client):
+    """Hàng "Danh mục vai": đúng bằng khóa của `Policy.roles`, đã sắp xếp.
+
+    Suy từ bảng đang chạy chứ không so với một tuple gõ tay ở đây: cả hai vế
+    phải là một, và một danh sách chép tay trong test chỉ chứng minh test nhất
+    quán với chính nó. Phép so tuyệt đối `== sorted(...)` chứ không "chứa": một
+    vai lọt vào danh mục mà bảng không có là một dòng dropdown bấm vào ra 400.
+    """
+    kq = client.get(TUYEN_VAI, headers=_bearer(_token(client, "demo01")))
+    assert kq.status_code == 200, kq.text
+    assert kq.json() == {"vai": sorted(client.app.state.kho_chinh_sach.hien_tai().roles)}
+    # Và mọi vai trả về xem như được thật: danh mục là một danh mục dùng được,
+    # không một danh sách để đọc.
+    for vai in kq.json()["vai"]:
+        assert _xem_nhu(client, _token(client, "dev01"), vai).status_code == 200, vai
+
+
+def test_danh_muc_vai_doc_bang_dang_chay_chu_khong_bang_mac_dinh(client, monkeypatch):
+    """Hoán bảng lúc chạy thì danh mục đổi theo - **bảng đang chạy**, không bảng mặc định.
+
+    Bản đầu của ca trên dựng kỳ vọng bằng `load_policy(duong_dan_policy_mac_dinh())`,
+    nên một handler đọc bảng mặc định thay vì `kho_chinh_sach.hien_tai()` vẫn
+    xanh - đúng thứ tên ca test hứa lại là thứ nó không kiểm. Ở đây bảng đang
+    chạy **khác** bảng mặc định, nên hai đường đọc cho hai kết quả khác nhau.
+
+    Hoán qua đúng `POST /admin/policy` chứ không gán thẳng `app.state`: đó là
+    đường duy nhất mà một bảng đổi được lúc chạy, và ca này phải đứng trên nó.
+    """
+    from api import chinh_sach
+
+    # Ba bảng đo chỉ hoán sang được trên tiến trình đo (story 3.8, ADR-022).
+    monkeypatch.setattr(client.app.state, "che_do_do", True)
+    admin = _bearer(_token(client, "dev01"))
+    hoan = client.post("/admin/policy", json={"id": "tat-phan-quyen"}, headers=admin)
+    assert hoan.status_code == 200, hoan.text
+    assert hoan.json()["id"] != chinh_sach.ID_MAC_DINH
+
+    dang_chay = client.app.state.kho_chinh_sach.hien_tai()
+    kq = client.get(TUYEN_VAI, headers=admin)
+    assert kq.json() == {"vai": sorted(dang_chay.roles)}
+    # Hoán về để không rò trạng thái sang ca khác của cùng fixture.
+    client.post("/admin/policy", json={"id": chinh_sach.ID_MAC_DINH}, headers=admin)
+
+
+def test_danh_muc_vai_khong_lo_scope_hay_muc_tiet_lo(client):
+    """Chỉ **tên vai**: một tài khoản demo không cần đọc bảng quyền để bấm nút."""
+    kq = client.get(TUYEN_VAI, headers=_bearer(_token(client, "dev01")))
+    assert set(kq.json()) == {"vai"}
+    for cam in ("scopes", "disclosure", "masked_slots", "noi_bo", "L2"):
+        assert cam not in kq.text, cam
+
+
+def test_mot_lan_doi_vai_ghi_dung_mot_hang_role_swap(client, audit_gia):
+    """Hàng "Audit một lần đổi": một hàng mutation, `act` là tài khoản **thật**.
+
+    `act='dev01'` và `role='tech_support'` là chính câu AD-10 đòi: sổ nói được
+    ai thật sự đứng sau một lượt hỏi mang vai giả. `chi_tiet` mang cả ba tên vai
+    vì đổi từ Tech Support sang Sale/BA của một tài khoản DevOps là **ba** tên,
+    không phải hai.
+    """
+    from core.audit import TIER_MUTATION
+
+    truoc = len(audit_gia.su_kien)
+    _xem_nhu(client, _token(client, "dev01"), "tech_support")
+    hang = [s for s in audit_gia.su_kien[truoc:] if s.event == "role_swap"]
+    assert len(hang) == 1
+    s = hang[0]
+    assert s.tier == TIER_MUTATION
+    assert (s.act, s.role) == ("dev01", "tech_support")
+    assert s.space == "synth"
+    assert dict(s.chi_tiet) == {
+        "vai_cu": "devops",
+        "vai_moi": "tech_support",
+        "vai_that": "devops",
+        "xem_nhu": True,
+    }
+
+
+def test_hang_audit_cua_lan_doi_thu_hai_va_cua_lan_thoat(client, audit_gia):
+    """Ba tên vai tách nhau ra ở đúng ca chúng khác nhau, và lượt thoát mang `xem_nhu: False`."""
+    b1 = _xem_nhu(client, _token(client, "dev01"), "tech_support").json()["token"]
+    truoc = len(audit_gia.su_kien)
+    b2 = _xem_nhu(client, b1, "sale_ba").json()["token"]
+    client.post(TUYEN_THOAT, headers=_bearer(b2))
+    hang = [s for s in audit_gia.su_kien[truoc:] if s.event == "role_swap"]
+    assert len(hang) == 2
+    assert dict(hang[0].chi_tiet) == {
+        "vai_cu": "tech_support",
+        "vai_moi": "sale_ba",
+        "vai_that": "devops",
+        "xem_nhu": True,
+    }
+    assert (hang[0].act, hang[0].role) == ("dev01", "sale_ba")
+    assert dict(hang[1].chi_tiet) == {
+        "vai_cu": "sale_ba",
+        "vai_moi": "devops",
+        "vai_that": "devops",
+        "xem_nhu": False,
+    }
+    assert (hang[1].act, hang[1].role) == ("dev01", "devops")
+
+
+@pytest.mark.parametrize("tuyen", [TUYEN_XEM_NHU, TUYEN_THOAT])
+def test_audit_hong_la_500_va_khong_token_moi(client, audit_gia, tuyen):
+    """Audit hỏng là **không có token mới** - ngược hẳn `auth_login` best-effort.
+
+    Một lượt mượn vai không dấu vết là đúng lỗ FR-23 sinh ra để bịt, và ở đây
+    không có gì để giữ byte-identical: cửa quyền đã qua rồi.
+    """
+    cu = _token(client, "dev01")
+    muon = _xem_nhu(client, cu, "tech_support").json()["token"]
+    audit_gia.no = RuntimeError("postgres chết")
+    kq = (
+        client.post(tuyen, json={"vai": "sale_ba"}, headers=_bearer(muon))
+        if tuyen == TUYEN_XEM_NHU
+        else client.post(tuyen, headers=_bearer(muon))
+    )
+    assert kq.status_code == 500, kq.text
+    assert kq.json()["error"]["code"] == "AUDIT_GHI_HONG"
+    assert "token" not in kq.json()
+
+
+def test_auth_toi_khai_act_khi_dang_muon_vai(client):
+    """`GET /auth/toi` là nguồn **duy nhất** để `web/` biết phiên đang mượn vai."""
+    muon = _xem_nhu(client, _token(client, "dev01"), "tech_support").json()["token"]
+    kq = client.get("/auth/toi", headers=_bearer(muon))
+    assert kq.json() == {
+        "tai_khoan": "dev01",
+        "vai": "tech_support",
+        "khong_gian": "synth",
+        "demo": True,
+        "admin": True,
+        "act": {"tai_khoan": "dev01", "vai": "devops"},
+    }
+
+
+@pytest.mark.parametrize(
+    "act",
+    [
+        pytest.param("dev01", id="khong_phai_map"),
+        pytest.param({"sub": "dev01"}, id="thieu_role"),
+        pytest.param({"role": "devops"}, id="thieu_sub"),
+        pytest.param({"sub": "", "role": "devops"}, id="sub_rong"),
+        pytest.param({"sub": 1, "role": 2}, id="sai_kieu"),
+    ],
+)
+def test_act_hong_trong_token_la_token_khong_hop_le(act):
+    """`act` có mặt mà không đọc được là **từ chối cả token**, cùng mã ba ca kia.
+
+    Bỏ qua lặng lẽ thì một phiên mượn vai thành một phiên thường mang vai giả:
+    mục "Thoát xem như" biến mất khỏi giao diện, và hàng audit của lượt sau
+    không còn nối được về người thật. Vắng mặt thì vẫn là ca thường, nên `act`
+    **không** nằm trong `options={"require": ...}`.
+    """
+    luc = datetime.now(timezone.utc).replace(microsecond=0)
+    tho = jwt.encode(
+        {
+            "sub": "dev01",
+            "role": "tech_support",
+            "space": "synth",
+            "demo": True,
+            "admin": True,
+            "act": act,
+            "iat": luc,
+            "exp": luc + timedelta(hours=1),
+        },
+        KHOA_TEST,
+        algorithm="HS256",
+    )
+    with pytest.raises(LoiXacThuc) as loi:
+        doc_token(tho, KHOA_TEST)
+    assert loi.value.ma == "TOKEN_KHONG_HOP_LE"
+
+
+def test_phat_token_khong_act_thi_payload_van_bay_khoa():
+    """`phat_token` vắng `act` cho **đúng bảy khóa**, tức đường đăng nhập không đổi."""
+    tho = phat_token(
+        sub="dev01", role="devops", space="synth", demo=True, admin=True, khoa=KHOA_TEST
+    )
+    assert set(jwt.decode(tho, KHOA_TEST, algorithms=["HS256"])) == {
+        "sub",
+        "role",
+        "space",
+        "demo",
+        "admin",
+        "iat",
+        "exp",
+    }
+
+
+def test_phat_token_chep_het_han_thay_vi_phat_moc_moi():
+    """`het_han` đặt `exp` bằng mốc truyền vào, không cộng thêm TTL."""
+    het = int(datetime.now(timezone.utc).timestamp()) + 600
+    claim = jwt.decode(
+        phat_token(
+            sub="dev01",
+            role="tech_support",
+            space="synth",
+            demo=True,
+            admin=True,
+            khoa=KHOA_TEST,
+            act=ActClaim(sub="dev01", role="devops"),
+            het_han=het,
+        ),
+        KHOA_TEST,
+        algorithms=["HS256"],
+    )
+    assert claim["exp"] == het
+    assert claim["exp"] - claim["iat"] < TTL_GIO * 3600
+
+
+def test_phat_token_tu_choi_het_han_vuot_tran_ttl():
+    """Trần TTL là một **cơ chế trong `phat_token`**, không một quy ước ở nơi gọi.
+
+    Hàm public và `het_han` đi thẳng vào `exp`, nên một nơi gọi thứ hai truyền
+    `iat + 24h` phát ra một phiên dài gấp đôi mà không phép canh nào thấy - câu
+    "xem như không bao giờ kéo dài phiên" khi ấy chỉ còn là chữ trong docstring.
+    Cùng tinh thần mà story này áp cho `maxLength` của ô hỏi: chặn ở chỗ giá trị
+    đi qua, không ở chỗ người ta nhớ.
+
+    `ValueError` chứ không một mã HTTP: đây là lỗi của người viết code, không
+    của người gọi API.
+    """
+    luc = datetime.now(timezone.utc).replace(microsecond=0)
+    tran = int((luc + timedelta(hours=TTL_GIO)).timestamp())
+
+    def ky(het: int) -> str:
+        return phat_token(
+            sub="dev01",
+            role="tech_support",
+            space="synth",
+            demo=True,
+            admin=True,
+            khoa=KHOA_TEST,
+            phat_luc=luc,
+            het_han=het,
+        )
+
+    # Đúng trần thì qua (thoát xem như của một token vừa phát chạm đúng ca này).
+    assert jwt.decode(ky(tran), KHOA_TEST, algorithms=["HS256"])["exp"] == tran
+    with pytest.raises(ValueError):
+        ky(tran + 1)
+    with pytest.raises(ValueError):
+        ky(int((luc + timedelta(hours=TTL_GIO * 2)).timestamp()))
+
+
+def test_than_xem_nhu_thua_khoa_bi_tu_choi(client):
+    """`extra="forbid"`: một tên thừa không được nhận rồi bỏ qua im lặng.
+
+    Cùng lý do với `api.hoi_dap.ThanHoiDap`. Ở đúng tuyến này thì những tên
+    người ta sẽ thử - `act`, `sub`, `exp`, `space` - là thứ quyết định token mới
+    mang gì, và cả bốn phải đến từ claim đang cầm chứ không từ thân request.
+    Nhận rồi bỏ qua không sai lúc chạy, nhưng nó dạy người gọi rằng trường đó
+    có nghĩa.
+    """
+    for than in (
+        {"vai": "sale_ba", "them": 1},
+        {"vai": "sale_ba", "act": {"sub": "admin", "role": "admin"}},
+        {"vai": "sale_ba", "exp": 9999999999},
+    ):
+        kq = client.post(TUYEN_XEM_NHU, json=than, headers=_bearer(_token(client, "dev01")))
+        assert kq.status_code == 400, (than, kq.text)
+        assert kq.json()["error"]["code"] == "THAN_YEU_CAU_LA"
+
+
+def test_audit_qua_han_cung_la_500_va_khong_token_moi(client, audit_gia, monkeypatch):
+    """Đường **quá hạn** của `asyncio.wait_for`, không chỉ đường port dội lỗi.
+
+    Hai cách audit hỏng, và chỉ một trong hai có ca: một port dội ngay, và một
+    port **treo**. Cái sau là ca vận hành thật hơn (Postgres còn sống nhưng
+    pool cạn), và nó đi qua một nhánh code khác - `TimeoutError` của `wait_for`,
+    không phải exception của port. Cả hai phải ra 500 `AUDIT_GHI_HONG` và
+    không token mới.
+    """
+    import asyncio as _asyncio
+
+    async def treo(_su_kien):
+        await _asyncio.sleep(3600)
+
+    monkeypatch.setattr(audit_gia, "ghi", treo)
+    # Trần chờ hạ xuống để ca chạy trong một nhịp test, không phải 10 giây thật.
+    monkeypatch.setattr(api_main.hoi_dap, "THOI_HAN_BIEN_DOI", 0.05)
+    kq = _xem_nhu(client, _token(client, "dev01"), "tech_support")
+    assert kq.status_code == 500, kq.text
+    assert kq.json()["error"]["code"] == "AUDIT_GHI_HONG"
+    assert "token" not in kq.json()
+
+
+def test_ky_token_hong_thi_khong_de_lai_hang_audit(client, audit_gia, monkeypatch):
+    """Chiều còn lại của cặp: **ký hỏng là không có hàng `role_swap`**.
+
+    Story phát biểu "ghi hỏng là không có token mới" và có ca; chiều ngược lại
+    thì hở, và nó hở theo chiều xấu hơn - một hàng audit cho một lần đổi vai
+    **chưa từng xảy ra**, tức sổ kiểm toán nói dối. Đóng bằng thứ tự: ký trước,
+    ghi audit, rồi mới trả.
+
+    Ca dựng bằng chính đường hỏng có thật: `phat_token` dội `ValueError` khi
+    `het_han` vượt trần TTL.
+    """
+    # Lấy token **trước** khi thay `phat_token`: `/auth/login` cũng ký qua nó.
+    goc = _token(client, "dev01")
+    truoc = len([s for s in audit_gia.su_kien if s.event == "role_swap"])
+
+    def ky_hong(**_kw):
+        raise ValueError("ký hỏng")
+
+    monkeypatch.setattr(api_main, "phat_token", ky_hong)
+    # `TestClient` dội lại ngoại lệ của server thay vì cho `_loi_khong_xac_dinh`
+    # dựng envelope 500 (mặc định `raise_server_exceptions=True`), nên ca này
+    # bắt chính ngoại lệ ấy. Điều đang chấm không phải mã HTTP - nó là thứ
+    # **không** có trong sổ sau khi lời gọi hỏng.
+    with pytest.raises(ValueError):
+        _xem_nhu(client, goc, "tech_support")
+    sau = [s for s in audit_gia.su_kien if s.event == "role_swap"]
+    assert len(sau) == truoc, "ký hỏng không được để lại hàng role_swap nào"
+
+
+def test_doc_token_tra_ve_het_han_cua_chinh_token():
+    """`ClaimNguoiHoi.het_han` là `exp` của chính token; đường phát thứ hai chép nó."""
+    tho = phat_token(
+        sub="ts01", role="tech_support", space="synth", demo=False, admin=False, khoa=KHOA_TEST
+    )
+    claim = doc_token(tho, KHOA_TEST)
+    assert claim.het_han == jwt.decode(tho, KHOA_TEST, algorithms=["HS256"])["exp"]
+    assert claim.act is None
+
+
+# --- Token xem như đi **quá** `/auth/*` -------------------------------------
+
+
+def test_token_xem_nhu_doi_ca_ngu_canh_quyen_va_lam_grant_ngu(
+    client, engine_gia, kho_break_glass_gia
+):
+    """Câu trung tâm của story - "mọi tầng sau chỉ nhìn token" - đo trên một lượt thật.
+
+    Mọi ca khác của file này dừng ở `/auth/*`: chúng so claim và đếm hàng audit,
+    tức chúng chấm **đường phát token** chứ không chấm hệ quả của nó. Một sửa
+    đổi rất dễ ai đó làm với lý do "người trình diễn mất break-glass khi đổi
+    vai" - cho `doc_grant_ids` rơi về `claim.act.role` khi có `act` - vẫn xanh
+    cả bộ. Ở đây thì không.
+
+    Ba khẳng định, đo **bên trong** lời gọi engine (`EngineGia` ghi
+    `current_context()` ngay trong thân method, chỗ duy nhất chứng minh
+    `use_context` bọc trọn lời gọi):
+
+    1. `PermissionContext.role` là **vai mượn**, không vai thật - tức bảng chính
+       sách được tra theo vai giả và mọi khóa lọc đi theo nó;
+    2. `real_account` **vẫn là tài khoản thật** - đó là `act` của mọi hàng audit
+       và là khóa tra grant, hai thứ không được đổi nghĩa vì một lần đổi vai;
+    3. grant của cặp `(dev01, devops)` **ngủ** dưới token mượn vai và **sống
+       lại** sau khi thoát. Đó là hành vi EXPERIENCE.md đã chốt, không một tác
+       dụng phụ: một grant cấp cho vai thật không được đi theo người ta sang một
+       vai khác.
+    """
+    from api.hoi_dap import CT_VAI_THAT
+    from tests.ho_tro_break_glass import chen_grant
+
+    asyncio.run(
+        chen_grant(kho_break_glass_gia, act="dev01", role="devops", hyperedge_ids=["HE-01"])
+    )
+
+    def hoi(token: str):
+        kq = client.post("/hoi-dap", json={"cau_hoi": "câu hỏi"}, headers=_bearer(token))
+        assert kq.status_code == 200, kq.text
+        return engine_gia.ngu_canh[-1], kq.json()
+
+    goc = _token(client, "dev01")
+    nc_goc, than_goc = hoi(goc)
+    assert (nc_goc.role, nc_goc.real_account) == ("devops", "dev01")
+    assert nc_goc.grant_ids == ("HE-01",), "grant của vai thật phải có hiệu lực"
+    assert than_goc["meta"]["role"] == "devops"
+
+    muon = _xem_nhu(client, goc, "tech_support").json()["token"]
+    nc_muon, than_muon = hoi(muon)
+    assert nc_muon.role == "tech_support", "ngữ cảnh quyền tra theo **vai mượn**"
+    assert nc_muon.real_account == "dev01", "`sub` không đổi, nên audit và grant giữ nghĩa"
+    assert nc_muon.grant_ids == (), "grant của cặp `(dev01, devops)` phải ngủ"
+    assert than_muon["meta"]["role"] == "tech_support"
+
+    ve = client.post(TUYEN_THOAT, headers=_bearer(muon)).json()["token"]
+    nc_ve, _ = hoi(ve)
+    assert (nc_ve.role, nc_ve.grant_ids) == ("devops", ("HE-01",)), "thoát ra thì grant sống lại"
+    # Và hàng `query` của lượt mượn vai nói ra nó chạy dưới một vai mượn.
+    assert CT_VAI_THAT in _hang_query(client)[1].chi_tiet
+
+
+def _hang_query(client):
+    """Ba hàng `query` của ca trên, theo thứ tự lượt hỏi."""
+    return [s for s in client.app.state.audit.su_kien if s.event == "query"]
+
+
+def test_hang_audit_cua_luot_muon_vai_mang_dau_vai_that(client, engine_gia, audit_gia):
+    """Ba hàng của một lượt mượn vai mang `chi_tiet.vai_that`; lượt thường thì không.
+
+    Không có dấu này thì một lượt của `dev01` đang mượn `truong_nhom` ghi
+    `act='dev01'`, `role='truong_nhom'` - **không khác** một lượt của một tài
+    khoản `truong_nhom` thật - và hậu kiểm FR-23 phải ghép hàng `query` với
+    hàng `role_swap` gần nhất theo cửa sổ thời gian, thứ hỏng lặng lẽ khi hai
+    phiên chạy song song. Cùng khuôn `grant_ids` của story 5.3.
+
+    Hình dạng hàng của một lượt **không** mượn vai giữ nguyên **từng khóa**:
+    sáu đợt nạp và mọi hàng đã ghi không được đổi hình vì một trường mới.
+    """
+    from api.hoi_dap import CT_VAI_THAT
+
+    goc = _token(client, "dev01")
+    client.post("/hoi-dap", json={"cau_hoi": "câu hỏi"}, headers=_bearer(goc))
+    thuong = [s for s in audit_gia.su_kien if s.event == "query"][-1]
+    assert CT_VAI_THAT not in thuong.chi_tiet, dict(thuong.chi_tiet)
+
+    muon = _xem_nhu(client, goc, "sale_ba").json()["token"]
+    client.post("/hoi-dap", json={"cau_hoi": "câu hỏi"}, headers=_bearer(muon))
+    hang = [s for s in audit_gia.su_kien if s.event == "query"][-1]
+    assert hang.chi_tiet[CT_VAI_THAT] == "devops"
+    assert (hang.act, hang.role) == ("dev01", "sale_ba")
+    # Hình dạng cũ cộng đúng một khóa, không hơn.
+    assert set(hang.chi_tiet) - set(thuong.chi_tiet) == {CT_VAI_THAT}
+
+
+def test_hang_tu_choi_cua_luot_muon_vai_cung_mang_dau(client, engine_gia, audit_gia):
+    """Cùng dấu ở hàng `refusal`: một lượt từ chối của vai mượn vẫn phải truy được về người thật."""
+    from api.hoi_dap import CT_VAI_THAT
+    from adapters.tra_loi import LY_DO_NGU_CANH_RONG
+
+    engine_gia.ly_do = LY_DO_NGU_CANH_RONG
+    goc = _token(client, "dev01")
+    muon = _xem_nhu(client, goc, "sale_ba").json()["token"]
+    client.post("/hoi-dap", json={"cau_hoi": "câu hỏi"}, headers=_bearer(muon))
+    hang = [s for s in audit_gia.su_kien if s.event == "refusal"][-1]
+    assert hang.chi_tiet[CT_VAI_THAT] == "devops"
 
 
 # --- Hàng "Thiếu khóa ký" ---------------------------------------------------

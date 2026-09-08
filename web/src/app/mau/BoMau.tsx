@@ -6,7 +6,9 @@ import { type TrichDan } from "@/api/hoi_dap";
 import { component, TOKENS } from "@/design/bien_css";
 import { HopLoi } from "@/khung/HopLoi";
 import { HopThoai } from "@/khung/HopThoai";
+import { nhan_vai } from "@/api/phien";
 import { dien, MICROCOPY } from "@/microcopy";
+import { mo_ta_vai } from "@/nhan";
 
 import { DongHanChe } from "../DongHanChe";
 import { KhoiNguon } from "../KhoiNguon";
@@ -41,6 +43,10 @@ const CAP: Array<[string, string]> = [
   ["level-l1-ink", "surface-card"],
   ["level-l1-ink", "primary-tint"],
   ["ink-muted", "primary-tint"],
+  ["level-l1-ink", "surface-stream"],
+  ["ink-muted", "level-l1-bg"],
+  ["ink", "primary-tint-soft"],
+  ["ink-muted", "primary-tint-soft"],
 ];
 
 /** Hai citation mẫu để xem cite-row, badge mức và dòng hạn chế L1 mà không cần
@@ -63,6 +69,11 @@ const TRICH_DAN_MAU: TrichDan[] = [
     owner_group: "DevOps",
   },
 ];
+
+/** Năm vai của bảng chính sách, chỉ để trang mẫu có gì mà vẽ. `MenuXemNhu`
+ *  thật **không** có danh sách nào như thế - nó đọc `GET /auth/vai`, và pytest
+ *  quét cấm mọi tên vai chép cứng trong file ấy. */
+const VAI_MAU = ["devops", "tech_support", "sale_ba", "truong_nhom", "admin"];
 
 const MAU = TOKENS.colors as Record<string, string>;
 const hex = (ten: string) => (ten.startsWith("#") ? ten : MAU[ten]);
@@ -135,6 +146,50 @@ export function BoMau() {
         </p>
         <KhoiNguon citations={TRICH_DAN_MAU} mo={mo_nguon} dat_mo={dat_mo_nguon} />
         <DongHanChe citations={TRICH_DAN_MAU} />
+      </div>
+
+      {/* Ba khối của "xem như" (story 4.5) dựng **tĩnh** ở đây, không qua
+          `MenuXemNhu`: component thật đọc `GET /auth/vai` và ghi token, tức
+          trang mẫu sẽ đổi vai thật của người đang xem. Ở đây chỉ cần thấy màu,
+          cỡ chữ và tương phản của chip, mục vai và mốc đổi vai. Danh mục vai
+          lấy từ đúng bảng nhãn mà pytest ghim với `config/policy-*.yaml`. */}
+      <h2 className="tieu_de_khoi">Xem như: chip, mục vai và mốc đổi vai</h2>
+      <div className="the" style={{ background: "var(--mau-primary-deep)", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <span className="chip_xem_nhu">
+          {dien("chip_xem_nhu", { vai: nhan_vai("tech_support") })}
+          <span className="chip_xem_nhu__x">✕</span>
+        </span>
+        <span className="nut_xem_nhu">
+          {MICROCOPY.nut_xem_nhu}
+          <span className="nut_xem_nhu__caret">▾</span>
+        </span>
+        <span className="chip_vai_that">dev01 · {nhan_vai("devops")}</span>
+      </div>
+      <div className="the" style={{ padding: 0, overflow: "hidden" }}>
+        <div className="menu_vai" style={{ position: "static", width: "100%", boxShadow: "none", border: 0 }}>
+          <div className="menu_vai__tieu_de">{MICROCOPY.tieu_de_menu_vai}</div>
+          {VAI_MAU.map((v) => (
+            <div key={v} className="menu_vai__muc" data-dang-chon={v === "tech_support" ? "1" : undefined}>
+              <span className="menu_vai__dau">{v === "tech_support" ? "✓" : ""}</span>
+              <span className="menu_vai__chu">
+                <span className="menu_vai__ten">{nhan_vai(v)}</span>
+                {mo_ta_vai(v) !== null && <span className="menu_vai__mo_ta">{mo_ta_vai(v)}</span>}
+              </span>
+            </div>
+          ))}
+          <div className="menu_vai__thoat">
+            <span className="menu_vai__x">✕</span>
+            {MICROCOPY.thoat_xem_nhu}
+            <span className="menu_vai__ve">
+              {dien("ve_vai_that", { tai_khoan: "dev01", vai: nhan_vai("devops") })}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="the" style={{ background: "var(--mau-surface-stream)" }}>
+        <div className="moc_doi_vai">
+          <span>{dien("divider_doi_vai", { vai: nhan_vai("tech_support") })}</span>
+        </div>
       </div>
 
       <h2 className="tieu_de_khoi">Nút và hộp lỗi</h2>

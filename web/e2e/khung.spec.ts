@@ -210,8 +210,9 @@ test("trang mẫu in tỷ lệ tương phản, không cặp nào dưới sàn", 
   await mock_toi(page);
   await page.goto("/mau");
   const cac = page.locator("[data-cap-tuong-phan]");
-  // Chín cặp của khung 4.1 cộng bốn cặp của cite-row và dòng hạn chế L1 (4.4).
-  await expect(cac).toHaveCount(13);
+  // Chín cặp của khung 4.1, bốn cặp của cite-row và dòng hạn chế L1 (4.4), bốn
+  // cặp của điều khiển "xem như" (4.5).
+  await expect(cac).toHaveCount(17);
   for (const dong of await cac.allTextContents()) expect(dong).toContain("đạt");
 });
 

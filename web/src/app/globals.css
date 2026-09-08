@@ -5,7 +5,25 @@
    vai, nút chính - DESIGN.md khai `foreground: '#FFFFFF'` trực tiếp) và hai cỡ
    16px/14px của thương hiệu topbar và nút gập (theo mockup, typography không
    đặt tên). Nền trắng dùng `var(--mau-surface-card)`. Sàn chữ 13px:
-   `tests/test_web_khung.py` quét file này. */
+   `tests/test_web_khung.py` quét file này.
+
+   **Ba họ giá trị nữa viết thẳng, và cả ba là ngoại lệ có lý do** (story 4.5
+   mở rộng dòng này thay vì giả vờ mọi màu đều là token):
+
+   1. `rgba(255,255,255,.13|.16|.35|.78)` - lớp phủ trắng mờ **trên nền
+      primary-deep** của topbar. `components.chip-role` của DESIGN.md khai
+      chính `rgba(255,255,255,.13)` làm giá trị, tức nguồn chuẩn cũng viết
+      thẳng nó; ba độ mờ kia là cùng một họ cho nút và chip cạnh đó. Chúng
+      **không** quy về một màu đặc nên phép canh tương phản theo component của
+      `tests/test_web_khung.py` cố ý bỏ qua chúng, và đó là một ngoại lệ đã có
+      tên từ 4.1.
+   2. `box-shadow ... rgba(27,39,51,.25)` - bóng đổ của dropdown, số đo lấy
+      nguyên từ mockup. Bóng không phải một màu chữ hay màu nền nên nó không có
+      chỗ trong `colors`, và thêm một token chỉ để một chỗ dùng là một token
+      không ai đối chiếu được với DESIGN.md.
+   3. `#ffffff` làm **chữ trên nền màu đặc** (ô ✕ hổ phách, số vuông cite-row):
+      cùng lý do với chữ trắng của topbar ở trên, và cặp `#FFFFFF`/`level-l1`
+      có mặt trong `CAP_TUONG_PHAN` nên nó **có** người chấm. */
 
 *,
 *::before,
@@ -630,6 +648,8 @@ a {
   align-items: flex-end;
   gap: 10px;
   flex-shrink: 0;
+  /* Neo cho bộ đếm ký tự (`.o_hoi__dem`), thứ nằm chồng lên góc ô hỏi. */
+  position: relative;
   background: var(--mau-surface-card);
   border: 1px solid var(--mau-border);
   border-top: 0;
@@ -859,4 +879,274 @@ a {
 .nut_break_glass:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+/* ===== "Xem như": nút, dropdown, chip và mốc đổi vai (story 4.5) ===== */
+
+/* Khối neo của dropdown. `position: relative` để menu neo dưới nút mà không
+   phải đo tọa độ; `.topbar` không đặt `overflow` nên menu tràn ra ngoài được. */
+.xem_nhu {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* Nút trên nền topbar tối: viền và nền trắng mờ, cùng ngôn ngữ với chip vai. */
+.nut_xem_nhu {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--chu-nav-item-co);
+  font-weight: 600;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  padding: 5px 12px;
+  border-radius: var(--bo-md);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.nut_xem_nhu:hover,
+.nut_xem_nhu[aria-expanded="true"] {
+  background: #ffffff;
+  color: var(--mau-primary-deep);
+  border-color: #ffffff;
+}
+
+.nut_xem_nhu__caret {
+  font-size: var(--chu-caption-min-co);
+}
+
+/* Chip hổ phách suốt phiên mượn vai (components.chip-impersonation). Nó **là**
+   trạng thái đang xem như, nên nó không bao giờ hover-only và không bao giờ
+   mang Lx: mức tiết lộ là hàm của vai × loại nội dung, không phải nhãn của vai. */
+.chip_xem_nhu {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--mau-level-l1-bg);
+  border: 1px solid var(--mau-level-l1-border);
+  color: var(--mau-level-l1-ink);
+  font-size: var(--chu-meta-chip-co);
+  font-weight: var(--chu-meta-chip-dam);
+  padding: 4px 11px;
+  border-radius: var(--bo-md);
+  white-space: nowrap;
+}
+
+.chip_xem_nhu__x {
+  background: var(--mau-level-l1);
+  color: #ffffff;
+  border: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--bo-sm);
+  display: grid;
+  place-items: center;
+  font-size: var(--chu-caption-min-co);
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Chip vai **thật**, mờ, cạnh chip hổ phách. Mờ vì nó là bối cảnh chứ không
+   phải trạng thái đang hoạt động; chữ vẫn trắng trên nền primary-deep. */
+.chip_vai_that {
+  font-size: var(--chu-caption-min-co);
+  color: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.13);
+  padding: 3px 10px;
+  border-radius: var(--bo-sm);
+  white-space: nowrap;
+}
+
+/* Dropdown 380px neo dưới nút (số đo mockup). `role="menu"` và **không**
+   `aria-modal`: ⌘K phải còn chạy trong lúc menu mở. */
+.menu_vai {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  background: var(--mau-surface-card);
+  border: 1px solid var(--mau-border-strong);
+  border-radius: var(--bo-lg);
+  box-shadow: 0 10px 30px rgba(27, 39, 51, 0.25);
+  z-index: 20;
+  overflow: hidden;
+  color: var(--mau-ink);
+  text-align: left;
+}
+
+.menu_vai__tieu_de {
+  font-size: var(--chu-caption-min-co);
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  /* Mockup vẽ nhãn này bằng `ink-faint` (#8795A3), nhưng trên nền trắng nó chỉ
+     đạt 3,06:1 - dưới sàn 4,5:1 của Accessibility Floor. `ink-muted` là 5,48:1
+     và giữ nguyên vai trò "nhãn mờ hơn nội dung". Cùng phép sửa mà 4.1 áp cho
+     badge L1 và 4.4 cho chữ hàng L1: spine thắng khi mockup mâu thuẫn. */
+  color: var(--mau-ink-muted);
+  text-transform: uppercase;
+  padding: 11px 16px 7px;
+  border-bottom: 1px solid var(--mau-surface-app);
+}
+
+.menu_vai__trang {
+  padding: 10px 16px;
+  font-size: var(--chu-caption-min-co);
+  color: var(--mau-ink-muted);
+}
+
+/* Một mục vai. `button` chứ không `div[role=menuitem]`: bàn phím và cảm ứng
+   đều tới được, và focus thấy được không phải thêm `tabindex` tay. */
+.menu_vai__muc {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 16px;
+  background: none;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.menu_vai__muc:hover {
+  background: var(--mau-primary-tint);
+}
+
+.menu_vai__muc[data-dang-chon] {
+  background: var(--mau-primary-tint-soft);
+}
+
+/* Ô dấu ✓ rộng cố định cho **mọi** mục, nên các dòng thẳng cột dù chỉ một dòng
+   có dấu. `aria-checked` là thứ trình đọc màn hình đọc; ✓ chỉ là hình. */
+.menu_vai__dau {
+  width: 18px;
+  flex-shrink: 0;
+  font-size: var(--chu-nav-item-co);
+  font-weight: 700;
+  color: var(--mau-primary);
+  padding-top: 1px;
+}
+
+.menu_vai__chu {
+  flex: 1;
+  min-width: 0;
+}
+
+.menu_vai__ten {
+  display: block;
+  font-size: var(--chu-nav-item-co);
+  font-weight: 600;
+}
+
+/* Dòng mô tả vùng quyền. Cố ý nói "thường" chứ không khẳng định một mức: mức
+   là hàm của vai × loại nội dung × scope, không phải thuộc tính của vai. */
+.menu_vai__mo_ta {
+  display: block;
+  font-size: var(--chu-caption-min-co);
+  color: var(--mau-ink-muted);
+  margin-top: 1px;
+}
+
+/* Mục thoát tách ở đáy, nền hổ phách cùng tông với chip đang-xem-như. */
+.menu_vai__thoat {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  border: 0;
+  border-top: 1px solid var(--mau-border);
+  padding: 10px 16px;
+  font-size: var(--chu-nav-item-co);
+  font-weight: 600;
+  color: var(--mau-level-l1-ink);
+  background: var(--mau-level-l1-bg);
+  cursor: pointer;
+  text-align: left;
+}
+
+.menu_vai__x {
+  background: var(--mau-level-l1);
+  color: #ffffff;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--bo-sm);
+  display: grid;
+  place-items: center;
+  font-size: var(--chu-caption-min-co);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.menu_vai__ve {
+  font-weight: 400;
+  color: var(--mau-ink-muted);
+  font-size: var(--chu-caption-min-co);
+  margin-left: auto;
+}
+
+/* Danh sách mục (phần tử mang `role="menu"`): chỉ chứa `menuitem*`, nên tiêu
+   đề, khối trạng thái và hộp lỗi đều nằm ngoài nó trong `.menu_vai`. */
+.menu_vai__danh_sach {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Hộp lỗi của một lần đổi vai nằm **trong** cùng tấm nổi với menu, dưới mục
+   cuối. Bản đầu để nó thành một tấm thứ hai cùng `top`/`right`/`z-index`, và
+   một lần đổi vai hỏng thì menu vẫn mở nên hai tấm chồng lên nhau. */
+.menu_vai__loi {
+  border-top: 1px solid var(--mau-border);
+  padding: 10px 12px;
+}
+
+/* Mốc đổi vai giữa hai lượt chat: chữ hổ phách giữa hai đường nét đứt. Đứng ở
+   cấp danh sách, ngoài mọi vùng `aria-live` của từng lượt. */
+.moc_doi_vai {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: var(--chu-meta-chip-co);
+  color: var(--mau-level-l1-ink);
+}
+
+.moc_doi_vai::before,
+.moc_doi_vai::after {
+  content: "";
+  flex: 1;
+  border-top: 1px dashed var(--mau-level-l1-border);
+}
+
+/* Bộ đếm ký tự dưới ô hỏi, chỉ hiện khi gần trần `DAI_CAU_HOI_TOI_DA`. Nó nói
+   ra chỗ `maxLength` sắp cắt lặng lẽ, nên nó phải đọc được chứ không chỉ là
+   một sắc thái màu: chạm trần thì đổi sang màu cảnh báo **và** đậm lên. */
+.o_hoi__dem {
+  position: absolute;
+  right: 96px;
+  bottom: 4px;
+  font-size: var(--chu-caption-min-co);
+  color: var(--mau-ink-muted);
+  pointer-events: none;
+}
+
+.o_hoi__dem[data-cham-tran] {
+  color: var(--mau-level-l1-ink);
+  font-weight: 600;
+}
+
+/* Khung đang đọc lại phiên sau một lần đổi vai: chip vai trên topbar còn là
+   vai **cũ** trong khi token đã là vai mới, nên trạng thái ấy phải nhìn thấy
+   được thay vì im lặng vô thời hạn khi `/auth/toi` treo. */
+.khung[data-dang-doc-lai] .chip_vai,
+.khung[data-dang-doc-lai] .chip_xem_nhu,
+.khung[data-dang-doc-lai] .chip_vai_that {
+  opacity: 0.55;
 }

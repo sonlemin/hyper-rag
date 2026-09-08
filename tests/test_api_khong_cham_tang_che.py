@@ -256,6 +256,14 @@ HAM_MAIN_CO_LY_DO: dict[str, str] = {
     "duyet_break_glass": "POST /break-glass/yeu-cau/{id}/duyet; gọi api.break_glass.duyet, đổi trạng thái một hàng và ghi một hàng grant trong một transaction, thân là hai hàng Postgres",
     "tu_choi_break_glass": "POST /break-glass/yeu-cau/{id}/tu-choi; gọi api.break_glass.tu_choi, chỉ đổi trạng thái một hàng Postgres",
     "cap_break_glass": "POST /break-glass/grant; gọi api.break_glass.cap_chu_dong, mức của gốc hỏi qua cửa quyền của citation dưới ngữ cảnh người nhận, thân là hàng grant",
+    # Bốn hàm của đường "xem như" (story 4.5). Cả bốn là phép biến đổi thuần
+    # trên token cộng một hàng audit: không kho tri thức, không LLM, không
+    # embedding, và **không dựng ngữ cảnh quyền** (danh mục vai đọc thẳng từ
+    # object `Policy` đang chạy, không qua `ngu_canh_cua`).
+    "danh_muc_vai": "GET /auth/vai; trả sorted(Policy.roles) của bảng đang chạy, chỉ tên vai - không scopes, không disclosure, không chạm kho",
+    "xem_nhu": "POST /auth/xem-nhu; ký một JWT mới với role là vai giả và act là người thật, exp chép của token cũ; không chạm kho tri thức",
+    "thoat_xem_nhu": "POST /auth/thoat-xem-nhu; ký lại token theo act của chính token đang cầm, không claim act; không phép đọc nào",
+    "_phat_va_ghi": "một chỗ ký token cho cả hai tuyến xem như rồi ghi hàng role_swap; audit_log là sổ kiểm toán, không phải kho tri thức",
 }
 
 

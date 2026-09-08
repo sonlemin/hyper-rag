@@ -99,6 +99,13 @@ EVENT_BREAKGLASS_REJECT: str = "breakglass_reject"
 # đường cấp duy nhất không có hàng `breakglass_request` đứng trước, nên hàng
 # này là dấu vết duy nhất của grant ấy.
 EVENT_BREAKGLASS_GRANT: str = "breakglass_grant"
+# Tầng **mutation** (story 4.5, FR-18, FR-23): một tài khoản demo/admin mượn vai
+# khác ("xem như"). Mutation vì đây là đường phát token thứ hai của tiến trình:
+# hàng này là chỗ **duy nhất** nối một lượt hỏi mang `role` là vai giả về lại
+# người thật đã bấm nút, và mọi hàng `query` sau đó chỉ nói được vai giả. Một
+# lần đổi vai không để lại dấu vết là đúng thứ FR-23 sinh ra để chặn, nên audit
+# hỏng là không có token mới.
+EVENT_ROLE_SWAP: str = "role_swap"
 EVENTS: frozenset[str] = frozenset(
     {
         EVENT_LLM_COST,
@@ -119,6 +126,7 @@ EVENTS: frozenset[str] = frozenset(
         EVENT_BREAKGLASS_APPROVE,
         EVENT_BREAKGLASS_REJECT,
         EVENT_BREAKGLASS_GRANT,
+        EVENT_ROLE_SWAP,
     }
 )
 

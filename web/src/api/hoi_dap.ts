@@ -25,6 +25,22 @@ export const TUYEN_HOI_DAP = "/hoi-dap";
  *  nên một tên lệch là 422 cho mọi câu hỏi chứ không phải một lỗi lẻ. */
 export const TRUONG_CAU_HOI = "cau_hoi";
 
+/** Trần độ dài một câu hỏi, **bản chép của `api.hoi_dap.DAI_CAU_HOI_TOI_DA`**
+ *  và `tests/test_web_khung.py` nhóm (12) so hai bên bằng giá trị.
+ *
+ *  Nó là một ngân sách có tên phía `api/`: quá trần là 400 `CAU_HOI_QUA_DAI`,
+ *  và nhánh `catch` của màn chat gom mọi mã không phải 401 vào một câu "Hệ
+ *  thống gặp lỗi, thử lại sau" - tức màn hình nói sai nguyên nhân cho một lỗi
+ *  mà **người dùng sửa được**, rồi họ gõ lại đúng câu ấy và nó hỏng lại. Chặn
+ *  trước bằng `maxLength` trên ô hỏi rẻ hơn một chuỗi lỗi cho một trạng thái
+ *  không cần xảy ra, và nó kéo theo cả trần thân 64 KB của middleware: 4000 ký
+ *  tự không với tới được nó.
+ *
+ *  Vì sao phải ghim hai chiều thay vì chép một con số: nới trần ở `api/` mà
+ *  quên ở đây là một câu hợp lệ bị trình duyệt cắt cụt **không báo gì**, và
+ *  siết ở `api/` mà quên ở đây là lỗi cũ quay lại. */
+export const DAI_CAU_HOI_TOI_DA = 4000;
+
 /** Năm khóa cấp một của envelope, thứ tự AD-8 (`api.hoi_dap.KHOA_ENVELOPE`). */
 export const KHOA_ENVELOPE = ["answer", "refused", "citations", "graph", "meta"] as const;
 

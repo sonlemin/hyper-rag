@@ -3,6 +3,12 @@
 
 export const KHOA_TOKEN = "hyper_rag_token";
 
+/** Người **thật** đứng sau một phiên đang mượn vai (claim `act`, story 4.5). */
+export type ActPhien = {
+  tai_khoan: string;
+  vai: string;
+};
+
 /** Thân của `GET /auth/toi` (api/main.py). */
 export type Phien = {
   tai_khoan: string;
@@ -10,15 +16,43 @@ export type Phien = {
   khong_gian: string;
   demo: boolean;
   admin: boolean;
+  /** `null` với một phiên thường; người thật khi phiên đang mượn vai. */
+  act: ActPhien | null;
 };
 
-/** Thân trả về có đúng hình phiên không: `tai_khoan` và `vai` phải là chuỗi.
+function la_chuoi_that(gia_tri: unknown): boolean {
+  return typeof gia_tri === "string" && gia_tri.trim() !== "";
+}
+
+/** `act` của thân trả về có đúng hình không: `null`, hay hai chuỗi không rỗng.
+ *
+ *  **Vắng mặt không phải là `null`.** `null` là một trạng thái thật ("không
+ *  mượn vai nào") còn vắng mặt là hợp đồng đã trôi, và đọc cái sau thành cái
+ *  trước là chip hổ phách biến mất khỏi topbar cùng mục "Thoát xem như" biến
+ *  mất khỏi menu, trong khi phiên vẫn đang mang một vai giả - đúng trạng thái
+ *  nguy hiểm nhất mà màn này có thể ở. Cùng luật với `api.xac_thuc._doc_act`,
+ *  chỗ một `act` có mặt mà không đọc được là từ chối cả token. */
+function la_act(gia_tri: unknown): gia_tri is ActPhien | null {
+  if (gia_tri === null) return true;
+  if (typeof gia_tri !== "object") return false;
+  const a = gia_tri as Record<string, unknown>;
+  return la_chuoi_that(a.tai_khoan) && la_chuoi_that(a.vai);
+}
+
+/** Thân trả về có đúng hình phiên không: `tai_khoan` và `vai` phải là chuỗi
+ *  **không rỗng**, và `act` phải có mặt đúng hình.
+ *
  *  Một thân lạ (proxy trả HTML, envelope khác) không được thành chip
- *  `undefined · undefined`; caller coi nó là lỗi hệ thống. */
+ *  `undefined · undefined`; caller coi nó là lỗi hệ thống. Và luật "chuỗi không
+ *  rỗng" áp **đều** cho cả hai tầng: `la_act` đã đòi thế cho hai trường của
+ *  `act`, nên để `tai_khoan`/`vai` ở cấp trên chỉ cần `typeof === "string"` là
+ *  `{"tai_khoan": "", "vai": ""}` đi lọt và thành một chip `" · "` - đúng loại
+ *  thân rỗng nghĩa mà cả hàm này dựng ra để chặn. */
 export function la_phien(than: unknown): than is Phien {
   if (typeof than !== "object" || than === null) return false;
   const t = than as Record<string, unknown>;
-  return typeof t.tai_khoan === "string" && typeof t.vai === "string";
+  if (!(KHOA_ACT in t) || !la_act(t[KHOA_ACT])) return false;
+  return la_chuoi_that(t.tai_khoan) && la_chuoi_that(t.vai);
 }
 
 function kho(): Storage | null {
@@ -60,7 +94,11 @@ export function xoa_token(): void {
 
 // Nhãn tiếng Việt của vai người dùng (5 vai PRD 1.5). Khóa lạ hiện nguyên khóa:
 // một nhãn đoán là một chỗ để UI nói khác với token.
-const NHAN_VAI: Record<string, string> = {
+// Xuất ra vì `tests/test_web_khung.py` nhóm (12) ghim **khóa** của bảng này với
+// hợp các vai của bốn `config/policy-*.yaml`, và vì menu xem như dựng bảng mô tả
+// vùng quyền theo đúng danh mục khóa ấy. Một bản chép thứ hai của năm tên vai
+// là hai bản trôi khỏi nhau ở lần sửa đầu tiên.
+export const NHAN_VAI: Record<string, string> = {
   devops: "DevOps",
   tech_support: "Tech Support",
   sale_ba: "Sale/BA",
@@ -170,4 +208,55 @@ export function token_dang_nhap(than: unknown): string | null {
  *  nơi gọi. */
 export function dang_xuat(): void {
   xoa_token();
+}
+
+
+// --- "Xem như": đọc phiên đang mượn vai (story 4.5, FR-18) -------------------
+//
+// Ba hằng tuyến và hai tên trường khai ở đây rồi `tests/test_web_khung.py` nhóm
+// (12) ghim chúng với chính `api/main.py` - cùng khuôn mà 4.2 ghim ba trường
+// đăng nhập và 4.3 ghim hợp đồng envelope, và vì cùng một lý do: e2e mock trọn
+// tuyến nên nó xanh với bất kỳ tên nào, còn phía `api/` không biết `web/` gửi gì.
+
+/** Phát token mượn vai. Thân `{vai: "<tên vai>"}`, trả `{token, token_type}`. */
+export const TUYEN_XEM_NHU = "/auth/xem-nhu";
+
+/** Về vai thật. Không thân request: vai thật đã nằm trong `act` của token. */
+export const TUYEN_THOAT_XEM_NHU = "/auth/thoat-xem-nhu";
+
+/** Danh mục vai của **bảng chính sách đang chạy**, không một danh sách ở `web/`. */
+export const TUYEN_VAI = "/auth/vai";
+
+/** Trường duy nhất của thân `POST /auth/xem-nhu`. */
+export const TRUONG_VAI = "vai";
+
+/** Khóa mang danh mục vai trong thân `GET /auth/vai`. */
+export const TRUONG_DANH_MUC_VAI = "vai";
+
+/** Khóa `act` của `GET /auth/toi`; `la_phien` đòi nó có mặt. */
+export const KHOA_ACT = "act";
+
+/** Phiên có đang mượn vai không. **Một nguồn**: claim `act` của chính token,
+ *  không phải một chênh lệch giữa `vai` và một giá trị nhớ ở client - một
+ *  trạng thái thứ hai bên trình duyệt là một trạng thái lệch được với token. */
+export function la_dang_xem_nhu(phien: Phien): boolean {
+  return phien.act !== null;
+}
+
+/** Vai của **người thật**: vai trong `act` khi đang mượn, còn không thì chính
+ *  vai của phiên. Menu dùng nó để biết dòng nào là vai gốc. */
+export function vai_that(phien: Phien): string {
+  return phien.act?.vai ?? phien.vai;
+}
+
+/** Tài khoản của người thật; `sub` không bao giờ đổi nên nó luôn bằng
+ *  `phien.tai_khoan`, và hàm này tồn tại để nơi gọi không phải biết điều đó. */
+export function tai_khoan_that(phien: Phien): string {
+  return phien.act?.tai_khoan ?? phien.tai_khoan;
+}
+
+/** Chip **vai thật** mờ cạnh chip hổ phách: "dev01 · DevOps". Cùng khuôn với
+ *  `chip_vai`, và cũng không bao giờ gắn Lx. */
+export function chip_vai_that(phien: Phien): string {
+  return `${tai_khoan_that(phien)} · ${nhan_vai(vai_that(phien))}`;
 }

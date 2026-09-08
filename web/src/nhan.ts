@@ -1,3 +1,5 @@
+import { MICROCOPY, type KhoaMicrocopy } from "./microcopy";
+
 // Nhãn hiển thị tiếng Việt của hai danh mục mà API trả về dưới dạng khóa
 // snake_case: 8 vai slot (`core/slots.py`) và 13 loại nội dung
 // (`config/hang-do-nhay.yaml`). Khuôn của `NHAN_VAI` trong `api/phien.ts`:
@@ -84,4 +86,28 @@ export const NHAN_SCOPE: Record<string, string> = {
 
 export function nhan_scope(scope: string): string {
   return NHAN_SCOPE[scope] ?? scope;
+}
+
+/** Tiền tố khóa microcopy của dòng mô tả vùng quyền một vai: `mo_ta_vai_<vai>`. */
+export const TIEN_TO_MO_TA_VAI = "mo_ta_vai_";
+
+/** Dòng mô tả vùng quyền của một vai, hay `null` nếu chưa ai viết cho vai đó.
+ *
+ *  Hàm thuần và ở đây chứ không trong `MenuXemNhu.tsx`: nó cùng họ với
+ *  `NHAN_VAI` và `nhan_slot` (một khóa từ API đổi thành chữ hiển thị, khóa lạ
+ *  hiện nguyên khóa), và để nó trong một component `"use client"` buộc trang
+ *  mẫu phải import từ `@/khung/MenuXemNhu` để dùng một hàm không liên quan gì
+ *  tới component ấy.
+ *
+ *  Chuỗi tĩnh ở `microcopy.json` chứ không đến từ `GET /auth/vai`: tuyến ấy trả
+ *  **chỉ tên vai**, vì một tài khoản demo không cần đọc bảng quyền để bấm một
+ *  nút. Chữ "thường" trong cả năm câu là cố ý - mức tiết lộ là hàm của vai ×
+ *  loại nội dung × scope (AD-4), không phải một thuộc tính của vai, nên một câu
+ *  khẳng định "vai này thấy L2" sẽ sai ngay ở bảng chính sách kế tiếp.
+ *
+ *  Vai chưa có mô tả hiện **mục không kèm mô tả** thay vì một câu đoán, cùng
+ *  luật khóa-lạ-hiện-nguyên-khóa của `nhan_vai`. */
+export function mo_ta_vai(vai: string): string | null {
+  const khoa = `${TIEN_TO_MO_TA_VAI}${vai}` as KhoaMicrocopy;
+  return khoa in MICROCOPY ? MICROCOPY[khoa] : null;
 }

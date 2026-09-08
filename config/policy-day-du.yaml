@@ -45,6 +45,34 @@
 #   canh_bao [source, remediation]
 #     ⊆ bao_cao_su_co [cause, source, remediation]
 #       ⊆ postmortem [subject, cause, source, remediation]
+#
+# **Ba vai còn lại của PRD 1.5 vào ở story 4.5** (sonlm chốt 08/09/2026), để
+# đường "xem như" của FR-18 có đủ 5 vai để mượn. Cả ba khai đủ 13 loại như hai
+# vai trên, và ba file đo sinh ra từ đây bằng đúng bốn phép biến đổi cũ.
+#
+# 3. `sale_ba` là vai **bị chặn** của nhịp 3 đường demo, nên L0 toàn phần: một
+#    câu hỏi kỹ thuật với vai này phải ra đúng template từ chối, không trích
+#    dẫn, không placeholder - tức nhịp "L0 vô hình tuyệt đối" chạy được trước
+#    hội đồng. Scope `[noi_bo]` chứ không rỗng vì `scopes` rỗng là một hàng
+#    không có khóa nào và validator đọc nó khác một hàng mọi ô L0.
+# 4. `truong_nhom` L2 toàn phần trên `[noi_bo, khach_hang_a]` - "bức tranh đầy
+#    đủ" của mockup. Nó **không** mở `khach_hang_b`: biên cách ly khách hàng là
+#    thứ RT-01 đo, và một vai đọc được cả hai khoang thuê bao phá chính phép đo
+#    ấy. Và nó **không** phải "vai owner duyệt break-glass" dù dòng mô tả trên
+#    dropdown của mockup nói thế: cửa owner của story 5.2 là
+#    `users.group_name == nhom_duyet`, một cột của bảng `users`, **không phải
+#    vai**, nên thêm hàng này vào bảng chính sách không nối nó với đường duyệt
+#    ở đâu cả. Hôm nay cũng **không tài khoản seed nào mang vai này**, nên nó
+#    chỉ tồn tại như một đích để "xem như" mượn - đúng thứ story 4.5 cần, và
+#    không hơn.
+# 5. `admin` cũng L0 toàn phần, và đó là một khẳng định chứ không một chỗ quên.
+#    PRD 1.5 nói thẳng nó không phải vai nghiệp vụ: quyền của nó là hai cờ
+#    `demo`/`admin` trên tài khoản (hoán bảng chính sách, danh mục tài khoản),
+#    không phải một cột trong bảng này. Một vai quản trị đọc được mọi thứ làm
+#    hỏng đúng luận điểm của khóa luận.
+#
+# Không ô nào của ba vai mới ở L1, nên không vai nào cần `masked_slots`, và cả
+# ba đơn điệu theo hạng một cách hiển nhiên (một hằng thì không tăng được).
 version: 1
 roles:
   devops:
@@ -85,3 +113,58 @@ roles:
       canh_bao: [source, remediation]
       bao_cao_su_co: [cause, source, remediation]
       postmortem: [subject, cause, source, remediation]
+  # Vai bị chặn của nhịp 3: L0 toàn phần, xem quyết định (3) ở đầu file.
+  sale_ba:
+    scopes: [noi_bo]
+    disclosure:
+      faq: L0                # hạng 2
+      tai_lieu_san_pham: L0  # 4
+      sop: L0                # 6
+      troubleshooting: L0    # 8
+      runbook: L0            # 10
+      known_issue: L0        # 12
+      vong_doi_ticket: L0    # 14
+      canh_bao: L0           # 16
+      bao_cao_su_co: L0      # 20
+      postmortem: L0         # 22
+      log: L0                # 24
+      cmdb: L0               # 26
+      bi_mat_ha_tang: L0     # 30
+    masked_slots: {}
+  # Bức tranh đầy đủ. Không mở `khach_hang_b`, và **không** nối với đường duyệt
+  # break-glass (cửa owner là `users.group_name`, không phải vai) - xem (4).
+  truong_nhom:
+    scopes: [noi_bo, khach_hang_a]
+    disclosure:
+      faq: L2                # hạng 2
+      tai_lieu_san_pham: L2  # 4
+      sop: L2                # 6
+      troubleshooting: L2    # 8
+      runbook: L2            # 10
+      known_issue: L2        # 12
+      vong_doi_ticket: L2    # 14
+      canh_bao: L2           # 16
+      bao_cao_su_co: L2      # 20
+      postmortem: L2         # 22
+      log: L2                # 24
+      cmdb: L2               # 26
+      bi_mat_ha_tang: L2     # 30
+    masked_slots: {}
+  # Không phải vai nghiệp vụ (PRD 1.5): quyền của nó là hai cờ trên tài khoản (5).
+  admin:
+    scopes: [noi_bo]
+    disclosure:
+      faq: L0                # hạng 2
+      tai_lieu_san_pham: L0  # 4
+      sop: L0                # 6
+      troubleshooting: L0    # 8
+      runbook: L0            # 10
+      known_issue: L0        # 12
+      vong_doi_ticket: L0    # 14
+      canh_bao: L0           # 16
+      bao_cao_su_co: L0      # 20
+      postmortem: L0         # 22
+      log: L0                # 24
+      cmdb: L0               # 26
+      bi_mat_ha_tang: L0     # 30
+    masked_slots: {}

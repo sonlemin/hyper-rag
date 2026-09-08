@@ -19,6 +19,20 @@ from core.policy import NAMESPACES, TRAN_KHOA_MOI_VAI, PolicyInvalid
 from core.slots import OWNER_SLOT, POLICY_MASKABLE_SLOTS
 from tests.fixtures import du_lieu_dung_tay, oracle
 
+# Danh mục vai của **bốn** bảng chính sách, ghim tuyệt đối. Tên cũ là `HAI_VAI`
+# (hai vai tới story 3.2); story 4.5 thêm ba vai còn lại của PRD 1.5 để đường
+# "xem như" của FR-18 có đủ 5 vai để mượn.
+#
+# Vì sao ghim thành một tuple chứ không nới thành "ít nhất hai vai": phép so
+# `set(b["roles"]) == set(NAM_VAI)` là chỗ duy nhất bắt được ca một bảng đo lỡ
+# **mất** một vai. Nếu một cấu hình khai bốn vai còn cấu hình kia khai năm thì
+# chênh lệch đo được của FR-28 không còn quy về một biến chính sách nữa, và một
+# phép so lỏng đọc ca đó là hợp lệ.
+NAM_VAI = ("devops", "tech_support", "sale_ba", "truong_nhom", "admin")
+
+# Tên cũ giữ lại cho các ca chỉ nói về hai vai của bản đồ ACL A4 (`TS_L2`,
+# `DEVOPS_L1` và các kỳ vọng viết tay của story 3.2). Ba vai mới không có ô nào
+# trong A4 nên chúng không thuộc những phép ghim ấy.
 HAI_VAI = ("devops", "tech_support")
 
 # Bảng nhỏ nhất còn hợp lệ, dùng làm gốc cho các ca hỏng: một hàng L2 và một
@@ -82,7 +96,7 @@ def test_allowed_keys_khop_oracle(duong_dan):
     """Đủ 3 namespace, mỗi namespace khớp tập khóa oracle tính riêng."""
     policy = load_policy(duong_dan)
     bang = oracle.doc_bang_chinh_sach(duong_dan)
-    for vai in HAI_VAI:
+    for vai in NAM_VAI:
         thuc_te = policy.allowed_keys(vai)
         ky_vong = oracle.allowed_keys_ky_vong(bang, vai)
         assert set(thuc_te) == set(NAMESPACES)
@@ -127,11 +141,30 @@ def test_chunk_va_entity_chi_nhan_khoa_l2():
         assert not any("noi_bo:" + loai in k for k in khoa.values()), loai
 
 
+def test_vai_l0_toan_phan_khong_co_khoa_nao():
+    """`sale_ba` và `admin` L0 ở cả 13 loại, nên `allowed_keys` **rỗng cả ba namespace**.
+
+    Đây là phát biểu mà nhịp 3 của đường demo đứng lên: vai bị chặn không có
+    một khóa lọc nào, nên mọi truy hồi của nó trả rỗng và lượt hỏi ra đúng
+    template từ chối. Suy nó từ "13 ô đều L0" là suy từ file sang chính file;
+    ca này chấm ở đầu ra của `build_policy`, chỗ `_allowed_keys` thật sự chạy.
+
+    Ghim trên **cả bốn cấu hình** thì sai: cấu hình 1 mở mọi ô lên L2 nên hai
+    vai ấy có đủ 39 khóa ở đó, và đó là đúng phép biến đổi của nó.
+    """
+    for duong_dan in (oracle.POLICY_DAY_DU, oracle.POLICY_NHI_PHAN):
+        policy = load_policy(duong_dan)
+        for vai in ("sale_ba", "admin"):
+            khoa = policy.allowed_keys(vai)
+            assert set(khoa) == set(NAMESPACES), (duong_dan, vai)
+            assert all(not k for k in khoa.values()), (duong_dan, vai, khoa)
+
+
 def test_masked_slots_la_map_theo_loai_noi_dung():
     """AD-3: map loại nội dung -> tập slot, không phải tập phẳng."""
     policy = load_policy(oracle.POLICY_DAY_DU)
     bang = oracle.doc_bang_chinh_sach(oracle.POLICY_DAY_DU)
-    for vai in HAI_VAI:
+    for vai in NAM_VAI:
         thuc_te = {loai: set(s) for loai, s in policy.masked_slots(vai).items()}
         assert thuc_te == oracle.masked_slots_ky_vong(bang, vai), vai
 
@@ -139,7 +172,7 @@ def test_masked_slots_la_map_theo_loai_noi_dung():
 def test_slot_owner_khong_nam_trong_bang():
     """`owner` là luật tổng quát hóa ở tầng che (AD-9), không khai trong YAML."""
     policy = load_policy(oracle.POLICY_DAY_DU)
-    for vai in HAI_VAI:
+    for vai in NAM_VAI:
         for slots in policy.masked_slots(vai).values():
             assert "owner" not in slots
 
@@ -528,15 +561,15 @@ def test_bon_cau_hinh_do_cung_vai_cung_loai_noi_dung():
     bang = {p: oracle.doc_bang_chinh_sach(p) for p in oracle.BON_CAU_HINH}
     assert len(bang) == 4
     for duong_dan, b in bang.items():
-        assert set(b["roles"]) == set(HAI_VAI), duong_dan
-        for vai in HAI_VAI:
+        assert set(b["roles"]) == set(NAM_VAI), duong_dan
+        for vai in NAM_VAI:
             assert set(b["roles"][vai]["disclosure"]) == set(MUOI_BA_LOAI), (
                 duong_dan,
                 vai,
             )
     goc = bang[oracle.POLICY_DAY_DU]
     for duong_dan in (oracle.POLICY_NHI_PHAN, oracle.POLICY_TOI_THIEU_L1):
-        for vai in HAI_VAI:
+        for vai in NAM_VAI:
             assert bang[duong_dan]["roles"][vai]["scopes"] == goc["roles"][vai]["scopes"]
 
 
@@ -544,11 +577,11 @@ def test_cau_hinh_2_la_dung_phep_l1_thanh_l0_tren_cau_hinh_3():
     """Baseline nhị phân đúng nghĩa `L1 -> L0`: không nâng mức nào lên."""
     goc = oracle.doc_bang_chinh_sach(oracle.POLICY_DAY_DU)
     nhi_phan = oracle.doc_bang_chinh_sach(oracle.POLICY_NHI_PHAN)
-    for vai in HAI_VAI:
+    for vai in NAM_VAI:
         for loai, muc in goc["roles"][vai]["disclosure"].items():
             moi = nhi_phan["roles"][vai]["disclosure"][loai]
             assert moi == ("L0" if muc == "L1" else muc), (vai, loai)
-    for vai in HAI_VAI:
+    for vai in NAM_VAI:
         assert not (nhi_phan["roles"][vai].get("masked_slots") or {}), vai
 
 
@@ -558,7 +591,7 @@ def test_cau_hinh_4_la_dung_phep_l0_thanh_l1_che_ca_bay_slot():
     bon = oracle.doc_bang_chinh_sach(oracle.POLICY_TOI_THIEU_L1)
     bay_slot = set(POLICY_MASKABLE_SLOTS)
     assert len(bay_slot) == 7 and OWNER_SLOT not in bay_slot
-    for vai in HAI_VAI:
+    for vai in NAM_VAI:
         che = bon["roles"][vai].get("masked_slots") or {}
         for loai, muc in goc["roles"][vai]["disclosure"].items():
             moi = bon["roles"][vai]["disclosure"][loai]
@@ -575,7 +608,7 @@ def test_cau_hinh_4_la_dung_phep_l0_thanh_l1_che_ca_bay_slot():
 def test_cau_hinh_1_mo_ca_ba_scope_va_moi_o_l2():
     """Trần recall phải là trần thật: cả 13 loại **và** cả 3 scope (PRD 5.3)."""
     bang = oracle.doc_bang_chinh_sach(oracle.POLICY_TAT_PHAN_QUYEN)
-    for vai in HAI_VAI:
+    for vai in NAM_VAI:
         assert set(bang["roles"][vai]["scopes"]) == {
             "noi_bo",
             "khach_hang_a",

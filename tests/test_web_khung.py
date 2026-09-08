@@ -35,10 +35,15 @@ cùng năm chuỗi đã treo từ 4.1 được dùng thật, hai bảng nhãn hi
 có khóa đúng bằng `core.slots.SLOT_ROLES` và bằng `config/hang-do-nhay.yaml`,
 ngữ pháp dấu che của `web/` dựng ra đúng chuỗi mà `core.masking` dựng ra, và
 không file nào trong `web/src` in id hyperedge thật.
+Nhóm (12) là "xem như" (story 4.5): chín chuỗi mới có mặt và được dùng thật,
+bảng mô tả vùng quyền có khóa đúng bằng khóa `NHAN_VAI` và `NHAN_VAI` phủ đủ vai
+của bốn bảng chính sách, ba tuyến cùng tên trường ghim hai chiều với
+`api/main.py`, và `maxLength` của ô hỏi bằng `api.hoi_dap.DAI_CAU_HOI_TOI_DA`.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from pathlib import Path
@@ -46,7 +51,13 @@ from pathlib import Path
 import pytest
 import yaml
 
-from api.hoi_dap import KHOA_ENVELOPE, KHOA_META, TEMPLATE_TU_CHOI, ThanHoiDap
+from api.hoi_dap import (
+    DAI_CAU_HOI_TOI_DA,
+    KHOA_ENVELOPE,
+    KHOA_META,
+    TEMPLATE_TU_CHOI,
+    ThanHoiDap,
+)
 from api.xac_thuc import MA_DANG_NHAP_SAI
 from core import masking
 from core.slots import OWNER_SLOT, SLOT_ROLES
@@ -112,6 +123,16 @@ CAP_TUONG_PHAN = (
     ("level-l1-ink", "surface-card"),
     ("level-l1-ink", "primary-tint"),
     ("ink-muted", "primary-tint"),
+    # Bốn cặp của "xem như" (story 4.5), theo luật retro 4.1 "không còn cặp
+    # chữ/nền nào không ai chấm". Mốc đổi vai nằm thẳng trên nền khối cuộn
+    # (7,53:1); dòng "về dev01 · DevOps" của mục thoát nằm trên nền hổ phách
+    # (5,00:1); hai dòng của mục vai **đang chọn** nằm trên `primary-tint-soft`
+    # (14,08:1 và 5,09:1). Nhãn tiêu đề dropdown cố ý **không** dùng
+    # `ink-faint` như mockup: 3,06:1 trên nền trắng, dưới sàn 4,5:1.
+    ("level-l1-ink", "surface-stream"),
+    ("ink-muted", "level-l1-bg"),
+    ("ink", "primary-tint-soft"),
+    ("ink-muted", "primary-tint-soft"),
 )
 
 # Route không có mục sidebar và cố ý như vậy. Đây là danh mục ngoại lệ **có tên**
@@ -1341,3 +1362,310 @@ def test_dong_han_che_bo_owner_khoi_phep_dem():
     tho = DONG_HAN_CHE_TSX.read_text(encoding="utf-8")
     assert "VAI_OWNER" in tho, tho
     assert '"owner"' not in _bo_chu_thich(tho), tho
+
+
+# --- (12) "Xem như": API đổi vai và UI (story 4.5) ---------------------------
+
+# Chín chuỗi mới. Bốn chuỗi khung của điều khiển, và năm dòng mô tả vùng quyền
+# lấy **nguyên văn** từ mockup `screen-role-switcher.html`. Hai chuỗi
+# `chip_xem_nhu` và `divider_doi_vai` đã có từ 4.1 (chúng nằm trong bảng Voice
+# and Tone) và story này là nơi dùng thật, nên chúng nằm trong danh sách.
+KHOA_MICROCOPY_XEM_NHU = frozenset(
+    {
+        "nut_xem_nhu",
+        "tieu_de_menu_vai",
+        "thoat_xem_nhu",
+        "ve_vai_that",
+        "mo_ta_vai_devops",
+        "mo_ta_vai_tech_support",
+        "mo_ta_vai_sale_ba",
+        "mo_ta_vai_truong_nhom",
+        "mo_ta_vai_admin",
+        "chip_xem_nhu",
+        "divider_doi_vai",
+    }
+)
+
+# Tiền tố khóa mô tả vùng quyền, khai một lần ở đây và một lần ở
+# `MenuXemNhu.tsx`; hai ca dưới ghim chúng khớp nhau.
+TIEN_TO_MO_TA_VAI = "mo_ta_vai_"
+
+PHIEN_TS = SRC / "api" / "phien.ts"
+XEM_NHU_TS = SRC / "api" / "xem_nhu.ts"
+MENU_XEM_NHU_TSX = SRC / "khung" / "MenuXemNhu.tsx"
+TOPBAR_TSX = SRC / "khung" / "Topbar.tsx"
+KHUNG_APP_TSX = SRC / "khung" / "KhungApp.tsx"
+
+
+def test_microcopy_xem_nhu_du_khoa_va_duoc_dung_that(microcopy):
+    """Chín chuỗi mới cộng hai chuỗi treo từ 4.1, mỗi chuỗi được đọc thật.
+
+    Cùng luật với ba nhóm trước: một khóa microcopy không ai dùng là một câu chữ
+    mà bảng Voice and Tone và màn hình nói khác nhau mà không ai thấy. Năm dòng
+    mô tả vùng quyền đọc qua một khóa **dựng lúc chạy** (`mo_ta_vai_${vai}`) nên
+    chúng không khớp `MICROCOPY.<khóa>`; ca dưới chấm riêng chúng bằng phép so
+    danh mục với `NHAN_VAI`.
+    """
+    thieu = KHOA_MICROCOPY_XEM_NHU - set(microcopy)
+    assert not thieu, sorted(thieu)
+    tho = "\n".join(f.read_text(encoding="utf-8") for f in _file_giao_dien())
+    khong_dung = sorted(
+        k
+        for k in KHOA_MICROCOPY_XEM_NHU
+        if not k.startswith(TIEN_TO_MO_TA_VAI) and not _duoc_dung(k, tho)
+    )
+    assert not khong_dung, f"khóa microcopy không nơi nào dùng: {khong_dung}"
+
+
+def test_bang_mo_ta_vung_quyen_co_khoa_dung_bang_nhan_vai(microcopy):
+    """Mỗi vai của `NHAN_VAI` có đúng một dòng mô tả, và không dòng nào thừa.
+
+    Hai chiều, và mỗi chiều chặn một ca khác nhau. Thiếu một mô tả là một dòng
+    dropdown trống nghĩa trên máy chiếu; thừa một mô tả là một khóa chết mà
+    `test_microcopy_xem_nhu_du_khoa_va_duoc_dung_that` cố ý miễn quét (chúng đọc
+    qua một khóa dựng lúc chạy), tức đúng chỗ một chuỗi bỏ quên sống được.
+    """
+    tu_nhan = {
+        f"{TIEN_TO_MO_TA_VAI}{v}"
+        for v in _khoa_bang_ts(PHIEN_TS.read_text(encoding="utf-8"), "NHAN_VAI")
+    }
+    tu_microcopy = {k for k in microcopy if k.startswith(TIEN_TO_MO_TA_VAI)}
+    assert tu_nhan == tu_microcopy, sorted(tu_nhan ^ tu_microcopy)
+    assert tu_nhan, "không đọc được vai nào từ `NHAN_VAI`"
+
+
+def test_nhan_vai_phu_du_vai_cua_bon_bang_chinh_sach():
+    """`NHAN_VAI` phủ **mọi** vai mà bốn `config/policy-*.yaml` khai.
+
+    Danh mục vai đến từ bảng chính sách đang chạy (`GET /auth/vai` trả
+    `sorted(Policy.roles)`), nên một vai có trong YAML mà không có nhãn ở đây
+    hiện nguyên khóa `truong_nhom` giữa dropdown - đúng ca mà luật khóa-lạ của
+    `nhan_vai` cho phép, nhưng không phải thứ được lên máy chiếu.
+
+    Phép bao hàm chứ không đẳng thức: `NHAN_VAI` được phép mang thêm một vai mà
+    hôm nay chưa bảng nào khai (một vai sắp thêm), còn chiều ngược lại thì
+    không. Chiều kia có `test_bang_mo_ta_vung_quyen_co_khoa_dung_bang_nhan_vai`
+    giữ cho mọi nhãn còn một dòng mô tả.
+    """
+    tu_policy: set[str] = set()
+    for f in sorted((GOC / "config").glob(GLOB_POLICY)):
+        tu_policy.update(yaml.safe_load(f.read_text(encoding="utf-8"))["roles"])
+    assert tu_policy, "không đọc được vai nào từ config/policy-*.yaml"
+    nhan = set(_khoa_bang_ts(PHIEN_TS.read_text(encoding="utf-8"), "NHAN_VAI"))
+    assert not (tu_policy - nhan), sorted(tu_policy - nhan)
+
+
+def test_ba_tuyen_xem_nhu_khop_nguon_api():
+    """Ba tuyến và hai tên trường khớp đúng literal mà `api/main.py` khai.
+
+    Cùng khuôn với `test_ba_truong_cua_auth_login_khop_nguon_api` của 4.2 và
+    `test_hop_dong_hoi_dap_khop_nguon_api` của 4.3, và vì cùng một lý do: e2e
+    mock trọn tuyến nên nó xanh với bất kỳ tên nào, còn phía `api/` không biết
+    `web/` gửi gì. Chết im lặng ở đây là nút "Xem như" bấm vào ra 404
+    `TUYEN_KHONG_CO` mà giao diện đọc thành "Hệ thống gặp lỗi".
+    """
+    ts = PHIEN_TS.read_text(encoding="utf-8")
+    xem_nhu = _hang_chuoi(ts, "TUYEN_XEM_NHU")
+    thoat = _hang_chuoi(ts, "TUYEN_THOAT_XEM_NHU")
+    vai = _hang_chuoi(ts, "TUYEN_VAI")
+    truong_vai = _hang_chuoi(ts, "TRUONG_VAI")
+    truong_danh_muc = _hang_chuoi(ts, "TRUONG_DANH_MUC_VAI")
+    khoa_act = _hang_chuoi(ts, "KHOA_ACT")
+
+    py = (GOC / "api" / "main.py").read_text(encoding="utf-8")
+    assert f'@cua_dong.post("{xem_nhu}")' in py, xem_nhu
+    assert f'@cua_dong.post("{thoat}")' in py, thoat
+    assert f'@cua_dong.get("{vai}")' in py, vai
+
+    # Ba tên trường, ghim vào **hợp đồng** chứ không vào định dạng. Bản đầu ghim
+    # `f'"{khoa_act}": ('` - tức đúng cách xuống dòng của một biểu thức - nên
+    # một lần format lại thành một dòng làm test đỏ trong khi hợp đồng không đổi
+    # gì. Ở đây `api/` được import và hỏi bằng chính đối tượng của nó.
+    from api.main import ThanXemNhu, toi
+
+    assert set(ThanXemNhu.model_fields) == {truong_vai}, truong_vai
+
+    # `GET /auth/vai` và `GET /auth/toi` không khai model, nên hỏi hợp đồng của
+    # chúng bằng cách **gọi handler** thay vì so một chuỗi trong nguồn: một lần
+    # format lại không được làm test đỏ khi hợp đồng không đổi gì.
+    class _ClaimGia:
+        sub, role, space, demo, admin, act = "x", "y", "synth", True, True, None
+
+    than_toi = asyncio.run(toi(_ClaimGia()))
+    assert khoa_act in than_toi and than_toi[khoa_act] is None, than_toi
+
+    from api.main import danh_muc_vai
+
+    class _Kho:
+        @staticmethod
+        def hien_tai():
+            return type("P", (), {"roles": {"b": None, "a": None}})()
+
+    class _Req:
+        app = type("A", (), {"state": type("S", (), {"kho_chinh_sach": _Kho()})()})()
+
+    than_vai = asyncio.run(danh_muc_vai(_Req(), _ClaimGia()))
+    assert than_vai == {truong_danh_muc: ["a", "b"]}, than_vai
+
+    # Và `xem_nhu.ts` dựng thân bằng chính hằng đó, không literal chép tay.
+    goi_ts = XEM_NHU_TS.read_text(encoding="utf-8")
+    assert "[TRUONG_VAI]:" in goi_ts, goi_ts
+    assert f'"{xem_nhu}"' not in goi_ts and f'"{thoat}"' not in goi_ts
+
+
+def test_khoa_act_cua_auth_toi_la_bat_buoc_trong_la_phien():
+    """`la_phien` đòi `act` **có mặt**; vắng mặt không được đọc thành `null`.
+
+    `null` là một trạng thái thật ("không mượn vai nào"), vắng mặt là hợp đồng
+    đã trôi. Đọc cái sau thành cái trước là chip hổ phách biến mất khỏi topbar
+    và mục "Thoát xem như" biến mất khỏi menu **trong khi phiên vẫn đang mang
+    một vai giả** - trạng thái nguy hiểm nhất mà màn này có thể ở. Cùng luật với
+    `api.xac_thuc._doc_act`, chỗ một `act` có mặt mà không đọc được là từ chối
+    cả token.
+    """
+    ts = PHIEN_TS.read_text(encoding="utf-8")
+    m = re.search(r"export function la_phien\(.*?\n\}", ts, re.S)
+    assert m, "phien.ts phải export `la_phien`"
+    assert "KHOA_ACT in t" in m.group(0), m.group(0)
+    assert "la_act(" in m.group(0), m.group(0)
+
+
+def test_web_khong_giu_vai_dang_muon_o_kho_thu_hai():
+    """Vai đang mượn sống **chỉ** trong token; không kho bền thứ hai (Ask First).
+
+    Luật một cửa của 4.2 áp nguyên: một bản chép của "đang là vai gì" bên trình
+    duyệt là một giá trị lệch được với token, và khi nó lệch thì màn hình nói
+    một vai còn máy chủ trả lời theo vai khác. Phép canh
+    `test_khong_file_nao_ngoai_phien_ts_cham_kho_phien` đã cấm mọi file ngoài
+    `phien.ts` chạm `sessionStorage`; ở đây thêm vế "và `phien.ts` cũng không
+    mọc một khóa thứ hai".
+    """
+    ts = PHIEN_TS.read_text(encoding="utf-8")
+    khoa = re.findall(r'(?:setItem|getItem|removeItem)\(([^,)]+)', ts)
+    assert khoa, "phien.ts phải còn là nơi duy nhất chạm kho"
+    assert set(k.strip() for k in khoa) == {"KHOA_TOKEN"}, khoa
+    # Và `xem_nhu.ts` đi qua đúng cửa ấy chứ không tự ghi.
+    goi_ts = XEM_NHU_TS.read_text(encoding="utf-8")
+    assert "ghi_token(" in goi_ts
+    assert "sessionStorage" not in goi_ts and "localStorage" not in goi_ts
+
+
+def test_menu_xem_nhu_la_menu_chu_khong_phai_modal():
+    """`role="menu"` và **không** `aria-modal`: ⌘K phải còn chạy khi menu mở.
+
+    Ca e2e của 4.1 ghim phím tắt bị chặn khi có
+    `[role="dialog"][aria-modal="true"]`, và **chỉ** khi ấy. Một dropdown chọn
+    vai gắn `aria-modal` là ⌘K chết trong đúng nhịp demo mà nó sinh ra để phục
+    vụ. Esc đóng và trả focus về nút mở là hai vế còn lại của hợp đồng dropdown
+    (DESIGN.md Interaction).
+    """
+    tho = MENU_XEM_NHU_TSX.read_text(encoding="utf-8")
+    sach = _bo_chu_thich(tho)
+    assert 'role="menu"' in sach
+    assert "aria-modal" not in sach, "dropdown không được là modal"
+    assert 'aria-haspopup="menu"' in sach and "aria-expanded" in sach
+    assert '"Escape"' in sach and "nut.current?.focus()" in sach
+
+
+def test_menu_xem_nhu_khong_chep_danh_sach_vai():
+    """Danh mục vai đến từ `GET /auth/vai`, không một mảng chép ở `web/`.
+
+    Đây là lời hứa của AD-4 phát biểu thành một phép quét: thêm một vai vào YAML
+    phải là dropdown dài thêm một dòng mà không sửa một dòng TypeScript nào. Một
+    mảng tên vai trong `MenuXemNhu.tsx` là chỗ lời hứa ấy chết mà không ai thấy,
+    vì bảng chính sách vẫn nạp được và API vẫn trả đủ.
+    """
+    sach = _bo_chu_thich(MENU_XEM_NHU_TSX.read_text(encoding="utf-8"))
+    for vai in ("devops", "tech_support", "sale_ba", "truong_nhom", "admin"):
+        assert f'"{vai}"' not in sach, f"tên vai {vai!r} chép cứng trong menu"
+    assert "danh_muc_vai(" in sach
+
+
+def test_dieu_khien_xem_nhu_chi_ve_cho_phien_demo_hoac_admin():
+    """Nút chỉ vẽ khi `demo || admin`, đọc từ **claim** chứ không từ vai đang mang.
+
+    Hai vế của FR-18, và chỉ vế này kiểm được ở `web/`: vế kia là ba tuyến API
+    cùng từ chối (`tests/test_xac_thuc.py`). Ẩn một nút không phải một phép kiểm
+    quyền, nhưng vẽ nó cho một tài khoản thường là mời người dùng bấm vào một
+    403 - và khoản ledger 403 của 4.2 đóng bằng đúng quyết định "không vẽ".
+
+    Phép **hoặc**, không phải **và**: `demo01` (demo mà không admin) phải thấy
+    nút, và một `&&` ở đây là một tài khoản demo mất đúng tính năng của nó.
+    """
+    sach = _bo_chu_thich(TOPBAR_TSX.read_text(encoding="utf-8"))
+    assert "phien.demo || phien.admin" in sach, sach
+    assert "MenuXemNhu" in sach
+
+
+def test_moc_doi_vai_la_muc_that_khong_suy_tu_vai_gui():
+    """Divider là một **mục** trong danh sách, đếm theo số lần đổi vai.
+
+    EXPERIENCE.md nói "mỗi lần đổi vai chèn một divider", nên ba ca phải ra ba
+    divider mà một phép suy từ chênh lệch tên vai nuốt hết: đổi hai lần liên
+    tiếp không hỏi câu nào, đổi đi rồi đổi về, và bấm lại đúng dòng đang có dấu
+    ✓. Dãy `useCacLanDoiVai()` của khung là thứ duy nhất thấy cả ba.
+
+    **Dãy tên vai, không một bộ đếm.** Một bộ đếm cộng với tên vai đọc từ
+    `phien.vai` lúc chèn hỏng ở hai ca đo được: mốc mang tên vai **vừa rời đi**
+    khi lần đọc phiên chưa xong, và hai lần đổi chồng nhau (lần đọc thứ nhất bị
+    effect hủy) cho **một** mốc trên **hai** lần đổi thật. Tên vai đến thẳng từ
+    lời gọi vừa thành công thì cả hai biến mất.
+
+    `vai_gui` (4.3) **không** bị story này viết lại: nó vẫn là vai của phiên lúc
+    gửi, dùng cho hai nấc chưa có envelope.
+    """
+    khung = KHUNG_APP_TSX.read_text(encoding="utf-8")
+    # Dãy chứ không số: một `useState<number>` cho bộ đếm là đúng hình dạng đã
+    # hỏng ở hai ca trên.
+    assert "useState<readonly string[]>([])" in khung, khung
+    assert "da_doi_vai(vai_moi: string)" in khung, khung
+    tho = MAN_CHAT.read_text(encoding="utf-8")
+    assert "useCacLanDoiVai()" in tho, tho
+    assert re.search(r"type MocDoiVai = \{", tho), tho
+    assert re.search(r"type Muc =", tho), tho
+    assert 'cac_manh("divider_doi_vai"' in tho or 'dien("divider_doi_vai"' in tho
+    # Và mốc đứng ở cấp danh sách, tức ngoài `.luot__o_tra_loi` (vùng live).
+    m = re.search(r'className="luot__o_tra_loi" aria-live="polite">(.*?)</div>', tho, re.S)
+    assert m, "ManChat phải còn ô trả lời mang vùng live"
+    assert "MocDoiVai" not in m.group(1), m.group(1)
+    # `vai_gui` còn nguyên vai trò của 4.3.
+    assert "vai_gui: phien?.vai ?? \"\"" in tho, tho
+
+
+def test_o_hoi_chan_truoc_cau_qua_dai_bang_hang_phia_api():
+    """`maxLength` của ô hỏi **bằng** `api.hoi_dap.DAI_CAU_HOI_TOI_DA`.
+
+    Đóng khoản ledger `CAU_HOI_QUA_DAI`/`THAN_QUA_LON` bằng một **cơ chế** chứ
+    không một chuỗi lỗi: câu quá trần không rời trình duyệt, nên 400
+    `CAU_HOI_QUA_DAI` không xảy ra và trần thân 64 KB của middleware không với
+    tới được. Rẻ hơn một câu chữ cho một trạng thái chặn được từ đầu.
+
+    Ghim **hai chiều** vì cả hai chiều hỏng im lặng: nới trần ở `api/` mà quên ở
+    đây là một câu hợp lệ bị trình duyệt cắt cụt không báo gì; siết ở `api/` mà
+    quên ở đây là lỗi cũ quay lại nguyên vẹn.
+    """
+    ts = HOI_DAP_TS.read_text(encoding="utf-8")
+    m = re.search(r"export const DAI_CAU_HOI_TOI_DA = (\d+);", ts)
+    assert m, "hoi_dap.ts phải khai hằng DAI_CAU_HOI_TOI_DA"
+    assert int(m.group(1)) == DAI_CAU_HOI_TOI_DA
+    # Và ô hỏi dùng chính hằng đó, không một con số gõ tay.
+    tho = MAN_CHAT.read_text(encoding="utf-8")
+    assert "maxLength={DAI_CAU_HOI_TOI_DA}" in tho, tho
+    assert str(DAI_CAU_HOI_TOI_DA) not in _bo_chu_thich(tho), tho
+
+
+def test_xem_nhu_khong_dat_tran_thoi_gian_va_khong_goi_fetch_thang():
+    """Mã mới của 4.5 nằm trong đúng hai phép quét đã có của `web/`.
+
+    Ca này không thêm luật nào: nó khẳng định `xem_nhu.ts` và `MenuXemNhu.tsx`
+    thật sự nằm trong tập mà `test_khong_file_nao_trong_web_src_dat_tran_thoi_gian`
+    và phép canh một-cửa-fetch quét, để một lần thu hẹp `_file_giao_dien()` không
+    lặng lẽ bỏ chúng ra.
+    """
+    duong = [f.relative_to(GOC).as_posix() for f in _file_giao_dien()]
+    for f in ("web/src/api/xem_nhu.ts", "web/src/khung/MenuXemNhu.tsx"):
+        assert f in duong, duong
+    for f in (XEM_NHU_TS, MENU_XEM_NHU_TSX):
+        sach = _bo_chu_thich(f.read_text(encoding="utf-8"))
+        assert not MAU_TRAN_THOI_GIAN.search(sach), f
+        assert "fetch(" not in sach, f

@@ -51,7 +51,12 @@ def test_danh_muc_su_kien_va_tang_la_hang_trong_core():
     một là phải sửa dòng này kèm lý do (mục Ask First của spec 3.6). Story 5.1
     thêm hai, cả hai tầng mutation và khai trong Always của spec 5.1:
     `breakglass_request`, `breakglass_cancel` - một yêu cầu xin đọc phần bị che
-    không có dấu vết là đúng thứ FR-20 sinh ra để thay. Mười lăm.
+    không có dấu vết là đúng thứ FR-20 sinh ra để thay. Mười lăm. Story 5.2 thêm
+    ba đường xử lý của owner: `breakglass_approve`, `breakglass_reject`,
+    `breakglass_grant`. Mười tám. Story 4.5 thêm `role_swap`, tầng mutation:
+    một tài khoản demo/admin mượn vai khác, và đó là hàng **duy nhất** nối một
+    lượt hỏi mang vai giả về lại người thật đã bấm nút (FR-18, FR-23).
+    **Mười chín.**
     """
     from core.audit import (
         EVENT_AUTH_LOGIN,
@@ -69,6 +74,7 @@ def test_danh_muc_su_kien_va_tang_la_hang_trong_core():
         EVENT_POLICY_SWAP,
         EVENT_QUERY,
         EVENT_REFUSAL,
+        EVENT_ROLE_SWAP,
         EVENT_STARTUP,
     )
 
@@ -91,7 +97,9 @@ def test_danh_muc_su_kien_va_tang_la_hang_trong_core():
         EVENT_BREAKGLASS_APPROVE,
         EVENT_BREAKGLASS_REJECT,
         EVENT_BREAKGLASS_GRANT,
+        EVENT_ROLE_SWAP,
     }
+    assert EVENT_ROLE_SWAP == "role_swap"
     assert (EVENT_BREAKGLASS_REQUEST, EVENT_BREAKGLASS_CANCEL) == ("breakglass_request", "breakglass_cancel")
     assert (EVENT_BREAKGLASS_APPROVE, EVENT_BREAKGLASS_REJECT, EVENT_BREAKGLASS_GRANT) == (
         "breakglass_approve", "breakglass_reject", "breakglass_grant"

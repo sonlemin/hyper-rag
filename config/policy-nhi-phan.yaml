@@ -8,6 +8,10 @@
 #
 # Bốn ô đổi so với cấu hình 3: `devops.bi_mat_ha_tang`, và ba ô L1 của
 # `tech_support` (`canh_bao`, `bao_cao_su_co`, `postmortem`).
+#
+# Ba vai của story 4.5 (`sale_ba`, `truong_nhom`, `admin`) **giống hệt cấu hình
+# 3**: không ô nào của chúng ở L1 nên phép `L1 -> L0` không chạm tới ô nào. Đó
+# là hệ quả của phép biến đổi, không phải một chỗ quên chép.
 version: 1
 roles:
   devops:
@@ -43,4 +47,55 @@ roles:
       log: L0                 # 24
       cmdb: L0                # 26
       bi_mat_ha_tang: L0      # 30
+    masked_slots: {}
+  sale_ba:
+    scopes: [noi_bo]
+    disclosure:
+      faq: L0                # hạng 2
+      tai_lieu_san_pham: L0  # 4
+      sop: L0                # 6
+      troubleshooting: L0    # 8
+      runbook: L0            # 10
+      known_issue: L0        # 12
+      vong_doi_ticket: L0    # 14
+      canh_bao: L0           # 16
+      bao_cao_su_co: L0      # 20
+      postmortem: L0         # 22
+      log: L0                # 24
+      cmdb: L0               # 26
+      bi_mat_ha_tang: L0     # 30
+    masked_slots: {}
+  truong_nhom:
+    scopes: [noi_bo, khach_hang_a]
+    disclosure:
+      faq: L2                # hạng 2
+      tai_lieu_san_pham: L2  # 4
+      sop: L2                # 6
+      troubleshooting: L2    # 8
+      runbook: L2            # 10
+      known_issue: L2        # 12
+      vong_doi_ticket: L2    # 14
+      canh_bao: L2           # 16
+      bao_cao_su_co: L2      # 20
+      postmortem: L2         # 22
+      log: L2                # 24
+      cmdb: L2               # 26
+      bi_mat_ha_tang: L2     # 30
+    masked_slots: {}
+  admin:
+    scopes: [noi_bo]
+    disclosure:
+      faq: L0                # hạng 2
+      tai_lieu_san_pham: L0  # 4
+      sop: L0                # 6
+      troubleshooting: L0    # 8
+      runbook: L0            # 10
+      known_issue: L0        # 12
+      vong_doi_ticket: L0    # 14
+      canh_bao: L0           # 16
+      bao_cao_su_co: L0      # 20
+      postmortem: L0         # 22
+      log: L0                # 24
+      cmdb: L0               # 26
+      bi_mat_ha_tang: L0     # 30
     masked_slots: {}

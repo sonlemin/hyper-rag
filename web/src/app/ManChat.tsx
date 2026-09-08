@@ -11,10 +11,10 @@ import {
 } from "react";
 
 import { LoiApi, MA_MANG } from "@/api/goi";
-import { hoi, type Envelope, type TrichDan } from "@/api/hoi_dap";
+import { DAI_CAU_HOI_TOI_DA, hoi, type Envelope, type TrichDan } from "@/api/hoi_dap";
 import { duong_het_phien, la_het_phien, nhan_vai, xoa_token } from "@/api/phien";
 import { HopLoi } from "@/khung/HopLoi";
-import { usePhien } from "@/khung/KhungApp";
+import { useCacLanDoiVai, usePhien } from "@/khung/KhungApp";
 import { cac_manh, dien, MICROCOPY, type KhoaMicrocopy } from "@/microcopy";
 import { nhan_slot } from "@/nhan";
 
@@ -29,6 +29,9 @@ import { KhoiNguon } from "./KhoiNguon";
  *  đó sửa CSS, và đây đúng là chỗ NFR-10 đòi nhìn thấy được. */
 /** Khoảng cách tới đáy (px) mà dưới nó thì một lượt mới vẫn tự cuộn xuống. */
 const NGUONG_DAY = 48;
+
+/** Từ số ký tự này trở đi thì hiện bộ đếm dưới ô hỏi (90% trần). */
+const NGUONG_DEM_KY_TU = Math.floor(DAI_CAU_HOI_TOI_DA * 0.9);
 
 type KetCuc =
   | { loai: "dang_cho" }
@@ -53,6 +56,24 @@ type Luot = {
    *  một lượt cũ rồi hỏi câu tiếp là nó tự đóng lại ngay dưới tay họ. */
   mo_nguon: boolean | null;
 };
+
+/** Mốc đổi vai: một **mục thật** trong danh sách, không một thứ suy ra từ hai
+ *  lượt cạnh nhau.
+ *
+ *  EXPERIENCE.md nói "mỗi lần đổi vai chèn một divider", nên đổi hai lần liên
+ *  tiếp mà không hỏi câu nào phải ra **hai** divider, đổi đi rồi đổi về cũng
+ *  vậy, và bấm lại đúng vai đang mang cũng vậy. Suy từ chênh lệch `vai_gui`
+ *  giữa hai lượt nuốt cả ba ca. `vai_gui` giữ nguyên vai trò 4.3 đặt cho nó và
+ *  story này không viết lại nó. */
+type MocDoiVai = {
+  id: number;
+  /** Vai **mới**, ghi lại lúc chèn: mốc là một dòng lịch sử, nên nó không được
+   *  đọc lại vai hiện tại ở lần render sau. */
+  vai: string;
+};
+
+/** Một mục của danh sách: một lượt hỏi, hay một mốc đổi vai. */
+type Muc = { loai: "luot"; luot: Luot } | { loai: "moc"; moc: MocDoiVai };
 
 /** Dòng meta của một lượt trả lời, tên vai in đậm.
  *
@@ -185,6 +206,50 @@ function ThanCoSlab({ van_ban, citations }: { van_ban: string; citations: TrichD
   );
 }
 
+/** Một lượt trong danh sách: câu hỏi lệch phải, ô trả lời lệch trái.
+ *
+ *  Vùng `aria-live` là **đúng ô trả lời**, không cả khối cuộn: bọc cả khối thì
+ *  mỗi lượt mới đọc lại chính câu người dùng vừa gõ. Ô này có mặt từ lúc lượt
+ *  được tạo (nấc chờ) và chỉ nội dung bên trong đổi, nên trình đọc màn hình đọc
+ *  đúng phần mới. Mốc đổi vai của 4.5 đứng ở cấp danh sách, tức **ngoài** ô
+ *  này, nên chèn một mốc không làm đọc lại lượt trước nó. */
+function LuotChat({
+  luot,
+  mo_nguon,
+  dat_mo_nguon,
+}: {
+  luot: Luot;
+  mo_nguon: boolean;
+  dat_mo_nguon: (mo: boolean) => void;
+}) {
+  return (
+    <div className="luot" data-luot>
+      <div className="luot_hoi" data-luot-hoi>
+        {luot.cau_hoi}
+      </div>
+      <div className="luot__o_tra_loi" aria-live="polite">
+        <BongBongTraLoi luot={luot} mo_nguon={mo_nguon} dat_mo_nguon={dat_mo_nguon} />
+      </div>
+    </div>
+  );
+}
+
+/** Divider hổ phách giữa hai lượt: "Đã đổi sang xem như <vai> · câu hỏi giữ nguyên".
+ *
+ *  Đứng ở cấp **danh sách**, ngoài mọi `.luot`, nên nó nằm ngoài vùng
+ *  `aria-live` của từng lượt: một mốc chèn vào không được làm trình đọc màn
+ *  hình đọc lại câu trả lời của lượt trước nó.
+ *
+ *  Câu ở `microcopy.json` nguyên vẹn (bảng Voice and Tone còn đối chiếu nguyên
+ *  văn được), tên vai đi qua `nhan_vai` như mọi chỗ khác. */
+function DongMocDoiVai({ moc }: { moc: MocDoiVai }) {
+  return (
+    <div className="moc_doi_vai" data-moc-doi-vai={moc.vai}>
+      <span>{dien("divider_doi_vai", { vai: nhan_vai(moc.vai) })}</span>
+    </div>
+  );
+}
+
 /** Màn chat: danh sách lượt cuộn phía trên, composer luôn ở đáy.
  *
  *  Trống lần đầu thì **chỉ có composer**: không màn chào, không câu mồi
@@ -208,7 +273,15 @@ export function ManChat() {
   // Người đọc có đang ở gần đáy khối cuộn không (mặc định có: chat trống).
   const o_day = useRef(true);
   const [dang_cho, dat_dang_cho] = useState(false);
-  const [cac_luot, dat_cac_luot] = useState<Luot[]>([]);
+  // Số ký tự đã gõ, **chỉ để vẽ bộ đếm**. Câu hỏi vẫn đọc bằng ref lúc gửi
+  // (`o_hoi.current.value`), nên nó không vào state React và một lần gõ không
+  // render lại cả danh sách lượt.
+  const [so_ky_tu, dat_so_ky_tu] = useState(0);
+  const [cac_muc, dat_cac_muc] = useState<Muc[]>([]);
+  // Dãy vai của mọi lần đổi vai đã xảy ra (khung giữ). Mỗi phần tử **chưa
+  // thấy** là một mốc được chèn, mang đúng tên vai của lần đổi ấy.
+  const cac_lan_doi = useCacLanDoiVai();
+  const da_chen = useRef(cac_lan_doi.length);
 
   // Cuộn xuống đáy **chỉ khi người đọc đang ở gần đáy**: đọc lại một lượt cũ
   // trong lúc lượt mới về mà bị kéo tuột xuống là mất chỗ đang đọc. Vị trí cuộn
@@ -217,7 +290,27 @@ export function ManChat() {
   useEffect(() => {
     const el = khoi_cuon.current;
     if (el && o_day.current) el.scrollTop = el.scrollHeight;
-  }, [cac_luot]);
+  }, [cac_muc]);
+
+  // Chèn một mốc cho **mỗi** phần tử mới của dãy, kể cả nhiều lần đổi liên
+  // tiếp mà không có lượt nào ở giữa và kể cả hai lần đổi chồng nhau (lần đọc
+  // phiên thứ nhất bị hủy). Tên vai lấy từ chính phần tử ấy, không từ
+  // `phien.vai` - phiên còn là vai cũ cho tới khi `/auth/toi` trả về.
+  //
+  // **Lịch sử lượt cũ không đổi một byte** ở đây: mốc chỉ được *thêm vào cuối*,
+  // không lượt nào bị render lại theo vai mới (NFR-09: đổi vai có hiệu lực từ
+  // truy vấn kế tiếp).
+  useEffect(() => {
+    if (cac_lan_doi.length === da_chen.current) return;
+    const moi = cac_lan_doi.slice(da_chen.current);
+    da_chen.current = cac_lan_doi.length;
+    o_day.current = true;
+    const them: Muc[] = moi.map((vai) => {
+      dem_ref.current += 1;
+      return { loai: "moc", moc: { id: dem_ref.current, vai } };
+    });
+    dat_cac_muc((cu) => [...cu, ...them]);
+  }, [cac_lan_doi]);
 
   function theo_doi_cuon(su_kien: UIEvent<HTMLDivElement>) {
     const el = su_kien.currentTarget;
@@ -228,21 +321,31 @@ export function ManChat() {
   // trả lời cũ thu gọn thành "Nguồn (n) ▸" (EXPERIENCE.md Component Patterns).
   // Tính lúc render chứ không giữ trong state: một lượt mới về là mặc định của
   // lượt cũ đổi theo, và hai state phải đồng bộ tay là hai state lệch nhau.
-  const id_tra_loi_moi_nhat = cac_luot.reduce<number | null>(
-    (moi_nhat, l) => (l.ket_cuc.loai === "tra_loi" ? l.id : moi_nhat),
+  const id_tra_loi_moi_nhat = cac_muc.reduce<number | null>(
+    (moi_nhat, m) =>
+      m.loai === "luot" && m.luot.ket_cuc.loai === "tra_loi" ? m.luot.id : moi_nhat,
     null,
   );
 
   /** Người dùng tự mở hay thu gọn khối nguồn của một lượt. Từ đây `mo_nguon`
    *  của lượt ấy không còn là `null`, nên nó thôi theo mặc định và giữ nguyên
    *  lựa chọn ấy qua các lượt sau. */
+  /** Sửa đúng một lượt trong danh sách, giữ nguyên mọi mục khác từng byte. */
+  function sua_luot(id: number, sua: (luot: Luot) => Luot) {
+    dat_cac_muc((cu) =>
+      cu.map((m) =>
+        m.loai === "luot" && m.luot.id === id ? { loai: "luot", luot: sua(m.luot) } : m,
+      ),
+    );
+  }
+
   function dat_mo_nguon(id: number, mo: boolean) {
-    dat_cac_luot((cu) => cu.map((l) => (l.id === id ? { ...l, mo_nguon: mo } : l)));
+    sua_luot(id, (l) => ({ ...l, mo_nguon: mo }));
   }
 
   /** Kết thúc một lượt: ghi kết cục và mở khóa composer cho lượt sau. */
   function ket_thuc(id: number, ket_cuc: KetCuc) {
-    dat_cac_luot((cu) => cu.map((l) => (l.id === id ? { ...l, ket_cuc } : l)));
+    sua_luot(id, (l) => ({ ...l, ket_cuc }));
     dat_dang_cho(false);
     dang_cho_ref.current = false;
   }
@@ -260,11 +363,21 @@ export function ManChat() {
     o_day.current = true;
     const id = dem_ref.current + 1;
     dem_ref.current = id;
-    dat_cac_luot((cu) => [
+    dat_cac_muc((cu) => [
       ...cu,
-      { id, cau_hoi, vai_gui: phien?.vai ?? "", ket_cuc: { loai: "dang_cho" }, mo_nguon: null },
+      {
+        loai: "luot",
+        luot: {
+          id,
+          cau_hoi,
+          vai_gui: phien?.vai ?? "",
+          ket_cuc: { loai: "dang_cho" },
+          mo_nguon: null,
+        },
+      },
     ]);
     if (o_hoi.current) o_hoi.current.value = "";
+    dat_so_ky_tu(0);
 
     try {
       const envelope = await hoi(cau_hoi);
@@ -285,7 +398,10 @@ export function ManChat() {
       // Trả câu hỏi về composer để người dùng bấm gửi lại chứ không gõ lại cả
       // câu. Chỉ ở nhánh lỗi (lượt trả lời và lượt từ chối là một lượt đã xong),
       // và chỉ khi ô đang trống - họ có thể đã gõ câu kế trong lúc chờ.
-      if (o_hoi.current && o_hoi.current.value.trim() === "") o_hoi.current.value = cau_hoi;
+      if (o_hoi.current && o_hoi.current.value.trim() === "") {
+        o_hoi.current.value = cau_hoi;
+        dat_so_ky_tu(cau_hoi.length);
+      }
     }
   }
 
@@ -316,24 +432,18 @@ export function ManChat() {
         data-danh-sach-luot
         onScroll={theo_doi_cuon}
       >
-        {cac_luot.map((luot) => (
-          <div className="luot" key={luot.id} data-luot>
-            <div className="luot_hoi" data-luot-hoi>
-              {luot.cau_hoi}
-            </div>
-            {/* Vùng `aria-live` là **đúng ô trả lời**, không cả khối cuộn: bọc
-                cả khối thì mỗi lượt mới đọc lại chính câu người dùng vừa gõ.
-                Ô này có mặt từ lúc lượt được tạo (nấc chờ) và chỉ nội dung bên
-                trong đổi, nên trình đọc màn hình đọc đúng phần mới. */}
-            <div className="luot__o_tra_loi" aria-live="polite">
-              <BongBongTraLoi
-                luot={luot}
-                mo_nguon={luot.mo_nguon ?? luot.id === id_tra_loi_moi_nhat}
-                dat_mo_nguon={(mo) => dat_mo_nguon(luot.id, mo)}
-              />
-            </div>
-          </div>
-        ))}
+        {cac_muc.map((muc) =>
+          muc.loai === "moc" ? (
+            <DongMocDoiVai key={muc.moc.id} moc={muc.moc} />
+          ) : (
+            <LuotChat
+              key={muc.luot.id}
+              luot={muc.luot}
+              mo_nguon={muc.luot.mo_nguon ?? muc.luot.id === id_tra_loi_moi_nhat}
+              dat_mo_nguon={(mo) => dat_mo_nguon(muc.luot.id, mo)}
+            />
+          ),
+        )}
       </div>
 
       <form className="composer" onSubmit={nop}>
@@ -346,9 +456,28 @@ export function ManChat() {
           ref={o_hoi}
           rows={2}
           data-o-hoi
+          maxLength={DAI_CAU_HOI_TOI_DA}
           placeholder={MICROCOPY.placeholder_o_hoi}
           onKeyDown={phim}
+          onChange={(e) => dat_so_ky_tu(e.currentTarget.value.length)}
         />
+        {/* Bộ đếm chỉ hiện khi **gần trần**. `maxLength` chặn trước một câu quá
+            dài (đóng khoản ledger `CAU_HOI_QUA_DAI`), nhưng nó cắt **lặng lẽ**:
+            dán một câu 5000 ký tự thì mất 1000 ký tự cuối, không đếm, không
+            nhắc, và câu cụt vẫn gửi đi được. Một con số hiện ra ở đúng lúc là
+            phần còn thiếu của phép chặn ấy.
+            Ngưỡng chứ không luôn hiện: một bộ đếm trên mọi câu là nhiễu cho
+            99% lượt, và nó kéo mắt khỏi chính ô đang gõ. */}
+        {so_ky_tu >= NGUONG_DEM_KY_TU && (
+          <span
+            className="o_hoi__dem"
+            data-dem-ky-tu={so_ky_tu}
+            data-cham-tran={so_ky_tu >= DAI_CAU_HOI_TOI_DA ? "1" : undefined}
+            aria-live="polite"
+          >
+            {dien("dem_ky_tu", { da: so_ky_tu, tran: DAI_CAU_HOI_TOI_DA })}
+          </span>
+        )}
         <button type="submit" className="nut_chinh" disabled={dang_cho} data-nut-gui>
           {MICROCOPY.nut_gui}
         </button>

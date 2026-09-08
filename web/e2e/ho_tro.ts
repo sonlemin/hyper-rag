@@ -8,13 +8,34 @@ import { expect, type Page } from "@playwright/test";
 // Vì sao tách: hai spec đầu đã chép nhau và đã lệch một chỗ vô cớ (token giả
 // mang hai tên khác nhau), và 4.3-4.7 còn thêm spec nữa.
 
-/** Phiên mẫu của `GET /auth/toi`: `dev01`, DevOps, đủ hai cờ demo và admin. */
+/** Phiên mẫu của `GET /auth/toi`: `dev01`, DevOps, đủ hai cờ demo và admin.
+ *
+ *  `act: null` từ story 4.5 - `la_phien` đòi khóa ấy **có mặt**, vì vắng mặt là
+ *  hợp đồng đã trôi còn `null` là một trạng thái thật ("không mượn vai nào"). */
 export const PHIEN = {
   tai_khoan: "dev01",
   vai: "devops",
   khong_gian: "synth",
   demo: true,
   admin: true,
+  act: null as { tai_khoan: string; vai: string } | null,
+};
+
+/** Phiên **đang mượn vai**: `vai` là vai giả, `act` là người thật.
+ *
+ *  `tai_khoan` giữ nguyên `dev01`: `sub` không bao giờ đổi (chỉ `role` đổi), nên
+ *  chip vai của topbar vẫn ghi tên thật cạnh vai giả. */
+export function phien_xem_nhu(vai: string, that = { tai_khoan: "dev01", vai: "devops" }) {
+  return { ...PHIEN, vai, act: that };
+}
+
+/** Phiên **không cờ nào**: không thấy nút xem như, và ba tuyến API cũng từ chối. */
+export const PHIEN_THUONG = {
+  ...PHIEN,
+  tai_khoan: "ts01",
+  vai: "tech_support",
+  demo: false,
+  admin: false,
 };
 
 /** Token giả đặt sẵn trong kho trước khi trang tải. */
@@ -170,4 +191,83 @@ export async function vao_chat(page: Page) {
 export async function hoi_bang_nut(page: Page, cau = CAU_HOI) {
   await page.locator("[data-o-hoi]").fill(cau);
   await page.locator("[data-nut-gui]").click();
+}
+
+
+// --- Ba tuyến "xem như" (story 4.5) -----------------------------------------
+
+/** Mock `GET /auth/vai` và trả về bộ đếm số lần tuyến bị gọi.
+ *
+ *  Bộ đếm là thứ ca "phiên thường không gọi `/auth/vai`" đứng lên: `chan_moi_api`
+ *  đã abort mọi tuyến chưa mock nên một lời gọi lỡ bay đi sẽ thành một lỗi, chứ
+ *  không thành một số 0 im lặng. */
+export async function mock_danh_muc_vai(
+  page: Page,
+  cac_vai: string[] = ["admin", "devops", "sale_ba", "tech_support", "truong_nhom"],
+  status = 200,
+): Promise<() => number> {
+  let so = 0;
+  await page.route("**/api/auth/vai", (route) => {
+    so += 1;
+    return route.fulfill({
+      status,
+      contentType: "application/json",
+      body: JSON.stringify(status === 200 ? { vai: cac_vai } : loi_api("THIEU_QUYEN_DEMO_ADMIN")),
+    });
+  });
+  return () => so;
+}
+
+/** Mock hai tuyến phát token của đường xem như.
+ *
+ *  `doi_phien` được gọi với vai vừa xin (hay `null` cho lượt thoát) để ca test
+ *  đổi luôn thân `/auth/toi` - đúng đường đi thật: `web/` ghi token mới rồi đọc
+ *  lại phiên, nó **không** tự sửa vai trên màn. Trả về bộ đếm hai tuyến. */
+export async function mock_doi_vai(
+  page: Page,
+  doi_phien: (vai: string | null) => void,
+  status = 200,
+): Promise<() => number> {
+  let so = 0;
+  await page.route("**/api/auth/xem-nhu", async (route) => {
+    so += 1;
+    const than = JSON.parse(route.request().postData() ?? "{}") as { vai?: string };
+    if (status === 200) doi_phien(than.vai ?? "");
+    await route.fulfill({
+      status,
+      contentType: "application/json",
+      body: JSON.stringify(
+        status === 200 ? { token: `token-${than.vai}`, token_type: "bearer" } : loi_api("VAI_KHONG_CO"),
+      ),
+    });
+  });
+  await page.route("**/api/auth/thoat-xem-nhu", async (route) => {
+    so += 1;
+    if (status === 200) doi_phien(null);
+    await route.fulfill({
+      status,
+      contentType: "application/json",
+      body: JSON.stringify(
+        status === 200
+          ? { token: "token-that", token_type: "bearer" }
+          : loi_api("KHONG_DANG_XEM_NHU"),
+      ),
+    });
+  });
+  return () => so;
+}
+
+/** Mock `/auth/toi` mà thân đọc **lúc gọi**, không đóng băng lúc mock.
+ *
+ *  Cần vì cả đường xem như đứng trên nhịp "ghi token mới rồi đọc lại phiên":
+ *  một thân đóng băng làm mọi lần đọc lại trả về vai cũ, tức ca test xanh trong
+ *  khi màn hình thật không đổi gì. */
+export async function mock_toi_dong(page: Page, doc: () => unknown) {
+  await page.route("**/api/auth/toi", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(doc()),
+    }),
+  );
 }

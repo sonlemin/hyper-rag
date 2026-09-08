@@ -42,5 +42,16 @@
   "nhan_o_hoi": "Câu hỏi",
   "slab_owner": "[{ten_slot}: {nhom}]",
   "khoi_nguon": "Nguồn ({n})",
-  "tooltip_chua_kha_dung": "Chưa khả dụng"
+  "tooltip_chua_kha_dung": "Chưa khả dụng",
+  "nut_xem_nhu": "⇄ Xem như",
+  "tieu_de_menu_vai": "Xem như vai khác",
+  "thoat_xem_nhu": "Thoát xem như",
+  "ve_vai_that": "về {tai_khoan} · {vai}",
+  "mo_ta_vai_devops": "Kỹ sư vận hành, thường đọc đầy đủ tri thức kỹ thuật",
+  "mo_ta_vai_tech_support": "Tuyến 1, thường thấy sự thật tồn tại nhưng phần nhạy cảm bị che",
+  "mo_ta_vai_sale_ba": "Ngoài kỹ thuật, thường không thấy chi tiết hạ tầng và bảo mật",
+  "mo_ta_vai_truong_nhom": "Bức tranh đầy đủ, owner duyệt yêu cầu break-glass",
+  "mo_ta_vai_admin": "Quản trị chính sách và tài khoản, không phải vai nghiệp vụ",
+  "khong_co_vai": "Bảng chính sách đang chạy không khai vai nào",
+  "dem_ky_tu": "{da}/{tran} ký tự"
 }
