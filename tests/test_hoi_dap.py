@@ -778,22 +778,42 @@ def test_tran_mot_truy_van_suy_tu_so_loi_goi_that_khong_doan():
 
     Ca này chấm cả phép suy lẫn hai hằng đầu vào của nó; đổi một trong hai mà
     quên con số kia là đỏ ở đây.
+
+    Story 4.7 nâng hằng LLM lên 3 và **giữ hằng embedding ở 2**, vì
+    `ngu_canh_hoi_dap` hỏi lại đúng một lần khi đường truy hồi trả
+    `CAU_HONG_UPSTREAM` và một lần thử hỏng tốn đúng một lời gọi LLM: mọi đường
+    trả `fail_response` mà `only_need_context=True` với tới được nằm ở
+    `operate.py:568,573,576,581`, **trước** `_build_query_context`, còn cả hai
+    lời gọi embedding sinh ra *bên trong* hàm ấy (`:743`, `:938`). Trần vì thế
+    lên **264 giây**, không 348 - vẫn là một con số **suy**, và ca này chấm
+    chính phép suy đó chứ không chấm một số chép tay. Bản đầu của story 4.7
+    đoán "thêm 2 lời gọi embedding" và ra 348; con số ấy cao hơn thật 84 giây.
     """
     from adapters.thu_lai import NGAN_SACH_TRUY_HOI
+    from adapters.tra_loi import SO_LAN_HOI_LAI_TU_KHOA_HONG
     from api.hoi_dap import (
         SO_LOI_GOI_EMBEDDING_MOI_TRUY_VAN,
+        SO_LOI_GOI_EMBEDDING_NEN,
         SO_LOI_GOI_LLM_MOI_TRUY_VAN,
+        SO_LOI_GOI_LLM_NEN,
         tran_mot_truy_van_giay,
     )
 
-    assert SO_LOI_GOI_LLM_MOI_TRUY_VAN == 2
+    assert SO_LAN_HOI_LAI_TU_KHOA_HONG == 1
+    assert SO_LOI_GOI_LLM_MOI_TRUY_VAN == 3
     assert SO_LOI_GOI_EMBEDDING_MOI_TRUY_VAN == 2
+    # Và hai con số ấy **suy** ra được từ hai hằng nền: một bản chép tay ở đây
+    # lỗi thời ngay lần đầu ai đó nới phép hỏi lại lên hai.
+    assert SO_LOI_GOI_LLM_MOI_TRUY_VAN == SO_LOI_GOI_LLM_NEN + SO_LAN_HOI_LAI_TU_KHOA_HONG
+    # Hằng embedding **không** nhân theo số lần hỏi lại, và đó là toàn bộ chỗ
+    # bản đầu sai: nới `SO_LAN_HOI_LAI_TU_KHOA_HONG` lên 5 cũng không đổi nó.
+    assert SO_LOI_GOI_EMBEDDING_MOI_TRUY_VAN == SO_LOI_GOI_EMBEDDING_NEN
     ns = NGAN_SACH_TRUY_HOI
     mot_embedding = ns.so_lan_thu * ns.tran_moi_loi_goi_giay + (
         ns.so_lan_thu - 1
     ) * ns.tran_cho_giay
     assert mot_embedding == pytest.approx(42.0)
-    assert tran_mot_truy_van_giay() == pytest.approx(204.0)
+    assert tran_mot_truy_van_giay() == pytest.approx(264.0)
     # Là **trần** chứ không kỳ vọng, và nó là trần *đúng* chứ không xấp xỉ:
     # jitter nằm trong `tran_cho_giay` (story 3.3), nên không có phần cộng thêm
     # nào ngoài phép tính này.
@@ -804,30 +824,37 @@ def test_tran_mot_truy_van_suy_tu_so_loi_goi_that_khong_doan():
 
 
 def test_so_loi_goi_embedding_moi_truy_van_khop_vendor():
-    """Hai hằng số lời gọi phải khớp `vendor/`, không phải một lời hứa.
+    """Hai hằng **vendor** phải khớp `vendor/`, không phải một lời hứa.
 
     Grep chính `vendor/hypergraphrag/operate.py`: `kg_query` gọi hàm LLM hai
     lần, và `_build_query_context` gọi đúng hai `*_vdb.query`. Một bản upstream
     mới đổi con số mà không ai thấy là đúng cách con số NFR-08 trôi.
+
+    Từ story 4.7 phép so đứng trên hai hằng **nền** chứ không trên hai hằng của
+    **một lượt**: hằng LLM của một lượt nay cộng thêm phần của phép hỏi lại, và
+    so nó với `vendor/` là so hai thứ khác nhau. Tên hằng nền cố ý không nói
+    "vendor": lời gọi sinh câu trả lời là prompt của dự án từ story 3.5, và
+    phép đếm dưới đây là một tripwire cho ngày `kg_query` đổi hình chứ không
+    một phát biểu rằng cả hai lời gọi thuộc về `vendor/`.
     """
     import re
     from pathlib import Path
 
     from api.hoi_dap import (
-        SO_LOI_GOI_EMBEDDING_MOI_TRUY_VAN,
-        SO_LOI_GOI_LLM_MOI_TRUY_VAN,
+        SO_LOI_GOI_EMBEDDING_NEN,
+        SO_LOI_GOI_LLM_NEN,
     )
 
     goc = Path(__file__).resolve().parent.parent
     nguon = (goc / "vendor" / "hypergraphrag" / "operate.py").read_text(encoding="utf-8")
     # Hai lời gọi `*_vdb.query(...)` của đường đọc, mỗi cái nhúng đúng một chuỗi.
     assert len(re.findall(r"\bawait \w*_?vdb\.query\(", nguon)) == (
-        SO_LOI_GOI_EMBEDDING_MOI_TRUY_VAN
+        SO_LOI_GOI_EMBEDDING_NEN
     )
     # Hàm LLM của `kg_query`: trích từ khóa rồi sinh câu trả lời.
     than = nguon[nguon.index("async def kg_query("):nguon.index("async def _build_query_context(")]
     assert len(re.findall(r"\bawait use_model_func\(", than)) == (
-        SO_LOI_GOI_LLM_MOI_TRUY_VAN
+        SO_LOI_GOI_LLM_NEN
     )
 
 

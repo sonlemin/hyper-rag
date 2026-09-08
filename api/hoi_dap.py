@@ -96,6 +96,7 @@ from adapters.tra_loi import (
     LY_DO_CO_NO_ANSWER,
     LY_DO_NGU_CANH_RONG,
     LY_DO_TU_KHOA_RONG,
+    SO_LAN_HOI_LAI_TU_KHOA_HONG,
     DauRaTraLoiKhongDoc,
 )
 from api.xac_thuc import ClaimNguoiHoi, LoiXacThuc
@@ -280,15 +281,37 @@ DAI_CAU_HOI_TOI_DA: int = 4000
 # Hai, sinh câu trả lời bằng prompt của dự án ở `EngineACL.hoi_dap` - lời gọi
 # `:606` của vendor không còn chạy, vì `hoi_dap` lấy ngữ cảnh bằng
 # `only_need_context=True` và `:596-597` thoát *trước* nó. Con số vì thế không
-# đổi (2), nhưng lý do của nó đổi, và một bản upstream mới bỏ lời gọi `:606` đi
-# cũng sẽ không đổi con số này nữa. Lượt từ chối vì ngữ cảnh rỗng chỉ tốn **1**;
-# đây là trần, nên nó đứng ở 2.
+# đổi lúc 3.5, nhưng lý do của nó đổi, và một bản upstream mới bỏ lời gọi `:606`
+# đi cũng sẽ không đổi con số này nữa. Tên hằng vì thế **không** nói "vendor":
+# chỉ một trong hai lời gọi còn là của vendor.
 # Embedding: `_build_query_context` đi vào cả hai nhánh của mode `hybrid`, nên
 # `entities_vdb.query` (`operate.py:743`) và `hyperedges_vdb.query` (`:938`) đều
 # chạy, và mỗi `query` của `adapters/qdrant.py` nhúng đúng một chuỗi
 # (`_embed_theo_lo([query])`), tức đúng một lời gọi embedding.
-SO_LOI_GOI_LLM_MOI_TRUY_VAN: int = 2
-SO_LOI_GOI_EMBEDDING_MOI_TRUY_VAN: int = 2
+SO_LOI_GOI_LLM_NEN: int = 2
+SO_LOI_GOI_EMBEDDING_NEN: int = 2
+
+# Hai con số **của một lượt**, suy từ hai hằng nền cộng phép hỏi lại của story
+# 4.7 - không chép tay. Và hai hằng cộng thêm **khác nhau**, vì một lần thử hỏng
+# không tốn cùng những thứ mà một lượt trọn vẹn tốn.
+#
+# `EngineACL.ngu_canh_hoi_dap` gọi lại `aquery` đúng
+# `SO_LAN_HOI_LAI_TU_KHOA_HONG` lần khi đường truy hồi trả `CAU_HONG_UPSTREAM`.
+# Đọc `vendor/hypergraphrag/operate.py` để biết một lần gọi lại như thế tốn gì:
+# mọi đường trả `PROMPTS["fail_response"]` mà `only_need_context=True` với tới
+# được nằm ở `:568` (JSONDecodeError), `:573`, `:576` và `:581` (thiếu từ khóa),
+# **tất cả trước** lời gọi `_build_query_context` ở `:584`; đường `:599` không
+# với tới được vì `:596-597` trả về trước. Cả hai lời gọi embedding thì sinh ra
+# *bên trong* `_build_query_context` (`:743`, `:938`).
+#
+# Hệ quả: một lần thử hỏng tốn **đúng một lời gọi LLM (trích từ khóa) và không
+# một lời gọi embedding nào** - nó thoát trước khi có gì để nhúng. LLM 2 + 1 =
+# **3**; embedding **giữ 2**.
+#
+# Là **trần**, không kỳ vọng: một lượt bình thường vẫn tốn 2 và 2, và lượt từ
+# chối vì ngữ cảnh rỗng chỉ tốn 1 lời gọi LLM.
+SO_LOI_GOI_LLM_MOI_TRUY_VAN: int = SO_LOI_GOI_LLM_NEN + SO_LAN_HOI_LAI_TU_KHOA_HONG
+SO_LOI_GOI_EMBEDDING_MOI_TRUY_VAN: int = SO_LOI_GOI_EMBEDDING_NEN
 
 
 def tran_mot_truy_van_giay(ngan_sach=NGAN_SACH_TRUY_HOI) -> float:
@@ -300,14 +323,20 @@ def tran_mot_truy_van_giay(ngan_sach=NGAN_SACH_TRUY_HOI) -> float:
     trên). Một con số viết tay ở đây lỗi thời ngay lần đầu ai đó đổi một trong
     hai, và bản đầu của story 3.3 lỗi thời ngay lúc viết.
 
-    Đường LLM **không** có lớp thử lại (luật đúng một lớp; nơi gọi nằm trong
-    `vendor/kg_query`), nên nó góp đúng một trần mỗi lời gọi. Đường embedding
+    Đường LLM **không** có lớp thử lại 429/5xx, nên nó góp đúng một trần mỗi
+    lời gọi - kể cả lời gọi của phép hỏi lại ở story 4.7, vốn là một lời gọi
+    thứ ba chứ không phải một lần thử lại *bên trong* một lời gọi, và vì thế nó
+    đi vào `SO_LOI_GOI_LLM_MOI_TRUY_VAN` chứ không vào công thức dưới. Đường embedding
     có, nên nó góp `so_lan_thu` lần thử cộng `so_lan_thu - 1` khoảng chờ giữa
     chúng - và khoảng chờ đó **nằm trọn trong** `tran_cho_giay` kể cả phần
     jitter, nên con số này là một trần đúng chứ không một trần xấp xỉ.
 
-    Hôm nay: 2 x 60 + 2 x (2 x 20 + 1 x 2) = **204 giây**. Là trần, không phải
-    kỳ vọng.
+    Hôm nay: 3 x 60 + 2 x (2 x 20 + 1 x 2) = **264 giây**. Là trần, không phải
+    kỳ vọng. Con số lên từ 204 ở story 4.7 vì phép hỏi lại khi đường truy hồi
+    trả `CAU_HONG_UPSTREAM` thêm **một lời gọi LLM và không lời gọi embedding
+    nào** (lần thử hỏng thoát ở `operate.py:568-581`, trước
+    `_build_query_context`); nó là **hệ quả phải nói ra**, không một dấu hiệu
+    hỏng, và nó vẫn không được áp ở đâu lúc chạy.
     """
     mot_embedding = (
         ngan_sach.so_lan_thu * ngan_sach.tran_moi_loi_goi_giay
@@ -1084,7 +1113,9 @@ __all__ = [
     "MA_THAN_YEU_CAU_LA",
     "MA_TRICH_DAN_NGOAI_QUYEN",
     "SO_LOI_GOI_EMBEDDING_MOI_TRUY_VAN",
+    "SO_LOI_GOI_EMBEDDING_NEN",
     "SO_LOI_GOI_LLM_MOI_TRUY_VAN",
+    "SO_LOI_GOI_LLM_NEN",
     "TEMPLATE_TU_CHOI",
     "LoiHoiDap",
     "ThanHoiDap",

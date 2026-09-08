@@ -70,6 +70,7 @@ from adapters.tra_loi import (
     LY_DO_CO_NO_ANSWER,
     LY_DO_NGU_CANH_RONG,
     LY_DO_TU_KHOA_RONG,
+    SO_LAN_HOI_LAI_TU_KHOA_HONG,
     THAM_SO_LLM as THAM_SO_LLM_TRA_LOI,
     KetQuaHoiDap,
     NguCanhTruyHoiLa,
@@ -797,8 +798,11 @@ class EngineACL(HyperGraphRAG):
         chỗ gắn đã có. Vẫn không gắn, vì hai lý do đã đóng băng ở story 3.3: một
         429 giữa một câu hỏi là 502 ngay (khác hẳn đường nạp, và đó là câu chương
         4 phải nói), và một lớp thử lại ở đây nhân trần độ trễ của một request
-        lên - trần 204 giây suy từ số lời gọi *không* thử lại. Trần thời gian cho
-        một lời gọi thì vẫn có, ở `bo_llm`.
+        lên - trần một request (**264 giây** từ story 4.7) suy từ số lời gọi
+        *không* thử lại. Trần thời gian cho một lời gọi thì vẫn có, ở `bo_llm`.
+        Phép **hỏi lại một lần** mà 4.7 thêm vào `ngu_canh_hoi_dap` không phá
+        luật này: nó không chờ một cửa sổ chặn nhịp mở ra, nó hỏi lại một đầu
+        ra đã về mà không parse được, và nó đi vào chính con số 264 ấy.
 
         Từ story 5.3 chuỗi ngữ cảnh lấy qua `ngu_canh_hoi_dap` (đường chính
         cộng đường phụ theo grant break-glass); ba nhánh trên không đổi, và
@@ -853,6 +857,15 @@ class EngineACL(HyperGraphRAG):
         `request_id` của lượt. Chuỗi hỏng của vendor (`CAU_HONG_UPSTREAM`) và
         giá trị không phải chuỗi đi ra y như trước, **trước** đường phụ.
 
+        **Một phép hỏi lại, và đúng một** (story 4.7,
+        `SO_LAN_HOI_LAI_TU_KHOA_HONG`): `aquery` trả nguyên
+        `CAU_HONG_UPSTREAM` nghĩa là `kg_query` không parse được đuôi từ khóa
+        (`<|>COMPLETE|>` thay `<|COMPLETE|>`, đo trên máy chủ 07/09), tức một
+        câu hợp lệ bị từ chối vì một chuỗi kết sai. Nó **không** là lớp thử lại
+        mà 3.3 cấm - xem hằng ở `adapters/tra_loi.py` - và nó nằm **trong** khối
+        `try` của sổ lọc, trước `xa_loc`. Hai lần đều hỏng thì chuỗi ấy đi ra
+        nguyên và `hoi_dap` cho `tu_khoa_rong` như cũ.
+
         **Đường phụ** chỉ chạy khi ngữ cảnh quyền mang `grant_ids`. Bước một là
         **một** câu `trich_dan_cua` trên dãy id đã khử trùng - đúng cửa quyền
         của citation (ADR-016/019), dưới chính ngữ cảnh vai của lượt - và chỉ
@@ -899,6 +912,45 @@ class EngineACL(HyperGraphRAG):
         request_id = None if context is None else context.request_id
         try:
             ngu_canh = await self.aquery(cau_hoi, replace(param, only_need_context=True))
+            # Hỏi lại đúng `SO_LAN_HOI_LAI_TU_KHOA_HONG` lần khi đường truy
+            # hồi trả nguyên `CAU_HONG_UPSTREAM` (story 4.7).
+            #
+            # **Chỗ đặt là ở đây, trong `ngu_canh_hoi_dap`, sau `aquery` và
+            # trước `xa_loc`** - không ở `hoi_dap` như khoản sổ nợ viết. Lý do
+            # **không** phải "đặt ở `hoi_dap` thì lượt sinh hai hàng `filter`":
+            # một lần thử hỏng thoát ở `operate.py:568-581`, tức **trước**
+            # `_build_query_context`, nên nó không đọc `text_chunks` /
+            # `full_docs`, `_so_loc` của lượt vẫn rỗng, và `xa_loc` không phát
+            # hàng nào. Hai chỗ đặt hôm nay cho **cùng một** kết quả quan sát
+            # được, và một phép canh viết theo lý do sai sẽ xanh ở cả hai.
+            #
+            # Lý do thật có hai vế. Một, sổ lọc và `bo_so_loc` là **một vòng
+            # đời cho một lượt**: đặt phép hỏi lại bên trong giữ đúng một lần
+            # mở, một lần xả, một lần bỏ, không phụ thuộc chỗ nào trong
+            # `vendor/` phát ra chuỗi hỏng. Hai, nếu một bản upstream sau này
+            # dời `fail_response` xuống **sau** `_build_query_context` thì chỗ
+            # đặt bên trong vẫn cho một hàng còn chỗ đặt bên ngoài thành hai -
+            # tức đây là một **phép phòng**, không một phép sửa cho một lỗi
+            # đang có. Và vì lần thử hỏng không đọc kho, `bi_loai` của lượt là
+            # số của **lần truy hồi đã đọc kho**, không một tổng của hai lần.
+            for lan in range(SO_LAN_HOI_LAI_TU_KHOA_HONG):
+                if ngu_canh != CAU_HONG_UPSTREAM:
+                    break
+                # `request_id` vào dòng log là **dấu vết máy đọc được duy
+                # nhất** của phép hỏi lại: không có hàng audit mới nào (thêm
+                # một hằng `event` là đổi hợp đồng, ngoài phạm vi story), nên
+                # nếu không nối được dòng này với một lượt thì bảng tần suất
+                # của buổi diễn tập không phân biệt được "lỗ không xảy ra" với
+                # "lỗ xảy ra và phép hỏi lại đã vá".
+                logger.warning(
+                    "ngu_canh_hoi_dap: đường truy hồi trả câu hỏng đóng hộp của"
+                    " vendor (đuôi từ khóa không parse được, không phải 429 hay"
+                    " lỗi mạng); hỏi lại lần %d/%d, request_id=%s",
+                    lan + 1,
+                    SO_LAN_HOI_LAI_TU_KHOA_HONG,
+                    request_id,
+                )
+                ngu_canh = await self.aquery(cau_hoi, replace(param, only_need_context=True))
             if request_id is not None:
                 await self.text_chunks.xa_loc(request_id)
                 await self.full_docs.xa_loc(request_id)

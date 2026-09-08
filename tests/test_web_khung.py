@@ -2119,3 +2119,327 @@ def test_cite_row_chi_noi_day_cho_luot_drawer_dang_ve():
     assert 'aria-hidden="true"' in sach, sach
     # Và chú thích chữ của hover đi qua microcopy, không một câu viết tay.
     assert 'dien("chu_thich_dang_sang"' in sach, sach
+
+
+# --- (14) Đường demo ba nhịp đầu: máy chiếu và hai lỗ trợ năng (story 4.7) ---
+#
+# Ba phép canh, và cả ba đứng trên cùng một câu của EXPERIENCE.md: "đọc được từ
+# 5m qua máy chiếu". Nhóm (2) chấm tương phản **trên màn hình hoàn hảo**, và đó
+# là chỗ ba lỗ của story này đi lọt: một cặp 4,7:1 qua sàn 4,5:1 ở nhóm (2) rồi
+# chết trên máy chiếu, còn vòng focus và đỉnh mờ thì không phải **cặp chữ/nền**
+# nên không phép canh nào của dự án từng chấm chúng.
+
+#: Hệ số của mô hình máy chiếu: máy chiếu giữ 70% tương phản.
+#:
+#: Mô hình là `v' = 0,5 + (v - 0,5) x k` trên **từng kênh sRGB**, tức kéo mọi
+#: màu về xám giữa. Nó **không** mô hình hóa ánh sáng phòng, gamma máy chiếu,
+#: hay tán xạ của màn - và nó không cố. Nó trả lời đúng một câu: **cặp nào chết
+#: trước** khi tương phản giảm. Vì thế nó là một tripwire, không một phán quyết;
+#: nó đứng **cạnh** một ảnh chụp thật và một lần nhìn bằng mắt
+#: (`kiem-tay-4-7.md`), không thay chúng.
+HE_SO_MAY_CHIEU = 0.7
+
+#: Sàn **sau mô hình**, áp cho cả sáu cặp của bảng dưới, kể cả ba cặp chữ.
+#:
+#: 3:1 là sàn WCAG 1.4.11 cho chỉ báo phi văn bản (viền, vòng focus, đỉnh đồ
+#: thị). Ba cặp chữ (slab, badge L1, badge L2) đã qua sàn 4,5:1 của nhóm (2) ở
+#: tương phản **đầy đủ**; ở đây chúng bị đo lại sau khi tương phản đã giảm, và
+#: đòi 4,5:1 *sau* mô hình là đòi khoảng 6,4:1 trước nó, tức đòi sửa lại những
+#: token mà DESIGN.md đã duyệt và ba story đã `done` viện dẫn bằng số. Mô hình
+#: này là một **tripwire** ("cặp nào chết trước"), không một phán quyết về
+#: WCAG, nên nó dùng một sàn: 3:1, ngưỡng dưới đó một cặp không còn phân biệt
+#: được là hai thứ khác nhau. Sàn 4,5:1 vẫn là sàn thật, và nó vẫn được chấm ở
+#: nhóm (2) trên màu chưa qua mô hình.
+SAN_CHI_BAO = 3.0
+
+MAU_HEX = re.compile(r"#[0-9A-Fa-f]{6}\Z")
+
+
+def mo_phong_may_chieu(hex_mau: str, he_so: float = HE_SO_MAY_CHIEU) -> str:
+    """Màu ấy trông thế nào qua một máy chiếu giữ `he_so` phần tương phản.
+
+    Hàm thuần trên một chuỗi hex sáu chữ số, không đọc file nào. Kẹp về [0, 255]
+    để một hệ số > 1 (giả lập một màn hình tăng tương phản) không cho ra một
+    kênh âm.
+
+    Từ chối tường minh mọi thứ không phải `#rrggbb`: `"#abc"` hay `"red"` đi qua
+    phép cắt chuỗi cũ thành một màu khác hẳn (hay một `ValueError` nói sai chỗ),
+    và một bảng tương phản dựng trên một màu bịa là một bảng xanh vô nghĩa.
+    """
+    if not MAU_HEX.fullmatch(hex_mau.strip()):
+        raise ValueError(f"cần một màu dạng `#rrggbb`, nhận {hex_mau!r}")
+    h = hex_mau.strip().lstrip("#")
+    ra = []
+    for i in (0, 2, 4):
+        v = int(h[i : i + 2], 16) / 255
+        ra.append(round(max(0.0, min(1.0, 0.5 + (v - 0.5) * he_so)) * 255))
+    return "#%02X%02X%02X" % tuple(ra)
+
+
+def _hop_thanh(truoc: str, sau: str, alpha: float) -> str:
+    """Màu `truoc` vẽ ở độ mờ `alpha` **trên** nền đặc `sau`.
+
+    Cần vì hai cặp của bảng dưới không phải hai màu token đứng cạnh nhau: đỉnh
+    bị che vẽ viền `graph-entity-border` ở `stroke-opacity` trên nền trắng của
+    drawer, và thứ mắt thấy là màu hợp thành chứ không phải màu token.
+    """
+    a, b = truoc.lstrip("#"), sau.lstrip("#")
+    ra = []
+    for i in (0, 2, 4):
+        ra.append(round(alpha * int(a[i : i + 2], 16) + (1 - alpha) * int(b[i : i + 2], 16)))
+    return "#%02X%02X%02X" % tuple(ra)
+
+
+#: Màu vòng **tối nhất** của dải, tức màu cho tương phản thấp nhất trên nền
+#: trắng (5,91:1; bốn màu kia 6,80-9,07). Ba cặp của đồ thị đo trên nó: chấm
+#: màu tệ nhất là chấm cả dải.
+MAU_VONG_TE_NHAT = "graph-ring-2"
+
+
+def _cap_may_chieu(tokens: dict) -> list[tuple[str, str, str]]:
+    """Tám cặp mà **đường demo** đứng lên, dưới dạng `(tên, hex chữ, hex nền)`.
+
+    Không phải mọi cặp của `CAP_TUONG_PHAN`: đây là danh mục có tên của những
+    thứ hội đồng phải phân biệt được trên máy chiếu ở ba nhịp - slab bôi đen
+    giữa câu, hai badge mức trên cite-row, vòng focus khi người trình bày đi
+    bằng bàn phím, và bốn thứ của drawer ở nhịp 2 (một màu vòng, viền đỉnh mờ,
+    **mũi tên** tới đỉnh mờ, và **nhãn vai** dọc mũi tên ấy).
+
+    Hai cặp cuối là của story 4.7 và chúng không phải phần thêm cho đủ: mũi tên
+    là thứ nói đỉnh mờ thuộc **vòng nào**, tức chính mệnh đề "che đúng đỉnh,
+    không che cả cụm" mà nhịp 2 đứng lên. Cả hai đo trên `MAU_VONG_TE_NHAT`.
+    """
+    mau = tokens["colors"]
+    nen = mau["surface-card"]
+    che = tokens["components"]["graph-entity-masked"]
+    canh = tokens["components"]["graph-edge-masked"]
+    vien_che = _hop_thanh(_hex(tokens, che["stroke"]), nen, float(che["stroke-opacity"]))
+    canh_che = _hop_thanh(mau[MAU_VONG_TE_NHAT], nen, float(canh["line-opacity"]))
+    nhan_canh_che = _hop_thanh(mau["ink-muted"], nen, float(canh["text-opacity"]))
+    return [
+        ("slab bôi đen", mau["redact-ink"], mau["redact-bg"]),
+        ("badge L1", mau["level-l1-ink"], mau["level-l1-bg"]),
+        ("badge L2", mau["level-l2"], mau["level-l2-bg"]),
+        ("vòng focus trên topbar", mau["focus-on-dark"], mau["primary-deep"]),
+        ("vòng đồ thị (màu tối nhất của dải)", mau[MAU_VONG_TE_NHAT], nen),
+        ("đỉnh mờ: viền hợp thành", vien_che, nen),
+        ("mũi tên tới đỉnh mờ: hợp thành", canh_che, nen),
+        ("nhãn vai dọc mũi tên ấy: hợp thành", nhan_canh_che, nen),
+    ]
+
+
+def test_mo_phong_may_chieu_dung_moc_cua_chinh_no():
+    """Chấm chính bộ đo trước khi tin nó, cùng luật với `test_ham_tuong_phan_dung_moc_wcag`.
+
+    Ba mốc: hệ số 1 không đổi gì; xám giữa là điểm bất động; và trắng/đen 21:1
+    tụt xuống dưới 21 ở hệ số 0,7 - nếu không thì mô hình đang không mô hình hóa
+    gì cả.
+    """
+    assert mo_phong_may_chieu("#1F5AA8", 1.0) == "#1F5AA8"
+    assert mo_phong_may_chieu("#808080") == "#808080"
+    tp = ty_le_tuong_phan(mo_phong_may_chieu("#FFFFFF"), mo_phong_may_chieu("#000000"))
+    assert 1.0 < tp < 21.0
+    # Và nó kẹp về [0, 255] thay vì tràn.
+    assert mo_phong_may_chieu("#FFFFFF", 2.0) == "#FFFFFF"
+    assert mo_phong_may_chieu("#000000", 2.0) == "#000000"
+
+
+def _ten_cap_may_chieu() -> list[str]:
+    """Tên của mọi cặp, đọc từ chính `_cap_may_chieu` một lần lúc thu thập.
+
+    Tham số hóa theo **danh mục** chứ không theo `range(n)`: một `range(6)` chép
+    cứng độ dài, nên cặp thứ bảy thêm vào bảng lặng lẽ không được chấm - đúng
+    kiểu hỏng mà một bảng "danh mục có tên" sinh ra. Và tham số là **tên** nên
+    tên ca đọc được ngay ở dòng đỏ.
+    """
+    return [ten for ten, _, _ in _cap_may_chieu(_json(SRC / "design" / "tokens.json"))]
+
+
+@pytest.mark.parametrize("ten_cap", _ten_cap_may_chieu())
+def test_cap_demo_con_phan_biet_duoc_qua_may_chieu(tokens, ten_cap):
+    """Mọi cặp của đường demo còn >= 3:1 **sau** mô hình máy chiếu.
+
+    Đây là phép canh mà spec 4.7 đòi, và nó là chỗ ba lỗ của story đỏ nếu ai đặt
+    chúng về giá trị cũ: `focus-on-dark` đổi lại thành `primary` cho **1,34:1**;
+    `stroke-opacity` của `graph-entity-masked` hạ về `0.45` cho **2,14:1** (cặp
+    ấy còn không qua sàn ở hệ số 1,0); và `line-opacity` của `graph-edge-masked`
+    hạ về `0.5` cho **1,86:1** cùng nhãn vai **1,76:1**.
+    """
+    theo_ten = {ten: (chu, nen) for ten, chu, nen in _cap_may_chieu(tokens)}
+    chu, nen = theo_ten[ten_cap]
+    ty_le = ty_le_tuong_phan(mo_phong_may_chieu(chu), mo_phong_may_chieu(nen))
+    assert ty_le >= SAN_CHI_BAO, (
+        f"{ten_cap}: {ty_le:.2f}:1 < {SAN_CHI_BAO}:1 ở k={HE_SO_MAY_CHIEU}"
+    )
+
+
+def test_danh_muc_cap_may_chieu_khong_trung_ten_va_phu_du_be_mat(tokens):
+    """Danh mục có tên: không tên trùng (một tên trùng là một ca bị `parametrize`
+    gộp mất), và nó phủ đủ bốn bề mặt mà ba nhịp đứng lên."""
+    ten = [t for t, _, _ in _cap_may_chieu(tokens)]
+    assert len(ten) == len(set(ten)), ten
+    for tu_khoa in ("slab", "badge L1", "badge L2", "focus", "vòng đồ thị", "đỉnh mờ", "mũi tên"):
+        assert any(tu_khoa in t for t in ten), (tu_khoa, ten)
+
+
+def test_dinh_mo_doc_hai_do_mo_tu_token_chu_khong_chep_so(tokens):
+    """`VungDoThi.tsx` đọc `components.graph-entity-masked`, không viết `0.45` vào TSX.
+
+    Hai vế. Một, token khai **hai** độ mờ chứ không một `opacity`: nền 45% giữ
+    nguyên cái nhìn thấy được, viền và nhãn `•••` lên 0,8 vì cặp hợp thành ở
+    0,45 chỉ 2,71:1 trên nền trắng - dưới sàn 3:1 và không đạt sàn ấy ở **bất kỳ**
+    hệ số máy chiếu nào, tức nó chết ở mọi máy chiếu thật. Hai, `VungDoThi.tsx`
+    lấy hai giá trị ấy qua `component("graph-entity-masked")`; một con số chép
+    vào TSX là một chỗ thứ hai để độ mờ trôi, và DESIGN.md khi đó nói sai về
+    thứ đang vẽ.
+    """
+    che = tokens["components"]["graph-entity-masked"]
+    assert "opacity" not in che, "một `opacity` chung làm mờ luôn viền và nhãn"
+    assert float(che["fill-opacity"]) == 0.45
+    assert float(che["stroke-opacity"]) > float(che["fill-opacity"])
+    # Phép đo mà con số 0,8 đứng lên: viền hợp thành ở 0,45 dưới sàn chỉ báo, ở
+    # `stroke-opacity` thì qua.
+    mau = tokens["colors"]
+    nen = mau["surface-card"]
+    vien = _hex(tokens, che["stroke"])
+    assert ty_le_tuong_phan(_hop_thanh(vien, nen, 0.45), nen) < SAN_CHI_BAO
+    assert (
+        ty_le_tuong_phan(_hop_thanh(vien, nen, float(che["stroke-opacity"])), nen)
+        >= SAN_CHI_BAO
+    )
+    # Mũi tên tới đỉnh ấy cũng có token riêng, và nó **không** còn ở 0,5 chép
+    # cứng trong TSX: cặp cũ là 2,21:1 (nhãn vai 2,08:1), dưới sàn chỉ báo.
+    canh = tokens["components"]["graph-edge-masked"]
+    assert canh["line-style"] == "dashed", "dấu 'đã che' của mũi tên là nét đứt"
+    assert float(canh["line-opacity"]) > 0.5
+    assert (
+        ty_le_tuong_phan(_hop_thanh(mau[MAU_VONG_TE_NHAT], nen, 0.5), nen) < SAN_CHI_BAO
+    )
+    # Và nguồn của mọi số là token, không phải TSX.
+    sach = _bo_chu_thich(VUNG_DO_THI_TSX.read_text(encoding="utf-8"))
+    assert 'component("graph-entity-masked")' in sach, sach
+    assert 'component("graph-edge-masked")' in sach, sach
+    for khoa in ('"fill-opacity"', '"stroke-opacity"', '"line-opacity"', '"text-opacity"'):
+        assert khoa in sach, khoa
+    assert "opacity: 0.45" not in sach, sach
+    assert "opacity: 0.5," not in sach, sach
+    # Quầng trắng của nhãn phải mờ **cùng nhịp** với chữ nó bọc: một quầng 3px
+    # đầy đủ quanh một chữ đã mờ ăn vào chính nét chữ.
+    assert '"text-outline-opacity"' in sach, sach
+
+
+def _do_dac_hieu(chon: str) -> tuple[int, int, int]:
+    """Độ đặc hiệu `(id, lớp+thuộc tính+pseudo-class, phần tử)` của một selector đơn giản.
+
+    Chỉ phủ hình dạng mà `globals.css` dùng cho ba luật focus - `#id`, `.lop`,
+    `[thuoc-tinh]`, `:pseudo-class`, `::pseudo-element`, tên thẻ - và cố ý không
+    hơn: một bộ phân tích CSS đầy đủ ở đây là một bộ thứ hai để sai. Ca dưới
+    chấm chính hàm này trên ba selector đã biết trước kết quả.
+    """
+    sach = re.sub(r"::[a-z-]+", " PE ", chon)
+    so_id = len(re.findall(r"#[\w-]+", sach))
+    so_lop = len(re.findall(r"\.[\w-]+|\[[^\]]+\]|:[a-z-]+(?:\([^)]*\))?", sach))
+    so_the = len(re.findall(r"(?:^|[\s>+~])([a-z][\w-]*)", sach)) + sach.count(" PE ")
+    return (so_id, so_lop, so_the)
+
+
+def test_bo_do_dac_hieu_dung_moc_biet_truoc():
+    """Chấm chính bộ đo trước khi tin nó, cùng luật với `test_ham_tuong_phan_dung_moc_wcag`."""
+    assert _do_dac_hieu(":focus-visible") == (0, 1, 0)
+    assert _do_dac_hieu(".topbar :focus-visible") == (0, 2, 0)
+    assert _do_dac_hieu(".topbar [data-tam-xem-nhu] :focus-visible") == (0, 3, 0)
+    assert _do_dac_hieu(".topbar .chip_xem_nhu :focus-visible") == (0, 3, 0)
+
+
+def test_globals_css_co_luat_focus_rieng_cho_vung_nen_dam(tokens):
+    """`globals.css` khai một luật focus **theo vùng** cho topbar, cộng hai ngoại lệ.
+
+    Luật `:focus-visible` toàn cục là `primary` trên mọi nền, và trên
+    `primary-deep` cặp ấy chỉ 1,55:1 - dưới cả sàn chỉ báo. Ba nút focus được ở
+    vùng ấy từ story 4.2 và 4.5, nên phép sửa đúng là một luật theo **vùng**:
+    một nút thứ tư thêm vào topbar ngày mai được đỡ mà không ai phải nhớ.
+
+    Vế thứ hai là hai ngoại lệ có tên, và cả hai là lỗ mà chính phép sửa này
+    **tạo ra**: hai đảo nền **sáng** nằm bên trong `.topbar` theo cây DOM. Tấm
+    nổi của "xem như" trên nền `surface-card` (trắng trên trắng), và chip "Đang
+    xem như" nền `level-l1-bg` mà nút ✕ trong nó focus được từ 4.5 -
+    `outline-offset: 2px` vẽ vòng ra ngoài nút, lên nền chip, **1,10:1**.
+    """
+    css = (SRC / "app" / "globals.css").read_text(encoding="utf-8")
+    assert ".topbar :focus-visible" in css, css[:200]
+    assert "var(--mau-focus-on-dark)" in css
+    for chon in (".topbar [data-tam-xem-nhu] :focus-visible", ".topbar .chip_xem_nhu :focus-visible"):
+        assert chon in css, chon
+    # Token có mặt và nó đạt sàn chỉ báo trên nền đậm ở tương phản đầy đủ.
+    mau = tokens["colors"]
+    assert ty_le_tuong_phan(mau["focus-on-dark"], mau["primary-deep"]) >= SAN_CHI_BAO
+    # Và cặp cũ **không** đạt: đó là lỗ mà luật này vá.
+    assert ty_le_tuong_phan(mau["primary"], mau["primary-deep"]) < SAN_CHI_BAO
+    # Hai nền sáng ấy thì ngược lại: trắng chết, `primary` sống.
+    for nen in ("surface-card", "level-l1-bg"):
+        assert ty_le_tuong_phan(mau["focus-on-dark"], mau[nen]) < SAN_CHI_BAO, nen
+        assert ty_le_tuong_phan(mau["primary"], mau[nen]) >= SAN_CHI_BAO, nen
+
+
+def test_ngoai_le_focus_thang_bang_do_dac_hieu_chu_khong_bang_thu_tu_khai():
+    """Hai ngoại lệ phải **đặc hiệu hơn** luật vùng, không chỉ đứng sau nó.
+
+    Cả ba luật cùng khai `outline-color`. Nếu ngoại lệ chỉ thắng nhờ thứ tự
+    khai thì một lần sắp xếp lại `globals.css` - gom mọi luật focus về đầu file,
+    tách khối theo story, chạy một trình định dạng - đưa vòng trắng trên nền
+    trắng quay lại, và **mọi test hiện tại vẫn xanh** vì cả ba chuỗi vẫn có mặt.
+    Ca này là chỗ phép sửa ấy thành một tính chất của CSS chứ một quy ước về
+    chỗ đặt dòng.
+    """
+    css = _bo_chu_thich((SRC / "app" / "globals.css").read_text(encoding="utf-8"))
+    vung = _do_dac_hieu(".topbar :focus-visible")
+    for chon in (".topbar [data-tam-xem-nhu] :focus-visible", ".topbar .chip_xem_nhu :focus-visible"):
+        assert _do_dac_hieu(chon) > vung, f"{chon} không đặc hiệu hơn `.topbar :focus-visible`"
+    # Và không ai được khai lại ngoại lệ ở dạng kém đặc hiệu hơn (bản đầu của
+    # story 4.7 viết `[data-tam-xem-nhu] :focus-visible`, đúng (0,2,0)).
+    for xau in ("\n[data-tam-xem-nhu] :focus-visible", "\n.chip_xem_nhu :focus-visible"):
+        assert xau not in css, xau
+
+
+def test_guong_do_thi_phoi_toa_do_da_render_cung_nhip_bu_co_chu():
+    """Gương `sr-only` mang `data-x`/`data-y`, cập nhật trong chính `bu_co_chu`.
+
+    Tooltip "Cần quyền L2" vẽ **trên canvas**, nên trước story này không phép
+    kiểm tự động nào rê chuột tới được một đỉnh mờ (khoản sổ nợ địa chỉ 4-7).
+    Đường duy nhất còn lại là phơi `cy` ra `window`, tức thêm mã chỉ để test vào
+    đường phục vụ. Tọa độ đã render trên gương là đường thứ ba: nó không thêm
+    một byte thông tin nào so với màn hình, và nó phải cập nhật **cùng nhịp**
+    với phép bù cỡ chữ - tọa độ chỉ đúng sau `fit`, và mọi lần khung nhìn đổi là
+    một lần cả hai lệch cùng lúc.
+    """
+    sach = _bo_chu_thich(VUNG_DO_THI_TSX.read_text(encoding="utf-8"))
+    assert "data-x={toa_do[" in sach and "data-y={toa_do[" in sach, sach
+    m = re.search(r"function bu_co_chu\(c: Core\) \{.*?\n    \}", sach, re.S)
+    assert m, "VungDoThi phải còn hàm bù cỡ chữ"
+    assert "renderedPosition()" in m.group(0), m.group(0)
+    assert "dat_toa_do(" in m.group(0), m.group(0)
+    # Và `cy` vẫn không rời component: không một cửa hậu trên `window`.
+    assert "window.cy" not in sach and "(window as" not in sach, sach
+
+
+def test_spec_demo_ba_nhip_co_mat_va_co_script_chay_lai_duoc():
+    """Ba nhịp là **một spec trong lưới**, chạy lại được bằng một lệnh.
+
+    Ba nhịp hôm nay chỉ chạy được bằng tay qua ba kịch bản kiểm tay rời, và
+    không phép kiểm nào chấm trọn ba nhịp **trong một phiên**. Ca này ghim ba
+    thứ: spec tồn tại, nó vào `testDir` của Playwright (tức vào
+    `npm run test:e2e`, tức vào hook post-commit phía dev), và có một script gọi
+    đúng nó.
+    """
+    spec = WEB / "e2e" / "demo-ba-nhip.spec.ts"
+    assert spec.exists(), spec
+    tho = spec.read_text(encoding="utf-8")
+    # Ba nhịp trong **một** phiên: một lần `vao_chat`, không ba.
+    assert tho.count("vao_chat(page)") >= 1
+    pkg = _json(WEB / "package.json")
+    assert pkg["scripts"]["test:demo"] == "playwright test demo-ba-nhip", pkg["scripts"]
+    # Kịch bản chạy thật **không** nằm trong lưới: đuôi `.mjs` nên `testMatch`
+    # không nhặt nó, cùng luật với ba `kiem-tay*.mjs` trước.
+    dien_tap = WEB / "e2e" / "dien-tap-demo.mjs"
+    assert dien_tap.exists(), dien_tap
+    assert not any(p.name == "dien-tap-demo.spec.ts" for p in (WEB / "e2e").iterdir())

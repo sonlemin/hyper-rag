@@ -605,8 +605,8 @@ def bo_llm(
     của một lượt hỏi nay nằm ở `adapters/engine.py::EngineACL.hoi_dap`, tức
     trong mã dự án, tức gắn được. Không gắn vì hai lý do đã đóng băng ở 3.3: một
     429 giữa một câu hỏi phải là 502 ngay, và một lớp thử lại nhân trần độ trễ
-    của một request lên trong khi trần 204 giây suy từ số lời gọi *không* thử
-    lại.
+    của một request lên trong khi trần một request (**264 giây** từ story 4.7,
+    `api.hoi_dap.tran_mot_truy_van_giay`) suy từ số lời gọi *không* thử lại.
     """
     danh_muc = danh_muc_mac_dinh() if danh_muc is None else danh_muc
     muc = danh_muc.muc(model, loai=LOAI_LLM)

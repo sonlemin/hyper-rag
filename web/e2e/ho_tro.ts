@@ -144,7 +144,17 @@ export function trich_dan(id: string, sua: Record<string, unknown> = {}) {
 
 /** Mock `POST /hoi-dap` và trả về bộ đếm. `cho_ms` giữ phản hồi lại để ca "đang
  *  chờ" và ca "gửi hai lần" quan sát được trạng thái đang chờ. Cùng khuôn với
- *  `mock_login`. */
+ *  `mock_login`.
+ *
+ *  `than` nhận **cả hai dạng**, đúng khuôn `mock_do_thi`: một giá trị cố định,
+ *  hay một hàm `(lan) => thân` cho ca nhiều lượt trên cùng một tuyến (ba nhịp
+ *  của 4.7 là ba thân khác nhau vì vai đã đổi giữa chừng). Một helper thứ hai
+ *  đứng cạnh helper này là hai quy ước cho cùng một vấn đề trong cùng một file,
+ *  đúng thứ mà `ho_tro.ts` được tách ra để chặn.
+ *
+ *  Hàm trả `undefined` cho một chỉ số ngoài dải là một **lỗi nói ra**, không
+ *  một `body: "undefined"` mà màn hình đọc thành `ENVELOPE_LA`: ca test khi ấy
+ *  đỏ ở một chỗ cách xa nguyên nhân. */
 export async function mock_hoi_dap(
   page: Page,
   than: unknown,
@@ -155,10 +165,14 @@ export async function mock_hoi_dap(
   await page.route("**/api/hoi-dap", async (route) => {
     so += 1;
     if (cho_ms > 0) await new Promise((xong) => setTimeout(xong, cho_ms));
+    const noi_dung = typeof than === "function" ? (than as (lan: number) => unknown)(so) : than;
+    if (noi_dung === undefined) {
+      throw new Error(`mock_hoi_dap: không có thân cho lượt thứ ${so}`);
+    }
     await route.fulfill({
       status,
       contentType: "application/json",
-      body: typeof than === "string" ? than : JSON.stringify(than),
+      body: typeof noi_dung === "string" ? noi_dung : JSON.stringify(noi_dung),
     });
   });
   return () => so;
@@ -353,4 +367,26 @@ export async function mock_do_thi(
     });
   });
   return () => da_gui;
+}
+
+
+// --- Đường demo ba nhịp (story 4.7) -----------------------------------------
+//
+// Story 4.7 thêm **một** đồ dùng ở đây, và nới `mock_hoi_dap` nhận thêm dạng
+// hàm thay vì dựng một helper thứ hai cạnh nó: ba nhịp còn lại dựng từ
+// `envelope`/`trich_dan`/`node_vong`/`mock_do_thi` đã có.
+
+/** Một phiên **đổi được**: `mock_toi_dong` đọc nó ở mỗi lời gọi.
+ *
+ *  Dời từ `xem-nhu.spec.ts` sang đây ở story 4.7 vì spec thứ hai cần đúng nó:
+ *  hai bản chép của cùng một đồ dùng là hai bản lệch nhau ở lần sửa đầu, đúng
+ *  lý do vòng review 4.3 dựng ra file này. */
+export function phien_song() {
+  let hien_tai: unknown = { ...PHIEN };
+  return {
+    doc: () => hien_tai,
+    doi: (vai: string | null) => {
+      hien_tai = vai === null ? { ...PHIEN } : phien_xem_nhu(vai);
+    },
+  };
 }

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Core, NodeSingular } from "cytoscape";
 
 import { MA_DO_THI_VE_HONG } from "@/api/do_thi";
+import { component } from "@/design/bien_css";
 import { MICROCOPY } from "@/microcopy";
 import { nhan_slot } from "@/nhan";
 
@@ -53,6 +54,45 @@ const DEM_FIT = 40;
 const VIEN_VONG = 4;
 const VIEN_VONG_SANG = 7;
 
+/** Hai độ mờ của đỉnh bị che, **đọc từ token** chứ không chọn trong TSX
+ *  (`components.graph-entity-masked`; `tests/test_web_khung.py` nhóm (14) đọc
+ *  chính hai định danh này ra khỏi file để phép canh không đứng trên một con số
+ *  chép lại).
+ *
+ *  Vì sao **hai** giá trị chứ không một `opacity`: một `opacity: 0.45` trên cả
+ *  node làm mờ luôn viền và nhãn `•••`, và viền `graph-entity-border` hợp thành
+ *  ở 0,45 trên nền trắng chỉ **2,71:1** - dưới sàn 3:1 cho chỉ báo phi văn bản,
+ *  và không đạt sàn ấy ở bất kỳ hệ số máy chiếu nào. Ở 0,8 nó là **7,94:1**.
+ *  Nền vẫn mờ 45% nên "đỉnh này mờ hơn" vẫn đọc được bằng mắt; thứ được nâng là
+ *  đúng phần nói *đây là một đỉnh*. Nhịp 2 của đường demo che một đỉnh, không
+ *  che cả cụm. */
+function alpha(muc: Record<string, string>, khoa: string, ten: string): number {
+  const v = Number(muc[khoa]);
+  // Khóa vắng cho `Number(undefined)` = `NaN`, và một `NaN` đi thẳng vào
+  // Cytoscape là một node vẽ ra không ai đoán được. Ném ở đây, một lần, với
+  // câu nói được sai ở đâu.
+  if (!Number.isFinite(v) || v < 0 || v > 1) {
+    throw new Error(`token ${ten}.${khoa} phải là một số trong [0, 1], nhận ${muc[khoa]}`);
+  }
+  return v;
+}
+
+const CHE = component("graph-entity-masked");
+const MO_NEN_CHE = alpha(CHE, "fill-opacity", "graph-entity-masked");
+const MO_VIEN_CHE = alpha(CHE, "stroke-opacity", "graph-entity-masked");
+
+/** Độ mờ của **mũi tên** tới một đỉnh bị che, cũng đọc từ token
+ *  (`components.graph-edge-masked`).
+ *
+ *  Mũi tên là thứ nói đỉnh mờ ấy thuộc **vòng nào**, tức chính mệnh đề "che
+ *  đúng đỉnh, không che cả cụm" của nhịp 2. Bản 4.6 để nó ở `opacity: 0.5` chép
+ *  cứng trong file này: màu vòng tối nhất của dải hợp thành ra **2,21:1** trên
+ *  nền trắng và nhãn vai của nó **2,08:1**, cả hai dưới sàn 3:1 và chết ở mọi
+ *  hệ số máy chiếu. Dấu "đã che" là **nét đứt**, không phải độ mờ. */
+const CANH_CHE = component("graph-edge-masked");
+const MO_CANH_CHE = alpha(CANH_CHE, "line-opacity", "graph-edge-masked");
+const MO_CHU_CANH_CHE = alpha(CANH_CHE, "text-opacity", "graph-edge-masked");
+
 function bien(ten: string): string {
   if (typeof window === "undefined") return "";
   return getComputedStyle(document.documentElement).getPropertyValue(ten).trim();
@@ -88,6 +128,12 @@ export function VungDoThi({
   // một ca e2e đo được sàn 13px trên một đồ thị lớn thay vì tin vào một phép
   // tính không ai chấm.
   const [do_chu, dat_do_chu] = useState({ he_so: 1, co_man_hinh: CO_CHU_VAI });
+  // Tọa độ **đã render** của từng node, tính bằng px trong hệ của
+  // `.vung_do_thi` (nó `position: relative`, canvas là `inset: 0` bên trong nên
+  // hai hệ trùng nhau). Xem chú thích ở gương `sr-only` dưới đây: đây là cách
+  // duy nhất một phép kiểm tự động rê chuột được lên một đỉnh trên canvas mà
+  // không phải phơi `cy` ra `window`.
+  const [toa_do, dat_toa_do] = useState<Record<string, { x: number; y: number }>>({});
 
   // Dựng lại cả instance khi khung đổi: một lượt mới hay một lần đổi vai là một
   // đồ thị khác hẳn, và vá từng node vào một instance cũ là chỗ một node của
@@ -98,6 +144,7 @@ export function VungDoThi({
     let quan_sat: ResizeObserver | null = null;
     dat_da_ve(false);
     dat_tooltip(null);
+    dat_toa_do({});
     const vi_tri = bo_cuc(khung);
 
     /** Bù cỡ chữ theo zoom sau mỗi lần fit.
@@ -124,6 +171,22 @@ export function VungDoThi({
         he_so: lam_tron(he_so),
         co_man_hinh: lam_tron(CO_CHU_VAI * he_so * z),
       });
+      // Cùng nhịp, không một effect thứ hai: tọa độ đã render chỉ đúng **sau**
+      // `fit`, và mọi lần khung nhìn đổi (kéo grip -> `ResizeObserver` -> `fit`)
+      // là một lần cả hai con số này lệch cùng lúc.
+      const bang: Record<string, { x: number; y: number }> = {};
+      for (const ma of [...khung.vong.map((v) => v.ma), ...khung.dinh.map((d) => d.ma)]) {
+        const n = c.getElementById(ma);
+        if (n.length === 0) continue;
+        const p = n.renderedPosition();
+        // Khung nhìn chưa ổn định cho `NaN`/`Infinity`, và một `data-x="NaN"`
+        // trên gương là một tọa độ mà một phép kiểm sẽ rê chuột tới rồi hỏng ở
+        // một bước sau với thông điệp nói sai nguyên nhân. Bỏ qua đỉnh ấy:
+        // thiếu thuộc tính là một trạng thái đọc được, `NaN` thì không.
+        if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
+        bang[ma] = { x: lam_tron(p.x), y: lam_tron(p.y) };
+      }
+      dat_toa_do(bang);
     }
 
     void import("cytoscape")
@@ -212,7 +275,14 @@ export function VungDoThi({
             {
               selector: "node.dinh.che",
               style: {
-                opacity: 0.45,
+                "background-opacity": MO_NEN_CHE,
+                "border-opacity": MO_VIEN_CHE,
+                "text-opacity": MO_VIEN_CHE,
+                // Quầng trắng phải mờ **cùng nhịp** với chữ nó bọc: để nó ở
+                // mặc định 1 là một vành trắng 3px đầy đủ quanh một chữ đã mờ,
+                // tức nó ăn vào chính nét chữ và làm `•••` khó đọc hơn cả khi
+                // không có quầng.
+                "text-outline-opacity": MO_VIEN_CHE,
                 "border-style": "dashed",
               },
             },
@@ -237,7 +307,9 @@ export function VungDoThi({
               selector: "edge.che",
               style: {
                 "line-style": "dashed",
-                opacity: 0.5,
+                "line-opacity": MO_CANH_CHE,
+                "text-opacity": MO_CHU_CANH_CHE,
+                "text-outline-opacity": MO_CHU_CANH_CHE,
               },
             },
           ],
@@ -346,10 +418,23 @@ export function VungDoThi({
           mang đúng chữ viết **trong** vòng (mã cộng nhãn ngắn; `label` đầy đủ
           nằm ở legend), đỉnh bị che ra `•••` đúng như trên canvas
           (EXPERIENCE.md: node mờ **không** hiện tên), và mã hiển thị là mã mà
-          cite-row đã dùng. */}
+          cite-row đã dùng.
+
+          Từ story 4.7 mỗi mục còn mang `data-x`/`data-y`: tọa độ **đã render**
+          của node ấy trong hệ của `.vung_do_thi`, cập nhật cùng nhịp với phép
+          bù cỡ chữ. Nó không thêm một byte thông tin nào (nó là chỗ node đang
+          nằm, thứ ai nhìn màn hình cũng thấy) và nó đóng đúng một lỗ: tooltip
+          "Cần quyền L2" vẽ **trên canvas**, nên trước đó không phép kiểm tự
+          động nào rê chuột tới được một đỉnh mờ, và đường duy nhất còn lại là
+          phơi `cy` ra `window` - tức thêm mã chỉ để test vào đường phục vụ. */}
       <ul className="sr-only" data-guong-do-thi>
         {khung.vong.map((v) => (
-          <li key={v.ma} data-guong-vong={v.ma}>
+          <li
+            key={v.ma}
+            data-guong-vong={v.ma}
+            data-x={toa_do[v.ma]?.x}
+            data-y={toa_do[v.ma]?.y}
+          >
             {v.nhan_ngan === "" ? v.ma : `${v.ma}: ${v.nhan_ngan}`}
           </li>
         ))}
@@ -358,6 +443,8 @@ export function VungDoThi({
             key={d.ma}
             data-guong-dinh={d.ma}
             data-che={d.che ? "1" : undefined}
+            data-x={toa_do[d.ma]?.x}
+            data-y={toa_do[d.ma]?.y}
             title={d.che ? MICROCOPY.tooltip_node_mo : undefined}
           >
             {d.nhan}

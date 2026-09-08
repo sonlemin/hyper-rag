@@ -11,7 +11,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "tsc --noEmit",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:demo": "playwright test demo-ba-nhip"
   },
   "dependencies": {
     "cytoscape": "3.34.2",

@@ -100,9 +100,15 @@ try {
     await page.fill("[data-o-hoi]", cau);
     await page.click("[data-nut-gui]");
     await page.waitForFunction(
-      (n) =>
-        document.querySelectorAll("[data-luot]").length === n &&
-        !document.querySelector("[data-luot]:last-of-type [data-dang-cho]"),
+      (n) => {
+        // `[data-luot]:last-of-type` là **sai** như một bất biến: `ManChat` xen
+        // một `[data-moc-doi-vai]` cùng thẻ `<div>` giữa các lượt, nên phép chờ
+        // ấy chỉ đúng nhờ trùng hợp rằng lượt mới là `<div>` cuối. Lấy phần tử
+        // cuối của `querySelectorAll` là bất biến thật (story 4.7).
+        const cac = document.querySelectorAll("[data-luot]");
+        if (cac.length !== n) return false;
+        return !cac[cac.length - 1].querySelector("[data-dang-cho]");
+      },
       truoc + 1,
       { timeout: 300000 },
     );

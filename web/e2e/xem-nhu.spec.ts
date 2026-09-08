@@ -14,6 +14,7 @@ import {
   loi_api,
   mock_toi,
   mock_toi_dong,
+  phien_song,
   phien_xem_nhu,
   PHIEN,
   PHIEN_THUONG,
@@ -47,17 +48,6 @@ const MOC = "[data-moc-doi-vai]";
  *  `api.hoi_dap.DAI_CAU_HOI_TOI_DA`, nên đọc từ đây là đo đúng con số hai bên
  *  đã thỏa thuận. Một `4000` gõ tay trong file này là bản chép thứ ba. */
 const TRAN_CAU_HOI = DAI_CAU_HOI_TOI_DA;
-
-/** Một phiên đổi được: `mock_toi_dong` đọc nó ở **mỗi** lời gọi. */
-function phien_song() {
-  let hien_tai: unknown = { ...PHIEN };
-  return {
-    doc: () => hien_tai,
-    doi: (vai: string | null) => {
-      hien_tai = vai === null ? { ...PHIEN } : phien_xem_nhu(vai);
-    },
-  };
-}
 
 test.beforeEach(async ({ page }) => {
   await chan_moi_api(page);

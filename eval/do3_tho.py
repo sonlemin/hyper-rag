@@ -59,7 +59,11 @@ from adapters.llm_wrapper import CT_CHI_PHI_USD, CT_TOKEN_RA, CT_TOKEN_VAO, ham_
 from adapters.thu_lai import NGAN_SACH_NAP
 from adapters.neo4j import NEO4J_PASSWORD_KEY, NEO4J_URI_KEY
 from adapters.policy_loader import cac_bang_chinh_sach, load_policy
-from adapters.tra_loi import CAU_HONG_UPSTREAM, id_hyperedge_trong
+from adapters.tra_loi import (
+    CAU_HONG_UPSTREAM,
+    SO_LAN_HOI_LAI_TU_KHOA_HONG,
+    id_hyperedge_trong,
+)
 from core.audit import EVENT_EMBEDDING_COST, EVENT_LLM_COST, SuKienAudit, thoi_diem_utc
 from core.permission import use_context, user_context
 from core.policy import Policy
@@ -530,6 +534,10 @@ def main(argv: Sequence[str] | None = None, *, tao_engine=None, in_ra=print) -> 
         in_ra(
             f"Đo 3 thô trên {ts.space}: {len(nhan.nhan)} câu × {len(thu_tu)} cấu hình = {so_o} ô,"
             f" {so_o} lời gọi LLM trích từ khóa (không có lời gọi sinh câu trả lời)."
+            f" Đây là cận dưới từ story 4.7: ngu_canh_hoi_dap hỏi lại đúng"
+            f" {SO_LAN_HOI_LAI_TU_KHOA_HONG} lần khi đuôi từ khóa của vendor không"
+            f" parse được, nên trần là {so_o * (1 + SO_LAN_HOI_LAI_TU_KHOA_HONG)}"
+            f" lời gọi. Phép hỏi lại không tốn embedding nào."
             " Embedding không ước: số lời gọi của nó phụ thuộc số từ khóa LLM trích ra."
         )
         return 0

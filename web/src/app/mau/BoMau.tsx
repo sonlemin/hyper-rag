@@ -98,6 +98,16 @@ export function BoMau() {
   const slab = component("slab-redact");
   const badge_l1 = component("badge-level-l1");
   const badge_l2 = component("badge-level-l2");
+  const mo_che = component("graph-entity-masked");
+  // Viền và nhãn `•••` mờ theo `stroke-opacity` (cả span), còn **nền** mờ thêm
+  // xuống `fill-opacity` bằng một phép trộn: hai độ mờ là hai giá trị khác nhau
+  // của cùng một component, và lồng hai `opacity` vào nhau thì nhân chúng lại.
+  const che = {
+    stroke_opacity: Number(mo_che["stroke-opacity"]),
+    nen: Math.round(
+      (Number(mo_che["fill-opacity"]) / Number(mo_che["stroke-opacity"])) * 100,
+    ),
+  };
 
   return (
     <div data-bo-mau>
@@ -245,8 +255,24 @@ export function BoMau() {
           <i style={{ width: 16, height: 16, borderRadius: "50%", background: "var(--mau-graph-entity-fill)", border: "2px solid var(--mau-graph-entity-border)", display: "inline-block" }} />
           entity
         </span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, opacity: 0.45 }} data-node-mau="dinh-che">
-          <i style={{ width: 16, height: 16, borderRadius: "50%", background: "var(--mau-graph-entity-fill)", border: "2px dashed var(--mau-graph-entity-border)", display: "inline-block" }} />
+        {/* Hai độ mờ, đọc từ `components.graph-entity-masked` như `VungDoThi`
+            đọc (story 4.7): nền mờ 45% giữ nguyên, viền và nhãn `•••` lên 0,8
+            vì cặp hợp thành ở 0,45 chỉ 2,71:1 trên nền trắng. Trang mẫu phải
+            hiện đúng thứ canvas vẽ, nếu không nó là bản chép thứ hai. */}
+        <span
+          style={{ display: "inline-flex", alignItems: "center", gap: 8, opacity: che.stroke_opacity }}
+          data-node-mau="dinh-che"
+        >
+          <i
+            style={{
+              width: 16,
+              height: 16,
+              borderRadius: "50%",
+              background: `color-mix(in srgb, var(--mau-graph-entity-fill) ${che.nen}%, transparent)`,
+              border: "2px dashed var(--mau-graph-entity-border)",
+              display: "inline-block",
+            }}
+          />
           ••• ({MICROCOPY.tooltip_node_mo})
         </span>
       </div>

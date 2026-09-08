@@ -42,6 +42,8 @@ colors:
   # Slab bôi đen FR-15
   redact-bg: '#2B3947'
   redact-ink: '#F4C84A'
+  # Vòng focus bàn phím trên vùng nền đậm (topbar), story 4.7 - xem Colors
+  focus-on-dark: '#FFFFFF'
   # Đồ thị
   graph-hover: '#D9A21B'
   graph-hover-halo: '#F4C84A'
@@ -168,8 +170,13 @@ components:
     fill: '{colors.graph-entity-fill}'
     stroke: '{colors.graph-entity-border}'
     stroke-style: 'dashed'
-    opacity: '0.45'
+    fill-opacity: '0.45'
+    stroke-opacity: '0.8'
     label: '•••'
+  graph-edge-masked:
+    line-style: 'dashed'
+    line-opacity: '0.9'
+    text-opacity: '1'
   errbox:
     background: '{colors.danger-bg}'
     border: '{colors.danger-border}'
@@ -198,6 +205,7 @@ Không dùng design system ngoài. Toàn bộ token trong file này là nguồn 
 - **Slab bôi đen {colors.redact-bg} / chữ {colors.redact-ink}**: riêng cho vùng bôi đen FR-15 trong câu trả lời. Không dùng cặp màu này cho bất cứ thứ gì khác.
 - **Vàng hover đồ thị {colors.graph-hover}** với quầng {colors.graph-hover-halo} ở opacity 30%: chỉ cho vòng hyperedge đang được trích dẫn hover làm sáng.
 - **Dải màu vòng hyperedge {colors.graph-ring-1} đến {colors.graph-ring-5}**: màu viền và màu chữ trong vòng, gán theo thứ tự trích dẫn của lượt (vòng của trích dẫn thứ nhất lấy {colors.graph-ring-1}, vòng thứ sáu quay vòng lại). Mockup chỉ khai hai màu vòng nên story 4.6 chọn dải, với ba ràng buộc: mỗi màu đạt tối thiểu 4.5:1 trên nền trắng (6,80 · 5,91 · 7,68 · 7,87 · 9,07), không màu nào trùng {colors.graph-hover} vì vàng chỉ dành cho vòng đang hover, và dải tránh hẳn lục L2, hổ phách L1, đỏ lỗi và tím tin cậy để không màu nào của đồ thị bị đọc thành một mức tiết lộ. {colors.graph-ring-1} cố ý bằng {colors.primary} để khớp mockup. Hover đổi **viền và quầng**, không đổi màu chữ trong vòng: {colors.graph-hover} trên nền trắng chỉ 2,30:1, dưới cả sàn 3:1 cho chỉ báo phi văn bản.
+- **Vòng focus trên nền đậm {colors.focus-on-dark}**: chỉ báo focus bàn phím của mọi phần tử focus được nằm trên vùng nền {colors.primary-deep} (topbar: nút đăng xuất, nút "Xem như", nút ✕ của chip). Luật `:focus-visible` toàn cục dùng {colors.primary}, và cặp {colors.primary} trên {colors.primary-deep} chỉ **1,55:1** - dưới cả sàn 3:1 cho chỉ báo phi văn bản, tức vòng focus biến mất trên máy chiếu. Cặp mới đo được **10,52:1**. Đây là chỗ sàn trợ năng của EXPERIENCE.md thắng một giá trị đã duyệt: một màu hành động duy nhất là luật của mục này, còn một chỉ báo không thấy được thì không phải một chỉ báo. Token chỉ dùng cho `outline`, không bao giờ làm màu chữ hay màu nền.
 - **Đỏ {colors.danger}**: lỗi hệ thống, badge FAIL, badge số yêu cầu chờ, thông điệp đăng nhập sai. Không dùng cho trạng thái phân quyền, bị che không phải là lỗi.
 - **Dải tin cậy {colors.trust-1} đến {colors.trust-5}** [ASSUMPTION hex chưa duyệt]: dải tím từ đậm về nhạt cho 5 tầng nhãn tin cậy FR-33 (spine-only). Tầng 1 đậm nhất vì được thẩm định cao nhất. Dải này cố ý không trùng lục L2, hổ phách L1, xám trung tính và xanh thép, để mức tiết lộ và độ tin cậy không bao giờ bị đọc lẫn.
 
@@ -269,7 +277,8 @@ Spec thị giác; hành vi ở EXPERIENCE.md. Bullet nhóm theo surface, cùng t
   - **Mũi tên**: tỏa từ mép vòng đến entity.
   - **Entity**: node tròn nhỏ {components.graph-entity}, nhãn đậm bên ngoài có halo trắng.
   - **Nhãn vai slot**: 13px màu {colors.ink-muted} đặt dọc mũi tên (không dùng {colors.ink-faint} vì dưới sàn tương phản 4.5:1).
-  - **Đỉnh L1 mờ**: {components.graph-entity-masked} với mũi tên nét đứt mờ.
+  - **Đỉnh L1 mờ**: {components.graph-entity-masked} với mũi tên nét đứt {components.graph-edge-masked}. Độ mờ tách làm hai và **không** phải một giá trị: nền mờ 45% (`fill-opacity`) giữ nguyên cái nhìn thấy được ("đỉnh này mờ hơn"), còn viền và nhãn `•••` đứng ở 0,8 (`stroke-opacity`). Lý do là một phép đo: viền {colors.graph-entity-border} ở 0,45 hợp thành trên nền {colors.surface-card} chỉ **2,71:1**, dưới sàn 3:1 cho chỉ báo phi văn bản và không đạt sàn ấy ở bất kỳ hệ số máy chiếu nào; ở 0,8 nó là **7,94:1**. Nhịp 2 của đường demo nói "che đúng đỉnh, không che cả cụm", nên đỉnh che phải đọc được **là một đỉnh** chứ không tan vào nền.
+  - **Mũi tên tới đỉnh L1 mờ** {components.graph-edge-masked}: dấu "đã che" là **nét đứt**, không phải độ mờ. Mũi tên là thứ nói đỉnh mờ ấy thuộc **vòng nào**, tức chính mệnh đề "che đúng đỉnh, không che cả cụm", nên nó phải đọc được: màu vòng tối nhất của dải ({colors.graph-ring-2}) hợp thành ở 0,5 trên nền trắng chỉ **2,21:1** và nhãn vai của nó **2,08:1** - cả hai dưới sàn 3:1 và chết ở mọi hệ số máy chiếu. Ở `line-opacity` 0,9 mũi tên là **4,83:1**, và nhãn vai giữ độ mờ đầy đủ (**5,48:1**) vì độ mờ của một dòng chữ 13px không mang thêm nghĩa nào mà nét đứt chưa nói.
 
 **Break-glass**
 

@@ -67,6 +67,23 @@ from core.masking import (
 # một lỗi nội bộ lại đi ra thành `answer` như trước story này.
 CAU_HONG_UPSTREAM: str = PROMPTS["fail_response"]
 
+# Số lần **hỏi lại** đường truy hồi khi nó trả đúng `CAU_HONG_UPSTREAM` (story
+# 4.7). Một, không hơn.
+#
+# Vì sao đây không phải lớp thử lại mà story 3.3 đã cấm: luật đóng băng ở đó nói
+# một 429 giữa một câu hỏi là 502 ngay, vì chặn nhịp là **trạng thái của
+# provider** và thử lại chỉ nhân trần độ trễ lên trong khi cửa sổ chặn vẫn đóng.
+# Ca này khác hẳn: đầu ra đã về, đủ token, không lỗi mạng - nó chỉ **không parse
+# được** (đo trên máy chủ 07/09: `kw_prompt result` kết bằng `<|>COMPLETE|>` thay
+# `<|COMPLETE|>`, `operate.py:571-581` trả `fail_response`). Hỏi lại là hỏi một
+# lần nữa chứ không phải chờ một cửa sổ mở ra, nên nó **không** đi qua
+# `adapters/thu_lai.py`: không lùi lũy thừa, không `Retry-After`, đúng một lần.
+#
+# Hằng chứ không một số `1` trong một vòng lặp, vì `api/hoi_dap.py` suy hai hằng
+# số lời gọi (và từ đó trần NFR-08) ra khỏi nó: nới nó lên 2 mà quên trần là
+# đúng cách con số của chương 4 trôi.
+SO_LAN_HOI_LAI_TU_KHOA_HONG: int = 1
+
 logger = logging.getLogger(__name__)
 
 # --- Ba lý do từ chối ----------------------------------------------------------
@@ -866,6 +883,7 @@ __all__ = [
     "LY_DO_TU_CHOI",
     "LY_DO_TU_KHOA_RONG",
     "PROMPT_TRA_LOI",
+    "SO_LAN_HOI_LAI_TU_KHOA_HONG",
     "THAM_SO_LLM",
     "VI_DU_DAU_RA",
     "DauRaTraLoiKhongDoc",

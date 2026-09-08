@@ -33,6 +33,7 @@ xem" trong một lượt *trả lời* không ca nào khác bắt được.
 
 import asyncio
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -51,6 +52,7 @@ from adapters.tra_loi import (
     LY_DO_TU_CHOI,
     LY_DO_TU_KHOA_RONG,
     PROMPT_TRA_LOI,
+    SO_LAN_HOI_LAI_TU_KHOA_HONG,
     THAM_SO_LLM,
     VI_DU_DAU_RA,
     DauRaTraLoiKhongDoc,
@@ -61,8 +63,10 @@ from adapters.tra_loi import (
     ngu_canh_rong,
 )
 from api import main as api_main
+from adapters.kv import CT_NAMESPACE
 from api.hoi_dap import (
     CT_LY_DO,
+    CT_REQUEST_ID,
     DANH_MUC_LY_DO,
     KHOA_ENVELOPE,
     KHOA_META,
@@ -666,8 +670,12 @@ def test_tu_khoa_rong_tren_duong_kg_query_that(workspace_dir, khong_gian, policy
     của `kg_query` không rút ra được từ khóa nào, nên `kg_query:571-581` trả
     `fail_response` **trước khi chạm kho nào**, và đó đúng là ca của nhánh này.
 
-    `llm.so_lan == 1` là vế thứ hai: một lượt từ chối vì thiếu từ khóa không được
-    tốn lời gọi sinh câu trả lời.
+    Vế thứ hai là **số lời gọi**: một lượt từ chối vì thiếu từ khóa không được
+    tốn lời gọi sinh câu trả lời. Từ story 4.7 con số ấy là `1 +
+    SO_LAN_HOI_LAI_TU_KHOA_HONG` chứ không còn là 1 - `ngu_canh_hoi_dap` hỏi
+    lại đúng một lần khi chuỗi bằng `CAU_HONG_UPSTREAM`, và ở đây LLM giả trả
+    cùng một chuỗi hỏng cho **cả hai** lần, nên lượt vẫn về `tu_khoa_rong`. Ca
+    ngay dưới đo nửa còn lại (lần hai có ngữ cảnh thật).
     """
     from tests.ngu_canh import vai
 
@@ -681,7 +689,143 @@ def test_tu_khoa_rong_tren_duong_kg_query_that(workspace_dir, khong_gian, policy
 
     ket_qua = asyncio.run(chay())
     assert ket_qua.ly_do_tu_choi == LY_DO_TU_KHOA_RONG
-    assert llm.so_lan == 1, f"nhánh từ khóa rỗng vẫn gọi LLM lần hai: {llm.prompts}"
+    assert llm.so_lan == 1 + SO_LAN_HOI_LAI_TU_KHOA_HONG, (
+        f"nhánh từ khóa rỗng vẫn gọi LLM sinh câu trả lời: {llm.prompts}"
+    )
+    # Và không lời gọi nào là lời gọi sinh câu trả lời: cả hai là prompt trích
+    # từ khóa của vendor.
+    assert all(not p.startswith(DAU_PROMPT_TRA_LOI) for p in llm.prompts)
+
+
+def _llm_hong_lan_dau():
+    """`theo_prompt` trả câu hỏng ở **lần trích từ khóa đầu**, đúng ở lần sau.
+
+    Đây là hình dạng thật của lỗ đo được trên máy chủ 07/09: LLM trả đủ token
+    nhưng đuôi sai (`<|>COMPLETE|>`), `kg_query:571-581` không rút ra từ khóa
+    nào và trả `fail_response`; lần hỏi lại thì đuôi đúng. Bộ đếm nằm trong
+    closure chứ không trên `llm.so_lan`, vì lượt còn có lời gọi sinh câu trả lời
+    đi qua cùng một hàm.
+    """
+    from tests.gia_lap_llm import phan_hoi_hai_luot
+
+    that = phan_hoi_hai_luot()
+    so_lan_tu_khoa = 0
+
+    def _theo(prompt: str) -> str:
+        nonlocal so_lan_tu_khoa
+        if prompt.startswith(DAU_PROMPT_TRA_LOI):
+            return that(prompt)
+        so_lan_tu_khoa += 1
+        if so_lan_tu_khoa == 1:
+            return "không có bản ghi nào ở định dạng mà parser đọc được"
+        return that(prompt)
+
+    return _theo, lambda: so_lan_tu_khoa
+
+
+@pytest.mark.usefixtures("ma_hoa_offline")
+def test_hoi_lai_dung_mot_lan_khi_duoi_tu_khoa_hong_va_van_mot_hang_filter(
+    workspace_dir, khong_gian, policy
+):
+    """Hàng "Lượt từ khóa hỏng" của I/O Matrix 4.7, trên `kg_query` **thật**.
+
+    Bất biến ca này ghim, và chỉ nó: lần một `kg_query` trả `CAU_HONG_UPSTREAM`,
+    lần hai có ngữ cảnh, thì lượt là một lượt **trả lời bình thường** (không một
+    lượt từ chối - đó là toàn bộ lý do khoản sổ nợ tồn tại), phép hỏi lại chạy
+    **đúng một lần**, và lượt vẫn phát **đúng một hàng `filter` mỗi namespace**.
+
+    **Ca này không bắt được một phép đặt sai, và nói ra điều đó là một phần của
+    đặc tả.** Một lần thử hỏng thoát ở `operate.py:568-581`, tức trước
+    `_build_query_context`, nên nó không đọc `text_chunks`/`full_docs`,
+    `_so_loc` của lượt vẫn rỗng và `xa_loc` không phát hàng nào. Đặt phép hỏi
+    lại ở `hoi_dap` thay vì trong `ngu_canh_hoi_dap` vì thế cho **cùng một** kết
+    quả quan sát được, và ca này xanh ở cả hai chỗ đặt. Dựng một ca làm lần thử
+    đầu hỏng *sau* khi đã đọc kho thì phải sửa `vendor/` (luật cấm) hay chèn một
+    `fail_response` giả sau `_build_query_context` (tức đo một đường không tồn
+    tại), nên hôm nay chỗ đặt **không có phép canh đỏ**. Lý do chọn nó là một
+    vòng đời sổ lọc cho một lượt cộng một phép phòng cho ngày upstream dời
+    `fail_response` xuống sau `_build_query_context`; xem comment ở
+    `adapters/engine.py::ngu_canh_hoi_dap`.
+    """
+    from core.audit import EVENT_FILTER
+    from tests.ngu_canh import vai
+
+    engine, llm = _engine_m1(workspace_dir, khong_gian, policy)
+    llm.theo_prompt, dem_tu_khoa = _llm_hong_lan_dau()
+    ngu_canh = replace(vai(policy, "devops", khong_gian), request_id="r-hoi-lai")
+    engine.so_audit.xoa()
+
+    async def chay():
+        with use_context(ngu_canh):
+            return await engine.hoi_dap(CAU_HOI)
+
+    ket_qua = asyncio.run(chay())
+    assert ket_qua.ly_do_tu_choi is None and ket_qua.cau_tra_loi
+    # Đúng một lần hỏi lại, không hai: hai lời gọi trích từ khóa, không ba.
+    assert dem_tu_khoa() == 1 + SO_LAN_HOI_LAI_TU_KHOA_HONG
+    # Một hàng `filter` **mỗi namespace**, không hai. Số đếm của hàng ấy là của
+    # **lần truy hồi đã đọc kho** (lần thứ hai), không một tổng của hai lần:
+    # lần thử hỏng thoát trước khi có gì để lọc.
+    hang = engine.so_audit.cac_su_kien(EVENT_FILTER)
+    theo_ns = [sk.chi_tiet[CT_NAMESPACE] for sk in hang]
+    assert len(theo_ns) == len(set(theo_ns)), [dict(sk.chi_tiet) for sk in hang]
+    assert all(sk.chi_tiet[CT_REQUEST_ID] == "r-hoi-lai" for sk in hang)
+    assert engine.text_chunks._so_loc == {} and engine.full_docs._so_loc == {}
+
+
+@pytest.mark.usefixtures("ma_hoa_offline")
+def test_hai_lan_deu_hong_ra_tu_khoa_rong_va_dung_mot_hang_refusal_qua_http(
+    monkeypatch, workspace_dir, khong_gian, policy
+):
+    """Ô "Error Handling" của cùng hàng: hỏi lại hỏng nữa thì hành vi cũ y nguyên.
+
+    Đo qua **HTTP với engine M1 thật** (không `EngineGia`), vì mệnh đề phải chấm
+    nằm ở hai tầng cùng lúc: engine hỏi lại một lần rồi vẫn cho `tu_khoa_rong`,
+    và `api/hoi_dap.py` ghi đúng **một** hàng `refusal` cho lượt ấy. Phép hỏi
+    lại không được sinh một hàng audit thứ hai, và không được thêm một lý do từ
+    chối thứ tư: hai cột mà Đo 2 (PRD 5.2) đếm giữ nguyên nghĩa cũ.
+    """
+    engine, llm = _engine_m1(workspace_dir, khong_gian, policy)
+    llm.theo_prompt = None
+    llm.phan_hoi = "không có bản ghi nào ở định dạng mà parser đọc được"
+    # Ngữ cảnh của lượt đến từ token, nên dòng `users` phải khai đúng space của
+    # engine M1 (fixture đổi space theo phiên; `_dong` chốt cứng `synth`).
+    dong = replace(_dong("dev01", role="devops", demo=True, admin=True), khong_gian=khong_gian)
+    audit = AuditGia()
+    monkeypatch.setenv(BIEN_KHOA_KY, KHOA_TEST)
+
+    async def _mo_kho():
+        return KhoGia({TEN_GO["dev01"]: dong})
+
+    async def _mo_audit():
+        return audit
+
+    async def _mo_engine(_audit):
+        return engine
+
+    monkeypatch.setattr(api_main, "mo_kho_tai_khoan", _mo_kho)
+    monkeypatch.setattr(api_main, "mo_audit", _mo_audit)
+    monkeypatch.setattr(api_main.hoi_dap, "mo_engine", _mo_engine)
+    with TestClient(api_main.app) as client:
+        dn = client.post("/auth/login", json={"tai_khoan": TEN_GO["dev01"], "mat_khau": MAT_KHAU})
+        assert dn.status_code == 200, dn.text
+        kq = client.post(
+            "/hoi-dap",
+            json={"cau_hoi": CAU_HOI},
+            headers={"Authorization": "Bearer " + dn.json()["token"]},
+        )
+
+    assert kq.status_code == 200, kq.text
+    than = kq.json()
+    assert than["refused"] is True and than["answer"] is None and than["citations"] == []
+    # Hai lời gọi trích từ khóa (một lần đầu, một lần hỏi lại), không lời gọi
+    # sinh câu trả lời nào.
+    assert llm.so_lan == 1 + SO_LAN_HOI_LAI_TU_KHOA_HONG, llm.prompts
+    hang = [sk for sk in audit.su_kien if sk.event == EVENT_REFUSAL]
+    assert len(hang) == 1, [dict(sk.chi_tiet) for sk in hang]
+    assert hang[0].chi_tiet[CT_LY_DO] == LY_DO_TU_KHOA_RONG
+    # Và vẫn đúng một hàng `query` cho lượt: hỏi lại không nhân đôi hàng nào.
+    assert len([sk for sk in audit.su_kien if sk.event == EVENT_QUERY]) == 1
 
 
 def test_aquery_tra_ve_khong_phai_chuoi_la_loi_he_thong(monkeypatch, workspace_dir):

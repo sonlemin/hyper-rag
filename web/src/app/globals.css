@@ -65,6 +65,38 @@ a {
   outline-offset: 2px;
 }
 
+/* Vòng focus trên **vùng nền đậm** (story 4.7).
+   Luật trên là `primary` trên mọi nền, và nó đúng trên nền sáng (6,80:1 trên
+   `surface-card`). Trên topbar thì không: nền là `primary-deep` và cặp ấy chỉ
+   **1,55:1**, dưới cả sàn 3:1 cho chỉ báo phi văn bản - tức vòng focus biến
+   mất trước tiên trên máy chiếu, đúng điều kiện mà buổi bảo vệ chạy. Ba nút
+   focus được ở vùng này từ 4.2 và 4.5 (`topbar__nut_thoat`, `nut_xem_nhu`,
+   `chip_xem_nhu__x`), nên luật đi theo **vùng** chứ không theo từng nút: một
+   nút thứ tư thêm vào topbar ngày mai được đỡ mà không ai phải nhớ.
+   `focus-on-dark` trên `primary-deep` là **10,52:1**. */
+.topbar :focus-visible {
+  outline-color: var(--mau-focus-on-dark);
+}
+
+/* Hai ngoại lệ **có tên** của luật ngay trên: hai đảo nền **sáng** nằm bên
+   trong `.topbar` theo cây DOM.
+   - Tấm nổi của "xem như" neo dưới nút bằng `position: relative`, nhưng nó nằm
+     trên nền `surface-card`: một vòng trắng ở đó là vòng focus trắng trên nền
+     trắng, đúng lỗ vừa vá, lật ngược. Về `primary` là 6,80:1.
+   - Chip "Đang xem như" có nền `level-l1-bg`, và nút ✕ trong nó focus được từ
+     story 4.5. `outline-offset: 2px` vẽ vòng **ra ngoài** nút, tức lên nền chip:
+     trắng trên `#FFF4D6` là **1,10:1**, `primary` là **6,21:1**.
+
+   Cả hai selector cố ý mở đầu bằng `.topbar` để **độ đặc hiệu** cao hơn luật
+   trên (0,3,0 so với 0,2,0), chứ không chỉ đứng sau nó trong file: thắng nhờ
+   thứ tự khai là một phép sửa mà một lần sắp xếp lại file làm mất, và mọi test
+   hiện tại vẫn xanh trong khi vòng trắng trên nền trắng đã quay lại.
+   `tests/test_web_khung.py` nhóm (14) đọc chính độ đặc hiệu ấy. */
+.topbar [data-tam-xem-nhu] :focus-visible,
+.topbar .chip_xem_nhu :focus-visible {
+  outline-color: var(--mau-primary);
+}
+
 /* ===== Khung app ===== */
 
 .khung {
