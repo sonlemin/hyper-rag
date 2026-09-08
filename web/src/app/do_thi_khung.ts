@@ -12,7 +12,8 @@
 // Hai, `HE-nn` đã là ngôn ngữ chung của cite-row nên hover chỉ là một phép so
 // chuỗi, không một bảng tra thứ hai. Ba, id trả về mà không có citation tương
 // ứng (không xảy ra theo hợp đồng, nhưng một hàm thuần phải quyết) bị **bỏ**,
-// và số bị bỏ đi ra ở `bi_bo` để test khẳng định nó bằng 0.
+// và số bị bỏ đi ra ở `bi_bo`, thứ `VungDoThi` phơi thành `data-so-bo` để
+// hai ca e2e khẳng định nó bằng 0 ở lượt thường và bằng 1 ở lượt dựng sẵn.
 //
 // Node che **không gộp** giữa hai vòng, đúng ADR-018 quyết định 2: gộp là kể
 // rằng hai fact chung một thực thể bị che, và tên thứ đó đã che thì cái chung

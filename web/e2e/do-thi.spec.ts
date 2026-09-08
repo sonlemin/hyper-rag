@@ -130,10 +130,52 @@ test("mở bằng nút: gọi /do-thi đúng một lần với đúng hai id ấ
   await expect(legend.nth(1)).toContainText("runbook/app01.md");
   // Entity dùng chung không bị nhân đôi: `App01` là một node cho cả hai vòng.
   await expect(page.locator("[data-vung-do-thi]")).toHaveAttribute("data-so-dinh", "3");
+  // Không vòng nào bị bỏ: mọi node hyperedge trả về đều nhận được một mã.
+  await expect(page.locator("[data-vung-do-thi]")).toHaveAttribute("data-so-bo", "0");
   // Và id hyperedge thật không có một byte nào trong DOM.
   const html = await page.locator("[data-drawer-do-thi]").innerHTML();
   expect(html).not.toContain(ID_1);
   expect(html).not.toContain("he-");
+});
+
+test("vòng không có citation nào nhận: bị bỏ, và `data-so-bo` đếm nó ra", async ({
+  page,
+}) => {
+  // Hợp đồng của hai tuyến là `/do-thi` chỉ nhận đúng danh sách id mà
+  // `citations` của lượt vừa mang về, nên ca này **không xảy ra** khi hai bên
+  // còn khớp. Nó tồn tại vì `dung_khung` phải quyết một việc cho id lạ, và nó
+  // chọn **bỏ**: một vòng không có mã `HE-nn` thì cite-row không trỏ tới được,
+  // legend không gọi tên được, và hover không bao giờ chạm tới nó. Phép bỏ ấy
+  // phải đếm được, nếu không một lần hai tuyến trôi khỏi nhau chỉ hiện ra
+  // thành một vòng vắng mặt mà không ai biết là đã vắng.
+  const ID_LA = "he-999888777666555444333222";
+  await mock_hoi_dap(page, envelope_hai_nguon());
+  await mock_do_thi(
+    page,
+    envelope_do_thi(
+      [
+        node_vong(ID_1),
+        node_vong(ID_2),
+        node_vong(ID_LA),
+        node_dinh("ent-app01", "App01"),
+      ],
+      [
+        canh_do_thi(ID_1, "ent-app01", "subject"),
+        canh_do_thi(ID_2, "ent-app01", "subject"),
+        canh_do_thi(ID_LA, "ent-app01", "subject"),
+      ],
+    ),
+  );
+  await mo_drawer(page);
+  await cho_ve_xong(page);
+
+  const vung = page.locator("[data-vung-do-thi]");
+  await expect(vung).toHaveAttribute("data-so-bo", "1");
+  await expect(vung).toHaveAttribute("data-so-vong", "2");
+  await expect(page.locator("[data-legend-vong]")).toHaveCount(2);
+  // Và id lạ cũng không rò ra DOM như hai id kia.
+  const html = await page.locator("[data-drawer-do-thi]").innerHTML();
+  expect(html).not.toContain(ID_LA);
 });
 
 test("mở bằng số [n]: drawer mở và vòng HE-02 sáng, giữ sáng sau khi rời chuột", async ({

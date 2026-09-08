@@ -319,6 +319,13 @@ export function VungDoThi({
       data-so-vong={khung.vong.length}
       data-so-dinh={khung.dinh.length}
       data-so-dinh-che={khung.dinh.filter((d) => d.che).length}
+      /* Số node hyperedge mà server trả về nhưng không citation nào của
+         lượt nhận, tức không có mã `HE-nn` để đặt. Theo hợp đồng nó luôn
+         bằng 0 (`/do-thi` chỉ nhận đúng danh sách id của `citations`), và
+         `dung_khung` **bỏ** những node ấy. Phơi ra đây để phép bỏ im lặng
+         thành một con số ca e2e đọc được: một `bi_bo` khác 0 là hợp đồng
+         giữa hai tuyến đã trôi, không phải một vòng vẽ thiếu vô hại. */
+      data-so-bo={khung.bi_bo}
       /* Tên thuộc tính cố ý không chứa chuỗi `he-`: ca e2e "mở bằng nút"
          khẳng định DOM của drawer không mang một byte nào của id hyperedge
          thật bằng cách quét đúng chuỗi ấy, và một tên `data-he-so-chu` làm

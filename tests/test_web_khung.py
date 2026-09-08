@@ -2032,13 +2032,22 @@ def test_khung_do_thi_doi_moi_id_sang_ma_hien_thi():
     mã vòng đi qua `ma_hien_thi` (cùng mã với cite-row, nên hover là một phép so
     chuỗi chứ không một bảng tra thứ hai); node che giữ dạng `HE-nn#slot` dựng
     bằng chính `DAU_NOI_NODE_CHE` (không gộp giữa hai vòng, ADR-018 quyết định
-    2); và số node bị bỏ đi ra ở `bi_bo` thay vì biến mất lặng lẽ.
+    2); và số node bị bỏ đi ra ở `bi_bo`, **được phơi lên DOM** thay vì biến
+    mất lặng lẽ.
+
+    Khẳng định cuối đi qua hai file chứ không một: một `bi_bo` tính ra rồi
+    không ai đọc là một biến write-only, và một phép grep định danh trong đúng
+    file khai nó thì xanh cả khi không nơi nào dùng. Ghim thêm rằng
+    `VungDoThi.tsx` phơi nó thành `data-so-bo` mới nối được sang hai ca e2e
+    (`data-so-bo` bằng 0 ở lượt thường, bằng 1 ở lượt dựng sẵn một vòng lạ).
     """
     sach = _bo_chu_thich(KHUNG_DO_THI_TS.read_text(encoding="utf-8"))
     assert "ma_hien_thi(i)" in sach, sach
     assert "DAU_NOI_NODE_CHE" in sach, sach
     assert "TIEN_TO_MA_DINH" in sach, sach
     assert re.search(r"\bbi_bo\b", sach), sach
+    vung = _bo_chu_thich(VUNG_DO_THI_TSX.read_text(encoding="utf-8"))
+    assert "data-so-bo={khung.bi_bo}" in vung, vung
     # Nhãn của đỉnh bị che là "•••", **không** phải dấu che của server: một
     # `[cause:masked]` trên canvas là chữ của ngữ cảnh LLM lọt ra màn hình.
     assert "NHAN_DINH_CHE" in sach and '"•••"' in sach, sach
