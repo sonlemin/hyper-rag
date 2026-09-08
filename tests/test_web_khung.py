@@ -307,13 +307,16 @@ def _file_giao_dien() -> list[Path]:
     return sorted(p for p in SRC.rglob("*") if p.suffix in {".css", ".tsx", ".ts"})
 
 
-# Ba dạng khai cỡ chữ bị quét: `font-size: 12px` (CSS), `fontSize: "12px"` hay
-# `fontSize: 12` không đơn vị (style inline, React hiểu là px), và shorthand
-# `font: 700 12px/1.4 ...` (CSS).
+# Bốn dạng khai cỡ chữ bị quét: `font-size: 12px` (CSS), `fontSize: "12px"` hay
+# `fontSize: 12` không đơn vị (style inline, React hiểu là px), shorthand
+# `font: 700 12px/1.4 ...` (CSS), và `"font-size": 12` của một stylesheet
+# Cytoscape (story 4.6) - dạng thứ tư vì ba dạng đầu đòi hậu tố `px` hay chính
+# tả `fontSize`, nên một `"font-size": 9` trong `VungDoThi.tsx` đi lọt cả ba.
 MAU_CO_CHU = (
     re.compile(r"font-?[sS]ize\s*[:=]\s*['\"]?\s*([\d.]+)px"),
     re.compile(r"fontSize\s*:\s*['\"]?\s*(\d+(?:\.\d+)?)\b(?!\s*px)"),
     re.compile(r"\bfont\s*:\s*[^;]*?([\d.]+)px"),
+    re.compile(r"['\"]font-size['\"]\s*:\s*(\d+(?:\.\d+)?)\b"),
 )
 
 
@@ -328,12 +331,19 @@ def test_khong_font_size_duoi_13px_trong_web_src():
     assert not vi_pham, vi_pham
 
 
-def test_bo_do_co_chu_bat_ca_ba_dang():
-    """Chấm chính bộ dò: ba dạng viết đều bị bắt, và giá trị hợp lệ không bị."""
-    mau_thu = ["font-size: 12px", "fontSize: 12", 'fontSize: "12.5px"', "font: 700 12px/1.4 Arial"]
+def test_bo_do_co_chu_bat_ca_bon_dang():
+    """Chấm chính bộ dò: bốn dạng viết đều bị bắt, và giá trị hợp lệ không bị."""
+    mau_thu = [
+        "font-size: 12px",
+        "fontSize: 12",
+        'fontSize: "12.5px"',
+        "font: 700 12px/1.4 Arial",
+        '"font-size": 9,',
+    ]
     for dong in mau_thu:
         assert any(float(px) < SAN_PX for m in MAU_CO_CHU for px in m.findall(dong)), dong
     assert not any(float(px) < SAN_PX for m in MAU_CO_CHU for px in m.findall("fontSize: 13.5"))
+    assert not any(float(px) < SAN_PX for m in MAU_CO_CHU for px in m.findall('"font-size": 15,'))
 
 
 # --- (4) và (5) microcopy --------------------------------------------------
@@ -1859,6 +1869,82 @@ def test_bo_do_ngau_nhien_bat_dung_cho():
     ):
         assert MAU_NGAU_NHIEN.search(dong), dong
     assert not MAU_NGAU_NHIEN.search("const goc = -Math.PI / 2 + (2 * Math.PI * i) / n;")
+
+
+# Ba hằng cỡ chữ của canvas. Chúng là **px trên màn ở zoom 1**, và
+# `VungDoThi.tsx` nhân ngược theo `1/zoom` sau mỗi lần `fit` để px thật giữ
+# nguyên - `font-size` của Cytoscape là đơn vị không gian đồ thị, nên một đồ
+# thị nhiều vòng co chữ xuống dưới sàn nếu không bù.
+HANG_CO_CHU_CANVAS = ("CO_CHU_VONG", "CO_CHU_DINH", "CO_CHU_VAI")
+
+
+def test_co_chu_canvas_khai_bang_hang_va_deu_tu_13px():
+    """Ba hằng cỡ chữ của canvas >= sàn 13px, đọc **giá trị** ra khỏi nguồn.
+
+    Phép quét của nhóm (3) đòi hậu tố `px` hay chính tả `fontSize`, nên
+    `const CO_CHU_VAI = 13;` cộng `"font-size": CO_CHU_VAI` đi lọt cả bốn mẫu:
+    đặt `CO_CHU_VAI = 9` thì `uv run pytest` vẫn xanh trong khi nhãn vai slot
+    trên máy chiếu tụt xuống 9px. Sàn 13px là một `Always` của spec và áp cho
+    **cả** nhãn trong canvas (EXPERIENCE.md Accessibility Floor), nên nó phải
+    có một phép kiểm đọc đúng ba con số ấy.
+    """
+    tho = VUNG_DO_THI_TSX.read_text(encoding="utf-8")
+    for ten in HANG_CO_CHU_CANVAS:
+        m = re.search(rf"export const {ten} = ([\d.]+);", tho)
+        assert m, f"VungDoThi.tsx phải export hằng {ten}"
+        assert float(m.group(1)) >= SAN_PX, f"{ten} = {m.group(1)}px < {SAN_PX}px"
+    # Và cỡ chữ được **bù theo zoom**, nếu không ba hằng trên chỉ đúng ở zoom 1.
+    sach = _bo_chu_thich(tho)
+    assert "bu_co_chu(" in sach and ".zoom()" in sach, sach
+    assert "data-co-chu-man-hinh" in sach, "cỡ chữ trên màn phải đo được từ DOM"
+
+
+def test_vung_do_thi_giu_khung_nhin_khi_drawer_doi_do_rong():
+    """Kéo grip đổi độ rộng drawer thì canvas phải `resize()` rồi `fit()`.
+
+    Cytoscape **chỉ** tự nghe resize của `window`; drawer đổi độ rộng bằng một
+    style inline nên không sự kiện nào của `window` phát ra. Không có quan sát
+    này thì sau một cú kéo canvas giữ kích thước cũ và đồ thị lệch hay bị cắt,
+    trong khi hai ca e2e đo `boundingBox` của **drawer** vẫn xanh.
+    """
+    sach = _bo_chu_thich(VUNG_DO_THI_TSX.read_text(encoding="utf-8"))
+    assert "ResizeObserver(" in sach, sach
+    assert ".resize()" in sach and ".fit(" in sach, sach
+    assert ".disconnect()" in sach, "quan sát phải gỡ khi tháo component"
+
+
+def test_tang_ve_hong_ra_mot_ma_rieng_chu_khong_mot_canvas_trang():
+    """Chunk Cytoscape hỏng hay constructor dội ra **hộp đỏ**, không im lặng.
+
+    `void import(...).then(...)` không có `.catch` là một unhandled rejection
+    cộng một drawer đứng ở `data-da-ve="0"`: không hộp đỏ, không empty-state,
+    và không ai đọc được nó đang trống hay đang hỏng - đúng chỗ NFR-10 đòi
+    phân biệt. Mã riêng chứ không dùng lại `DO_THI_LA`: một cái nói "máy chủ
+    trả sai lược đồ", cái kia nói "thân đúng mà trình duyệt không vẽ được".
+    """
+    ts = DO_THI_TS.read_text(encoding="utf-8")
+    ma_la = _hang_chuoi_o(ts, "MA_DO_THI_LA", "do_thi.ts")
+    ma_ve = _hang_chuoi_o(ts, "MA_DO_THI_VE_HONG", "do_thi.ts")
+    assert ma_la != ma_ve, (ma_la, ma_ve)
+    sach = _bo_chu_thich(VUNG_DO_THI_TSX.read_text(encoding="utf-8"))
+    assert ".catch(" in sach and "bao_hong(MA_DO_THI_VE_HONG)" in sach, sach
+    drawer = _bo_chu_thich(DRAWER_TSX.read_text(encoding="utf-8"))
+    assert "bao_hong" in drawer, drawer
+
+
+def test_drawer_xoa_do_thi_cu_ke_ca_khi_dang_dong():
+    """Đổi vai lúc drawer đóng rồi mở lại **không** vẽ lại đồ thị của vai trước.
+
+    Effect nạp khóa `[mo, id_luot, vai]` nên nó không chạy khi drawer đóng;
+    không có một effect xóa **không đọc `mo`** thì state còn nguyên đồ thị cũ,
+    và lần mở lại vẽ nó đúng một nhịp trước khi `dang_tai` kịp thay. Một nhịp
+    cũng là dữ liệu của một vai khác trên màn.
+    """
+    sach = _bo_chu_thich(DRAWER_TSX.read_text(encoding="utf-8"))
+    assert "[id_luot, vai]" in sach, sach
+    # Effect xóa phải đứng **trước** effect nạp: React chạy effect theo thứ tự
+    # khai, nên đảo hai cái là xóa đè lên `dang_tai` vừa đặt.
+    assert sach.index("[id_luot, vai]") < sach.index("[mo, id_luot, vai]"), sach
 
 
 def test_vung_do_thi_chi_khai_layout_preset():

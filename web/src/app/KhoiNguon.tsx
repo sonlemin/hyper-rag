@@ -45,8 +45,16 @@ function CiteRow({
 }) {
   const han_che = trich_dan.level === "L1";
   const ma = ma_hien_thi(so);
-  const { ma_hover, dat_ma_hover, chon_vong } = useHoverDoThi();
-  const dang_sang = noi_day && ma_hover === ma;
+  const { ma_hover, mo, cac_ma_ve, dat_ma_hover, chon_vong } = useHoverDoThi();
+  // **Hai cờ, không một.** `noi_day` (hàng thuộc lượt drawer đang vẽ) quyết ô
+  // số có phải một nút không, và nó **không** đọc trạng thái mở: I/O Matrix
+  // chốt "drawer đóng, bấm ô số của cite-row thứ 2 -> drawer mở và HE-02
+  // sáng", nên nút phải bấm được cả khi drawer đang đóng. `dang_sang` thì đòi
+  // thêm hai điều: drawer **đang mở** (EXPERIENCE.md: hover trích dẫn là "khi
+  // drawer đang mở"), và mã ấy **có mặt trong đồ thị đang vẽ** - sau một lần
+  // đổi vai một vòng có thể bị server lọc mất trong khi hàng nguồn vẫn còn đó,
+  // và khi ấy "→ đang sáng HE-02" trỏ vào hư không.
+  const dang_sang = noi_day && mo && ma_hover === ma && cac_ma_ve.includes(ma);
   return (
     <div
       className="cite_row"

@@ -126,14 +126,18 @@ export function bo_cuc(khung: Khung): BoCuc {
   });
 
   // Đỉnh dùng chung: trọng tâm các vòng nối vào nó, lệch dần theo phương vuông
-  // góc khi nhiều đỉnh cùng chung một nhóm vòng (nếu không chúng chồng lên
-  // nhau thành một chấm).
-  const dem_nhom = new Map<string, number>();
+  // góc khi nhiều đỉnh rơi vào **cùng một chỗ** (nếu không chúng chồng khít
+  // lên nhau thành một chấm).
+  //
+  // Bộ đếm lệch keyed theo **trọng tâm đã làm tròn**, không theo tập vòng. Với
+  // bốn vòng xếp đều trên một đường tròn, một đỉnh chung của vòng 1&3 và một
+  // đỉnh chung của vòng 2&4 là **hai nhóm khác nhau** nhưng có **cùng** trọng
+  // tâm là tâm hình: keyed theo tập vòng thì cả hai đều `k = 0` và hai node vẽ
+  // chồng khít. Keyed theo chỗ đứng thì phép lệch làm đúng việc nó sinh ra để
+  // làm - tách hai thứ ở cùng một chỗ.
+  const dem_cho = new Map<string, number>();
   for (const ma of chung) {
     const cac_vong = vong_cua_dinh.get(ma) ?? [];
-    const khoa = [...cac_vong].sort().join("|");
-    const k = dem_nhom.get(khoa) ?? 0;
-    dem_nhom.set(khoa, k + 1);
     let x = 0;
     let y = 0;
     for (const mv of cac_vong) {
@@ -142,6 +146,9 @@ export function bo_cuc(khung: Khung): BoCuc {
     }
     x /= cac_vong.length;
     y /= cac_vong.length;
+    const khoa = `${lam_tron(x)}|${lam_tron(y)}`;
+    const k = dem_cho.get(khoa) ?? 0;
+    dem_cho.set(khoa, k + 1);
     // Phương vuông góc với đoạn nối hai vòng đầu tiên của nhóm.
     const a = tam[cac_vong[0]];
     const b = tam[cac_vong[1]];

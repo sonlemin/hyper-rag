@@ -84,6 +84,23 @@ const ts = doc_tham_so(process.argv.slice(2));
 const NHAN_VAI = nhan_vai_cua_web();
 const ma_hien_thi = ma_hien_thi_cua_web();
 
+/** Nhãn tiếng Việt của một vai. Vai vắng trong `NHAN_VAI` là một câu **nói
+ *  được sai ở đâu**, không một `undefined` đi thẳng vào một `waitForFunction`
+ *  rồi treo 30 giây rồi dội một lỗi không liên quan. */
+function nhan(vai) {
+  const ra = NHAN_VAI[vai];
+  if (ra === undefined) {
+    throw new Error(`vai "${vai}" không có nhãn trong web/src/api/phien.ts`);
+  }
+  return ra;
+}
+
+/** Hai vai của nhịp 2 và nhịp 3 trên đường demo (EXPERIENCE.md). Chúng được
+ *  **đối chiếu với bảng chính sách đang chạy** trước khi dùng, nên một bảng
+ *  thiếu vai ra một câu nói rõ thay vì một menu không có mục để bấm. */
+const VAI_NHIP_2 = "tech_support";
+const VAI_NHIP_3 = "sale_ba";
+
 let so_fail = 0;
 let so_pass = 0;
 function ghi(ten, dat, chi_tiet = "") {
@@ -98,11 +115,19 @@ const page = await trinh_duyet.newPage({ viewport: { width: RONG, height: 900 } 
 // Thân bọc `try/finally`: Chromium phải đóng và tổng kết phải in ra **kể cả**
 // khi một phép kiểm dội (một selector không tìm thấy, một `waitForResponse`
 // quá hạn).
+let hong = null;
 try {
   await page.goto(`${ts.goc}/dang-nhap`);
   await page.fill("#o_tai_khoan", ts.tai_khoan);
   await page.fill("#o_mat_khau", mat_khau(ts.tai_khoan));
-  await page.click("button[type=submit]");
+  // Vai thật đọc từ chính `/auth/toi` của phiên vừa mở, không chép cứng
+  // `devops`: `--tai-khoan` nhận bất kỳ tài khoản nào trong seed, và in tên
+  // một vai khác vai đang chạy là một dòng log nói sai về phép đo.
+  const [phan_hoi_toi] = await Promise.all([
+    page.waitForResponse((r) => r.url().endsWith("/api/auth/toi") && r.status() === 200),
+    page.click("button[type=submit]"),
+  ]);
+  const vai_that = (await phan_hoi_toi.json()).vai;
   await page.waitForSelector("[data-chip-vai]");
   console.log(`\n# ${await page.textContent("[data-chip-vai]")}  @ ${ts.goc}\n`);
 
@@ -150,17 +175,25 @@ try {
   async function doi_vai(vai) {
     await page.click("[data-nut-xem-nhu]");
     await page.waitForSelector("[data-menu-vai]");
+    // Bảng chính sách hoán được lúc chạy, nên một vai của kịch bản demo có thể
+    // vắng trong bảng đang chạy. Nói ra thay vì để `click` treo 30 giây.
+    if ((await page.locator(`[data-muc-vai="${vai}"]`).count()) === 0) {
+      const co = await page
+        .locator("[data-muc-vai]")
+        .evaluateAll((cac) => cac.map((e) => e.getAttribute("data-muc-vai")));
+      throw new Error(`bảng chính sách đang chạy không có vai ${vai}; nó có ${co.join(", ")}`);
+    }
     await page.click(`[data-muc-vai="${vai}"]`);
     await page.waitForFunction(
       (v) => document.querySelector("[data-chip-vai]")?.textContent?.includes(v),
-      NHAN_VAI[vai],
+      nhan(vai),
       { timeout: 30000 },
     );
   }
 
   // --- (1) Một lượt thật, drawer mở bằng nút -----------------------------------
 
-  console.log(`--- nhịp 1: ${NHAN_VAI.devops} · ${ts.cau}`);
+  console.log(`--- nhịp 1: ${nhan(vai_that)} · ${ts.cau}`);
   const e1 = await hoi(ts.cau);
   const id_that = e1.citations.map((c) => c.id);
   console.log(`  ${e1.citations.length} citation, mức ${e1.citations.map((c) => c.level).join(",")}`);
@@ -222,8 +255,8 @@ try {
 
   // --- (4) Đổi vai: cùng id, server lọc lại ------------------------------------
 
-  console.log(`\n--- nhịp 2: đổi sang ${NHAN_VAI.tech_support}`);
-  const lan_2 = await quanh_do_thi(() => doi_vai("tech_support"));
+  console.log(`\n--- nhịp 2: đổi sang ${nhan(VAI_NHIP_2)}`);
+  const lan_2 = await quanh_do_thi(() => doi_vai(VAI_NHIP_2));
   ghi(
     "đổi vai gọi lại /do-thi với **đúng** danh sách id ấy",
     JSON.stringify(lan_2.gui.hyperedge_ids) === JSON.stringify(id_that),
@@ -241,10 +274,10 @@ try {
   );
   ghi(
     "chip drawer nói đúng vai đang xem",
-    (await page.textContent("[data-chip-vai-do-thi]"))?.includes(NHAN_VAI.tech_support) === true,
+    (await page.textContent("[data-chip-vai-do-thi]"))?.includes(nhan(VAI_NHIP_2)) === true,
   );
 
-  console.log(`\n--- nhịp 2b: ${NHAN_VAI.tech_support} hỏi lại câu ghim`);
+  console.log(`\n--- nhịp 2b: ${nhan(VAI_NHIP_2)} hỏi lại câu ghim`);
   const e2 = await hoi(ts.cau);
   if (e2.refused) {
     ghi(
@@ -263,8 +296,8 @@ try {
 
   // --- (5) Nhịp 3: vai bị chặn ra đúng empty-state -----------------------------
 
-  console.log(`\n--- nhịp 3: đổi sang ${NHAN_VAI.sale_ba} rồi hỏi lại`);
-  await doi_vai("sale_ba");
+  console.log(`\n--- nhịp 3: đổi sang ${nhan(VAI_NHIP_3)} rồi hỏi lại`);
+  await doi_vai(VAI_NHIP_3);
   const e3 = await hoi(ts.cau);
   ghi("nhịp 3 là lượt từ chối, không trích dẫn", e3.refused && e3.citations.length === 0, JSON.stringify(e3.meta));
   await page.waitForSelector("[data-do-thi-trong]");
@@ -273,8 +306,17 @@ try {
     (await page.locator("[data-do-thi-trong]").count()) === 1 &&
       (await page.locator("[data-vung-do-thi]").count()) === 0,
   );
+} catch (loi) {
+  // Một exception (selector không thấy, `waitForResponse` quá hạn) là một lần
+  // chạy **hỏng**, không một lần chạy 0 FAIL. Bản đầu để `process.exit` trong
+  // `finally` nên nó in tổng kết rồi thoát mã 0, ngược đúng lý do `try/finally`
+  // được thêm ở 4.5: đóng trình duyệt và in tổng kết, chứ không nuốt lỗi.
+  hong = loi;
+  console.log(`  FAIL  lần chạy dội: ${loi instanceof Error ? loi.message : String(loi)}`);
+  so_fail += 1;
 } finally {
   await trinh_duyet.close();
   console.log(`\n${so_pass} PASS · ${so_fail} FAIL`);
-  process.exit(so_fail === 0 ? 0 : 1);
+  if (hong !== null) console.error(hong);
+  process.exit(so_fail === 0 && hong === null ? 0 : 1);
 }

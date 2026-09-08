@@ -1230,6 +1230,13 @@ a {
   touch-action: none;
 }
 
+/* Grip focus được (`tabIndex={0}`) nên nó phải **thấy được** khi focus: vòng
+   `:focus-visible` toàn cục là `primary` trên nền `surface-app`, đủ tương phản
+   ở đây (khác vùng topbar nền đậm, khoản ledger của 4.5). */
+.drawer_do_thi__grip:focus-visible {
+  outline-offset: -2px;
+}
+
 .drawer_do_thi__grip i {
   width: 4px;
   height: 4px;
@@ -1252,7 +1259,8 @@ a {
   border-bottom: 1px solid var(--mau-border);
 }
 
-.graph_head b {
+.graph_head__tieu_de {
+  margin: 0;
   font-size: var(--chu-heading-block-co);
   font-weight: var(--chu-heading-block-dam);
 }
@@ -1373,9 +1381,13 @@ button.cite_row__so {
   cursor: pointer;
 }
 
-/* Chú thích chữ của hover, tín hiệu **phi màu** đi cùng viền dày trên canvas. */
+/* Chú thích chữ của hover, tín hiệu **phi màu** đi cùng viền dày trên canvas.
+   Màu **trung tính** chứ không hổ phách: dải màu vòng cố ý tránh hổ phách để
+   không màu nào của đồ thị bị đọc thành một mức tiết lộ, và một chú thích
+   `level-l1-ink` nằm ngay trong một hàng cite-row mà hàng L1 đã hổ phách là
+   đúng chỗ hai nghĩa lẫn nhau. */
 .cite_row__dang_sang {
-  color: var(--mau-level-l1-ink);
+  color: var(--mau-ink);
   font-weight: 600;
   white-space: nowrap;
 }

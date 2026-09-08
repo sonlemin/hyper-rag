@@ -26,6 +26,27 @@ import { tach_slab } from "./dau_che";
  *  **đã che** - cùng bốn họ dấu che, cùng luật hiển thị. Hai bản chép của luật
  *  ấy là hai bản lệch nhau ở lần sửa đầu, và `ManChat` đã nhập `DrawerDoThi`
  *  nên một `export` ở đó là một vòng nhập giữa hai module React. */
+/** Chữ của một mảnh dấu che, đúng thứ `ThanCoSlab` render ra. */
+function chu_cua_slab(manh: { vai: string; nhom: string | null }): string {
+  return manh.nhom === null
+    ? dien("slab_che", { ten_slot: nhan_slot(manh.vai) })
+    : dien("slab_owner", { ten_slot: nhan_slot(manh.vai), nhom: manh.nhom });
+}
+
+/** Cùng một đoạn văn bản, nhưng **thành chuỗi thuần**: dấu che đã thay bằng
+ *  chữ của slab, mọi chuỗi khác nguyên văn.
+ *
+ *  Dùng cho `title` của legend drawer, chỗ CSS cắt cụt hàng bằng
+ *  `text-overflow: ellipsis`. Phải đi qua đúng phép thay của `ThanCoSlab`, chứ
+ *  không phải `label` thô: một `title="...[cause:masked]"` là dấu che của ngữ
+ *  cảnh LLM lọt lên màn qua một cửa sau, ngược đúng câu `Always` của spec 4.6
+ *  ("nhãn `[cause:masked]` mà server trả về **không** vào màn"). */
+export function van_ban_co_slab(van_ban: string, cac_nhom: string[]): string {
+  return tach_slab(van_ban, cac_nhom)
+    .map((manh) => (manh.loai === "chu" ? manh.van_ban : chu_cua_slab(manh)))
+    .join("");
+}
+
 export function ThanCoSlab({
   van_ban,
   cac_nhom,
@@ -41,9 +62,7 @@ export function ThanCoSlab({
           <span key={i}>{manh.van_ban}</span>
         ) : (
           <span key={i} className="slab" data-slab={manh.vai}>
-            {manh.nhom === null
-              ? dien("slab_che", { ten_slot: nhan_slot(manh.vai) })
-              : dien("slab_owner", { ten_slot: nhan_slot(manh.vai), nhom: manh.nhom })}
+            {chu_cua_slab(manh)}
           </span>
         ),
       )}

@@ -60,5 +60,5 @@
   "chu_thich_do_thi": "Đồ thị hiển thị theo quyền của vai đang xem",
   "chu_thich_dang_sang": "→ đang sáng {ma}",
   "nhan_grip": "Kéo để đổi độ rộng drawer",
-  "nhan_vung_do_thi": "Đồ thị hyperedge của lượt trả lời mới nhất"
+  "nhan_vung_do_thi": "Đồ thị hyperedge của lượt mới nhất, theo quyền của vai đang xem"
 }

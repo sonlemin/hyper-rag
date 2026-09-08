@@ -30,6 +30,16 @@ import { MUC_TRICH_DAN, type MucTietLo, type TrichDan } from "./hoi_dap";
  *  một lỗi hệ thống nấp sau một câu trung tính (NFR-10). */
 export const MA_DO_THI_LA = "DO_THI_LA";
 
+/** Mã của **client** cho một lần **vẽ** hỏng: chunk Cytoscape không tải được,
+ *  hay constructor dội vì dữ liệu hỏng.
+ *
+ *  Khác `DO_THI_LA` là thân sai hình, và khác cả hai là quan trọng khi đọc
+ *  `data-ma-loi`: một cái nói "máy chủ trả sai lược đồ", cái kia nói "thân
+ *  đúng mà trình duyệt không vẽ được". Không có mã này thì một lần vẽ hỏng là
+ *  một unhandled rejection cộng một canvas trắng, tức đúng chỗ NFR-10 đòi
+ *  phân biệt được lỗi hệ thống với "không có gì để vẽ". */
+export const MA_DO_THI_VE_HONG = "DO_THI_VE_HONG";
+
 /** Tuyến đồ thị theo quyền (`@cua_dong.post` của `api/main.py`), cần Bearer. */
 export const TUYEN_DO_THI = "/do-thi";
 

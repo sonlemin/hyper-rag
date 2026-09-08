@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -258,6 +259,10 @@ export function ManChat({ tieu_de }: { tieu_de: string }) {
   const [mo_do_thi, dat_mo_do_thi] = useState(false);
   const [ma_chon, dat_ma_chon] = useState<string | null>(null);
   const [ma_hover, dat_ma_hover] = useState<string | null>(null);
+  // Tập mã vòng drawer đang thật sự vẽ, do chính drawer báo lên. Cite-row đọc
+  // nó để không nói "đang sáng HE-nn" cho một vòng server đã lọc mất.
+  const [cac_ma_ve, dat_cac_ma_ve] = useState<readonly string[]>([]);
+  const nut_do_thi = useRef<HTMLButtonElement>(null);
   // Dãy vai của mọi lần đổi vai đã xảy ra (khung giữ). Mỗi phần tử **chưa
   // thấy** là một mốc được chèn, mang đúng tên vai của lần đổi ấy.
   const cac_lan_doi = useCacLanDoiVai();
@@ -340,6 +345,24 @@ export function ManChat({ tieu_de }: { tieu_de: string }) {
     dat_mo_do_thi(true);
     dat_ma_chon(ma);
   }
+
+  /** Đóng drawer và **trả focus về nút mở**. Cùng hợp đồng mà `HopThoai` (4.1)
+   *  và `MenuXemNhu` (4.5) đã đặt: bấm ✕ xóa chính phần tử đang giữ focus, nên
+   *  không trả về thì focus rơi xuống `<body>` và người dùng bàn phím mất chỗ
+   *  đứng. Ổn định (`useCallback`) vì nó là dependency của effect nghe Esc bên
+   *  trong drawer. */
+  const dong_do_thi = useCallback(() => {
+    dat_mo_do_thi(false);
+    nut_do_thi.current?.focus();
+  }, []);
+
+  /** Drawer báo lên tập mã vòng đang vẽ. Ổn định vì nó là dependency của một
+   *  effect bên trong drawer. */
+  const bao_cac_ma = useCallback((cac: string[]) => {
+    dat_cac_ma_ve((cu) =>
+      cu.length === cac.length && cu.every((m, i) => m === cac[i]) ? cu : cac,
+    );
+  }, []);
 
   /** Người dùng tự mở hay thu gọn khối nguồn của một lượt. Từ đây `mo_nguon`
    *  của lượt ấy không còn là `null`, nên nó thôi theo mặc định và giữ nguyên
@@ -448,6 +471,7 @@ export function ManChat({ tieu_de }: { tieu_de: string }) {
         <button
           type="button"
           className="nut_do_thi"
+          ref={nut_do_thi}
           data-nut-do-thi
           data-active={mo_do_thi ? "1" : undefined}
           aria-pressed={mo_do_thi}
@@ -466,7 +490,15 @@ export function ManChat({ tieu_de }: { tieu_de: string }) {
             cần nhất (hỏi, xem đồ thị, đổi vai, hỏi lại). */}
         <div className="man_chat__cot">
           <HoverDoThiProvider
-            value={{ ma_hover, ma_chon, id_luot_drawer, dat_ma_hover, chon_vong }}
+            value={{
+              ma_hover,
+              ma_chon,
+              id_luot_drawer,
+              mo: mo_do_thi,
+              cac_ma_ve,
+              dat_ma_hover,
+              chon_vong,
+            }}
           >
             <div
               className="man_chat__cuon"
@@ -532,10 +564,11 @@ export function ManChat({ tieu_de }: { tieu_de: string }) {
             rồi rê chuột đi" của I/O Matrix. */}
         <DrawerDoThi
           mo={mo_do_thi}
-          dong={() => dat_mo_do_thi(false)}
+          dong={dong_do_thi}
           luot={luot_drawer}
           vai={vai_phien}
           ma_sang={ma_hover ?? ma_chon}
+          bao_cac_ma={bao_cac_ma}
         />
       </div>
     </>

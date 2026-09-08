@@ -307,6 +307,25 @@ export function envelope_do_thi(nodes: unknown[], edges: unknown[]) {
   return envelope({ answer: null, refused: false, citations: [], graph: { nodes, edges } });
 }
 
+/** Đồ thị `n` vòng, mỗi vòng một đỉnh riêng: đủ lớn để `fit` co hình xuống
+ *  dưới zoom 1, tức đúng ca mà phép bù cỡ chữ của `VungDoThi` sinh ra để đỡ. */
+export function do_thi_nhieu_vong(n: number) {
+  const nodes: unknown[] = [];
+  const edges: unknown[] = [];
+  for (let i = 0; i < n; i += 1) {
+    const he = `he-${String(i).padStart(24, "0")}`;
+    nodes.push(node_vong(he, { label: `chủ thể: May chu ${i}` }));
+    nodes.push(node_dinh(`ent-${i}`, `May chu ${i}`));
+    edges.push(canh_do_thi(he, `ent-${i}`, "subject"));
+  }
+  return { nodes, edges };
+}
+
+/** `citations` khớp `do_thi_nhieu_vong(n)`: cùng id, cùng thứ tự. */
+export function trich_dan_nhieu(n: number) {
+  return Array.from({ length: n }, (_, i) => trich_dan(`he-${String(i).padStart(24, "0")}`));
+}
+
 /** Mock `POST /do-thi`. Trả về hàm đọc **danh sách thân đã gửi**, nên một ca
  *  vừa đếm được số lần gọi vừa khẳng định đúng danh sách id nào bay đi - thứ
  *  quan trọng nhất của story: đổi vai là gọi lại **đúng danh sách ấy** để

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Core, NodeSingular } from "cytoscape";
 
+import { MA_DO_THI_VE_HONG } from "@/api/do_thi";
 import { MICROCOPY } from "@/microcopy";
 import { nhan_slot } from "@/nhan";
 
@@ -22,16 +23,28 @@ import type { Khung } from "./do_thi_khung";
 // đặt node vào chỗ đã cho rồi fit khung nhìn. Không `cose`, không `random`,
 // không nguồn ngẫu nhiên nào; `tests/test_web_khung.py` nhóm (13) quét cả hai
 // vế của luật ấy.
+//
+// **Mọi ca hỏng của tầng vẽ đi ra một mã**, không một canvas trắng: chunk
+// Cytoscape không tải được, hay constructor dội vì dữ liệu hỏng, đều gọi
+// `bao_hong` để drawer dựng hộp đỏ. Một `void import(...).then(...)` không có
+// `.catch` là một unhandled rejection và một drawer đứng im - đúng thứ mà cả
+// `la_do_thi` lẫn NFR-10 tồn tại để chặn.
 
-/** Cỡ chữ trong canvas. Sàn 13px của Accessibility Floor áp cho **cả** nhãn
- *  đồ thị, nên không giá trị nào ở đây được xuống dưới. */
-const CO_CHU_VONG = 15;
-const CO_CHU_DINH = 13.5;
-const CO_CHU_VAI = 13;
+/** Cỡ chữ **gốc** trong canvas, tính bằng px trên màn ở zoom 1. Sàn 13px của
+ *  Accessibility Floor áp cho **cả** nhãn đồ thị, nên không giá trị nào ở đây
+ *  được xuống dưới - `tests/test_web_khung.py` nhóm (13) đọc ba hằng này ra
+ *  khỏi nguồn và chấm chúng, vì phép quét `font-size: <n>px` của nhóm (3)
+ *  không thấy một hằng TypeScript. */
+export const CO_CHU_VONG = 15;
+export const CO_CHU_DINH = 13.5;
+export const CO_CHU_VAI = 13;
 
 /** Đường kính node vòng và node đỉnh, đơn vị bố cục. */
 const CO_VONG = BAN_KINH_VONG * 2;
 const CO_DINH = 20;
+
+/** Đệm quanh đồ thị khi fit, đơn vị px màn hình. */
+const DEM_FIT = 40;
 
 /** Viền vòng thường và viền vòng đang sáng. Hover đổi **độ dày và quầng** chứ
  *  không đổi màu chữ: `graph-hover` trên nền trắng chỉ 2,30:1, dưới cả sàn 3:1
@@ -51,13 +64,30 @@ function mau_vong(chi_so: number): string {
   return bien(`--mau-graph-ring-${chi_so}`);
 }
 
+function lam_tron(v: number): number {
+  return Math.round(v * 100) / 100;
+}
+
 export type ViTriTooltip = { trai: number; tren: number };
 
-export function VungDoThi({ khung, ma_sang }: { khung: Khung; ma_sang: string | null }) {
+export function VungDoThi({
+  khung,
+  ma_sang,
+  bao_hong,
+}: {
+  khung: Khung;
+  ma_sang: string | null;
+  /** Tầng vẽ hỏng: drawer dựng hộp đỏ mang mã này. */
+  bao_hong: (ma: string) => void;
+}) {
   const o = useRef<HTMLDivElement>(null);
   const cy = useRef<Core | null>(null);
   const [da_ve, dat_da_ve] = useState(false);
   const [tooltip, dat_tooltip] = useState<ViTriTooltip | null>(null);
+  // Hệ số bù cỡ chữ và cỡ chữ **nhỏ nhất trên màn** sau khi bù. Đưa ra DOM để
+  // một ca e2e đo được sàn 13px trên một đồ thị lớn thay vì tin vào một phép
+  // tính không ai chấm.
+  const [do_chu, dat_do_chu] = useState({ he_so: 1, co_man_hinh: CO_CHU_VAI });
 
   // Dựng lại cả instance khi khung đổi: một lượt mới hay một lần đổi vai là một
   // đồ thị khác hẳn, và vá từng node vào một instance cũ là chỗ một node của
@@ -65,147 +95,213 @@ export function VungDoThi({ khung, ma_sang }: { khung: Khung; ma_sang: string | 
   useEffect(() => {
     let con_song = true;
     let hien_tai: Core | null = null;
+    let quan_sat: ResizeObserver | null = null;
     dat_da_ve(false);
     dat_tooltip(null);
     const vi_tri = bo_cuc(khung);
-    void import("cytoscape").then((mod) => {
-      const goc = o.current;
-      if (!con_song || goc === null) return;
-      hien_tai = mod.default({
-        container: goc,
-        elements: [
-          ...khung.vong.map((v) => ({
-            data: { id: v.ma, nhan: v.nhan_ngan === "" ? v.ma : `${v.ma}\n${v.nhan_ngan}`, mau: mau_vong(v.mau) },
-            position: { ...vi_tri[v.ma] },
-            classes: "vong",
-          })),
-          ...khung.dinh.map((d) => ({
-            data: { id: d.ma, nhan: d.nhan },
-            position: { ...vi_tri[d.ma] },
-            classes: d.che ? "dinh che" : "dinh",
-          })),
-          ...khung.canh.map((c) => ({
-            data: {
-              id: `${c.tu}>${c.den}:${c.slot}`,
-              source: c.tu,
-              target: c.den,
-              vai: nhan_slot(c.slot),
-              mau: mau_vong(khung.vong.find((v) => v.ma === c.tu)?.mau ?? 1),
-            },
-            classes: c.che ? "canh che" : "canh",
-          })),
-        ],
-        style: [
-          {
-            selector: "node.vong",
-            style: {
-              shape: "ellipse",
-              width: CO_VONG,
-              height: CO_VONG,
-              "background-opacity": 0,
-              "border-width": VIEN_VONG,
-              "border-color": "data(mau)",
-              label: "data(nhan)",
-              color: "data(mau)",
-              "font-size": CO_CHU_VONG,
-              "font-weight": 700,
-              "text-valign": "center",
-              "text-halign": "center",
-              "text-wrap": "wrap",
-              "text-max-width": `${CO_VONG - 16}px`,
-            },
-          },
-          {
-            selector: "node.vong.dang-sang",
-            style: {
-              "border-width": VIEN_VONG_SANG,
-              "border-color": bien("--mau-graph-hover"),
-              "overlay-color": bien("--mau-graph-hover-halo"),
-              "overlay-opacity": 0.3,
-              "overlay-padding": 12,
-            },
-          },
-          {
-            selector: "node.dinh",
-            style: {
-              shape: "ellipse",
-              width: CO_DINH,
-              height: CO_DINH,
-              "background-color": bien("--mau-graph-entity-fill"),
-              "border-width": 2,
-              "border-color": bien("--mau-graph-entity-border"),
-              label: "data(nhan)",
-              color: bien("--mau-ink"),
-              "font-size": CO_CHU_DINH,
-              "font-weight": 700,
-              "text-valign": "bottom",
-              "text-margin-y": 6,
-              "text-outline-color": "#FFFFFF",
-              "text-outline-width": 3,
-              "text-wrap": "wrap",
-              "text-max-width": "150px",
-            },
-          },
-          {
-            selector: "node.dinh.che",
-            style: {
-              opacity: 0.45,
-              "border-style": "dashed",
-            },
-          },
-          {
-            selector: "edge",
-            style: {
-              "curve-style": "straight",
-              width: 2,
-              "line-color": "data(mau)",
-              "target-arrow-color": "data(mau)",
-              "target-arrow-shape": "triangle",
-              "arrow-scale": 0.9,
-              label: "data(vai)",
-              color: bien("--mau-ink-muted"),
-              "font-size": CO_CHU_VAI,
-              "text-rotation": "autorotate",
-              "text-outline-color": "#FFFFFF",
-              "text-outline-width": 3,
-            },
-          },
-          {
-            selector: "edge.che",
-            style: {
-              "line-style": "dashed",
-              opacity: 0.5,
-            },
-          },
-        ],
-        layout: { name: "preset", fit: true, padding: 40 },
-        // Bốn phép tương tác của story 4.8 (zoom, pan, chọn node, kéo node) tắt
-        // hẳn ở đây: spec 4.6 xếp cả bốn vào story sau, và một canvas trượt đi
-        // dưới tay người trình bày giữa buổi demo là một hình không ai lấy lại
-        // được đúng như cũ.
-        userZoomingEnabled: false,
-        userPanningEnabled: false,
-        boxSelectionEnabled: false,
-        autoungrabify: true,
-        autounselectify: true,
+
+    /** Bù cỡ chữ theo zoom sau mỗi lần fit.
+     *
+     *  `font-size` của Cytoscape là **đơn vị không gian đồ thị**, không phải px
+     *  màn hình: `fit` co cả hình, nên một đồ thị nhiều vòng đẩy chữ xuống dưới
+     *  13px và phá thẳng câu `Always` của spec ("không chữ nào dưới 13px, kể cả
+     *  nhãn trong canvas"). Nhân ngược theo `1/zoom` giữ px trên màn đúng bằng
+     *  ba hằng gốc.
+     *
+     *  Chỉ nhân **cỡ chữ**, không nhân `text-max-width`: giữ nguyên bề ngang
+     *  cho phép của nhãn thì chữ to hơn chỉ xuống thêm dòng chứ không tràn
+     *  ngang khỏi vòng. Hệ quả đã nhận: trên một đồ thị rất lớn nhãn có thể
+     *  cao quá vòng - sàn 13px là một `Always` của spec, còn "chữ nằm gọn
+     *  trong vòng" là một ghi chú kiểu vẽ. */
+    function bu_co_chu(c: Core) {
+      const z = c.zoom();
+      if (!Number.isFinite(z) || z <= 0) return;
+      const he_so = z < 1 ? 1 / z : 1;
+      c.nodes(".vong").style("font-size", CO_CHU_VONG * he_so);
+      c.nodes(".dinh").style("font-size", CO_CHU_DINH * he_so);
+      c.edges().style("font-size", CO_CHU_VAI * he_so);
+      dat_do_chu({
+        he_so: lam_tron(he_so),
+        co_man_hinh: lam_tron(CO_CHU_VAI * he_so * z),
       });
-      hien_tai.on("mouseover", "node.che", (evt) => {
-        const n = evt.target as NodeSingular;
-        const p = n.renderedPosition();
-        dat_tooltip({ trai: p.x + 16, tren: p.y - 12 });
+    }
+
+    void import("cytoscape")
+      .then((mod) => {
+        const goc = o.current;
+        if (!con_song || goc === null) return;
+        hien_tai = mod.default({
+          container: goc,
+          elements: [
+            ...khung.vong.map((v) => ({
+              data: {
+                id: v.ma,
+                nhan: v.nhan_ngan === "" ? v.ma : `${v.ma}\n${v.nhan_ngan}`,
+                mau: mau_vong(v.mau),
+              },
+              position: { ...vi_tri[v.ma] },
+              classes: "vong",
+            })),
+            ...khung.dinh.map((d) => ({
+              data: { id: d.ma, nhan: d.nhan },
+              position: { ...vi_tri[d.ma] },
+              classes: d.che ? "dinh che" : "dinh",
+            })),
+            ...khung.canh.map((c) => ({
+              data: {
+                id: `${c.tu}>${c.den}:${c.slot}`,
+                source: c.tu,
+                target: c.den,
+                vai: nhan_slot(c.slot),
+                mau: mau_vong(khung.vong.find((v) => v.ma === c.tu)?.mau ?? 1),
+              },
+              classes: c.che ? "canh che" : "canh",
+            })),
+          ],
+          style: [
+            {
+              selector: "node.vong",
+              style: {
+                shape: "ellipse",
+                width: CO_VONG,
+                height: CO_VONG,
+                "background-opacity": 0,
+                "border-width": VIEN_VONG,
+                "border-color": "data(mau)",
+                label: "data(nhan)",
+                color: "data(mau)",
+                "font-size": CO_CHU_VONG,
+                "font-weight": 700,
+                "text-valign": "center",
+                "text-halign": "center",
+                "text-wrap": "wrap",
+                "text-max-width": `${CO_VONG - 16}px`,
+              },
+            },
+            {
+              selector: "node.vong.dang-sang",
+              style: {
+                "border-width": VIEN_VONG_SANG,
+                "border-color": bien("--mau-graph-hover"),
+                "overlay-color": bien("--mau-graph-hover-halo"),
+                "overlay-opacity": 0.3,
+                "overlay-padding": 12,
+              },
+            },
+            {
+              selector: "node.dinh",
+              style: {
+                shape: "ellipse",
+                width: CO_DINH,
+                height: CO_DINH,
+                "background-color": bien("--mau-graph-entity-fill"),
+                "border-width": 2,
+                "border-color": bien("--mau-graph-entity-border"),
+                label: "data(nhan)",
+                color: bien("--mau-ink"),
+                "font-size": CO_CHU_DINH,
+                "font-weight": 700,
+                "text-valign": "bottom",
+                "text-margin-y": 6,
+                "text-outline-color": "#FFFFFF",
+                "text-outline-width": 3,
+                "text-wrap": "wrap",
+                "text-max-width": "150px",
+              },
+            },
+            {
+              selector: "node.dinh.che",
+              style: {
+                opacity: 0.45,
+                "border-style": "dashed",
+              },
+            },
+            {
+              selector: "edge",
+              style: {
+                "curve-style": "straight",
+                width: 2,
+                "line-color": "data(mau)",
+                "target-arrow-color": "data(mau)",
+                "target-arrow-shape": "triangle",
+                "arrow-scale": 0.9,
+                label: "data(vai)",
+                color: bien("--mau-ink-muted"),
+                "font-size": CO_CHU_VAI,
+                "text-rotation": "autorotate",
+                "text-outline-color": "#FFFFFF",
+                "text-outline-width": 3,
+              },
+            },
+            {
+              selector: "edge.che",
+              style: {
+                "line-style": "dashed",
+                opacity: 0.5,
+              },
+            },
+          ],
+          layout: { name: "preset", fit: true, padding: DEM_FIT },
+          // Bốn phép tương tác của story 4.8 (zoom, pan, chọn node, kéo node) tắt
+          // hẳn ở đây: spec 4.6 xếp cả bốn vào story sau, và một canvas trượt đi
+          // dưới tay người trình bày giữa buổi demo là một hình không ai lấy lại
+          // được đúng như cũ.
+          userZoomingEnabled: false,
+          userPanningEnabled: false,
+          boxSelectionEnabled: false,
+          autoungrabify: true,
+          autounselectify: true,
+        });
+        hien_tai.on("mouseover", "node.che", (evt) => {
+          const n = evt.target as NodeSingular;
+          const p = n.renderedPosition();
+          dat_tooltip({ trai: p.x + 16, tren: p.y - 12 });
+        });
+        hien_tai.on("mouseout", "node.che", () => {
+          dat_tooltip(null);
+        });
+        // Tooltip đặt theo `renderedPosition`, tức theo khung nhìn hiện tại.
+        // Mọi lần khung nhìn đổi (fit lại sau một cú kéo grip, một lần đặt lại
+        // vị trí) làm nó lơ lửng tách khỏi chính đỉnh nó mô tả, và một chú
+        // thích "Cần quyền L2" trỏ nhầm đỉnh là một câu nói sai về quyền.
+        hien_tai.on("pan zoom resize position", () => {
+          dat_tooltip(null);
+        });
+        bu_co_chu(hien_tai);
+
+        // Drawer kéo giãn được, và Cytoscape **chỉ** tự nghe resize của
+        // `window`. Không có quan sát này thì sau một cú kéo grip canvas giữ
+        // kích thước cũ: đồ thị lệch khỏi khung hay bị cắt mất một phần, và
+        // hai ca e2e đo `boundingBox` của drawer vẫn xanh trong đúng trạng
+        // thái ấy.
+        quan_sat = new ResizeObserver(() => {
+          const c = cy.current;
+          if (c === null) return;
+          dat_tooltip(null);
+          c.resize();
+          c.fit(undefined, DEM_FIT);
+          bu_co_chu(c);
+        });
+        quan_sat.observe(goc);
+
+        cy.current = hien_tai;
+        dat_da_ve(true);
+      })
+      .catch(() => {
+        // Chunk Cytoscape không tải được, hay constructor dội vì dữ liệu hỏng.
+        // Cả hai là **lỗi hệ thống nhìn thấy được**, không một canvas trắng:
+        // một drawer đứng ở `data-da-ve="0"` không nói được nó đang trống hay
+        // đang hỏng, và đó đúng là chỗ NFR-10 đòi phân biệt.
+        if (con_song) bao_hong(MA_DO_THI_VE_HONG);
       });
-      hien_tai.on("mouseout", "node.che", () => {
-        dat_tooltip(null);
-      });
-      cy.current = hien_tai;
-      dat_da_ve(true);
-    });
+
     return () => {
       con_song = false;
       cy.current = null;
+      if (quan_sat !== null) quan_sat.disconnect();
       if (hien_tai !== null) hien_tai.destroy();
     };
-  }, [khung]);
+  }, [khung, bao_hong]);
 
   // Vòng đang sáng: một lớp CSS trên đúng một node, không dựng lại đồ thị.
   useEffect(() => {
@@ -223,6 +319,12 @@ export function VungDoThi({ khung, ma_sang }: { khung: Khung; ma_sang: string | 
       data-so-vong={khung.vong.length}
       data-so-dinh={khung.dinh.length}
       data-so-dinh-che={khung.dinh.filter((d) => d.che).length}
+      /* Tên thuộc tính cố ý không chứa chuỗi `he-`: ca e2e "mở bằng nút"
+         khẳng định DOM của drawer không mang một byte nào của id hyperedge
+         thật bằng cách quét đúng chuỗi ấy, và một tên `data-he-so-chu` làm
+         phép quét đó đỏ vì một lý do không liên quan. */
+      data-ty-le-chu={do_chu.he_so}
+      data-co-chu-man-hinh={do_chu.co_man_hinh}
     >
       <div
         className="vung_do_thi__canvas"

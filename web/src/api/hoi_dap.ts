@@ -6,7 +6,7 @@
 
 import { VAI_SLOT } from "@/nhan";
 
-import type { DoThiThan } from "./do_thi";
+import { la_do_thi, type DoThiThan } from "./do_thi";
 import { goi, LoiApi } from "./goi";
 
 /** Mã của **client** cho một thân 200 sai lược đồ envelope; không phải mã của
@@ -95,10 +95,15 @@ export type Envelope = {
   answer: string | null;
   refused: boolean;
   citations: TrichDan[];
-  /** Hình dạng thật khai ở `api/do_thi.ts` (story 4.6). `la_envelope` **không**
-   *  kiểm nội dung nó, và đó là đúng: `POST /hoi-dap` trả `graph_rong()` ở mọi
-   *  nhánh (`api/hoi_dap.py`), nên không màn nào đọc trường này. Drawer đồ thị
-   *  đi tuyến 3.7 và `lay_do_thi` kiểm hình ở đó. */
+  /** Hình dạng thật khai ở `api/do_thi.ts` (story 4.6), và `la_envelope` kiểm
+   *  nó bằng chính `la_do_thi`.
+   *
+   *  Hai đường đều đứng được, và đây là lý do chọn đường này: `POST /hoi-dap`
+   *  trả `graph_rong()` ở mọi nhánh (`api/hoi_dap.py`) nên phép kiểm không
+   *  tốn gì hôm nay, còn một kiểu khẳng định một hình dạng mà không ai kiểm là
+   *  một lời hứa cho story sau (4.8 đọc trường này) mà không gì giữ. Kiểu
+   *  đúng bằng phép kiểm, hoặc không khai kiểu; ở giữa là chỗ một `graph` lạ
+   *  đi thẳng vào Cytoscape. */
   graph: DoThiThan;
   meta: MetaLuot;
 };
@@ -173,6 +178,10 @@ export function la_trich_dan(muc: unknown): muc is TrichDan {
  *  - `citations` là mảng **và mọi mục có đúng hình citation** (story 4.4): mỗi
  *    mục nay thành một hàng mang badge mức, nên một mục sai hình là một hàng
  *    nói sai về quyền chứ không phải một ô trống;
+ *  - `graph` có đúng hình `DoThiThan` (story 4.6). Hôm nay `/hoi-dap` trả
+ *    `graph_rong()` ở mọi nhánh nên phép kiểm này không tốn gì, và nó là thứ
+ *    làm kiểu `Envelope.graph` thành một lời hứa **được giữ** thay vì một lời
+ *    hứa cho story sau;
  *  - `meta` có đủ ba khóa `KHOA_META` là chuỗi, và `role` không rỗng - dòng
  *    meta nói "trả lời theo quyền X", một `role` rỗng ra "theo quyền  · 2 trích
  *    dẫn". Đi qua chính hằng `KHOA_META` chứ không gõ tay từng tên: một hằng chỉ
@@ -187,6 +196,7 @@ export function la_envelope(than: unknown): than is Envelope {
   if (t.refused ? t.answer !== null : !chuoi_that(t.answer)) return false;
   if (!Array.isArray(t.citations)) return false;
   if (!t.citations.every(la_trich_dan)) return false;
+  if (!la_do_thi(t.graph)) return false;
   const meta = t.meta as Record<string, unknown> | null;
   if (typeof meta !== "object" || meta === null) return false;
   for (const khoa of KHOA_META) {

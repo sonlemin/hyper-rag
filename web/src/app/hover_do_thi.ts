@@ -21,6 +21,14 @@ export type NoiDungHoverDoThi = {
   /** Id lượt mà drawer đang vẽ. `null` nghĩa là chưa có lượt nào có envelope,
    *  và khi đó **không** cite-row nào được nối dây. */
   id_luot_drawer: number | null;
+  /** Drawer có đang mở không. EXPERIENCE.md chốt hover trích dẫn là "khi drawer
+   *  đang mở"; nói "→ đang sáng HE-01" trong khi không có vòng nào trên màn là
+   *  một chú thích trỏ vào hư không. */
+  mo: boolean;
+  /** Tập mã vòng **đang thật sự vẽ**. Sau một lần đổi vai, một vòng có thể bị
+   *  server lọc mất trong khi cite-row của lượt cũ vẫn còn trên màn; chú thích
+   *  hover chỉ được bật cho mã có trong tập này. */
+  cac_ma_ve: readonly string[];
   dat_ma_hover: (ma: string | null) => void;
   /** Bấm ô số: mở drawer **và** chọn vòng ấy. */
   chon_vong: (ma: string) => void;
@@ -30,6 +38,8 @@ const INERT: NoiDungHoverDoThi = {
   ma_hover: null,
   ma_chon: null,
   id_luot_drawer: null,
+  mo: false,
+  cac_ma_ve: [],
   dat_ma_hover: () => {},
   chon_vong: () => {},
 };
