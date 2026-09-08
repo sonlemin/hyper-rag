@@ -271,3 +271,67 @@ export async function mock_toi_dong(page: Page, doc: () => unknown) {
     }),
   );
 }
+
+
+// --- Đồ thị theo quyền (story 4.6) ------------------------------------------
+
+/** Một node hyperedge của `graph` (`adapters.do_thi.KHOA_NODE_HYPEREDGE`).
+ *
+ *  `label` là `core.facts.cau_fact` dựng từ giá trị **đã che và đã lọc**, tức
+ *  chữ của legend chứ không chữ trong vòng. */
+export function node_vong(id: string, sua: Record<string, unknown> = {}) {
+  return {
+    id,
+    kind: "hyperedge",
+    label: `chủ thể: App01; triệu chứng: lỗi 502`,
+    level: "L2",
+    scope: "noi_bo",
+    content_type: "runbook",
+    ...sua,
+  };
+}
+
+/** Một node entity (`adapters.do_thi.KHOA_NODE_ENTITY`). */
+export function node_dinh(id: string, nhan: string, sua: Record<string, unknown> = {}) {
+  return { id, kind: "entity", label: nhan, masked: false, ...sua };
+}
+
+/** Một cạnh hyperedge -> entity mang đúng một vai slot. */
+export function canh_do_thi(source: string, target: string, slot: string) {
+  return { source, target, slot };
+}
+
+/** Envelope của `POST /do-thi`: `answer: null`, `refused: false`,
+ *  `citations: []`, `graph` có nội dung (ADR-018). */
+export function envelope_do_thi(nodes: unknown[], edges: unknown[]) {
+  return envelope({ answer: null, refused: false, citations: [], graph: { nodes, edges } });
+}
+
+/** Mock `POST /do-thi`. Trả về hàm đọc **danh sách thân đã gửi**, nên một ca
+ *  vừa đếm được số lần gọi vừa khẳng định đúng danh sách id nào bay đi - thứ
+ *  quan trọng nhất của story: đổi vai là gọi lại **đúng danh sách ấy** để
+ *  server lọc lại, không lọc lại phía client.
+ *
+ *  `than` là một hàm để ca "đổi vai" trả hai đồ thị khác nhau cho hai lần gọi
+ *  liên tiếp; một thân đóng băng làm ca ấy xanh trong khi màn hình không đổi. */
+export async function mock_do_thi(
+  page: Page,
+  than: unknown,
+  status = 200,
+): Promise<() => string[][]> {
+  const da_gui: string[][] = [];
+  await page.route("**/api/do-thi", async (route) => {
+    const gui = JSON.parse(route.request().postData() ?? "{}") as { hyperedge_ids?: string[] };
+    da_gui.push(gui.hyperedge_ids ?? []);
+    const noi_dung =
+      typeof than === "function"
+        ? (than as (lan: number) => unknown)(da_gui.length)
+        : than;
+    await route.fulfill({
+      status,
+      contentType: "application/json",
+      body: typeof noi_dung === "string" ? noi_dung : JSON.stringify(noi_dung),
+    });
+  });
+  return () => da_gui;
+}

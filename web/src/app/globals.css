@@ -1150,3 +1150,232 @@ a {
 .khung[data-dang-doc-lai] .chip_vai_that {
   opacity: 0.55;
 }
+
+/* ===== Drawer đồ thị (story 4.6) ===== */
+
+/* Header chat là một hàng: tiêu đề trái, nút "Đồ thị" phải. `h1` bỏ margin đáy
+   ở đây vì hàng này mang nó. */
+.man_chat__dau {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 12px;
+}
+
+.man_chat__dau .tieu_de_trang {
+  margin: 0;
+}
+
+.nut_do_thi {
+  margin-left: auto;
+  background: var(--mau-surface-card);
+  color: var(--mau-ink-muted);
+  border: 1px solid var(--mau-border-strong);
+  border-radius: var(--bo-md);
+  font-size: var(--chu-nav-item-co);
+  padding: 6px 14px;
+  cursor: pointer;
+}
+
+/* Trạng thái mở khác bằng **nền và viền**, không chỉ bằng chữ: nút này là chỗ
+   duy nhất nói drawer đang mở khi drawer đã trượt khuất sau một cú kéo hẹp. */
+.nut_do_thi[data-active] {
+  background: var(--mau-primary-tint);
+  border-color: var(--mau-primary-border);
+  color: var(--mau-primary);
+  font-weight: 600;
+}
+
+/* Vùng hội thoại: một hàng gồm cột chat và drawer. Drawer là **anh em flex**
+   chứ không một tấm phủ lên trên - một drawer `position: absolute` che mất
+   composer, tức mở đồ thị ra là không hỏi được câu tiếp. Nó cũng **không** bọc
+   header chat, nên nút "Đồ thị" không bao giờ bị drawer che. */
+.man_chat__vung {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.man_chat__cot {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Drawer trượt từ phải (DESIGN.md: nền surface-card, viền trái border-strong,
+   bóng trượt). Độ rộng là style inline do `DrawerDoThi` giữ, mặc định đọc từ
+   `spacing.drawer-width`. */
+.drawer_do_thi {
+  flex-shrink: 0;
+  min-width: 0;
+  display: flex;
+  background: var(--mau-surface-card);
+  border-left: 1px solid var(--mau-border-strong);
+  border-radius: 0 var(--bo-lg) 0 0;
+  box-shadow: -12px 0 28px rgba(27, 39, 51, 0.18);
+}
+
+.drawer_do_thi__grip {
+  width: 12px;
+  flex-shrink: 0;
+  background: var(--mau-surface-app);
+  border-right: 1px solid var(--mau-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.drawer_do_thi__grip i {
+  width: 4px;
+  height: 4px;
+  border-radius: var(--bo-full);
+  background: var(--mau-ink-faint);
+}
+
+.drawer_do_thi__than {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.graph_head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--mau-border);
+}
+
+.graph_head b {
+  font-size: var(--chu-heading-block-co);
+  font-weight: var(--chu-heading-block-dam);
+}
+
+/* Chip "vai đang xem". Không bao giờ mang Lx (DESIGN.md Do's and Don'ts). */
+.graph_head__chip {
+  font-size: var(--chu-meta-chip-co);
+  font-weight: var(--chu-meta-chip-dam);
+  color: var(--mau-ink-muted);
+  background: var(--mau-surface-nav);
+  border: 1px solid var(--mau-border);
+  border-radius: var(--bo-sm);
+  padding: 2px 8px;
+}
+
+.graph_head__dong {
+  margin-left: auto;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  background: var(--mau-surface-card);
+  color: var(--mau-ink);
+  border: 1px solid var(--mau-border-strong);
+  border-radius: var(--bo-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.drawer_do_thi__trong,
+.drawer_do_thi__loi,
+.drawer_do_thi__than > [data-dang-tai] {
+  margin: 0;
+  padding: 16px;
+  color: var(--mau-ink-muted);
+  font-size: var(--chu-nav-item-co);
+}
+
+.vung_do_thi {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.vung_do_thi__canvas {
+  position: absolute;
+  inset: 0;
+}
+
+/* Tooltip của đỉnh mờ. Canvas không mang được `title`, nên nó là một phần tử
+   DOM đặt theo `renderedPosition` của node. Chỉ báo mức, không mời bấm. */
+.tooltip_node {
+  position: absolute;
+  pointer-events: none;
+  background: var(--mau-surface-card);
+  border: 1px solid var(--mau-border-strong);
+  border-radius: var(--bo-md);
+  color: var(--mau-ink-muted);
+  font-size: var(--chu-caption-min-co);
+  padding: 5px 10px;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(27, 39, 51, 0.1);
+}
+
+/* Legend đáy drawer: ô màu, mã `HE-nn`, rồi `label` đầy đủ của vòng. Đây là
+   chỗ duy nhất đọc được nội dung một vòng bằng chữ - `cau_fact` quá dài để
+   viết trong vòng tròn, và canvas thì không cho ai đọc chữ bên trong nó. */
+.legend {
+  border-top: 1px solid var(--mau-border);
+  padding: 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--chu-caption-min-co);
+  color: var(--mau-ink-muted);
+  max-height: 38%;
+  overflow-y: auto;
+}
+
+.legend__vong {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.legend__o {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--bo-full);
+  border: 3px solid var(--mau-graph-ring-1);
+  align-self: center;
+}
+
+.legend__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legend__chu_thich {
+  /* `ink-muted` chứ không `ink-faint` như mockup vẽ: 3,06:1 trên nền trắng,
+     dưới sàn 4,5:1 của Accessibility Floor. Cùng phép sửa mà 4.1 áp cho badge
+     L1, 4.4 cho chữ hàng L1 và 4.5 cho nhãn tiêu đề dropdown - spine thắng khi
+     mockup mâu thuẫn. */
+  color: var(--mau-ink-muted);
+  border-top: 1px dashed var(--mau-border);
+  padding-top: 6px;
+}
+
+/* Ô số của cite-row thành `<button>` khi hàng nối dây với drawer: bấm mở drawer
+   và chọn vòng. Reset nút về đúng hình vuông 20px mà `.cite_row__so` đã có. */
+button.cite_row__so {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* Chú thích chữ của hover, tín hiệu **phi màu** đi cùng viền dày trên canvas. */
+.cite_row__dang_sang {
+  color: var(--mau-level-l1-ink);
+  font-weight: 600;
+  white-space: nowrap;
+}

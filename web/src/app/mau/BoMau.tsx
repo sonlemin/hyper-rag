@@ -47,7 +47,17 @@ const CAP: Array<[string, string]> = [
   ["ink-muted", "level-l1-bg"],
   ["ink", "primary-tint-soft"],
   ["ink-muted", "primary-tint-soft"],
+  ["graph-ring-1", "surface-card"],
+  ["graph-ring-2", "surface-card"],
+  ["graph-ring-3", "surface-card"],
+  ["graph-ring-4", "surface-card"],
+  ["graph-ring-5", "surface-card"],
+  ["primary", "primary-tint"],
 ];
+
+/** Dải màu vòng hyperedge, khóa của `tokens.colors`. Vòng thứ sáu quay vòng
+ *  lại về màu đầu, nên năm ô dưới là **toàn bộ** dải mà đồ thị dùng. */
+const MAU_VONG = ["graph-ring-1", "graph-ring-2", "graph-ring-3", "graph-ring-4", "graph-ring-5"];
 
 /** Hai citation mẫu để xem cite-row, badge mức và dòng hạn chế L1 mà không cần
  *  một lượt hỏi thật. Cùng sáu khóa đóng với `adapters.trich_dan.KHOA_TRICH_DAN`. */
@@ -190,6 +200,68 @@ export function BoMau() {
         <div className="moc_doi_vai">
           <span>{dien("divider_doi_vai", { vai: nhan_vai("tech_support") })}</span>
         </div>
+      </div>
+
+      <h2 className="tieu_de_khoi">Đồ thị: dải màu vòng và ba trạng thái node</h2>
+      <div className="the" style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "center" }}>
+        {MAU_VONG.map((ten, i) => (
+          <span key={ten} style={{ display: "inline-flex", alignItems: "center", gap: 8 }} data-mau-vong={ten}>
+            <i
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: "50%",
+                border: `4px solid ${hex(ten)}`,
+                display: "inline-block",
+              }}
+            />
+            <b style={{ color: hex(ten) }}>HE-{String(i + 1).padStart(2, "0")}</b>
+          </span>
+        ))}
+      </div>
+      <div className="the" style={{ display: "flex", gap: 24, flexWrap: "wrap", alignItems: "center" }}>
+        {/* Ba trạng thái node của DESIGN.md: vòng hyperedge rỗng ruột, entity
+            thấy được, entity bị che (mờ 45%, nét đứt, nhãn "•••"). Vòng đang
+            sáng đổi **viền và quầng** chứ không đổi màu chữ - `graph-hover`
+            trên nền trắng chỉ 2,30:1. */}
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }} data-node-mau="vong">
+          <i style={{ width: 30, height: 30, borderRadius: "50%", border: "4px solid var(--mau-graph-ring-1)", display: "inline-block" }} />
+          vòng hyperedge
+        </span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }} data-node-mau="vong-sang">
+          <i
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: "50%",
+              border: "7px solid var(--mau-graph-hover)",
+              boxShadow: "0 0 0 6px color-mix(in srgb, var(--mau-graph-hover-halo) 30%, transparent)",
+              display: "inline-block",
+            }}
+          />
+          vòng đang sáng
+        </span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }} data-node-mau="dinh">
+          <i style={{ width: 16, height: 16, borderRadius: "50%", background: "var(--mau-graph-entity-fill)", border: "2px solid var(--mau-graph-entity-border)", display: "inline-block" }} />
+          entity
+        </span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, opacity: 0.45 }} data-node-mau="dinh-che">
+          <i style={{ width: 16, height: 16, borderRadius: "50%", background: "var(--mau-graph-entity-fill)", border: "2px dashed var(--mau-graph-entity-border)", display: "inline-block" }} />
+          ••• ({MICROCOPY.tooltip_node_mo})
+        </span>
+      </div>
+      <div className="the" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <button type="button" className="nut_do_thi">
+          {MICROCOPY.nut_do_thi}
+        </button>
+        <button type="button" className="nut_do_thi" data-active="1">
+          {MICROCOPY.nut_do_thi}
+        </button>
+        <span className="graph_head__chip">{dien("chip_vai_dang_xem", { vai: nhan_vai("tech_support") })}</span>
+        <span className="cite_row__dang_sang">{dien("chu_thich_dang_sang", { ma: "HE-01" })}</span>
+        <span className="tooltip_node" style={{ position: "static" }}>
+          {MICROCOPY.tooltip_node_mo}
+        </span>
       </div>
 
       <h2 className="tieu_de_khoi">Nút và hộp lỗi</h2>

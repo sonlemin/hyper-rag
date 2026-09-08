@@ -16,11 +16,12 @@ import { duong_het_phien, la_het_phien, nhan_vai, xoa_token } from "@/api/phien"
 import { HopLoi } from "@/khung/HopLoi";
 import { useCacLanDoiVai, usePhien } from "@/khung/KhungApp";
 import { cac_manh, dien, MICROCOPY, type KhoaMicrocopy } from "@/microcopy";
-import { nhan_slot } from "@/nhan";
 
-import { tach_slab } from "./dau_che";
 import { DongHanChe } from "./DongHanChe";
+import { DrawerDoThi, type LuotDrawer } from "./DrawerDoThi";
+import { HoverDoThiProvider } from "./hover_do_thi";
 import { KhoiNguon } from "./KhoiNguon";
+import { nhom_cua, ThanCoSlab } from "./ThanCoSlab";
 
 /** Bốn nấc của một lượt. Ba nấc kết thúc phải khác nhau về **cấu trúc DOM**,
  *  không chỉ khác màu: lượt trả lời mang `data-tra-loi`, lượt từ chối mang
@@ -106,6 +107,7 @@ function BongBongTraLoi({
   mo_nguon: boolean;
   dat_mo_nguon: (mo: boolean) => void;
 }) {
+  const id_luot = luot.id;
   // Hai nấc chưa có câu trả lời nào **không** mang dòng meta: câu ấy nói "trả
   // lời theo quyền X" và chưa có lượt trả lời nào để nói thế. Vai của phiên lúc
   // gửi vẫn được ghi vào `luot.vai_gui` (4.5 đọc nó), chỉ là không render.
@@ -155,7 +157,7 @@ function BongBongTraLoi({
     <div className="luot_tra_loi" data-tra-loi>
       <DongMeta khoa="meta_luot" vai={envelope.meta.role} n={envelope.citations.length} />
       <p className="luot__than">
-        <ThanCoSlab van_ban={envelope.answer ?? ""} citations={envelope.citations} />
+        <ThanCoSlab van_ban={envelope.answer ?? ""} cac_nhom={nhom_cua(envelope.citations)} />
       </p>
       {/* Khối nguồn đứng **ngoài** vùng `aria-live` của lượt, dù nó nằm trong
           cùng bong bóng. Vùng live bọc ô trả lời, và mọi lần bấm mở hay thu
@@ -167,42 +169,15 @@ function BongBongTraLoi({
           số nguồn vẫn tới trình đọc qua vế "· n trích dẫn" của dòng meta, thứ
           nằm trong vùng live và có mặt ngay khi envelope về. */}
       <div aria-live="off">
-        <KhoiNguon citations={envelope.citations} mo={mo_nguon} dat_mo={dat_mo_nguon} />
+        <KhoiNguon
+          citations={envelope.citations}
+          mo={mo_nguon}
+          dat_mo={dat_mo_nguon}
+          id_luot={id_luot}
+        />
       </div>
       <DongHanChe citations={envelope.citations} />
     </div>
-  );
-}
-
-/** Thân câu trả lời với slab bôi đen thay dấu che, ngay tại vị trí của nó.
- *
- *  Slab là **hiển thị best-effort trên `answer`** (chốt brief §6: không test an
- *  ninh nào trên `answer`), nên một chuỗi không nhận ra là chữ thường và giữ
- *  nguyên văn. Tập nhóm để nhận diện `[owner:<nhóm>]` lấy từ `owner_group` của
- *  **chính lượt này**, đúng khuôn `core.masking.la_dau_che`.
- *
- *  `[owner:<nhóm>]` render **giữ tên nhóm** ("[người phụ trách: DevOps]") còn
- *  `[owner:group]` render "[người phụ trách: che]": AD-9 tổng quát hóa `owner`
- *  về mức nhóm chứ không xóa nó, và FR-14 đòi placeholder nói được nhóm nào.
- *  Bôi tên nhóm thành "che" là vứt đi đúng thứ server cố ý cho ra. */
-function ThanCoSlab({ van_ban, citations }: { van_ban: string; citations: TrichDan[] }) {
-  const cac_nhom = citations
-    .map((c) => c.owner_group)
-    .filter((n): n is string => n !== null);
-  return (
-    <>
-      {tach_slab(van_ban, cac_nhom).map((manh, i) =>
-        manh.loai === "chu" ? (
-          <span key={i}>{manh.van_ban}</span>
-        ) : (
-          <span key={i} className="slab" data-slab={manh.vai}>
-            {manh.nhom === null
-              ? dien("slab_che", { ten_slot: nhan_slot(manh.vai) })
-              : dien("slab_owner", { ten_slot: nhan_slot(manh.vai), nhom: manh.nhom })}
-          </span>
-        ),
-      )}
-    </>
   );
 }
 
@@ -260,7 +235,7 @@ function DongMocDoiVai({ moc }: { moc: MocDoiVai }) {
  *  **Không trần thời gian cho một lượt** (NFR-08 không đặt SLA): không
  *  `setTimeout`, không `AbortSignal.timeout`, và `tests/test_web_khung.py` quét
  *  cả `web/src` để giữ luật đó. */
-export function ManChat() {
+export function ManChat({ tieu_de }: { tieu_de: string }) {
   const router = useRouter();
   const phien = usePhien();
   const o_hoi = useRef<HTMLTextAreaElement>(null);
@@ -278,6 +253,11 @@ export function ManChat() {
   // render lại cả danh sách lượt.
   const [so_ky_tu, dat_so_ky_tu] = useState(0);
   const [cac_muc, dat_cac_muc] = useState<Muc[]>([]);
+  // Drawer đồ thị (story 4.6). Ba mẩu state, và cả ba sống ở đây vì hai đầu của
+  // sợi dây hover đều nằm dưới màn này: cite-row phát mã, drawer nhận mã.
+  const [mo_do_thi, dat_mo_do_thi] = useState(false);
+  const [ma_chon, dat_ma_chon] = useState<string | null>(null);
+  const [ma_hover, dat_ma_hover] = useState<string | null>(null);
   // Dãy vai của mọi lần đổi vai đã xảy ra (khung giữ). Mỗi phần tử **chưa
   // thấy** là một mốc được chèn, mang đúng tên vai của lần đổi ấy.
   const cac_lan_doi = useCacLanDoiVai();
@@ -326,6 +306,40 @@ export function ManChat() {
       m.loai === "luot" && m.luot.ket_cuc.loai === "tra_loi" ? m.luot.id : moi_nhat,
     null,
   );
+
+  // Lượt mà drawer đang vẽ: lượt mới nhất **có envelope**, tức trả lời **hoặc**
+  // từ chối. Không phải `id_tra_loi_moi_nhat` của 4.4 - nó cố ý bỏ qua lượt từ
+  // chối (đúng cho khối nguồn), và dùng lại nó ở đây làm nhịp 3 của demo hỏng
+  // theo cách tệ nhất: `sale_ba` bị chặn, chat hiện template từ chối, mà drawer
+  // vẫn đứng nguyên đồ thị của Tech Support ở lượt trước - dữ liệu của **một
+  // vai khác** còn trên màn sau khi người dùng đã đổi vai, đúng thứ
+  // EXPERIENCE.md trạng thái C cấm. Lượt từ chối có `citations: []` nên nó rơi
+  // vào đúng nhánh empty-state của drawer, không cần một nhánh riêng và không
+  // request nào bay đi.
+  const luot_drawer = cac_muc.reduce<LuotDrawer | null>((moi_nhat, m) => {
+    if (m.loai !== "luot") return moi_nhat;
+    const kc = m.luot.ket_cuc;
+    if (kc.loai !== "tra_loi" && kc.loai !== "tu_choi") return moi_nhat;
+    const so = m.luot.id;
+    return { id: so, citations: kc.envelope.citations };
+  }, null);
+  const id_luot_drawer = luot_drawer === null ? null : luot_drawer.id;
+  const vai_phien = phien?.vai ?? "";
+
+  // Lượt mới hay đổi vai: **mọi highlight cũ bỏ**. Một mã `HE-02` chọn ở lượt
+  // trước trỏ vào một citation khác ở lượt sau, nên giữ nó lại là làm sáng một
+  // vòng nói sai về nguồn.
+  useEffect(() => {
+    dat_ma_chon(null);
+    dat_ma_hover(null);
+  }, [id_luot_drawer, vai_phien]);
+
+  /** Bấm ô số của một cite-row: mở drawer **và** chọn vòng ấy, và nó giữ sáng
+   *  sau khi rời chuột (khác hover, thứ tắt ngay). */
+  function chon_vong(ma: string) {
+    dat_mo_do_thi(true);
+    dat_ma_chon(ma);
+  }
 
   /** Người dùng tự mở hay thu gọn khối nguồn của một lượt. Từ đây `mo_nguon`
    *  của lượt ấy không còn là `null`, nên nó thôi theo mặc định và giữ nguyên
@@ -426,62 +440,104 @@ export function ManChat() {
 
   return (
     <>
-      <div
-        className="man_chat__cuon"
-        ref={khoi_cuon}
-        data-danh-sach-luot
-        onScroll={theo_doi_cuon}
-      >
-        {cac_muc.map((muc) =>
-          muc.loai === "moc" ? (
-            <DongMocDoiVai key={muc.moc.id} moc={muc.moc} />
-          ) : (
-            <LuotChat
-              key={muc.luot.id}
-              luot={muc.luot}
-              mo_nguon={muc.luot.mo_nguon ?? muc.luot.id === id_tra_loi_moi_nhat}
-              dat_mo_nguon={(mo) => dat_mo_nguon(muc.luot.id, mo)}
-            />
-          ),
-        )}
+      {/* Header chat là **một hàng**: tiêu đề trang bên trái, nút "Đồ thị" bên
+          phải. Tiêu đề đến từ `dieu_huong.json` qua prop, nên nhãn của sidebar
+          và của trang vẫn là **một** chuỗi (luật của 4.1). */}
+      <div className="man_chat__dau">
+        <h1 className="tieu_de_trang">{tieu_de}</h1>
+        <button
+          type="button"
+          className="nut_do_thi"
+          data-nut-do-thi
+          data-active={mo_do_thi ? "1" : undefined}
+          aria-pressed={mo_do_thi}
+          onClick={() => dat_mo_do_thi(!mo_do_thi)}
+        >
+          {MICROCOPY.nut_do_thi}
+        </button>
       </div>
 
-      <form className="composer" onSubmit={nop}>
-        <label htmlFor="o_hoi" className="sr-only">
-          {MICROCOPY.nhan_o_hoi}
-        </label>
-        <textarea
-          id="o_hoi"
-          className="o_hoi"
-          ref={o_hoi}
-          rows={2}
-          data-o-hoi
-          maxLength={DAI_CAU_HOI_TOI_DA}
-          placeholder={MICROCOPY.placeholder_o_hoi}
-          onKeyDown={phim}
-          onChange={(e) => dat_so_ky_tu(e.currentTarget.value.length)}
-        />
-        {/* Bộ đếm chỉ hiện khi **gần trần**. `maxLength` chặn trước một câu quá
-            dài (đóng khoản ledger `CAU_HOI_QUA_DAI`), nhưng nó cắt **lặng lẽ**:
-            dán một câu 5000 ký tự thì mất 1000 ký tự cuối, không đếm, không
-            nhắc, và câu cụt vẫn gửi đi được. Một con số hiện ra ở đúng lúc là
-            phần còn thiếu của phép chặn ấy.
-            Ngưỡng chứ không luôn hiện: một bộ đếm trên mọi câu là nhiễu cho
-            99% lượt, và nó kéo mắt khỏi chính ô đang gõ. */}
-        {so_ky_tu >= NGUONG_DEM_KY_TU && (
-          <span
-            className="o_hoi__dem"
-            data-dem-ky-tu={so_ky_tu}
-            data-cham-tran={so_ky_tu >= DAI_CAU_HOI_TOI_DA ? "1" : undefined}
-            aria-live="polite"
+      {/* Vùng neo của drawer: nó trượt từ phải **trong** vùng hội thoại, nên
+          header chat không bao giờ bị che và nút "Đồ thị" luôn bấm lại được. */}
+      <div className="man_chat__vung">
+        {/* Cột hội thoại. Drawer là **anh em flex** của nó chứ không một tấm
+            phủ lên trên: một drawer `position: absolute` che mất composer, tức
+            mở đồ thị ra là không hỏi được câu tiếp - đúng nhịp mà buổi demo
+            cần nhất (hỏi, xem đồ thị, đổi vai, hỏi lại). */}
+        <div className="man_chat__cot">
+          <HoverDoThiProvider
+            value={{ ma_hover, ma_chon, id_luot_drawer, dat_ma_hover, chon_vong }}
           >
-            {dien("dem_ky_tu", { da: so_ky_tu, tran: DAI_CAU_HOI_TOI_DA })}
-          </span>
-        )}
-        <button type="submit" className="nut_chinh" disabled={dang_cho} data-nut-gui>
-          {MICROCOPY.nut_gui}
-        </button>
-      </form>
+            <div
+              className="man_chat__cuon"
+              ref={khoi_cuon}
+              data-danh-sach-luot
+              onScroll={theo_doi_cuon}
+            >
+              {cac_muc.map((muc) =>
+                muc.loai === "moc" ? (
+                  <DongMocDoiVai key={muc.moc.id} moc={muc.moc} />
+                ) : (
+                  <LuotChat
+                    key={muc.luot.id}
+                    luot={muc.luot}
+                    mo_nguon={muc.luot.mo_nguon ?? muc.luot.id === id_tra_loi_moi_nhat}
+                    dat_mo_nguon={(mo) => dat_mo_nguon(muc.luot.id, mo)}
+                  />
+                ),
+              )}
+            </div>
+          </HoverDoThiProvider>
+
+          <form className="composer" onSubmit={nop}>
+            <label htmlFor="o_hoi" className="sr-only">
+              {MICROCOPY.nhan_o_hoi}
+            </label>
+            <textarea
+              id="o_hoi"
+              className="o_hoi"
+              ref={o_hoi}
+              rows={2}
+              data-o-hoi
+              maxLength={DAI_CAU_HOI_TOI_DA}
+              placeholder={MICROCOPY.placeholder_o_hoi}
+              onKeyDown={phim}
+              onChange={(e) => dat_so_ky_tu(e.currentTarget.value.length)}
+            />
+            {/* Bộ đếm chỉ hiện khi **gần trần**. `maxLength` chặn trước một câu quá
+                dài (đóng khoản ledger `CAU_HOI_QUA_DAI`), nhưng nó cắt **lặng lẽ**:
+                dán một câu 5000 ký tự thì mất 1000 ký tự cuối, không đếm, không
+                nhắc, và câu cụt vẫn gửi đi được. Một con số hiện ra ở đúng lúc là
+                phần còn thiếu của phép chặn ấy.
+                Ngưỡng chứ không luôn hiện: một bộ đếm trên mọi câu là nhiễu cho
+                99% lượt, và nó kéo mắt khỏi chính ô đang gõ. */}
+            {so_ky_tu >= NGUONG_DEM_KY_TU && (
+              <span
+                className="o_hoi__dem"
+                data-dem-ky-tu={so_ky_tu}
+                data-cham-tran={so_ky_tu >= DAI_CAU_HOI_TOI_DA ? "1" : undefined}
+                aria-live="polite"
+              >
+                {dien("dem_ky_tu", { da: so_ky_tu, tran: DAI_CAU_HOI_TOI_DA })}
+              </span>
+            )}
+            <button type="submit" className="nut_chinh" disabled={dang_cho} data-nut-gui>
+              {MICROCOPY.nut_gui}
+            </button>
+          </form>
+        </div>
+
+        {/* Vòng đang sáng: mã đang hover thắng mã đã chọn, vì hover là thao tác
+            vừa xảy ra. Rời hover thì mã đã chọn sáng lại - đúng ca "bấm ô số
+            rồi rê chuột đi" của I/O Matrix. */}
+        <DrawerDoThi
+          mo={mo_do_thi}
+          dong={() => dat_mo_do_thi(false)}
+          luot={luot_drawer}
+          vai={vai_phien}
+          ma_sang={ma_hover ?? ma_chon}
+        />
+      </div>
     </>
   );
 }

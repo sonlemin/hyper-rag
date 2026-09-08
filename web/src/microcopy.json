@@ -53,5 +53,12 @@
   "mo_ta_vai_truong_nhom": "Bức tranh đầy đủ, owner duyệt yêu cầu break-glass",
   "mo_ta_vai_admin": "Quản trị chính sách và tài khoản, không phải vai nghiệp vụ",
   "khong_co_vai": "Bảng chính sách đang chạy không khai vai nào",
-  "dem_ky_tu": "{da}/{tran} ký tự"
+  "dem_ky_tu": "{da}/{tran} ký tự",
+  "nut_do_thi": "Đồ thị",
+  "tieu_de_do_thi": "Đồ thị hyperedge",
+  "chip_vai_dang_xem": "vai đang xem · {vai}",
+  "chu_thich_do_thi": "Đồ thị hiển thị theo quyền của vai đang xem",
+  "chu_thich_dang_sang": "→ đang sáng {ma}",
+  "nhan_grip": "Kéo để đổi độ rộng drawer",
+  "nhan_vung_do_thi": "Đồ thị hyperedge của lượt trả lời mới nhất"
 }

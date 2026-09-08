@@ -47,6 +47,12 @@ colors:
   graph-hover-halo: '#F4C84A'
   graph-entity-fill: '#EEF1F4'
   graph-entity-border: '#1B2733'
+  # Dải màu vòng hyperedge, story 4.6 chọn (mockup chỉ khai hai màu), xem Colors
+  graph-ring-1: '#1F5AA8'
+  graph-ring-2: '#0E6F76'
+  graph-ring-3: '#8C2F6B'
+  graph-ring-4: '#7A4419'
+  graph-ring-5: '#3D4A57'
   # 5 tầng FR-33, xem Colors trong body
   trust-1: '#5B3E96'
   trust-2: '#7C63AE'
@@ -191,6 +197,7 @@ Không dùng design system ngoài. Toàn bộ token trong file này là nguồn 
   - **L0 không có màu hiển thị**, vì L0 là vô hình: không node, không badge, không placeholder, không số đếm, không màu meta riêng. Tên vai trong meta lượt trả lời luôn dùng {colors.ink-muted}, bất kể vai có quyền đầy đủ, bị che hay bị chặn; kết quả phân quyền không bao giờ được mã hóa vào màu meta.
 - **Slab bôi đen {colors.redact-bg} / chữ {colors.redact-ink}**: riêng cho vùng bôi đen FR-15 trong câu trả lời. Không dùng cặp màu này cho bất cứ thứ gì khác.
 - **Vàng hover đồ thị {colors.graph-hover}** với quầng {colors.graph-hover-halo} ở opacity 30%: chỉ cho vòng hyperedge đang được trích dẫn hover làm sáng.
+- **Dải màu vòng hyperedge {colors.graph-ring-1} đến {colors.graph-ring-5}**: màu viền và màu chữ trong vòng, gán theo thứ tự trích dẫn của lượt (vòng của trích dẫn thứ nhất lấy {colors.graph-ring-1}, vòng thứ sáu quay vòng lại). Mockup chỉ khai hai màu vòng nên story 4.6 chọn dải, với ba ràng buộc: mỗi màu đạt tối thiểu 4.5:1 trên nền trắng (6,80 · 5,91 · 7,68 · 7,87 · 9,07), không màu nào trùng {colors.graph-hover} vì vàng chỉ dành cho vòng đang hover, và dải tránh hẳn lục L2, hổ phách L1, đỏ lỗi và tím tin cậy để không màu nào của đồ thị bị đọc thành một mức tiết lộ. {colors.graph-ring-1} cố ý bằng {colors.primary} để khớp mockup. Hover đổi **viền và quầng**, không đổi màu chữ trong vòng: {colors.graph-hover} trên nền trắng chỉ 2,30:1, dưới cả sàn 3:1 cho chỉ báo phi văn bản.
 - **Đỏ {colors.danger}**: lỗi hệ thống, badge FAIL, badge số yêu cầu chờ, thông điệp đăng nhập sai. Không dùng cho trạng thái phân quyền, bị che không phải là lỗi.
 - **Dải tin cậy {colors.trust-1} đến {colors.trust-5}** [ASSUMPTION hex chưa duyệt]: dải tím từ đậm về nhạt cho 5 tầng nhãn tin cậy FR-33 (spine-only). Tầng 1 đậm nhất vì được thẩm định cao nhất. Dải này cố ý không trùng lục L2, hổ phách L1, xám trung tính và xanh thép, để mức tiết lộ và độ tin cậy không bao giờ bị đọc lẫn.
 

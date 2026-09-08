@@ -6,6 +6,7 @@
 
 import { VAI_SLOT } from "@/nhan";
 
+import type { DoThiThan } from "./do_thi";
 import { goi, LoiApi } from "./goi";
 
 /** Mã của **client** cho một thân 200 sai lược đồ envelope; không phải mã của
@@ -89,17 +90,16 @@ export type MetaLuot = {
   policy_version: string;
 };
 
-export type DoThi = {
-  nodes: unknown[];
-  edges: unknown[];
-};
-
 export type Envelope = {
   /** `null` ở lượt từ chối (AD-8); câu người dùng đọc là `MICROCOPY.tu_choi`. */
   answer: string | null;
   refused: boolean;
   citations: TrichDan[];
-  graph: DoThi;
+  /** Hình dạng thật khai ở `api/do_thi.ts` (story 4.6). `la_envelope` **không**
+   *  kiểm nội dung nó, và đó là đúng: `POST /hoi-dap` trả `graph_rong()` ở mọi
+   *  nhánh (`api/hoi_dap.py`), nên không màn nào đọc trường này. Drawer đồ thị
+   *  đi tuyến 3.7 và `lay_do_thi` kiểm hình ở đó. */
+  graph: DoThiThan;
   meta: MetaLuot;
 };
 

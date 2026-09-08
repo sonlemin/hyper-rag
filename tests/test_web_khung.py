@@ -39,6 +39,11 @@ Nhóm (12) là "xem như" (story 4.5): chín chuỗi mới có mặt và đượ
 bảng mô tả vùng quyền có khóa đúng bằng khóa `NHAN_VAI` và `NHAN_VAI` phủ đủ vai
 của bốn bảng chính sách, ba tuyến cùng tên trường ghim hai chiều với
 `api/main.py`, và `maxLength` của ô hỏi bằng `api.hoi_dap.DAI_CAU_HOI_TOI_DA`.
+Nhóm (13) là drawer đồ thị (story 4.6): dải năm màu vòng đủ và không trùng vàng
+hover, bảy chuỗi mới được dùng thật, tuyến `/do-thi` cùng tên trường, trần id và
+ba tập khóa node/edge ghim hai chiều với `api/` và `adapters/`, không nguồn ngẫu
+nhiên nào trong `web/src` và Cytoscape chỉ khai layout `preset` (hai vế của luật
+bố cục tất định), và id hyperedge thật chỉ sống trong ba module đã kể.
 """
 
 from __future__ import annotations
@@ -133,6 +138,18 @@ CAP_TUONG_PHAN = (
     ("ink-muted", "level-l1-bg"),
     ("ink", "primary-tint-soft"),
     ("ink-muted", "primary-tint-soft"),
+    # Sáu cặp của drawer đồ thị (story 4.6). Năm màu vòng là **màu chữ** viết
+    # trong vòng cộng màu viền, cả hai trên nền trắng của drawer (6,80 · 5,91 ·
+    # 7,68 · 7,87 · 9,07); cặp thứ sáu là nút "Đồ thị" ở trạng thái mở.
+    # `graph-hover` cố ý **không** có mặt: nó chỉ là viền và quầng, không bao
+    # giờ là màu chữ - 2,30:1 trên nền trắng, dưới cả sàn 3:1 cho chỉ báo phi
+    # văn bản, và đó là lý do hover đổi độ dày viền chứ không đổi màu chữ.
+    ("graph-ring-1", "surface-card"),
+    ("graph-ring-2", "surface-card"),
+    ("graph-ring-3", "surface-card"),
+    ("graph-ring-4", "surface-card"),
+    ("graph-ring-5", "surface-card"),
+    ("primary", "primary-tint"),
 )
 
 # Route không có mục sidebar và cố ý như vậy. Đây là danh mục ngoại lệ **có tên**
@@ -1330,12 +1347,20 @@ def test_man_chat_lap_ba_khoi_va_khong_dung_nhanh_tu_choi():
     không dòng hạn chế, meta không có vế trích dẫn (L0 vô hình tuyệt đối).
     """
     tho = MAN_CHAT.read_text(encoding="utf-8")
-    assert "KhoiNguon" in tho and "DongHanChe" in tho and "tach_slab(" in tho
+    assert "KhoiNguon" in tho and "DongHanChe" in tho and "ThanCoSlab" in tho
     m = re.search(r'if \(luot\.ket_cuc\.loai === "tu_choi"\) \{(.*?)\n  \}', tho, re.S)
     assert m, "màn chat phải còn nhánh `tu_choi` riêng"
     nhanh = m.group(1)
-    for cam in ("KhoiNguon", "DongHanChe", "tach_slab", "citations"):
+    for cam in ("KhoiNguon", "DongHanChe", "ThanCoSlab", "citations"):
         assert cam not in nhanh, f"nhánh từ chối không được nhắc {cam}: {nhanh}"
+    # Slab dời ra `ThanCoSlab.tsx` ở story 4.6: legend của drawer hiện `label`
+    # của node hyperedge, tức `cau_fact` dựng từ giá trị **đã che**, nên cùng
+    # bốn họ dấu che và cùng luật hiển thị. Hai bản chép của luật ấy là hai bản
+    # lệch nhau ở lần sửa đầu; `ManChat` đã nhập `DrawerDoThi` nên một `export`
+    # ở đó là một vòng nhập giữa hai module React.
+    slab = (SRC / "app" / "ThanCoSlab.tsx").read_text(encoding="utf-8")
+    assert "tach_slab(" in slab, slab
+    assert "tach_slab" not in _bo_chu_thich(tho), "màn chat không được dựng slab lần thứ hai"
 
 
 def test_dong_han_che_co_nut_khoa_va_khong_goi_api():
@@ -1669,3 +1694,333 @@ def test_xem_nhu_khong_dat_tran_thoi_gian_va_khong_goi_fetch_thang():
         sach = _bo_chu_thich(f.read_text(encoding="utf-8"))
         assert not MAU_TRAN_THOI_GIAN.search(sach), f
         assert "fetch(" not in sach, f
+
+
+# --- (13) Drawer đồ thị kiểu paper với hover trích dẫn (story 4.6) -----------
+
+# Bảy chuỗi mới của drawer. `do_thi_trong` và `tooltip_node_mo` **đã có từ 4.1**
+# (chúng nằm trong bảng Voice and Tone) và story này là nơi dùng thật, nên chúng
+# nằm trong danh sách - cùng khuôn với hai chuỗi "xem như" của nhóm (12).
+KHOA_MICROCOPY_DO_THI = frozenset(
+    {
+        "nut_do_thi",
+        "tieu_de_do_thi",
+        "chip_vai_dang_xem",
+        "chu_thich_do_thi",
+        "chu_thich_dang_sang",
+        "nhan_grip",
+        "nhan_vung_do_thi",
+        "do_thi_trong",
+        "tooltip_node_mo",
+    }
+)
+
+# Dải màu vòng hyperedge. Năm màu, và vòng thứ sáu quay vòng lại về màu đầu.
+MAU_VONG = tuple(f"graph-ring-{i}" for i in range(1, 6))
+
+DO_THI_TS = SRC / "api" / "do_thi.ts"
+KHUNG_DO_THI_TS = SRC / "app" / "do_thi_khung.ts"
+BO_CUC_TS = SRC / "app" / "do_thi_bo_cuc.ts"
+VUNG_DO_THI_TSX = SRC / "app" / "VungDoThi.tsx"
+DRAWER_TSX = SRC / "app" / "DrawerDoThi.tsx"
+
+
+def test_dai_mau_vong_du_nam_va_khong_trung_vang_hover(tokens):
+    """Năm màu vòng có mặt, khác nhau, và **không màu nào trùng `graph-hover`**.
+
+    DESIGN.md Do's and Don'ts: vàng `graph-hover` chỉ dành cho vòng đang được
+    hover từ một trích dẫn, "không dùng vàng hover làm màu viền cố định của
+    hyperedge". Một màu của dải trùng nó là một vòng trông như đang sáng suốt
+    buổi demo, tức chỉ báo hover mất nghĩa mà không gì đỏ.
+
+    Tương phản từng màu trên nền trắng đã chấm ở `CAP_TUONG_PHAN` (nhóm 2);
+    ở đây chấm ba điều còn lại: đủ năm, không trùng nhau, không trùng vàng.
+    """
+    mau = tokens["colors"]
+    thieu = [t for t in MAU_VONG if t not in mau]
+    assert not thieu, thieu
+    gia_tri = [mau[t] for t in MAU_VONG]
+    assert len(set(gia_tri)) == len(gia_tri), gia_tri
+    assert mau["graph-hover"] not in gia_tri, "một màu vòng trùng vàng hover"
+    # Và `graph-ring-1` cố ý **bằng** `primary` để khớp mockup (trích dẫn [1] và
+    # vòng của nó cùng một màu hành động).
+    assert mau["graph-ring-1"] == mau["primary"]
+
+
+def test_microcopy_do_thi_du_khoa_va_duoc_dung_that(microcopy):
+    """Bảy chuỗi mới cộng hai chuỗi treo từ 4.1, mỗi chuỗi được đọc thật.
+
+    Cùng luật với bốn nhóm trước: một khóa microcopy không ai dùng là một câu
+    chữ mà bảng Voice and Tone và màn hình nói khác nhau mà không ai thấy. Hai
+    chuỗi `do_thi_trong` và `tooltip_node_mo` đã nằm trong
+    `KHOA_GHIM_THEO_EXPERIENCE` (so nguyên văn với bảng), nhưng tới story này
+    mới có màn hình đọc chúng.
+    """
+    thieu = KHOA_MICROCOPY_DO_THI - set(microcopy)
+    assert not thieu, sorted(thieu)
+    tho = "\n".join(f.read_text(encoding="utf-8") for f in _file_giao_dien())
+    khong_dung = sorted(k for k in KHOA_MICROCOPY_DO_THI if not _duoc_dung(k, tho))
+    assert not khong_dung, f"khóa microcopy không nơi nào dùng: {khong_dung}"
+
+
+def test_hop_dong_do_thi_khop_nguon_api():
+    """Tuyến, tên trường, trần id và ba tập khóa của `/do-thi` khớp đúng nguồn.
+
+    Cùng khuôn với `test_ba_truong_cua_auth_login_khop_nguon_api` (4.2),
+    `test_hop_dong_hoi_dap_khop_nguon_api` (4.3) và
+    `test_ba_tuyen_xem_nhu_khop_nguon_api` (4.5), và vì cùng một lý do: e2e mock
+    trọn tuyến nên nó xanh với bất kỳ tên nào, còn phía `api/` không biết `web/`
+    gửi gì.
+
+    Ba tập khóa node/edge là chỗ nặng nhất, và AC của story nói thẳng: đổi một
+    khóa của `KHOA_NODE_HYPEREDGE` ở `adapters/do_thi.py` mà không sửa `web/`
+    phải **đỏ** và phải nêu đúng tên khóa lệch. `la_do_thi` đi qua chính ba hằng
+    ấy để kiểm hình, nên chúng là cơ chế chứ không phải chữ cho pytest so.
+    """
+    from adapters.do_thi import (
+        DAU_NOI_NODE_CHE,
+        KHOA_CANH,
+        KHOA_NODE_ENTITY,
+        KHOA_NODE_HYPEREDGE,
+        KIND_ENTITY,
+        KIND_HYPEREDGE,
+    )
+    from api.do_thi import ThanDoThi
+    from api.hoi_dap import KHOA_GRAPH, SO_ID_TOI_DA
+
+    ts = DO_THI_TS.read_text(encoding="utf-8")
+    tuyen = _hang_chuoi_o(ts, "TUYEN_DO_THI", "do_thi.ts")
+    truong = _hang_chuoi_o(ts, "TRUONG_HYPEREDGE_IDS", "do_thi.ts")
+
+    py = (GOC / "api" / "main.py").read_text(encoding="utf-8")
+    assert f'@cua_dong.post("{tuyen}")' in py, tuyen
+    assert set(ThanDoThi.model_fields) == {truong}, truong
+
+    m = re.search(r"export const SO_ID_TOI_DA = (\d+);", ts)
+    assert m, "do_thi.ts phải khai hằng SO_ID_TOI_DA"
+    assert int(m.group(1)) == SO_ID_TOI_DA
+
+    assert _hang_mang(ts, "KHOA_GRAPH") == KHOA_GRAPH
+    assert _hang_mang(ts, "KHOA_NODE_HYPEREDGE") == KHOA_NODE_HYPEREDGE, (
+        "khóa node hyperedge lệch giữa `adapters/do_thi.py` và `web/src/api/do_thi.ts`:"
+        f" {set(_hang_mang(ts, 'KHOA_NODE_HYPEREDGE')) ^ set(KHOA_NODE_HYPEREDGE)}"
+    )
+    assert _hang_mang(ts, "KHOA_NODE_ENTITY") == KHOA_NODE_ENTITY, (
+        "khóa node entity lệch:"
+        f" {set(_hang_mang(ts, 'KHOA_NODE_ENTITY')) ^ set(KHOA_NODE_ENTITY)}"
+    )
+    assert _hang_mang(ts, "KHOA_CANH") == KHOA_CANH, (
+        f"khóa cạnh lệch: {set(_hang_mang(ts, 'KHOA_CANH')) ^ set(KHOA_CANH)}"
+    )
+
+    assert _hang_chuoi_o(ts, "KIND_HYPEREDGE", "do_thi.ts") == KIND_HYPEREDGE
+    assert _hang_chuoi_o(ts, "KIND_ENTITY", "do_thi.ts") == KIND_ENTITY
+    assert _hang_chuoi_o(ts, "DAU_NOI_NODE_CHE", "do_thi.ts") == DAU_NOI_NODE_CHE
+
+    # Và drawer dựng thân bằng chính hằng đó, không literal chép tay.
+    assert "[TRUONG_HYPEREDGE_IDS]:" in ts, ts
+    drawer = DRAWER_TSX.read_text(encoding="utf-8")
+    assert f'"{tuyen}"' not in drawer, drawer
+
+
+# Mọi nguồn ngẫu nhiên hay phụ thuộc thời gian mà một bố cục đồ thị có thể lỡ
+# tay dùng. Cytoscape có `cose` và `random`; cả hai cho hai hình khác nhau giữa
+# buổi diễn tập và buổi thật, và AC thứ ba của story 4.6 cấm đúng điều đó.
+MAU_NGAU_NHIEN = re.compile(
+    r"Math\.random|Date\.now|getRandomValues|randomUUID|performance\.now|new Date\("
+)
+
+
+def test_khong_nguon_ngau_nhien_trong_web_src():
+    """Bố cục đồ thị **tất định** là một luật quét được, không một lời hứa.
+
+    Cùng một lượt vẽ hai lần phải cho cùng một hình: đó là thứ để buổi diễn tập
+    có nghĩa. Rẻ hơn một phép so ảnh, và nó bắt được cả lần sửa "chỉ thêm một
+    layout cho đẹp" ở story sau. Chú thích bị bỏ trước khi quét, nếu không luật
+    này phạt đúng những chỗ giải thích luật.
+    """
+    xau = [
+        str(f.relative_to(GOC))
+        for f in _file_giao_dien()
+        if MAU_NGAU_NHIEN.search(_bo_chu_thich(f.read_text(encoding="utf-8")))
+    ]
+    assert not xau, xau
+
+
+def test_bo_do_ngau_nhien_bat_dung_cho():
+    """Chấm chính bộ dò, để nó không thành một regex không bao giờ khớp."""
+    for dong in (
+        "const g = Math.random() * 360;",
+        "const seed = Date.now();",
+        "crypto.getRandomValues(new Uint8Array(4))",
+        "const id = crypto.randomUUID();",
+        "const t0 = performance.now();",
+        "const luc = new Date();",
+    ):
+        assert MAU_NGAU_NHIEN.search(dong), dong
+    assert not MAU_NGAU_NHIEN.search("const goc = -Math.PI / 2 + (2 * Math.PI * i) / n;")
+
+
+def test_vung_do_thi_chi_khai_layout_preset():
+    """Cytoscape chỉ được chạy `preset`, và vị trí đến từ hàm thuần `bo_cuc`.
+
+    Vế thứ hai của luật tất định (vế thứ nhất là phép quét nguồn ngẫu nhiên
+    ngay trên). `cose`, `random`, `grid`, `circle`, `concentric`, `breadthfirst`
+    đều mô phỏng hay gieo vị trí, nên tên nào trong số đó xuất hiện ở đây là
+    một hình khác giữa hai lần mở drawer.
+    """
+    sach = _bo_chu_thich(VUNG_DO_THI_TSX.read_text(encoding="utf-8"))
+    assert 'name: "preset"' in sach, sach
+    for ten in ("cose", "random", "grid", "circle", "concentric", "breadthfirst", "dagre"):
+        assert f'"{ten}"' not in sach, f"layout {ten!r} khai trong VungDoThi.tsx"
+    assert "bo_cuc(" in sach, "vị trí phải đến từ hàm thuần `bo_cuc`"
+
+
+# Ba module **duy nhất** của `web/` được đọc id thật: cửa fetch của hai tuyến
+# trả về id (`api/hoi_dap.ts` kiểm hình citation, `api/do_thi.ts` kiểm hình đồ
+# thị), và hàm thuần đổi đồ thị sang mã hiển thị (`app/do_thi_khung.ts`). Dưới
+# ba module ấy id thật **không tồn tại**, nên không component nào render nó
+# được - đó là luật "id hyperedge thật không vào DOM" của 4.4 dựng thành cơ chế
+# thay vì một phép quét trên từng chỗ chèn JSX.
+FILE_DUOC_CHAM_ID_THAT = (
+    "web/src/api/hoi_dap.ts",
+    "web/src/api/do_thi.ts",
+    "web/src/app/do_thi_khung.ts",
+)
+
+# Ba trường `id` **không phải** id hyperedge, cả ba là bộ đếm `number` sinh ở
+# client: `Luot.id` (4.3, `dem_ref`), `MocDoiVai.id` (4.5, cùng bộ đếm) và
+# `LuotDrawer.id` (4.6, chép thẳng từ `Luot.id`). Ngoại lệ **có máy canh**:
+# `test_id_cua_ba_kieu_ngoai_le_van_la_so` giữ cả ba phát biểu ấy đúng.
+MAU_ID_NOI_BO = re.compile(r"\b(?:luot|moc|luot_drawer)\.id\b")
+
+
+def test_id_cua_ba_kieu_ngoai_le_van_la_so():
+    """`Luot.id`, `MocDoiVai.id` và `LuotDrawer.id` đều là `number`.
+
+    Ba ngoại lệ của `MAU_ID_NOI_BO` đứng trên đúng ba phát biểu này. Đổi một
+    trong ba sang `string` (ví dụ để lấy một id do server cấp) là ngoại lệ ấy
+    hết đúng, và ở đây nó đỏ thay vì để một id thật đi qua một cái tên đã được
+    miễn quét.
+    """
+    tho = MAN_CHAT.read_text(encoding="utf-8")
+    for ten in ("Luot", "MocDoiVai"):
+        m = re.search(rf"type {ten} = \{{(.*?)\n\}};", tho, re.S)
+        assert m, f"ManChat.tsx phải khai kiểu `{ten}`"
+        assert re.search(r"^\s*id: number;", m.group(1), re.M), m.group(1)
+    drawer = DRAWER_TSX.read_text(encoding="utf-8")
+    m = re.search(r"export type LuotDrawer = \{(.*?)\n\};", drawer, re.S)
+    assert m, "DrawerDoThi.tsx phải khai kiểu `LuotDrawer`"
+    assert re.search(r"^\s*id: number;", m.group(1), re.M), m.group(1)
+
+
+def test_chi_ba_module_cham_id_hyperedge_that():
+    """Ngoài ba module đã kể, không file nào của `web/src` đọc `.id` của dữ liệu server.
+
+    Phép quét của 4.4 (`test_khong_file_nao_trong_web_src_in_id_hyperedge`) chỉ
+    bắt id **đi ra DOM** qua một chỗ chèn JSX. Story 4.6 nhận cả một đồ thị đầy
+    id thật, nên vế mạnh hơn phải có: id thật dừng ở biên, và mọi tầng dưới chỉ
+    thấy `HE-nn` / `en-k` / `HE-nn#slot`. Một `.id` mọc lên trong `DrawerDoThi`
+    hay `VungDoThi` là biên ấy đã vỡ, kể cả khi lần ấy chưa ai render nó.
+    """
+    xau = []
+    for f in _file_giao_dien():
+        duong = f.relative_to(GOC).as_posix()
+        if duong in FILE_DUOC_CHAM_ID_THAT or f.suffix == ".css":
+            continue
+        sach = MAU_ID_NOI_BO.sub("", _bo_chu_thich(f.read_text(encoding="utf-8")))
+        for so_dong, dong in enumerate(sach.splitlines(), 1):
+            if re.search(r"\b[A-Za-z_]\w*\.id\b", dong):
+                xau.append(f"{duong}:{so_dong}: {dong.strip()}")
+    assert not xau, xau
+    # Và ba module ấy có thật (một lần đổi tên file làm danh sách trên thành
+    # một danh sách miễn trừ cho những file không tồn tại).
+    for duong in FILE_DUOC_CHAM_ID_THAT:
+        assert (GOC / duong).is_file(), duong
+
+
+def test_khung_do_thi_doi_moi_id_sang_ma_hien_thi():
+    """Hàm thuần `dung_khung` là chỗ đổi mã, và nó **bỏ** id không có citation.
+
+    Ba khẳng định trên nguồn, mỗi cái là một quyết định của Design Notes:
+    mã vòng đi qua `ma_hien_thi` (cùng mã với cite-row, nên hover là một phép so
+    chuỗi chứ không một bảng tra thứ hai); node che giữ dạng `HE-nn#slot` dựng
+    bằng chính `DAU_NOI_NODE_CHE` (không gộp giữa hai vòng, ADR-018 quyết định
+    2); và số node bị bỏ đi ra ở `bi_bo` thay vì biến mất lặng lẽ.
+    """
+    sach = _bo_chu_thich(KHUNG_DO_THI_TS.read_text(encoding="utf-8"))
+    assert "ma_hien_thi(i)" in sach, sach
+    assert "DAU_NOI_NODE_CHE" in sach, sach
+    assert "TIEN_TO_MA_DINH" in sach, sach
+    assert re.search(r"\bbi_bo\b", sach), sach
+    # Nhãn của đỉnh bị che là "•••", **không** phải dấu che của server: một
+    # `[cause:masked]` trên canvas là chữ của ngữ cảnh LLM lọt ra màn hình.
+    assert "NHAN_DINH_CHE" in sach and '"•••"' in sach, sach
+
+
+def test_drawer_bam_luot_co_envelope_chu_khong_luot_tra_loi():
+    """Drawer vẽ lượt mới nhất **có envelope**, gồm cả lượt từ chối.
+
+    Dùng lại `id_tra_loi_moi_nhat` của 4.4 (nó cố ý bỏ qua lượt từ chối, đúng
+    cho khối nguồn) làm nhịp 3 của demo hỏng theo cách tệ nhất: `sale_ba` bị
+    chặn, chat hiện template từ chối, mà drawer vẫn đứng nguyên đồ thị của Tech
+    Support ở lượt trước - dữ liệu của một vai khác còn trên màn sau khi người
+    dùng đã đổi vai, đúng thứ EXPERIENCE.md trạng thái C cấm.
+    """
+    tho = MAN_CHAT.read_text(encoding="utf-8")
+    m = re.search(r"const luot_drawer = cac_muc\.reduce.*?\}, null\);", tho, re.S)
+    assert m, "ManChat phải tính lượt drawer bằng một phép rút gọn trên `cac_muc`"
+    than = m.group(0)
+    assert '"tra_loi"' in than and '"tu_choi"' in than, than
+    # Và nó **không** dùng lại `id_tra_loi_moi_nhat` của 4.4 cho drawer.
+    assert "id_tra_loi_moi_nhat" not in than, than
+    # Gọi lại `/do-thi` theo đúng ba khóa: mở drawer, đổi lượt, đổi vai.
+    drawer = _bo_chu_thich(DRAWER_TSX.read_text(encoding="utf-8"))
+    assert "[mo, id_luot, vai]" in drawer, drawer
+
+
+def test_drawer_di_qua_luat_het_phien_chung_va_khong_dat_tran_thoi_gian():
+    """401 trong drawer đi qua `la_het_phien`; mọi mã khác là hộp đỏ tại chỗ.
+
+    Cùng luật của 4.2 mà màn chat đã theo: một 503 giữa một lần mở drawer không
+    được đá người dùng về màn đăng nhập, và một đồ thị sai hình phải là **hộp
+    đỏ mang `data-ma-loi`** chứ không phải empty-state - empty-state là câu
+    trung tính duy nhất cho mọi lý do **trống**, và một lỗi hệ thống nấp sau nó
+    là đúng chỗ NFR-10 đòi phân biệt được.
+    """
+    sach = _bo_chu_thich(DRAWER_TSX.read_text(encoding="utf-8"))
+    assert "la_het_phien(" in sach and "duong_het_phien()" in sach, sach
+    assert "data-ma-loi=" in sach, sach
+    assert "MICROCOPY.do_thi_trong" in sach, sach
+    # Bốn file mới của story nằm trong hai phép quét đã có của `web/`.
+    duong = [f.relative_to(GOC).as_posix() for f in _file_giao_dien()]
+    for f in (
+        "web/src/api/do_thi.ts",
+        "web/src/app/do_thi_khung.ts",
+        "web/src/app/do_thi_bo_cuc.ts",
+        "web/src/app/VungDoThi.tsx",
+        "web/src/app/DrawerDoThi.tsx",
+    ):
+        assert f in duong, duong
+    for f in (DO_THI_TS, KHUNG_DO_THI_TS, BO_CUC_TS, VUNG_DO_THI_TSX, DRAWER_TSX):
+        noi_dung = _bo_chu_thich(f.read_text(encoding="utf-8"))
+        assert not MAU_TRAN_THOI_GIAN.search(noi_dung), f
+        assert "fetch(" not in noi_dung, f
+
+
+def test_cite_row_chi_noi_day_cho_luot_drawer_dang_ve():
+    """Hover một cite-row của lượt cũ **không** làm sáng vòng nào.
+
+    Mã `HE-nn` đánh theo thứ tự citation **trong lượt**, nên `HE-01` của một
+    lượt trước trỏ vào một citation khác hẳn `HE-01` của lượt drawer đang vẽ.
+    Nối dây cho mọi hàng là làm sáng một vòng nói sai về nguồn, ở đúng màn hình
+    dựng ra để đọc nguồn.
+    """
+    sach = _bo_chu_thich(KHOI_NGUON_TSX.read_text(encoding="utf-8"))
+    assert "id_luot_drawer" in sach and "noi_day" in sach, sach
+    assert "useHoverDoThi()" in sach, sach
+    # Ô số chỉ thành nút khi hàng nối dây; hàng cũ giữ nguyên `<span>` của 4.4.
+    assert "noi_day ? (" in sach, sach
+    assert 'aria-hidden="true"' in sach, sach
+    # Và chú thích chữ của hover đi qua microcopy, không một câu viết tay.
+    assert 'dien("chu_thich_dang_sang"' in sach, sach

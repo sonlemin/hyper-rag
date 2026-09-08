@@ -211,8 +211,9 @@ test("trang mẫu in tỷ lệ tương phản, không cặp nào dưới sàn", 
   await page.goto("/mau");
   const cac = page.locator("[data-cap-tuong-phan]");
   // Chín cặp của khung 4.1, bốn cặp của cite-row và dòng hạn chế L1 (4.4), bốn
-  // cặp của điều khiển "xem như" (4.5).
-  await expect(cac).toHaveCount(17);
+  // cặp của điều khiển "xem như" (4.5), sáu cặp của drawer đồ thị (4.6: năm màu
+  // vòng cộng nút "Đồ thị" ở trạng thái mở).
+  await expect(cac).toHaveCount(23);
   for (const dong of await cac.allTextContents()) expect(dong).toContain("đạt");
 });
 
